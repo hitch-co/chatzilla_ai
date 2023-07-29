@@ -1,0 +1,35 @@
+#CONFIG
+env_filename: 'config.env'
+env_dirname: 'discord-chatforme\config'
+
+#CHATFORME PARAMS
+msg_history_limit: 3
+num_bot_responses: 1 
+automated_message_seconds: 240
+automated_message_wordcount: 25
+
+#chatgpt_prompt_meat: "You are an assistant designed to predict the next {num_responses}"
+chatgpt_prompt_prefix: ''
+chatgpt_prompt_suffix: ''
+
+#default prompts
+chatgpt_settings:
+  automated_msg_prompt_name: "motivational_dad"
+  chatforme_prompt_name: "standard_discord"
+
+#prompt lists
+#python twitch_bot.py --automated_msg_prompt_name coding_tips
+chatgpt_automated_prompts:
+  standard: "at random, either say something positive, ask how the weather is, ask how everyones day is going, or tell a short dad joke"
+  coding_tips: "Add some random tips for using visual studio/python.  Keep these to keyboard shortcuts/plugins and best practices"
+  motivational_dad: "Speak like a dad and say something hip or cool.  Tell a quick dad joke to end things... Make sure your response is <{automated_message_wordcount} words and always try to make unique meaningful statements."
+  gtav: "Give some brief tips about the game Grand Theft Auto 5... Make sure your response is <{automated_message_wordcount} words and talk like a gangster while you are doing it."
+  sea_of_thieves: "Sample prompt 2 for Twitch ChatGPT automated."
+  diablo4: "Sample prompt 3 for Twitch ChatGPT automated."
+
+#python twitch_bot.py --chatforme_prompt_name coding_tips
+chatgpt_chatforme_prompts:
+  standard: "Sample prompt 1 for Discord ChatGPT Chatforme."
+  standard_twitch: "Sample prompt 2 for Discord ChatGPT Chatforme."
+  standard_discord: "Sample prompt 3 for Discord ChatGPT Chatforme."
+  prompt_4: "Sample prompt 4 for Discord ChatGPT Chatforme."

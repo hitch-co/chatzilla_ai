@@ -1,0 +1,216 @@
+#twitch_bot.py
+from modules import load_yaml, load_env, openai_gpt_chatcompletion
+import asyncio #(new_event_loop, set_event_loop)
+from twitchio.ext import commands as twitch_commands
+from threading import Thread
+from flask import Flask, request, url_for
+import uuid
+import requests
+import os
+import argparse
+
+#Start the app
+app = Flask(__name__)
+
+#Load yaml file
+yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="c:\\Users\\erich\\OneDrive\\Desktop\\_work\\__repos\\discord-chatforme\\config")
+msg_history_limit = yaml_data['msg_history_limit']
+num_bot_responses = yaml_data['num_bot_responses']
+automated_message_seconds = yaml_data['automated_message_seconds']
+automated_message_wordcount = str(yaml_data['automated_message_wordcount'])
+chatgpt_prompt_prefix = yaml_data['chatgpt_prompt_prefix']
+chatgpt_prompt_suffix = yaml_data['chatgpt_prompt_suffix']
+
+#nested gpt prompts
+twitch_prompts = yaml_data['chatgpt_automated_prompts']
+discord_prompts = yaml_data['chatgpt_chatforme_prompts']
+
+#Load and Store keys/tokens from env
+load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+TWITCH_BOT_CLIENT_ID = os.getenv('TWITCH_BOT_CLIENT_ID')
+TWITCH_BOT_CLIENT_SECRET = os.getenv('TWITCH_BOT_CLIENT_SECRET')
+TWITCH_BOT_SCOPE = 'chat:read+chat:edit'
+TWITCH_BOT_REDIRECT_BASE = os.getenv('TWITCH_BOT_REDIRECT_BASE')
+TWITCH_BOT_REDIRECT_AUTH = os.getenv('TWITCH_BOT_REDIRECT_AUTH')
+TWITCH_BOT_USERNAME = os.getenv('TWITCH_BOT_USERNAME')
+TWITCH_BOT_CHANNEL_NAME = os.getenv('TWITCH_BOT_CHANNEL_NAME')
+
+#Placeholder/junk
+TWITCH_CHATFORME_BOT_THREAD = None 
+
+class Bot(twitch_commands.Bot):
+
+    def __init__(self, TWITCH_BOT_ACCESS_TOKEN):
+        super().__init__(
+            token=TWITCH_BOT_ACCESS_TOKEN, #chagned from irc_token
+            name=TWITCH_BOT_USERNAME,
+            prefix='!',
+            initial_channels=[TWITCH_BOT_CHANNEL_NAME],
+            nick = 'eh-chatforme'
+        )
+        self.messages = []
+
+
+    #Set the listener(?) to start once the bot is ready
+    async def event_ready(self):
+        print(f'Ready | {self.nick}')
+        
+        #starts the loop for sending a periodic message 
+        self.loop.create_task(self.send_periodic_message())
+        
+        #sets the channel name in prep for sending a hello message
+        channel = self.get_channel(TWITCH_BOT_CHANNEL_NAME)
+        await channel.send("Hello there! I'm the `chatforme` bot, just letting you know i've arrived!")
+
+    #automated message every N seconds
+    async def send_periodic_message(self):
+
+        await asyncio.sleep(automated_message_seconds)
+
+        while True:
+            #get the formatted twitch prompts from yaml
+            formatted_twitch_prompts = {
+                key: value.format(
+                    num_bot_responses=num_bot_responses
+                ) for key, value in twitch_prompts.items()
+            }
+            formatted_twitch_prompt = formatted_twitch_prompts[args.automated_msg_prompt_name]
+            
+            #get the channel and populate the prompt
+            channel = self.get_channel(TWITCH_BOT_CHANNEL_NAME)
+            if channel:
+                twitch_chatgpt_automated_prompt = formatted_twitch_prompt
+                messages_dict_gpt = [{'role': 'system', 'content': twitch_chatgpt_automated_prompt}]
+                generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=OPENAI_API_KEY)
+                await channel.send(generated_message)
+          
+    #Collects historic messages for use in chatforme
+    async def event_message(self, message):
+        print('starting the message content capture')
+        print(message.content)
+
+        #Address message nuances 
+        # NOTE: can also use "try: {code} except AttributeError:"
+        try:
+            if message.author is not None:
+                self.messages.append({'role': 'user', 'name': message.author.name, 'content': message.content})
+                if len(self.messages) > msg_history_limit:
+                    self.messages.pop(0)
+        except AttributeError:
+            self.messages.append({'role': 'user', 'name': 'bot', 'content': message.content})            
+        await self.handle_commands(message)
+
+    @twitch_commands.command(name='chatforme')
+    async def chatforme(self, ctx):
+        try:
+            request_user_name = ctx.author.name
+        except AttributeError:
+            request_user_name = 'bot?'
+
+        # Build out GPT 'prompt'
+        users_in_messages_list = list(set([message['name'] for message in self.messages]))
+        users_in_messages_list_text = ', '.join(users_in_messages_list)
+
+        #TODO: UPDATE PROMPT FOR CHATFORME
+        chatgpt_prompt_meat = f'You are an assistant designed to predict the next {num_bot_responses} response(s) \
+            that can come from any of the "usernames" in the conversation history.  The very first message \
+            provided should come from {request_user_name} and {num_bot_responses} responses that follow \
+            should: \
+                1. come from one of the users that have already participated, \
+                2. be 1 sentence at least, two if necessary, \
+                3. not be repetitive of text spoken in the  \
+                4. only be conversation between those that have already participated, in this case: {users_in_messages_list_text} \
+                5. Include "name" followed by a colon and then the content of the message for each user in your \
+                    {num_bot_responses} generated response(s). \
+                6. begin with "<<<" followed by the username and then a colon. \
+                7. The only usernames that can be in your response are {users_in_messages_list_text}'
+
+        discord_chatgpt_chatforme_prompt = chatgpt_prompt_prefix + ". " + chatgpt_prompt_meat + ". " + chatgpt_prompt_suffix
+        chatgpt_prompt_dict = {'role': 'system', 'content': discord_chatgpt_chatforme_prompt}
+
+        messages_dict_gpt = self.messages + [chatgpt_prompt_dict]
+
+        # Final execution of chatgpt api call
+        gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=OPENAI_API_KEY)
+        await ctx.send(gpt_response)
+
+#App route home
+@app.route('/')
+def hello_world():
+    return "Hello, you're probably looking for the /auth page!"
+
+#app route auth
+@app.route('/auth')
+def auth():
+    base_url_auth = 'https://id.twitch.tv/oauth2/authorize'
+    params_auth = f'?response_type=code&client_id={TWITCH_BOT_CLIENT_ID}&redirect_uri={TWITCH_BOT_REDIRECT_BASE+TWITCH_BOT_REDIRECT_AUTH}&scope={TWITCH_BOT_SCOPE}&state={uuid.uuid4().hex}'
+    url = base_url_auth+params_auth
+    return f'<a href="{url}">Connect with Twitch</a>'
+
+#app route auth callback
+@app.route('/callback')
+def callback():
+    global TWITCH_CHATFORME_BOT_THREAD  # declare the variable as global inside the function
+    code = request.args.get('code')
+    state = request.args.get('state')
+    error = request.args.get('error')
+    output = {}
+    
+    if error:
+        return f"Error: {error}"
+    
+    data = {
+        'client_id': TWITCH_BOT_CLIENT_ID,
+        'client_secret': TWITCH_BOT_CLIENT_SECRET,
+        'code': code,
+        'grant_type': 'authorization_code',
+        'redirect_uri': TWITCH_BOT_REDIRECT_BASE
+    }
+    
+    response = requests.post('https://id.twitch.tv/oauth2/token', data=data)
+    
+    if response.status_code == 200:
+        #capture tokens
+        TWITCH_BOT_ACCESS_TOKEN = response.json()['access_token']
+        TWITCH_BOT_REFRESH_TOKEN = response.json()['refresh_token']
+
+        #add the access/refresh token to the environments
+        os.environ["TWITCH_BOT_ACCESS_TOKEN"] = TWITCH_BOT_ACCESS_TOKEN        
+        os.environ["TWITCH_BOT_REFRESH_TOKEN"] = TWITCH_BOT_REFRESH_TOKEN
+
+        # Only start bot thread if it's not already running
+        if TWITCH_CHATFORME_BOT_THREAD is None or not TWITCH_CHATFORME_BOT_THREAD.is_alive():
+            TWITCH_CHATFORME_BOT_THREAD = Thread(target=run_bot, args=(os.getenv('TWITCH_BOT_ACCESS_TOKEN'),))
+            TWITCH_CHATFORME_BOT_THREAD.start()
+            twitch_bot_status = 'Twitch bot was not active or did not exist and thread was started'
+        else: 
+            twitch_bot_status = 'Twitch bot was active so the existing bot thread was left active(???)'
+
+        print( f'<a>{twitch_bot_status}\nAccess token:{TWITCH_BOT_ACCESS_TOKEN}, Refresh Token: {TWITCH_BOT_REFRESH_TOKEN}</a>')
+        return f'<a>{twitch_bot_status}\nAccess token has been captured and set in the current environment</a>'
+
+    else:
+        output = {}
+        output['response.text'] = response.json()
+        return '<a>There was an issue retrieving and setting the access token.  If you would like to include more detail, return "template.html" or equivalent using the render_template() method from flask and add it to this response...'
+
+def run_bot(TWITCH_BOT_ACCESS_TOKEN):
+    new_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(new_loop)
+    bot = Bot(TWITCH_BOT_ACCESS_TOKEN)
+    bot.run()
+
+#NOTE: Everytime /callback is hit, a new bot instance is being started.  This 
+# could cause problems
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Select prompt_name for twitch_chatgpt_automated_prompt.")
+    parser.add_argument("--automated_msg_prompt_name", default="standard",dest="automated_msg_prompt_name", help="The name of the prompt in the YAML file.")
+    #parser.add_argument("--chatforme_prompt_name", default="standard", dest="chatforme_prompt_name, help="The name of the prompt in the YAML file.")
+    args = parser.parse_args()
+
+    app.run(port=3000, debug=True)
+
+
+

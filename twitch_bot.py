@@ -191,7 +191,7 @@ def callback():
             twitch_bot_status = 'Twitch bot was active so the existing bot thread was left active(???)'
 
         print( f'<a>{twitch_bot_status}\nAccess token:{TWITCH_BOT_ACCESS_TOKEN}, Refresh Token: {TWITCH_BOT_REFRESH_TOKEN}</a>')
-        return f'<a>{twitch_bot_status}\nAccess token has been captured and set in the current environment</a>'
+        return f'<a>{twitch_bot_status}\nAccess Token and Refresh Token have been captured and set in the current environment</a>'
 
     else:
         output = {}
@@ -208,9 +208,9 @@ def run_bot(TWITCH_BOT_ACCESS_TOKEN):
 # could cause problems
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Select prompt_name for twitch_chatgpt_automated_prompt.")
+    parser = argparse.ArgumentParser(description="Select prompt_name for gpt_auto_msg_prompt.")
     parser.add_argument("--automated_msg_prompt_name", default="standard",dest="automated_msg_prompt_name", help="The name of the prompt in the YAML file.")
-    #parser.add_argument("--chatforme_prompt_name", default="standard", dest="chatforme_prompt_name, help="The name of the prompt in the YAML file.")
+    parser.add_argument("--chatforme_prompt_name", default="standard", dest="chatforme_prompt_name", help="The name of the prompt in the YAML file.")
     args = parser.parse_args()
 
     app.run(port=3000, debug=True)

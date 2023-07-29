@@ -68,22 +68,25 @@ class Bot(twitch_commands.Bot):
     #automated message every N seconds
     async def send_periodic_message(self):
 
-        await asyncio.sleep(automated_message_seconds)
+        #await asyncio.sleep(int(automated_message_seconds))
 
         while True:
             #get the formatted twitch prompts from yaml
-            formatted_twitch_prompts = {
-                key: value.format(
-                    num_bot_responses=num_bot_responses
-                ) for key, value in twitch_prompts.items()
+            formatted_gpt_auto_msg_prompts = {
+                key: f"{value} {num_bot_responses=}, {automated_message_wordcount=}" for key, value in chatgpt_automated_msg_prompts.items()
+                #key: value.format( #alternative method
+                #    num_bot_responses=num_bot_responses,
+                #    automated_message_wordcount=automated_message_wordcount
+                #) for key, value in chatgpt_automated_msg_prompts.items()
             }
-            formatted_twitch_prompt = formatted_twitch_prompts[args.automated_msg_prompt_name]
+            formatted_gpt_auto_msg_prompt = formatted_gpt_auto_msg_prompts[args.automated_msg_prompt_name]
+            gpt_auto_msg_suffix = "Note: In GPTs response, provide a single answer and make sure it is no longer than 25 words maximum!"
             
             #get the channel and populate the prompt
             channel = self.get_channel(TWITCH_BOT_CHANNEL_NAME)
             if channel:
-                twitch_chatgpt_automated_prompt = formatted_twitch_prompt
-                messages_dict_gpt = [{'role': 'system', 'content': twitch_chatgpt_automated_prompt}]
+                gpt_auto_msg_prompt = formatted_gpt_chatforme_prompt_suffix+formatted_gpt_auto_msg_prompt+formatted_gpt_chatforme_prompt_suffix
+                messages_dict_gpt = [{'role': 'system', 'content': gpt_auto_msg_prompt}]
                 generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=OPENAI_API_KEY)
                 await channel.send(generated_message)
           
@@ -101,7 +104,8 @@ class Bot(twitch_commands.Bot):
                     self.messages.pop(0)
         except AttributeError:
             self.messages.append({'role': 'user', 'name': 'bot', 'content': message.content})            
-        await self.handle_commands(message)
+        if message.author is not None:
+            await self.handle_commands(message)
 
     @twitch_commands.command(name='chatforme')
     async def chatforme(self, ctx):

@@ -18,12 +18,14 @@ msg_history_limit = yaml_data['msg_history_limit']
 num_bot_responses = yaml_data['num_bot_responses']
 automated_message_seconds = yaml_data['automated_message_seconds']
 automated_message_wordcount = str(yaml_data['automated_message_wordcount'])
-chatgpt_prompt_prefix = yaml_data['chatgpt_prompt_prefix']
-chatgpt_prompt_suffix = yaml_data['chatgpt_prompt_suffix']
+formatted_gpt_automsg_prompt_prefix = str(yaml_data['formatted_gpt_automsg_prompt_prefix'])
+formatted_gpt_automsg_prompt_suffix = str(yaml_data['formatted_gpt_automsg_prompt_suffix'])
+formatted_gpt_chatforme_prompt_prefix = str(yaml_data['formatted_gpt_chatforme_prompt_prefix'])
+formatted_gpt_chatforme_prompt_suffix = str(yaml_data['formatted_gpt_chatforme_prompt_suffix'])
 
 #nested gpt prompts
-twitch_prompts = yaml_data['chatgpt_automated_prompts']
-discord_prompts = yaml_data['chatgpt_chatforme_prompts']
+chatgpt_automated_msg_prompts = yaml_data['chatgpt_automated_msg_prompts']
+chatgpt_chatforme_prompts = yaml_data['chatgpt_chatforme_prompts']
 
 #Load and Store keys/tokens from env
 load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])

@@ -68,7 +68,7 @@ class Bot(twitch_commands.Bot):
     #automated message every N seconds
     async def send_periodic_message(self):
 
-        #await asyncio.sleep(int(automated_message_seconds))
+        await asyncio.sleep(int(automated_message_seconds))
 
         while True:
             #get the formatted twitch prompts from yaml
@@ -85,7 +85,7 @@ class Bot(twitch_commands.Bot):
             #get the channel and populate the prompt
             channel = self.get_channel(TWITCH_BOT_CHANNEL_NAME)
             if channel:
-                gpt_auto_msg_prompt = formatted_gpt_chatforme_prompt_suffix+formatted_gpt_auto_msg_prompt+formatted_gpt_chatforme_prompt_suffix
+                gpt_auto_msg_prompt = formatted_gpt_automsg_prompt_prefix+formatted_gpt_auto_msg_prompt+formatted_gpt_chatforme_prompt_suffix
                 messages_dict_gpt = [{'role': 'system', 'content': gpt_auto_msg_prompt}]
                 generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=OPENAI_API_KEY)
                 await channel.send(generated_message)

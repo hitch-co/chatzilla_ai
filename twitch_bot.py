@@ -118,21 +118,18 @@ class Bot(twitch_commands.Bot):
         users_in_messages_list = list(set([message['name'] for message in self.messages]))
         users_in_messages_list_text = ', '.join(users_in_messages_list)
 
-        #TODO: UPDATE PROMPT FOR CHATFORME
-        chatgpt_prompt_meat = f'You are an assistant designed to predict the next {num_bot_responses} response(s) \
-            that can come from any of the "usernames" in the conversation history.  The very first message \
-            provided should come from {request_user_name} and {num_bot_responses} responses that follow \
-            should: \
-                1. come from one of the users that have already participated, \
-                2. be 1 sentence at least, two if necessary, \
-                3. not be repetitive of text spoken in the  \
-                4. only be conversation between those that have already participated, in this case: {users_in_messages_list_text} \
-                5. Include "name" followed by a colon and then the content of the message for each user in your \
-                    {num_bot_responses} generated response(s). \
-                6. begin with "<<<" followed by the username and then a colon. \
-                7. The only usernames that can be in your response are {users_in_messages_list_text}'
 
-        discord_chatgpt_chatforme_prompt = chatgpt_prompt_prefix + ". " + chatgpt_prompt_meat + ". " + chatgpt_prompt_suffix
+        # Get the formatted twitch prompts from yaml
+        formatted_gpt_chatforme_prompts = {
+            key: value.format(
+                num_bot_responses=num_bot_responses,
+                request_user_name=request_user_name,
+                users_in_messages_list_text=users_in_messages_list_text
+            ) for key, value in chatgpt_chatforme_prompts.items() if isinstance(value, str)
+        }
+        formatted_gpt_chatforme_prompt = formatted_gpt_chatforme_prompts[args.chatforme_prompt_name]
+
+        discord_chatgpt_chatforme_prompt = formatted_gpt_chatforme_prompt_prefix+formatted_gpt_chatforme_prompt+formatted_gpt_chatforme_prompt_suffix
         chatgpt_prompt_dict = {'role': 'system', 'content': discord_chatgpt_chatforme_prompt}
 
         messages_dict_gpt = self.messages + [chatgpt_prompt_dict]

@@ -62,6 +62,7 @@ class Bot(twitch_commands.Bot):
         self.loop.create_task(self.send_periodic_message())
         
         #sets the channel name in prep for sending a hello message
+        #TODO: Add a forloop to cycle through twitch channels in yaml  
         channel = self.get_channel(TWITCH_BOT_CHANNEL_NAME)
         await channel.send("Hello there! I'm the `chatforme` bot, just letting you know i've arrived!")
 
@@ -80,7 +81,6 @@ class Bot(twitch_commands.Bot):
                 #) for key, value in chatgpt_automated_msg_prompts.items()
             }
             formatted_gpt_auto_msg_prompt = formatted_gpt_auto_msg_prompts[args.automated_msg_prompt_name]
-            gpt_auto_msg_suffix = "Note: In GPTs response, provide a single answer and make sure it is no longer than 25 words maximum!"
             
             #get the channel and populate the prompt
             channel = self.get_channel(TWITCH_BOT_CHANNEL_NAME)
@@ -89,7 +89,8 @@ class Bot(twitch_commands.Bot):
                 messages_dict_gpt = [{'role': 'system', 'content': gpt_auto_msg_prompt}]
                 generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=OPENAI_API_KEY)
                 await channel.send(generated_message)
-          
+            await asyncio.sleep(int(automated_message_seconds))
+            
     #Collects historic messages for use in chatforme
     async def event_message(self, message):
         print('starting the message content capture')
@@ -124,7 +125,8 @@ class Bot(twitch_commands.Bot):
             key: value.format(
                 num_bot_responses=num_bot_responses,
                 request_user_name=request_user_name,
-                users_in_messages_list_text=users_in_messages_list_text
+                users_in_messages_list_text=users_in_messages_list_text,
+                automated_message_wordcount=automated_message_wordcount
             ) for key, value in chatgpt_chatforme_prompts.items() if isinstance(value, str)
         }
         formatted_gpt_chatforme_prompt = formatted_gpt_chatforme_prompts[args.chatforme_prompt_name]

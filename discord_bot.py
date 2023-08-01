@@ -1,4 +1,4 @@
-# bot.py
+#discord_bot.py
 from modules import load_yaml, load_env, openai_gpt_chatcompletion, get_models
 from discord.ext import commands
 import discord

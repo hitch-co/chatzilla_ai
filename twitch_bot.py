@@ -66,12 +66,35 @@ class Bot(twitch_commands.Bot):
         channel = self.get_channel(TWITCH_BOT_CHANNEL_NAME)
         await channel.send("Hello there! I'm the `chatforme` bot, just letting you know i've arrived!")
 
+
+    # # Inside the Bot class
+    # async def is_stream_live(self):
+    #     response = requests.get(f"https://api.twitch.tv/helix/streams?user_login={TWITCH_BOT_CHANNEL_NAME}",
+    #                             headers={"Client-ID": TWITCH_BOT_CLIENT_ID, "Authorization": f"Bearer {self.token}"})
+    #     data = response.json()
+    #     
+    #     # Do something if the stream is live
+    #     something = print('did something')    
+    #     
+    #     #return "data" in data
+    #     return something
+    #
+    # 
+
+
     #automated message every N seconds
     async def send_periodic_message(self):
 
         await asyncio.sleep(int(automated_message_seconds))
 
         while True:
+
+            # #Checks to see whether the stream is live before executing any auto
+            # # messaging services
+            # stream_live = await self.is_stream_live()
+
+            # if stream_live:    
+            #NOTE: THis is a cool feature used for getting params from script into yaml values
             #get the formatted twitch prompts from yaml
             formatted_gpt_auto_msg_prompts = {
                 key: f"{value} {num_bot_responses=}, {automated_message_wordcount=}" for key, value in chatgpt_automated_msg_prompts.items()
@@ -85,10 +108,11 @@ class Bot(twitch_commands.Bot):
             #get the channel and populate the prompt
             channel = self.get_channel(TWITCH_BOT_CHANNEL_NAME)
             if channel:
-                gpt_auto_msg_prompt = formatted_gpt_automsg_prompt_prefix+formatted_gpt_auto_msg_prompt+formatted_gpt_chatforme_prompt_suffix
+                gpt_auto_msg_prompt = formatted_gpt_automsg_prompt_prefix+" [prompt]:"+formatted_gpt_auto_msg_prompt+formatted_gpt_chatforme_prompt_suffix
                 messages_dict_gpt = [{'role': 'system', 'content': gpt_auto_msg_prompt}]
                 generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=OPENAI_API_KEY)
                 await channel.send(generated_message)
+                print(gpt_auto_msg_prompt)
             await asyncio.sleep(int(automated_message_seconds))
             
     #Collects historic messages for use in chatforme

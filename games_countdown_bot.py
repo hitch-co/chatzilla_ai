@@ -1,10 +1,64 @@
-from flask import Flask, request, jsonify
-import discord
-import logging
+"""
+Discord-Flask Bot
+=================
+
+This script runs a Flask server and a Discord bot simultaneously. It uses the Flask framework to provide a web API, and the discord.py library to interact with Discord. The Flask server exposes an endpoint `/send_games_command`, which triggers a Discord bot to send a specific message to a given Discord channel.
+
+Before Running the Script
+-------------------------
+1. Create a `config.env.template` and `config.yaml.template` in the appropriate directory.
+2. Rename `config.env.template` to `config.env` and `config.yaml.template` to `config.yaml`.
+3. Update the `config.env` file with necessary environment variables.
+4. Update the `config.yaml` file with necessary configurations.
+
+Dependencies
+------------
+- Flask
+- discord.py
+- threading
+- asyncio
+- logging
+- os
+- Custom modules for loading YAML and environment variables (`load_yaml`, `load_env`)
+
+Functions
+---------
+- on_ready(): Discord bot event that triggers when the bot logs in.
+- send_games_command(number_of_minutes=15): Flask route to send a command to a Discord channel.
+- run_flask(): Function to start the Flask app.
+- run_discord(): Coroutine to start the Discord bot.
+
+Flask Routes
+------------
+- `/send_games_command` : Sends a Discord message to a specific channel indicating a user is available for games.
+
+Environment Variables
+----------------------
+- `DISCORD_BOT_PLAY_GAMES_IN_BOT_TOKEN` : Discord bot token.
+
+YAML Configurations
+-------------------
+- `server_guild_id` : Discord server ID.
+- `server_channel_id` : Discord channel ID.
+- `discord_games_countdown_username` : Discord username for countdown.
+- `env_filename` : Name of the environment file.
+- `env_dirname` : Directory where the environment file is located.
+
+Author
+------
+Eric Hitchman, with the assistance of GPT4
+
+"""
 from modules import load_yaml, load_env
-import os
+import discord
+from flask import Flask, request, jsonify
+
 import threading
 import asyncio
+
+import logging
+import os
+
 
 # Initialize the app and client
 app = Flask(__name__)

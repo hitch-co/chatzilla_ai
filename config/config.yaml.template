@@ -1,3 +1,13 @@
+#CONFIG
+env_filename: 'config.env'
+env_dirname: 'C:\_repos\chatforme_bots\config'
+
+
+#games_countdown params
+server_guild_id: 'your_server_id' #TODO: update to take from environment variable 
+server_channel_id: 'your_channel_id' #TODO: update to take from environment variable
+discord_games_countdown_username: 'your custom displayed username'
+discord_games_countdown_number_of_minutes: 15 #not in use, to be implemented
 
 #CHATFORME PARAMS
 msg_history_limit: 3
@@ -5,37 +15,29 @@ num_bot_responses: 1
 automated_message_seconds: 240
 automated_message_wordcount: 25
 
+#chatgpt_prompt_meat: "You are an assistant designed to predict the next {num_responses}"
+chatgpt_prompt_prefix: ''
+chatgpt_prompt_suffix: ''
+
+
 #default prompts
 chatgpt_settings:
-  automated_msg_prompt_name: "standard"
-  chatforme_prompt_name: "standard"
+  automated_msg_prompt_name: "motivational_dad"
+  chatforme_prompt_name: "standard_discord"
 
-#prompt lists/suffix
-
-#prefix/suffix
-formatted_gpt_chatforme_prompt_prefix: "Note: In GPTs response, provide a single answer and make sure it is no longer than 25 words maximum!"
-formatted_gpt_chatforme_prompt_suffix: ""
-formatted_gpt_automsg_prompt_prefix: "You are an assistant designed to help keep my twitch chat populated with soe ocassional chat.  Keep all of yoru messages to less than 25 words pleasee.  This is casual communication"
-formatted_gpt_automsg_prompt_suffix: ""
-
+#prompt lists
 #python twitch_bot.py --automated_msg_prompt_name coding_tips
-chatgpt_automated_msg_prompts:
-  standard: "Using those rules, at random, either say something positive, ask how the weather is, ask how everyones day is going, or tell a short dad joke"
-  coding_tips: "Using those rules, Add some random tips for using visual studio/python.  Keep these to keyboard shortcuts/plugins and best practices"
-  motivational_dad: "Using those rules, Speak like a dad and say something hip or cool.  Tell a quick dad joke to end things... Make sure your response is <{automated_message_wordcount} words and always try to make unique meaningful statements."
-  gtav: "Using those rules, Give some brief tips about the game Grand Theft Auto 5... Make sure your response is <{automated_message_wordcount} words and talk like a gangster while you are doing it."
-  sea_of_thieves: "Using those rules, Sample prompt 2 for Twitch ChatGPT automated."
-  diablo4: "Using those rules, Sample prompt 3 for Twitch ChatGPT automated."
+chatgpt_automated_prompts:
+  standard: "at random, either say something positive, ask how the weather is, ask how everyones day is going, or tell a short dad joke"
+  coding_tips: "Add some random tips for using visual studio/python.  Keep these to keyboard shortcuts/plugins and best practices"
+  motivational_dad: "Speak like a dad and say something hip or cool.  Tell a quick dad joke to end things... Make sure your response is <{automated_message_wordcount} words and always try to make unique meaningful statements."
+  gtav: "Give some brief tips about the game Grand Theft Auto 5... Make sure your response is <{automated_message_wordcount} words and talk like a gangster while you are doing it."
+  sea_of_thieves: "Sample prompt 2 for Twitch ChatGPT automated."
+  diablo4: "Sample prompt 3 for Twitch ChatGPT automated."
 
 #python twitch_bot.py --chatforme_prompt_name coding_tips
 chatgpt_chatforme_prompts:
-  standard: >
-    You are an assistant designed to predict the next {num_bot_responses} response. The very first message 
-    should come from {request_user_name}.  Here are some other details:
-      1. Try to be brief, communication is casual here.
-      2. message should be 1 sentence, two if necessary but no longer than 20-25 words please
-      4. only be a response from <{request_user_name}
-      5. begin with "<<<" and then {request_user_name} followed by a colon and then the content of the message
+  standard: "Sample prompt 1 for Discord ChatGPT Chatforme."
   standard_twitch: "Sample prompt 2 for Discord ChatGPT Chatforme."
   standard_discord: "Sample prompt 3 for Discord ChatGPT Chatforme."
   prompt_4: "Sample prompt 4 for Discord ChatGPT Chatforme."

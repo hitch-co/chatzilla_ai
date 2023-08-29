@@ -1,4 +1,5 @@
 #twitch_bot.py
+#usage: python twitch_bot.py --automated_msg_prompt_name standard
 from modules import load_yaml, load_env, openai_gpt_chatcompletion
 import asyncio #(new_event_loop, set_event_loop)
 from twitchio.ext import commands as twitch_commands
@@ -13,7 +14,7 @@ import argparse
 app = Flask(__name__)
 
 #Load yaml file
-yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="c:\\Users\\erich\\OneDrive\\Desktop\\_work\\__repos\\discord-chatforme\\config")
+yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="C:\\_repos\\chatforme_bots\\config")
 msg_history_limit = yaml_data['msg_history_limit']
 num_bot_responses = yaml_data['num_bot_responses']
 automated_message_seconds = yaml_data['automated_message_seconds']
@@ -49,7 +50,7 @@ class Bot(twitch_commands.Bot):
             name=TWITCH_BOT_USERNAME,
             prefix='!',
             initial_channels=[TWITCH_BOT_CHANNEL_NAME],
-            nick = 'eh-chatforme'
+            nick = 'chatforme_bot'
         )
         self.messages = []
 
@@ -90,31 +91,36 @@ class Bot(twitch_commands.Bot):
         while True:
 
             # #Checks to see whether the stream is live before executing any auto
-            # # messaging services
+            # # messaging services.  Comment out and update indent to make live
             # stream_live = await self.is_stream_live()
-
             # if stream_live:    
-            #NOTE: THis is a cool feature used for getting params from script into yaml values
-            #get the formatted twitch prompts from yaml
-            formatted_gpt_auto_msg_prompts = {
+            
+            #NOTE: THis is an approach used for getting params from script into yaml values.
+            # Get the list of formatted twitch prompts from yaml
+            formatted_chatgpt_automated_msg_prompts = {
                 key: f"{value} {num_bot_responses=}, {automated_message_wordcount=}" for key, value in chatgpt_automated_msg_prompts.items()
+                #NOTE: another apprach todoing the same thing
                 #key: value.format( #alternative method
                 #    num_bot_responses=num_bot_responses,
                 #    automated_message_wordcount=automated_message_wordcount
                 #) for key, value in chatgpt_automated_msg_prompts.items()
             }
-            formatted_gpt_auto_msg_prompt = formatted_gpt_auto_msg_prompts[args.automated_msg_prompt_name]
+
+            #checks the list from yaml for the [argument to automated_msg_prompt_name] provided when running discord_bot.py from CMD
+            # TODO: Error checking 
+            formatted_gpt_auto_msg_prompt = formatted_chatgpt_automated_msg_prompts[args.automated_msg_prompt_name]
             
             #get the channel and populate the prompt
             channel = self.get_channel(TWITCH_BOT_CHANNEL_NAME)
             if channel:
-                gpt_auto_msg_prompt = formatted_gpt_automsg_prompt_prefix+" [prompt]:"+formatted_gpt_auto_msg_prompt+formatted_gpt_chatforme_prompt_suffix
+                gpt_auto_msg_prompt = formatted_gpt_automsg_prompt_prefix+" [everything that follows is your prompt as the aforementioned chat bot]:"+formatted_gpt_auto_msg_prompt+formatted_gpt_chatforme_prompt_suffix
                 messages_dict_gpt = [{'role': 'system', 'content': gpt_auto_msg_prompt}]
                 generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=OPENAI_API_KEY)
                 await channel.send(generated_message)
                 print(gpt_auto_msg_prompt)
             await asyncio.sleep(int(automated_message_seconds))
-            
+
+
     #Collects historic messages for use in chatforme
     async def event_message(self, message):
         print('starting the message content capture')
@@ -132,6 +138,8 @@ class Bot(twitch_commands.Bot):
         if message.author is not None:
             await self.handle_commands(message)
 
+
+    #Twitch command
     @twitch_commands.command(name='chatforme')
     async def chatforme(self, ctx):
         try:
@@ -169,13 +177,16 @@ class Bot(twitch_commands.Bot):
 def hello_world():
     return "Hello, you're probably looking for the /auth page!"
 
+
 #app route auth
 @app.route('/auth')
 def auth():
     base_url_auth = 'https://id.twitch.tv/oauth2/authorize'
-    params_auth = f'?response_type=code&client_id={TWITCH_BOT_CLIENT_ID}&redirect_uri={TWITCH_BOT_REDIRECT_BASE+TWITCH_BOT_REDIRECT_AUTH}&scope={TWITCH_BOT_SCOPE}&state={uuid.uuid4().hex}'
+    params_auth = f'?response_type=code&client_id={TWITCH_BOT_CLIENT_ID}&redirect_uri={TWITCH_BOT_REDIRECT_BASE}&scope={TWITCH_BOT_SCOPE}&state={uuid.uuid4().hex}'
     url = base_url_auth+params_auth
+    print(f"Generated redirect_uri: {TWITCH_BOT_REDIRECT_BASE}")
     return f'<a href="{url}">Connect with Twitch</a>'
+
 
 #app route auth callback
 @app.route('/callback')

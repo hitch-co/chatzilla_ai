@@ -9,7 +9,7 @@ import os
 logging.basicConfig(level=logging.INFO)
 
 #Load yaml file
-yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="c:\\Users\\erich\\OneDrive\\Desktop\\_work\\__repos\\discord-chatforme\\config")
+yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="C:\\_repos\\chatforme_bots\\config")
 
 # Store the bot API key and the OpenAI ChatGPT API key
 load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
@@ -19,6 +19,8 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 # Initialize the bot client 'client' with the given API key (sometimes tutorials use intents "all" instead of "default")
 bot = commands.Bot(command_prefix='!', 
                    intents=discord.Intents.all())
+
+print(f"Discord Bot Key: {DISCORD_BOT_KEY}")
 
 # Define the event for when the bot has connected to the Discord server
 @bot.event

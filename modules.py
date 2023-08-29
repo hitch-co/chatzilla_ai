@@ -33,7 +33,7 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,OPENAI_API_KEY=None):
     return gpt_response
 
 #Load parameters from config.yaml
-def load_yaml(yaml_filename='config.yaml', yaml_dirname=''):
+def load_yaml(yaml_filename='config.yaml', yaml_dirname='', is_testing=False):
     import yaml
     import os
     """Load parameters from a yaml file.
@@ -48,7 +48,12 @@ def load_yaml(yaml_filename='config.yaml', yaml_dirname=''):
     yaml_filename = 'config.yaml'
     yaml_dirname ='c:\\Users\\erich\\OneDrive\\Desktop\\_work\\__repos\\discord-chatforme\\config'
     """
-    
+
+    #is_testing = True
+    if is_testing == True:
+        yaml_dirname='C:\_repos\chatforme_bots\config'
+        yaml_filename='config.yaml'
+
     print(yaml_dirname)
     # use the argument instead of hardcoding the path
     yaml_filepath = os.path.join(os.getcwd(), yaml_dirname, yaml_filename)
@@ -60,7 +65,7 @@ def load_yaml(yaml_filename='config.yaml', yaml_dirname=''):
 
 
 #Loads environment variables from config.env
-def load_env(env_filename='config.env', env_dirname='config'):
+def load_env(env_filename='config.env', env_dirname='config', is_testing=False):
     import dotenv
     """Load environment variables from a .env file.
 
@@ -75,6 +80,11 @@ def load_env(env_filename='config.env', env_dirname='config'):
     env_dirname='c:\\Users\\erich\\OneDrive\\Desktop\\_work\\__repos\\discord-chatforme\\config'
     """
     
+    #is_testing = True
+    if is_testing ==True:
+        env_filename='config.env' 
+        env_dirname='C:\_repos\chatforme_bots\config'
+
     env_filepath = os.path.join(os.getcwd(), env_dirname, env_filename)
     print(env_filepath)
     if dotenv.load_dotenv(env_filepath):

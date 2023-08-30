@@ -1,6 +1,6 @@
 #twitch_bot.py
-#usage: python twitch_bot.py --automated_msg_prompt_name standard
-from modules import load_yaml, load_env, openai_gpt_chatcompletion
+#usage: python "C:\_repos\chatforme_bots\twitch_bot.py" --automated_msg_prompt_name standard
+from modules import load_yaml, load_env, openai_gpt_chatcompletion, get_models
 import asyncio #(new_event_loop, set_event_loop)
 from twitchio.ext import commands as twitch_commands
 from threading import Thread
@@ -9,6 +9,7 @@ import uuid
 import requests
 import os
 import argparse
+import json
 
 #Start the app
 app = Flask(__name__)
@@ -38,6 +39,10 @@ TWITCH_BOT_REDIRECT_BASE = os.getenv('TWITCH_BOT_REDIRECT_BASE')
 TWITCH_BOT_REDIRECT_AUTH = os.getenv('TWITCH_BOT_REDIRECT_AUTH')
 TWITCH_BOT_USERNAME = os.getenv('TWITCH_BOT_USERNAME')
 TWITCH_BOT_CHANNEL_NAME = os.getenv('TWITCH_BOT_CHANNEL_NAME')
+
+gpt_models_json = get_models(api_key=OPENAI_API_KEY)
+#print(json.dumps(gpt_models_json, indent=0))
+
 
 #Placeholder/junk
 TWITCH_CHATFORME_BOT_THREAD = None 

@@ -101,21 +101,31 @@ class Bot(twitch_commands.Bot):
 
         while True:
 
-            # #Checks to see whether the stream is live before executing any auto
+            # #TODO: Checks to see whether the stream is live before executing any auto
             # # messaging services.  Comment out and update indent to make live
             # stream_live = await self.is_stream_live()
             # if stream_live:    
             
-            #NOTE: THis is an approach used for getting params from script into yaml values.
-            # Get the list of formatted twitch prompts from yaml
-            formatted_chatgpt_automated_msg_prompts = {
-                key: f"{value} {num_bot_responses=}, {automated_message_wordcount=}" for key, value in chatgpt_automated_msg_prompts.items()
-                #NOTE: another apprach todoing the same thing
-                #key: value.format( #alternative method
-                #    num_bot_responses=num_bot_responses,
-                #    automated_message_wordcount=automated_message_wordcount
-                #) for key, value in chatgpt_automated_msg_prompts.items()
-            }
+
+            # ####################################################################
+            # RECYCLE: Use this to insert varaibles into text
+            # 
+            # #NOTE: THis is an approach used for getting params from script into yaml values.
+            # # Get the list of formatted twitch prompts from yaml
+            # formatted_chatgpt_automated_msg_prompts = {
+            #     key: f"{value} {num_bot_responses=}, {automated_message_wordcount=}" for key, value in chatgpt_automated_msg_prompts.items()
+            #     #NOTE: another apprach todoing the same thing
+            #     #key: value.format( #alternative method
+            #     #    num_bot_responses=num_bot_responses,
+            #     #    automated_message_wordcount=automated_message_wordcount
+            #     #) for key, value in chatgpt_automated_msg_prompts.items()
+            # }
+            #
+            # #checks the list from yaml for the [argument to automated_msg_prompt_name] provided when running discord_bot.py from CMD
+            # # TODO: Error checking 
+            # formatted_gpt_auto_msg_prompt = formatted_chatgpt_automated_msg_prompts[args.automated_msg_prompt_name]
+            # ####################################################################
+
 
             #checks the list from yaml for the [argument to automated_msg_prompt_name] provided when running discord_bot.py from CMD
             # TODO: Error checking 

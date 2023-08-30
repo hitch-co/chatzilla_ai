@@ -6,12 +6,17 @@ import dotenv
 import logging
 import openai
 import requests
+import json
+import random
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
 # call to chat gpt for completion TODO: Could add  limits here?
 def openai_gpt_chatcompletion(messages_dict_gpt=None,OPENAI_API_KEY=None): 
+
+    import openai
+
     #attach openai api key
     openai.api_key = OPENAI_API_KEY
 

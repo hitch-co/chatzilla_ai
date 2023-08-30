@@ -1,6 +1,6 @@
 #twitch_bot.py
 #usage: python "C:\_repos\chatforme_bots\twitch_bot.py" --automated_msg_prompt_name standard
-from modules import load_yaml, load_env, openai_gpt_chatcompletion, get_models
+from modules import load_yaml, load_env, openai_gpt_chatcompletion, get_models, rand_prompt
 import asyncio #(new_event_loop, set_event_loop)
 from twitchio.ext import commands as twitch_commands
 from threading import Thread
@@ -10,6 +10,8 @@ import requests
 import os
 import argparse
 import json
+import random
+import openai
 
 #Start the app
 app = Flask(__name__)
@@ -25,7 +27,7 @@ formatted_gpt_automsg_prompt_suffix = str(yaml_data['formatted_gpt_automsg_promp
 formatted_gpt_chatforme_prompt_prefix = str(yaml_data['formatted_gpt_chatforme_prompt_prefix'])
 formatted_gpt_chatforme_prompt_suffix = str(yaml_data['formatted_gpt_chatforme_prompt_suffix'])
 
-#nested gpt prompts
+#nested automsg gpt prompts
 chatgpt_automated_msg_prompts = yaml_data['chatgpt_automated_msg_prompts']
 chatgpt_chatforme_prompts = yaml_data['chatgpt_chatforme_prompts']
 
@@ -40,9 +42,8 @@ TWITCH_BOT_REDIRECT_AUTH = os.getenv('TWITCH_BOT_REDIRECT_AUTH')
 TWITCH_BOT_USERNAME = os.getenv('TWITCH_BOT_USERNAME')
 TWITCH_BOT_CHANNEL_NAME = os.getenv('TWITCH_BOT_CHANNEL_NAME')
 
+#store GPT models
 gpt_models_json = get_models(api_key=OPENAI_API_KEY)
-#print(json.dumps(gpt_models_json, indent=0))
-
 
 #Placeholder/junk
 TWITCH_CHATFORME_BOT_THREAD = None 
@@ -59,6 +60,11 @@ class Bot(twitch_commands.Bot):
         )
         self.messages = []
 
+        #NOTE/QUESTRION: Should all of my twitch bot related variables be delcared
+        # here rather than above/outside/before the class?
+
+        #yaml here....
+
 
     #Set the listener(?) to start once the bot is ready
     async def event_ready(self):
@@ -70,7 +76,7 @@ class Bot(twitch_commands.Bot):
         #sets the channel name in prep for sending a hello message
         #TODO: Add a forloop to cycle through twitch channels in yaml  
         channel = self.get_channel(TWITCH_BOT_CHANNEL_NAME)
-        await channel.send("Hello there! I'm the `chatforme` bot, just letting you know i've arrived!")
+        #await channel.send("Hello there! I'm the `chatforme` bot, just letting you know i've arrived!")
 
 
     # # Inside the Bot class
@@ -176,6 +182,10 @@ class Bot(twitch_commands.Bot):
         # Final execution of chatgpt api call
         gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=OPENAI_API_KEY)
         await ctx.send(gpt_response)
+
+
+################################
+#TODO: Separate flask app class?
 
 #App route home
 @app.route('/')

@@ -37,6 +37,42 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,OPENAI_API_KEY=None):
     #send the gpt response as discord bot message
     return gpt_response
 
+
+#Generates a random prompt based on the list of standardized prompts
+#NOTE: should this be done here or in the __init__?
+def rand_prompt(chatgpt_automated_msg_prompts_list=None):
+
+    import random
+    import json
+
+    #################
+    #Feature % chance
+    automsg_percent_chance_list = []
+    automsg_prompt_topics = []
+    automsg_prompts = []
+
+    chatgpt_automated_msg_prompts_selected = chatgpt_automated_msg_prompts_list
+    print(json.dumps(obj=chatgpt_automated_msg_prompts_selected, indent=4))
+
+    #For each key in yaml_data['chatgpt_automated_msg_prompts']['standard'], 
+    # add relevant data to list for applying a random % chance to each prompt
+    for key, value in chatgpt_automated_msg_prompts_selected.items():
+        automsg_prompt_topics.append(key)
+        print(key)
+        automsg_prompts.append(value[0])
+        automsg_percent_chance_list.append(value[1])
+
+    print(json.dumps(obj=automsg_prompt_topics, indent=4))
+    print(json.dumps(obj=automsg_prompts, indent=4))
+    print(json.dumps(obj=automsg_percent_chance_list, indent=4))
+
+    # APply a random()+chance function to determine which prompt to input
+    weighted_prompt_choice_Final = random.choices(automsg_prompts, weights=automsg_percent_chance_list, k=1)[0]
+    print(weighted_prompt_choice_Final)
+
+    return weighted_prompt_choice_Final
+
+
 #Load parameters from config.yaml
 def load_yaml(yaml_filename='config.yaml', yaml_dirname='', is_testing=False):
     import yaml

@@ -126,11 +126,13 @@ class Bot(twitch_commands.Bot):
             # formatted_gpt_auto_msg_prompt = formatted_chatgpt_automated_msg_prompts[args.automated_msg_prompt_name]
             # ####################################################################
 
+            #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
+            # cycled through.
+            chatgpt_automated_msg_prompts_list = yaml_data['chatgpt_automated_msg_prompts'][args.automated_msg_prompt_name]
 
-            #checks the list from yaml for the [argument to automated_msg_prompt_name] provided when running discord_bot.py from CMD
-            # TODO: Error checking 
-            formatted_gpt_auto_msg_prompt = formatted_chatgpt_automated_msg_prompts[args.automated_msg_prompt_name]
-            
+            #Grab a random prompt based on % chance from the config.yaml
+            formatted_gpt_auto_msg_prompt = rand_prompt(chatgpt_automated_msg_prompts_list=chatgpt_automated_msg_prompts_list)
+
             #get the channel and populate the prompt
             channel = self.get_channel(TWITCH_BOT_CHANNEL_NAME)
             if channel:

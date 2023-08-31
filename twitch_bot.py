@@ -97,7 +97,7 @@ class Bot(twitch_commands.Bot):
     #automated message every N seconds
     async def send_periodic_message(self):
 
-        await asyncio.sleep(int(automated_message_seconds))
+        #await asyncio.sleep(int(automated_message_seconds))
 
         while True:
 

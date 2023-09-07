@@ -4,6 +4,10 @@
 
 This project contains a Discord and Twitch bot that uses OpenAI's GPT-4 to generate automated responses.
 
+# Installation
+
+Make sure to install ffmpeg for anything related to voice activity.  Once you've installed ffmpeg remember to either add the ffmpeg/ffplay/ffprobe exes to either the $PATH or add them directly to the repo top-level directory
+
 ## Configuration
 
 The main configuration parameters for the bot are stored in the `config.yaml` file, which is located in the `config` directory. The parameters are as follows:

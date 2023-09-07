@@ -16,6 +16,7 @@ import openai
 #Start the app
 app = Flask(__name__)
 
+###############
 #Load yaml file
 yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="C:\\_repos\\chatforme_bots\\config")
 msg_history_limit = yaml_data['msg_history_limit']
@@ -30,6 +31,7 @@ formatted_gpt_chatforme_prompt_suffix = str(yaml_data['formatted_gpt_chatforme_p
 #nested automsg gpt prompts
 chatgpt_automated_msg_prompts = yaml_data['chatgpt_automated_msg_prompts']
 chatgpt_chatforme_prompts = yaml_data['chatgpt_chatforme_prompts']
+
 
 ####################################
 #Load and Store keys/tokens from env
@@ -52,12 +54,11 @@ ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')
 ELEVENLABS_XI_VOICE_PERSONAL = os.getenv('ELEVENLABS_XI_VOICE_PERSONAL')
 ELEVENLABS_XI_VOICE_BUSINESS = os.getenv('ELEVENLABS_XI_VOICE_BUSINESS')
 
-#store GPT models
-gpt_models_json = get_models(api_key=OPENAI_API_KEY)
-
 #Placeholder/junk
 TWITCH_CHATFORME_BOT_THREAD = None 
 
+
+###############################
 class Bot(twitch_commands.Bot):
 
     def __init__(self, TWITCH_BOT_ACCESS_TOKEN):
@@ -67,13 +68,14 @@ class Bot(twitch_commands.Bot):
             prefix='!',
             initial_channels=[TWITCH_BOT_CHANNEL_NAME],
             nick = 'chatforme_bot'
+            #NOTE/QUESTION:what other variables could be set here?
         )
         self.messages = []
 
-        #NOTE/QUESTRION: Should all of my twitch bot related variables be delcared
+        #NOTE/QUESTION: Should all of my twitch bot related variables be delcared
         # here rather than above/outside/before the class?
-
-        #yaml here....
+        #i.e. yaml here....
+        #i.e. env here
 
 
     #Set the listener(?) to start once the bot is ready
@@ -156,7 +158,8 @@ class Bot(twitch_commands.Bot):
 
     #Collects historic messages for use in chatforme
     async def event_message(self, message):
-        print('starting the message content capture')
+        print('--------------------------------')
+        print('starting message content capture')
         print(message.content)
 
         #Address message nuances 

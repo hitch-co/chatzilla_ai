@@ -1,0 +1,97 @@
+import requests
+import os
+import json
+
+from modules import load_env, load_yaml
+
+#config yaml
+yaml_data = load_yaml(yaml_dirname='config', yaml_filename='config.yaml')
+env_dirname=yaml_data['env_dirname']
+env_filename=yaml_data['env_filename']
+
+#config env
+load_env(env_filename=env_filename, env_dirname=env_dirname)
+ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')
+ELEVENLABS_XI_VOICE_PERSONAL= os.getenv('ELEVENLABS_XI_VOICE_PERSONAL')
+ELEVENLABS_XI_VOICE_BUSINESS=''
+
+
+#####################################################
+def generate_t2s_object(ELEVENLABS_XI_API_KEY = None,
+                       voice_id = None,
+                       text_to_say='this is default text', 
+                       is_testing = False):
+    
+    from elevenlabs import set_api_key, generate
+
+    #Testing    
+    is_testing = False
+    if is_testing == True:
+        text_to_say = ''
+        voice_id = 'vXUfHpda4drIfuTOY6lg'
+        
+
+    #some sample endpoints
+    url_base = 'https://api.elevenlabs.io/'
+    url_history = 'v1/history'
+    url_get_voices = 'v1/voices'
+
+    #API Key for get headers
+    headers={'xi-api-key':ELEVENLABS_XI_API_KEY}
+    set_api_key(ELEVENLABS_XI_API_KEY)
+
+    audio = generate(text=text_to_say,
+                    voice = voice_id)
+
+    return(audio)
+
+
+####################
+def get_voice_ids():
+    
+    #some sample endpoints
+    url_base = 'https://api.elevenlabs.io/'
+    url_history = 'v1/history'
+    url_get_voices = 'v1/voices'
+
+    #API Key for get headers
+    headers={'xi-api-key':ELEVENLABS_XI_API_KEY}
+
+    #get voice IDs response for 
+    response = requests.get(url_base+url_get_voices, headers=headers)
+
+    # Print the content of the response in readable JSON format
+    try:
+        json_response = json.loads(response.content)
+        formatted_json = json.dumps(json_response, indent=4)
+        print('Response Content (Formatted JSON):\n', formatted_json)
+    except json.JSONDecodeError as e:
+        print('Error decoding JSON:', e)
+
+    return formatted_json
+    #EoF
+
+
+########################
+def get_voice_history():
+    
+    #some sample endpoints
+    url_base = 'https://api.elevenlabs.io/'
+    url_history = 'v1/history'
+
+    #API Key for get headers
+    headers={'xi-api-key':ELEVENLABS_XI_API_KEY}
+
+    #get voice IDs response for 
+    response = requests.get(url_base+url_history, headers=headers)
+
+    # Print the content of the response in readable JSON format
+    try:
+        json_response = json.loads(response.content)
+        formatted_json = json.dumps(json_response, indent=4)
+        print('Response Content (Formatted JSON):\n', formatted_json)
+    except json.JSONDecodeError as e:
+        print('Error decoding JSON:', e)
+
+    return formatted_json
+    #EoF

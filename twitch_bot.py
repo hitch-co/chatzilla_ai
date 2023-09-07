@@ -1,5 +1,8 @@
 #twitch_bot.py
 #usage: python "C:\_repos\chatforme_bots\twitch_bot.py" --automated_msg_prompt_name standard
+
+
+#imports
 from modules import load_yaml, load_env, openai_gpt_chatcompletion, get_models, rand_prompt
 import asyncio #(new_event_loop, set_event_loop)
 from twitchio.ext import commands as twitch_commands
@@ -12,6 +15,14 @@ import argparse
 import json
 import random
 import openai
+
+#separate modules file
+#TODO: modules should be reorganized
+from my_modules import text_to_speech
+
+#Voice imports
+from my_modules.text_to_speech import generate_t2s_object
+from elevenlabs import play
 
 #Start the app
 app = Flask(__name__)
@@ -107,7 +118,7 @@ class Bot(twitch_commands.Bot):
     #automated message every N seconds
     async def send_periodic_message(self):
 
-        #await asyncio.sleep(int(automated_message_seconds))
+        await asyncio.sleep(int(automated_message_seconds))
 
         while True:
 
@@ -136,6 +147,13 @@ class Bot(twitch_commands.Bot):
             # formatted_gpt_auto_msg_prompt = formatted_chatgpt_automated_msg_prompts[args.automated_msg_prompt_name]
             # ####################################################################
 
+
+
+            #Import voice options
+            from my_modules.text_to_speech import generate_t2s_object
+            from elevenlabs import play
+
+
             #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
             # cycled through.
             chatgpt_automated_msg_prompts_list = yaml_data['chatgpt_automated_msg_prompts'][args.automated_msg_prompt_name]
@@ -146,12 +164,35 @@ class Bot(twitch_commands.Bot):
             #get the channel and populate the prompt
             channel = self.get_channel(TWITCH_BOT_CHANNEL_NAME)
             if channel:
+
+                #Build the prompt
                 gpt_auto_msg_prompt = formatted_gpt_automsg_prompt_prefix+" [everything that follows is your prompt as the aforementioned chat bot]:"+formatted_gpt_auto_msg_prompt+formatted_gpt_chatforme_prompt_suffix
                 messages_dict_gpt = [{'role': 'system', 'content': gpt_auto_msg_prompt}]
+                
+                #Generate the prompt response
                 generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=OPENAI_API_KEY)
-                await channel.send(generated_message)
+
+                #Print
+                print("----- THIS IS THE GPT AUTO MESSAGE PROMPT -----")
                 print(gpt_auto_msg_prompt)
-            await asyncio.sleep(int(automated_message_seconds))
+                print("-----------------------------------------------")
+
+                print("------THIS IS THE GENERATED MESSAGE -----------")
+                print(generated_message)
+                print("-----------------------------------------------")
+
+                #Send the message to twitch             
+                await channel.send(generated_message)
+
+                #Play the message generated/sent to TWITCH
+                v2s_message_object = generate_t2s_object(ELEVENLABS_XI_API_KEY = ELEVENLABS_XI_API_KEY,
+                                                           voice_id = ELEVENLABS_XI_VOICE_PERSONAL,
+                                                           text_to_say=generated_message, 
+                                                           is_testing = False)
+                play(v2s_message_object)
+
+            #await asyncio.sleep(int(automated_message_seconds))
+
 
 
     #Collects historic messages for use in chatforme

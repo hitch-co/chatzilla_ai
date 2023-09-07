@@ -1,24 +1,30 @@
+######
+#USAGE
+#- twitch_bot.py W/OUT directory: python twitch_bot.py --automated_msg_prompt_name standard
+#- twitch_bot.py WITH directory : python "C:\_repos\chatforme_bots\twitch_bot.py" --automated_msg_prompt_name standard
+
+
 #CONFIG
 env_filename: 'config.env'
 env_dirname: 'C:\_repos\chatforme_bots\config'
 
 
 #games_countdown params
-server_guild_id: 'your_server_id' #TODO: update to take from environment variable 
-server_channel_id: 'your_channel_id' #TODO: update to take from environment variable
-discord_games_countdown_username: 'your custom displayed username'
+#TODO
+server_guild_id: '' #TODO: update to take from environment variable 
+server_channel_id: '' #TODO: update to take from environment variable
+discord_games_countdown_username: 'yo daddy'
 discord_games_countdown_number_of_minutes: 15 #not in use, to be implemented
 
 #CHATFORME PARAMS
 msg_history_limit: 3
 num_bot_responses: 1 
-automated_message_seconds: 240
-automated_message_wordcount: 25
+automated_message_seconds: 5
+automated_message_wordcount: 20
 
 #chatgpt_prompt_meat: "You are an assistant designed to predict the next {num_responses}"
 chatgpt_prompt_prefix: ''
 chatgpt_prompt_suffix: ''
-
 
 #default prompts
 chatgpt_settings:
@@ -28,12 +34,24 @@ chatgpt_settings:
 #prompt lists
 #python twitch_bot.py --automated_msg_prompt_name coding_tips
 chatgpt_automated_prompts:
-  standard: "at random, either say something positive, ask how the weather is, ask how everyones day is going, or tell a short dad joke"
-  coding_tips: "Add some random tips for using visual studio/python.  Keep these to keyboard shortcuts/plugins and best practices"
-  motivational_dad: "Speak like a dad and say something hip or cool.  Tell a quick dad joke to end things... Make sure your response is <{automated_message_wordcount} words and always try to make unique meaningful statements."
-  gtav: "Give some brief tips about the game Grand Theft Auto 5... Make sure your response is <{automated_message_wordcount} words and talk like a gangster while you are doing it."
-  sea_of_thieves: "Sample prompt 2 for Twitch ChatGPT automated."
-  diablo4: "Sample prompt 3 for Twitch ChatGPT automated."
+  standard: >
+    "at random, either say something positive, ask how the weather is, ask how 
+    everyones day is going, or tell a short dad joke"
+  coding_tips: > 
+    "Add some random tips for using visual studio/python.  Keep these to 
+    keyboard shortcuts/plugins and best practices"
+  motivational_dad: >
+    "Speak like a dad and say something hip or cool.  Tell a quick dad joke to 
+    end things... Make sure your response is <{automated_message_wordcount} 
+    words and always try to make unique meaningful statements."
+  gtav: >
+    "Give some brief tips about the game Grand Theft Auto 5... Make sure your 
+    response is <{automated_message_wordcount} words and talk like a gangster 
+    while you are doing it."
+  sea_of_thieves: >
+    "Sample prompt 2 for Twitch ChatGPT automated."
+  diablo4: >
+    "Sample prompt 3 for Twitch ChatGPT automated."
 
 #python twitch_bot.py --chatforme_prompt_name coding_tips
 chatgpt_chatforme_prompts:
@@ -41,3 +59,120 @@ chatgpt_chatforme_prompts:
   standard_twitch: "Sample prompt 2 for Discord ChatGPT Chatforme."
   standard_discord: "Sample prompt 3 for Discord ChatGPT Chatforme."
   prompt_4: "Sample prompt 4 for Discord ChatGPT Chatforme."
+
+
+########################################################
+########################################################
+#ADDED 2023-08-29
+
+##############
+#prompt prefix -- THIS IS ALWAYS USED IN THE PROMPT
+formatted_gpt_automsg_prompt_prefix: >
+  'You are currently being used as a chat bot.  The goal of this chat bot is to 
+  send ONE AND ONLY ONE short message (~10-15 words long and always less than 400 characters) to a group of people 
+  watching a stream.  The prompt below specifies what kind of message you should 
+  send.  Be informal in language and try to say things that a chat bot wouldnt.  
+  Whenever uncertain, be positive and kind hearted but not overly or 
+  patronizingly nice'
+
+###############
+#prompt content -- The selected list of prompt dictionaries, i.e 
+# `chatgpt_automated_msg_prompts > standard` is set at runtime using the flag
+#  `--chatgpt_automated_msg_prompts`.  from each dictionary item
+
+chatgpt_automated_msg_prompts:
+
+  #this is the first list of prompt dictionaries  
+  standard:
+
+    #this is how you might implement % chance 
+    something_random_offtopic: 
+      - "say something random and off topic"
+      - 7
+    ask_about_everyone:
+      - "ask an overly personal question to everyone in the stream"
+      - 3
+    # say_something_positive:
+    #   - "say something positive or motivational, but not too cheesy cliche"
+    #   - 3
+    jokes_dad:
+      - "tell a short but kind of mean dad joke"
+      - 2
+    # tips_visualstudiopython: 
+    #   - "Add some random tips for using visual studio/python.  Keep these to 
+    #   keyboard shortcuts and best practices"
+    #   - 6
+    jokes_yomotherboard: 
+      - "tell a yo-motherboard joke. Be clever, but make sure it's punny or witty"
+      - 10
+    fun_fact_about_ham:
+      - "make up an odd but believable fact about ham (yes, the food) but then say you're not sure if it's true or not"
+      - 2
+    fun_fact_about_video_games:
+      - "Give some well known lore about video games... keep responses to 15-20 words."
+      - 7
+    # crube:
+    #   - "Say something interesting about the C# programming language"
+    #   - 20
+    # nano:
+    #   - "share an interesting fact about the country chille to the user nano in the stream"
+    #   - 20
+    # pragith:
+    #   - "Share a interesting fact about family life in texas to a user named 'prag' in the stream"
+    #   - 20
+    # oath:
+    #   - "Share an interesting fact to a user named 'oath' in the chat about crickets history"
+    #   - 20
+
+  #this is the second list of prompt dictionaries
+  nonstandard:
+
+    #this is how you might implement % chance 
+    something_random_offtopic: 
+      - "say something random and off topic"
+      - 7
+    # ask_about_everyone:
+    #   - "ask a very personal question to everyone in the stream"
+    #   - 3
+    # say_something_positive:
+    #   - "say something positive or motivational, but not too cheesy cliche"
+    #   - 3
+    jokes_dad:
+      - "tell a short but mildy mean dad joke"
+      - 2
+    # tips_visualstudiopython: 
+    #   - "Add some random tips for using visual studio/python.  Keep these to 
+    #   keyboard shortcuts and best practices"
+    #   - 6
+    jokes_yomotherboard: 
+      - "tell a yo-motherboard joke. Be clever, risky, and witty"
+      - 13
+    fun_fact_about_ham:
+      - "make up an odd but believable fact about ham (yes, the food) but then say you're not sure if it's true or not"
+      - 2
+    fun_fact_about_video_games:
+      - "Give some lore about the development of the game 7 days to die and other zombie games... keep responses to 15-20 words."
+      - 8
+    confuse_crube:
+      - "say something somewhat antagonizing but playful to a chatter/person called 'Crubeyawne'"
+      - 0
+
+  #this is the third list of prompt dictionaries
+  thirdpromptlistofdictionaruies:
+
+    thirdpromptlist_dictionaryitem1:
+      - 'nonstandard_subprompt1_content'
+      - 2
+    thirdpromptlist_dictionaryitem2:
+      - 'nonstandard_subprompt1_content'
+      - 2
+
+#prompt suffix -- TODO: TO BE REMOVED
+formatted_gpt_automsg_prompt_suffix: >
+  'you will send a message about some Red Dead Redemption lore or a fun fact 
+  about the franchise or Red dead redemption as a whole'
+
+#formatted_gpt_chatforme_prompts -- TODO: TO BE REMOVED
+formatted_gpt_chatforme_prompt_prefix: ''
+formatted_gpt_chatforme_prompt_suffix: ''
+

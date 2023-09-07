@@ -31,9 +31,14 @@ formatted_gpt_chatforme_prompt_suffix = str(yaml_data['formatted_gpt_chatforme_p
 chatgpt_automated_msg_prompts = yaml_data['chatgpt_automated_msg_prompts']
 chatgpt_chatforme_prompts = yaml_data['chatgpt_chatforme_prompts']
 
+####################################
 #Load and Store keys/tokens from env
 load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
+
+#Open AI
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+
+#Twitch
 TWITCH_BOT_CLIENT_ID = os.getenv('TWITCH_BOT_CLIENT_ID')
 TWITCH_BOT_CLIENT_SECRET = os.getenv('TWITCH_BOT_CLIENT_SECRET')
 TWITCH_BOT_SCOPE = 'chat:read+chat:edit'
@@ -41,6 +46,11 @@ TWITCH_BOT_REDIRECT_BASE = os.getenv('TWITCH_BOT_REDIRECT_BASE')
 TWITCH_BOT_REDIRECT_AUTH = os.getenv('TWITCH_BOT_REDIRECT_AUTH')
 TWITCH_BOT_USERNAME = os.getenv('TWITCH_BOT_USERNAME')
 TWITCH_BOT_CHANNEL_NAME = os.getenv('TWITCH_BOT_CHANNEL_NAME')
+
+#Eleven Labs
+ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')
+ELEVENLABS_XI_VOICE_PERSONAL = os.getenv('ELEVENLABS_XI_VOICE_PERSONAL')
+ELEVENLABS_XI_VOICE_BUSINESS = os.getenv('ELEVENLABS_XI_VOICE_BUSINESS')
 
 #store GPT models
 gpt_models_json = get_models(api_key=OPENAI_API_KEY)
@@ -76,7 +86,7 @@ class Bot(twitch_commands.Bot):
         #sets the channel name in prep for sending a hello message
         #TODO: Add a forloop to cycle through twitch channels in yaml  
         channel = self.get_channel(TWITCH_BOT_CHANNEL_NAME)
-        #await channel.send("Hello there! I'm the `chatforme` bot, just letting you know i've arrived!")
+        await channel.send("Hello there!")
 
 
     # # Inside the Bot class

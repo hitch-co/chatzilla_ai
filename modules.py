@@ -98,18 +98,18 @@ def load_yaml(yaml_filename='config.yaml', yaml_dirname='', is_testing=False):
     """
     import yaml
     import os
+
     #is_testing = True
     if is_testing == True:
         yaml_dirname='C:\_repos\chatforme_bots\config'
         yaml_filename='config.yaml'
 
-    print(yaml_dirname)
     # use the argument instead of hardcoding the path
     yaml_filepath = os.path.join(os.getcwd(), yaml_dirname, yaml_filename)
-    print(yaml_filepath)
     with open(yaml_filepath, 'r') as file:
         yaml_config = yaml.safe_load(file)
-        logging.info('YAML contents loaded successfully.')
+        logging.info('LOG: YAML contents loaded successfully.')
+        
     return yaml_config
 
 
@@ -131,11 +131,10 @@ def load_env(env_filename='config.env', env_dirname='config', is_testing=False):
         env_dirname='C:\_repos\chatforme_bots\config'
 
     env_filepath = os.path.join(os.getcwd(), env_dirname, env_filename)
-    print(env_filepath)
     if dotenv.load_dotenv(env_filepath):
-        logging.info('Environment file loaded successfully.')
+        logging.info('LOG: Environment file loaded successfully.')
     else:
-        logging.error('Failed to load environment file.')
+        logging.error('LOG: Failed to load environment file.')
 
 
 def get_models(api_key=None):

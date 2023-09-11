@@ -28,8 +28,12 @@ from elevenlabs import play
 app = Flask(__name__)
 
 ###############
-#Load yaml file
+#Load yaml file & Load and Store keys/tokens from env
 yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="C:\\_repos\\chatforme_bots\\config")
+load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
+
+##########
+#YAML FILE
 msg_history_limit = yaml_data['msg_history_limit']
 num_bot_responses = yaml_data['num_bot_responses']
 automated_message_seconds = yaml_data['automated_message_seconds']
@@ -43,10 +47,8 @@ formatted_gpt_chatforme_prompt_suffix = str(yaml_data['formatted_gpt_chatforme_p
 chatgpt_automated_msg_prompts = yaml_data['chatgpt_automated_msg_prompts']
 chatgpt_chatforme_prompts = yaml_data['chatgpt_chatforme_prompts']
 
-
-####################################
-#Load and Store keys/tokens from env
-load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
+############
+#ENVIRONMENT
 
 #Open AI
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')

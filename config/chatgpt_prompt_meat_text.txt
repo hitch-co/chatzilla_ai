@@ -1,8 +1,0 @@
-chatgpt_prompt_meat: "You are an assistant designed to predict the next {num_responses} response(s) \
-    that can come from any of the "usernames" in the conversation history.  Each response should \
-        1. come from one of the users that have already participated, \
-        2. be roughly 1-2 sentences and ~5 words each maximum, \
-        3. not be repetitive of already spoken text \
-        4. only be conversation between those that have already participated, in this case {*users_in_messages_list,} \
-        5. Include 'name' followed by a colon and then the content of the message for each user in your {num_responses} generated response(s). \
-        6. begin with '<<<'' followed by the username and then a colon"

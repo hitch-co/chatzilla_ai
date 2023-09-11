@@ -120,7 +120,9 @@ class Bot(twitch_commands.Bot):
     #automated message every N seconds
     async def send_periodic_message(self):
 
-        await asyncio.sleep(int(automated_message_seconds))
+        #Import voice options
+        from my_modules.text_to_speech import generate_t2s_object
+        from elevenlabs import play
 
         while True:
 
@@ -132,6 +134,7 @@ class Bot(twitch_commands.Bot):
             #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
             # cycled through.
             chatgpt_automated_msg_prompts_list = yaml_data['chatgpt_automated_msg_prompts'][args.automated_msg_prompt_name]
+            include_sound = args.include_sound
 
             #Grab a random prompt based on % chance from the config.yaml
             formatted_gpt_auto_msg_prompt = rand_prompt(chatgpt_automated_msg_prompts_list=chatgpt_automated_msg_prompts_list)
@@ -166,9 +169,12 @@ class Bot(twitch_commands.Bot):
                                                            voice_id = ELEVENLABS_XI_VOICE_PERSONAL,
                                                            text_to_say=generated_message, 
                                                            is_testing = False)
-                play(v2s_message_object)
+                
+                #if the prompt entered on startup is True, play the sound after the message is sent
+                if include_sound == True:
+                    play(v2s_message_object)
 
-            #await asyncio.sleep(int(automated_message_seconds))
+            await asyncio.sleep(int(automated_message_seconds))
 
 
 
@@ -301,10 +307,16 @@ def run_bot(TWITCH_BOT_ACCESS_TOKEN):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Select prompt_name for gpt_auto_msg_prompt.")
-    parser.add_argument("--automated_msg_prompt_name", default="standard",dest="automated_msg_prompt_name", help="The name of the prompt in the YAML file.")
-    parser.add_argument("--chatforme_prompt_name", default="standard", dest="chatforme_prompt_name", help="The name of the prompt in the YAML file.")
-    args = parser.parse_args()
 
+    #automsg
+    parser.add_argument("--automated_msg_prompt_name", default="standard",dest="automated_msg_prompt_name", help="The name of the prompt list of dictionaries in the YAML file.")
+    parser.add_argument("--include_sound", default=False, dest="include_sound", help="Should the bot run with sound?")
+
+    #chatforme
+    parser.add_argument("--chatforme_prompt_name", default="standard", dest="chatforme_prompt_name", help="The name of the prompt in the YAML file.")
+    
+    #run app
+    args = parser.parse_args()
     app.run(port=3000, debug=True)
 
 

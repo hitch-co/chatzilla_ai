@@ -21,7 +21,18 @@ def generate_t2s_object(ELEVENLABS_XI_API_KEY = None,
                        voice_id = None,
                        text_to_say='this is default text', 
                        is_testing = False):
-    
+    """
+    Generate a Text-to-Speech audio object using the ElevenLabs API.
+
+    Parameters:
+    - ELEVENLABS_XI_API_KEY (str): API key to authenticate with ElevenLabs.
+    - voice_id (str): ID of the voice to use for the audio generation.
+    - text_to_say (str): The text content to be converted to audio.
+    - is_testing (bool): Flag to indicate if the function is being run for testing purposes.
+
+    Returns:
+    obj: Audio object of the generated speech.
+    """    
     from elevenlabs import set_api_key, generate
 
     #Testing    
@@ -48,6 +59,12 @@ def generate_t2s_object(ELEVENLABS_XI_API_KEY = None,
 
 ####################
 def get_voice_ids():
+    """
+    Fetch available voice IDs from ElevenLabs API.
+
+    Returns:
+    str: Formatted JSON string containing the voice IDs.
+    """
     
     #some sample endpoints
     url_base = 'https://api.elevenlabs.io/'
@@ -74,7 +91,12 @@ def get_voice_ids():
 
 ########################
 def get_voice_history():
-    
+    """
+    Fetch voice generation history from ElevenLabs API.
+
+    Returns:
+    str: Formatted JSON string containing the voice history.
+    """    
     #some sample endpoints
     url_base = 'https://api.elevenlabs.io/'
     url_history = 'v1/history'

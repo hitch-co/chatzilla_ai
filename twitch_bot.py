@@ -128,33 +128,6 @@ class Bot(twitch_commands.Bot):
             # # messaging services.  Comment out and update indent to make live
             # stream_live = await self.is_stream_live()
             # if stream_live:    
-            
-
-            # ####################################################################
-            # RECYCLE: Use this to insert varaibles into text
-            # 
-            # #NOTE: THis is an approach used for getting params from script into yaml values.
-            # # Get the list of formatted twitch prompts from yaml
-            # formatted_chatgpt_automated_msg_prompts = {
-            #     key: f"{value} {num_bot_responses=}, {automated_message_wordcount=}" for key, value in chatgpt_automated_msg_prompts.items()
-            #     #NOTE: another apprach todoing the same thing
-            #     #key: value.format( #alternative method
-            #     #    num_bot_responses=num_bot_responses,
-            #     #    automated_message_wordcount=automated_message_wordcount
-            #     #) for key, value in chatgpt_automated_msg_prompts.items()
-            # }
-            #
-            # #checks the list from yaml for the [argument to automated_msg_prompt_name] provided when running discord_bot.py from CMD
-            # # TODO: Error checking 
-            # formatted_gpt_auto_msg_prompt = formatted_chatgpt_automated_msg_prompts[args.automated_msg_prompt_name]
-            # ####################################################################
-
-
-
-            #Import voice options
-            from my_modules.text_to_speech import generate_t2s_object
-            from elevenlabs import play
-
 
             #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
             # cycled through.
@@ -175,10 +148,12 @@ class Bot(twitch_commands.Bot):
                 generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=OPENAI_API_KEY)
 
                 #Print
+                print("-----------------------------------------------")
                 print("----- THIS IS THE GPT AUTO MESSAGE PROMPT -----")
                 print(gpt_auto_msg_prompt)
                 print("-----------------------------------------------")
 
+                print("-----------------------------------------------")
                 print("------THIS IS THE GENERATED MESSAGE -----------")
                 print(generated_message)
                 print("-----------------------------------------------")
@@ -203,8 +178,7 @@ class Bot(twitch_commands.Bot):
         print('starting message content capture')
         print(message.content)
 
-        #Address message nuances 
-        # NOTE: can also use "try: {code} except AttributeError:"
+        #Error checking; Address message nuances 
         try:
             if message.author is not None:
                 self.messages.append({'role': 'user', 'name': message.author.name, 'content': message.content})

@@ -1,6 +1,14 @@
 #########################################
 def get_user_input(predefined_text=None):
-    """Get user input with basic error-checking."""
+    """
+    Get user input with basic error-checking.
+
+    Parameters:
+    - predefined_text (str): A predefined text that can be used in lieu of user input.
+
+    Returns:
+    str: Validated user input or the predefined text.
+    """
     while True:
         # Check predefined text
         if predefined_text:
@@ -38,3 +46,11 @@ def get_user_input(predefined_text=None):
             continue
             
         return user_text
+    
+
+def shutdown_server():
+    from flask import request 
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        raise RuntimeError('Not running with the Werkzeug Server')
+    func()

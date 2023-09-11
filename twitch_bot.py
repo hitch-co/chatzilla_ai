@@ -135,8 +135,9 @@ class Bot(twitch_commands.Bot):
 
             #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
             # cycled through.
-            chatgpt_automated_msg_prompts_list = yaml_data['chatgpt_automated_msg_prompts'][args.automated_msg_prompt_name]
-            include_sound = args.include_sound
+            automated_msg_prompt_name = str.lower(args.automated_msg_prompt_name)
+            chatgpt_automated_msg_prompts_list = yaml_data['chatgpt_automated_msg_prompts'][automated_msg_prompt_name]
+            include_sound = str.lower(args.include_sound)
 
             #Grab a random prompt based on % chance from the config.yaml
             formatted_gpt_auto_msg_prompt = rand_prompt(chatgpt_automated_msg_prompts_list=chatgpt_automated_msg_prompts_list)
@@ -173,7 +174,7 @@ class Bot(twitch_commands.Bot):
                                                            is_testing = False)
                 
                 #if the prompt entered on startup is True, play the sound after the message is sent
-                if include_sound == True:
+                if include_sound == "true" or 'yes':
                     play(v2s_message_object)
 
             await asyncio.sleep(int(automated_message_seconds))

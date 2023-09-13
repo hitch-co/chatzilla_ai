@@ -57,7 +57,7 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 TWITCH_BOT_CLIENT_ID = os.getenv('TWITCH_BOT_CLIENT_ID')
 TWITCH_BOT_CLIENT_SECRET = os.getenv('TWITCH_BOT_CLIENT_SECRET')
 TWITCH_BOT_SCOPE = 'chat:read+chat:edit'
-TWITCH_BOT_REDIRECT_BASE = os.getenv('TWITCH_BOT_REDIRECT_BASE')
+TWITCH_BOT_REDIRECT_PATH = os.getenv('TWITCH_BOT_REDIRECT_PATH')
 TWITCH_BOT_REDIRECT_AUTH = os.getenv('TWITCH_BOT_REDIRECT_AUTH')
 TWITCH_BOT_USERNAME = os.getenv('TWITCH_BOT_USERNAME')
 TWITCH_BOT_CHANNEL_NAME = os.getenv('TWITCH_BOT_CHANNEL_NAME')
@@ -174,9 +174,11 @@ class Bot(twitch_commands.Bot):
                                                            is_testing = False)
                 
                 #if the prompt entered on startup is True, play the sound after the message is sent
-                if include_sound == "true" or 'yes':
+                if include_sound == 'yes':
                     play(v2s_message_object)
-
+                else:
+                    print("LOG: Bot runnign with no sound")
+                    
             await asyncio.sleep(int(automated_message_seconds))
 
 
@@ -236,6 +238,8 @@ class Bot(twitch_commands.Bot):
 ################################
 #TODO: Separate flask app class?
 
+
+
 #App route home
 @app.route('/')
 def hello_world():
@@ -246,9 +250,11 @@ def hello_world():
 @app.route('/auth')
 def auth():
     base_url_auth = 'https://id.twitch.tv/oauth2/authorize'
-    params_auth = f'?response_type=code&client_id={TWITCH_BOT_CLIENT_ID}&redirect_uri={TWITCH_BOT_REDIRECT_BASE}&scope={TWITCH_BOT_SCOPE}&state={uuid.uuid4().hex}'
+    input_port_number = str(args.input_port_number)
+    redirect_uri = f'http://localhost:{input_port_number}/{TWITCH_BOT_REDIRECT_PATH}'
+    params_auth = f'?response_type=code&client_id={TWITCH_BOT_CLIENT_ID}&redirect_uri={redirect_uri}&scope={TWITCH_BOT_SCOPE}&state={uuid.uuid4().hex}'
     url = base_url_auth+params_auth
-    print(f"Generated redirect_uri: {TWITCH_BOT_REDIRECT_BASE}")
+    print(f"Generated redirect_uri: {redirect_uri}")
     return f'<a href="{url}">Connect with Twitch</a>'
 
 
@@ -256,6 +262,8 @@ def auth():
 @app.route('/callback')
 def callback():
     global TWITCH_CHATFORME_BOT_THREAD  # declare the variable as global inside the function
+    input_port_number = str(args.input_port_number)
+    redirect_uri = f'http://localhost:{input_port_number}/{TWITCH_BOT_REDIRECT_PATH}'
     code = request.args.get('code')
     state = request.args.get('state')
     error = request.args.get('error')
@@ -269,7 +277,7 @@ def callback():
         'client_secret': TWITCH_BOT_CLIENT_SECRET,
         'code': code,
         'grant_type': 'authorization_code',
-        'redirect_uri': TWITCH_BOT_REDIRECT_BASE
+        'redirect_uri': redirect_uri
     }
     
     response = requests.post('https://id.twitch.tv/oauth2/token', data=data)
@@ -297,7 +305,7 @@ def callback():
     else:
         output = {}
         output['response.text'] = response.json()
-        return '<a>There was an issue retrieving and setting the access token.  If you would like to include more detail, return "template.html" or equivalent using the render_template() method from flask and add it to this response...'
+        return '<a>There was an issue retrieving and setting the access token.  If you would like to include more detail in this message, return "template.html" or equivalent using the render_template() method from flask and add it to this response...'
 
 def run_bot(TWITCH_BOT_ACCESS_TOKEN):
     new_loop = asyncio.new_event_loop()
@@ -318,9 +326,12 @@ if __name__ == "__main__":
     #chatforme
     parser.add_argument("--chatforme_prompt_name", default="standard", dest="chatforme_prompt_name", help="The name of the prompt in the YAML file.")
     
+    #port
+    parser.add_argument("--input_port_number", default=3000, dest="input_port_number", help="The port you would like to use:")
+
     #run app
     args = parser.parse_args()
-    app.run(port=3000, debug=True)
+    app.run(port=args.input_port_number, debug=True)
 
 
 

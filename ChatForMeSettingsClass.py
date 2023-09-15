@@ -54,29 +54,30 @@ class ChatForMeSettings:
             return True
         else:
             return False
-        
+    
+    def get_default_value(self, target_data, field_name, default_value):
+        if self.has_config_value(target_data, field_name):
+            return target_data[field_name]
+        else:
+            return default_value        
 
     def load_yaml(self, yaml_filename='config.yaml', yaml_dirname='', is_testing=False):
         raw_yaml_data = self.load_yaml_raw(yaml_filename, yaml_dirname, is_testing)
-        self.env_filename = raw_yaml_data['env_filename']
-        self.env_dirname = raw_yaml_data['env_dirname']
-        self.server_guild_id = int(raw_yaml_data['server_guild_id'])
-        self.server_channel_id = int(raw_yaml_data['server_channel_id'])
-        self.discord_games_countdown_username = raw_yaml_data['discord_games_countdown_username']
-
-        if(self.has_config_value(raw_yaml_data, 'discord_games_countdown_default_minutes')):
-            self.discord_games_countdown_default_minutes = int(raw_yaml_data['discord_games_countdown_default_minutes'])
-
-        if(self.has_config_value(raw_yaml_data, 'DISCORD_BOT_PLAY_GAMES_IN_BOT_TOKEN')):
-            self.DISCORD_BOT_PLAY_GAMES_IN_BOT_TOKEN = raw_yaml_data['DISCORD_BOT_PLAY_GAMES_IN_BOT_TOKEN']
+        self.env_filename = self.get_default_value(raw_yaml_data, 'env_filename', '')
+        self.env_dirname = self.get_default_value(raw_yaml_data, 'env_dirname', '')
+        self.server_guild_id = int(self.get_default_value(raw_yaml_data, 'server_guild_id', '-1'))
+        self.server_channel_id = int(self.get_default_value(raw_yaml_data, 'server_channel_id', -1))
+        self.discord_games_countdown_username = self.get_default_value(raw_yaml_data, 'discord_games_countdown_username', '')
+        self.discord_games_countdown_default_minutes = int(self.get_default_value(raw_yaml_data, 'discord_games_countdown_default_minutes', '-1'))       
+        self.DISCORD_BOT_PLAY_GAMES_IN_BOT_TOKEN = self.get_default_value(raw_yaml_data, 'DISCORD_BOT_PLAY_GAMES_IN_BOT_TOKEN', '')
         
-        self.msg_history_limit = raw_yaml_data['msg_history_limit']
-        self.num_bot_responses = raw_yaml_data['num_bot_responses']
-        self.automated_message_seconds = raw_yaml_data['automated_message_seconds']
-        self.automated_message_wordcount = str(raw_yaml_data['automated_message_wordcount'])
-        self.formatted_gpt_automsg_prompt_prefix = str(raw_yaml_data['formatted_gpt_automsg_prompt_prefix'])       
-        self.formatted_gpt_automsg_prompt_suffix = str(raw_yaml_data['formatted_gpt_automsg_prompt_suffix'])       
-        self.formatted_gpt_chatforme_prompt_prefix = str(raw_yaml_data['formatted_gpt_chatforme_prompt_prefix'])
-        self.formatted_gpt_chatforme_prompt_suffix = str(raw_yaml_data['formatted_gpt_chatforme_prompt_suffix'])
-        self.chatgpt_automated_msg_prompts = raw_yaml_data['chatgpt_automated_msg_prompts']
+        self.msg_history_limit = self.get_default_value(raw_yaml_data, 'msg_history_limit', '')
+        self.num_bot_responses = self.get_default_value(raw_yaml_data, 'num_bot_responses', '')
+        self.automated_message_seconds = self.get_default_value( raw_yaml_data, 'automated_message_seconds', '')
+        self.automated_message_wordcount = str(self.get_default_value(raw_yaml_data, 'automated_message_wordcount',''))
+        self.formatted_gpt_automsg_prompt_prefix = str(self.get_default_value(raw_yaml_data, 'formatted_gpt_automsg_prompt_prefix', ''))
+        self.formatted_gpt_automsg_prompt_suffix = str(self.get_default_value(raw_yaml_data, 'formatted_gpt_automsg_prompt_suffix', ''))
+        self.formatted_gpt_chatforme_prompt_prefix = str(self.get_default_value(raw_yaml_data, 'formatted_gpt_chatforme_prompt_prefix', ''))
+        self.formatted_gpt_chatforme_prompt_suffix = str(self.get_default_value(raw_yaml_data, 'formatted_gpt_chatforme_prompt_suffix', ''))
+        self.chatgpt_automated_msg_prompts = self.get_default_value(raw_yaml_data, 'chatgpt_automated_msg_prompts', '')
     

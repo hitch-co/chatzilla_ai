@@ -1,24 +1,28 @@
+import PromptListEnum
 import PromptLibraryClass
-import PromptTypeEnum
 
 promptLibrary = PromptLibraryClass.PromptLibrary()
 
 promptLibrary.loadData('config//prompts.json')
 
 
-def CheckList(promptTypeInput):
-    print ('\n\n' + str(promptTypeInput))
-    standardItems = promptLibrary.GetPromptList(promptTypeInput)
+def CheckList(prompt_list_id):
+    print ('\n\n' + str(prompt_list_id))
+    standardItems = promptLibrary.GetPromptList(prompt_list_id)
     for msg in standardItems:
         print(msg)
     print ('\n\n 5 random Items')
-    for i in range(0,5):
-        randomPrompt = promptLibrary.GetRandomPrompt(promptTypeInput)
-        print(randomPrompt)
 
-CheckList(PromptTypeEnum.PromptType.Standard)
+    randomPrompt = promptLibrary.GetRandomPrompt(prompt_list_id)
+    print(randomPrompt)
+    # for i in range(0,5):
+    #     randomPrompt = promptLibrary.GetRandomPrompt(prompt_list_id)
+    #     print(randomPrompt)
 
-CheckList(PromptTypeEnum.PromptType.NonStandard)
+#call checklist with a value from the PromptTypeEnum.py
+CheckList(PromptListEnum.PromptList.Standard)
+
+#CheckList(PromptListEnum.PromptList.NonStandard)
 
 
 

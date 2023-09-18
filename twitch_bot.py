@@ -155,7 +155,7 @@ class Bot(twitch_commands.Bot):
 
 
 
-    #Collects historic messages for use in chatforme
+    #TODO: Collects historic messages for use in chatforme
     async def event_message(self, message):
 
         msg_history_limit = self.yaml_data['msg_history_limit']
@@ -166,16 +166,43 @@ class Bot(twitch_commands.Bot):
                 self.chatforme_temp_msg_history.append({'role': 'user', 
                                                         'name': message.author.name, 
                                                         'content': message.content})
+
+                print('LOG: message metadata')
+                message_metadata = {
+                    'role': 'user',
+                    'badgets': message.author.badges,
+                    'name': message.author.name,
+                    'user_id': message.author.id,  # Additional
+                    'display_name': message.author.display_name,  # Additional
+                    'channel': message.channel.name,  # Additional
+                    'timestamp': message.timestamp,  # Additional
+                    'tags': message.tags,  # Additional
+                    'content': message.content
+                    }
+                print(message_metadata)
+
             if message.author is None:
                 self.automsg_temp_msg_history.append({'role': 'user',
                                                         'name': message.author.name, 
                                                         'content': message.content})
+            
+            #Check message lengths before moving on
             if len(self.chatforme_temp_msg_history) > msg_history_limit:
                 self.chatforme_temp_msg_history.pop(0)
+            if len(self.automsg_temp_msg_history) > msg_history_limit:
+                self.automsg_temp_msg_history.pop(0)                
+
         except AttributeError:
             self.chatforme_temp_msg_history.append({'role': 'user', 
                                                     'name': 'bot', 
                                                     'content': message.content})
+
+        #TODO: ADD TO BOT SESSION LIST
+
+
+        #TODO: ADD TO DATABASE
+
+
 
         if message.author is not None:
             await self.handle_commands(message)

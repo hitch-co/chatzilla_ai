@@ -139,14 +139,14 @@ class Bot(twitch_commands.Bot):
                 #Send the message to twitch             
                 await channel.send(generated_message)
 
-                #Play the message generated/sent to TWITCH
-                v2s_message_object = generate_t2s_object(ELEVENLABS_XI_API_KEY = ELEVENLABS_XI_API_KEY,
-                                                           voice_id = ELEVENLABS_XI_VOICE_PERSONAL,
-                                                           text_to_say=generated_message, 
-                                                           is_testing = False)
-                
+
                 #if the prompt entered on startup is True, play the sound after the message is sent
                 if include_sound == 'yes':
+                    #Play the message generated/sent to TWITCH
+                    v2s_message_object = generate_t2s_object(ELEVENLABS_XI_API_KEY = ELEVENLABS_XI_API_KEY,
+                                                            voice_id = ELEVENLABS_XI_VOICE_PERSONAL,
+                                                            text_to_say=generated_message, 
+                                                            is_testing = False)
                     play(v2s_message_object)
                 else:
                     print("LOG: Bot runnign with no sound")
@@ -337,13 +337,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Select prompt_name for gpt_auto_msg_prompt.")
 
     #automsg
-    parser.add_argument("--automated_msg_prompt_name", default="standard",dest="automated_msg_prompt_name", help="The name of the prompt list of dictionaries in the YAML file.")
-    parser.add_argument("--include_sound", default=False, dest="include_sound", help="Should the bot run with sound?")
+    parser.add_argument("--automated_msg_prompt_name", default="standard",dest="automated_msg_prompt_name", help="The name of the prompt list of dictionaries in the YAML file (default: standard):")
+    parser.add_argument("--include_sound", default="no", dest="include_sound", help="Should the bot run with sound? (yes/no)")
 
     #chatforme
     parser.add_argument("--chatforme_prompt_name", default="standard", dest="chatforme_prompt_name", help="The name of the prompt in the YAML file.")
     
-    #port
+    #app port
     parser.add_argument("--input_port_number", default=3000, dest="input_port_number", help="The port you would like to use:")
 
 

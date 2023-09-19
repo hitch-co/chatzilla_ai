@@ -1,3 +1,16 @@
+
+def format_previous_messages(message_list):
+    formatted_messages = []
+
+    for message in message_list:
+        if message['role'] == 'bot':
+            formatted_messages.append(f'- "{message["content"]}"')
+
+    formatted_str = '\n'.join(formatted_messages)
+    return formatted_str
+
+format_previous_messages(message_list=[])
+
 #########################################
 def get_user_input(predefined_text=None):
     """

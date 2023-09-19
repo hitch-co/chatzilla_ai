@@ -24,6 +24,9 @@ from my_modules import text_to_speech
 from my_modules.text_to_speech import generate_t2s_object
 from elevenlabs import play
 
+#Automsg
+from my_modules.utils import format_previous_messages
+
 #Start the app
 app = Flask(__name__)
 
@@ -59,6 +62,7 @@ class Bot(twitch_commands.Bot):
         #placeholder list
         self.chatforme_temp_msg_history = []
         self.automsg_temp_msg_history = []
+        self.nonbot_temp_msg_history = []
 
 
         #NOTE/QUESTION: Should all of my twitch bot related variables be delcared
@@ -86,6 +90,7 @@ class Bot(twitch_commands.Bot):
         #automsg-prompts
         automated_message_seconds = self.yaml_data['automated_message_seconds']
         formatted_gpt_automsg_prompt_prefix = self.yaml_data['formatted_gpt_automsg_prompt_prefix']
+        formatted_gpt_automsg_prompt_suffix = self.yaml_data['formatted_gpt_automsg_prompt_suffix']
         chatgpt_automated_msg_prompts = self.yaml_data['chatgpt_automated_msg_prompts']
 
         #Eleven Labs
@@ -93,12 +98,24 @@ class Bot(twitch_commands.Bot):
         ELEVENLABS_XI_VOICE = self.env_vars['ELEVENLABS_XI_VOICE']
         ELEVENLABS_XI_VOICE_BUSINESS = self.env_vars['ELEVENLABS_XI_VOICE_BUSINESS']
         #ELEVENLABS_XI_VOICE_NEW = self.env_vars['ELEVENLABS_XI_VOICE_NEW']
-        
-       #Import voice options
+
+        #Import voice options
         from my_modules.text_to_speech import generate_t2s_object
         from elevenlabs import play
 
+        # #Get list of already said things
+        # msg_list_historic = format_previous_messages(self.automsg_temp_msg_history)
+        
+        # print("THIS IS THE MESSAGE HISTORY:")
+        # print(msg_list_historic)        
+        
         while True:
+
+            #Get list of already said things
+            msg_list_historic = format_previous_messages(self.automsg_temp_msg_history)
+        
+            print("THIS IS THE MESSAGE HISTORY:")
+            print(msg_list_historic)  
 
             # #TODO: Checks to see whether the stream is live before executing any auto
             # # messaging services.  Comment out and update indent to make live
@@ -109,6 +126,7 @@ class Bot(twitch_commands.Bot):
             # cycled through.
             automated_msg_prompt_name = str.lower(args.automated_msg_prompt_name)
             chatgpt_automated_msg_prompts_list = chatgpt_automated_msg_prompts[automated_msg_prompt_name]
+            
             include_sound = str.lower(args.include_sound)
 
             #Grab a random prompt based on % chance from the config.yaml
@@ -119,17 +137,21 @@ class Bot(twitch_commands.Bot):
             if channel:
 
                 #Build the prompt
-                gpt_auto_msg_prompt = formatted_gpt_automsg_prompt_prefix+" [everything that follows is your prompt as the aforementioned chat bot]:"+formatted_gpt_auto_msg_prompt
-                messages_dict_gpt = [{'role': 'system', 'content': gpt_auto_msg_prompt}]
+                gpt_auto_msg_prompt = formatted_gpt_automsg_prompt_prefix + " [everything that follows is your prompt as the aforementioned chat bot]:" + formatted_gpt_auto_msg_prompt
+                gpt_auto_msg_history = formatted_gpt_automsg_prompt_suffix + msg_list_historic
+                gpt_auto_msg_prompt_final = gpt_auto_msg_prompt + gpt_auto_msg_history
+
+                #Final dict submitted to GPT
+                messages_dict_gpt = [{'role': 'system', 'content': gpt_auto_msg_prompt_final}]
                 
                 #Generate the prompt response
                 generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
 
                 #Print
                 print("-----------------------------------------------")
-                print("----- THIS IS THE GPT AUTO MESSAGE PROMPT -----")
-                print(gpt_auto_msg_prompt)
                 print("-----------------------------------------------")
+                print("----- THIS IS THE GPT AUTO MESSAGE PROMPT -----")
+                print(gpt_auto_msg_prompt_final)
 
                 print("-----------------------------------------------")
                 print("------THIS IS THE GENERATED MESSAGE -----------")
@@ -148,34 +170,146 @@ class Bot(twitch_commands.Bot):
                                                             is_testing = False)
 
                     play(v2s_message_object)
-                else:
-                    print("LOG: Bot runnign with no sound")
                     
             await asyncio.sleep(int(automated_message_seconds))
 
 
 
-    #Collects historic messages for use in chatforme
+    #TODO: Collects historic messages for use in chatforme
     async def event_message(self, message):
+        print("-----------------------------------------------")
+        print("-----------------------------------------------")
+        print("BEGINNING MESSAGE CAPTGURE:")
+        print("----------------------")
 
         msg_history_limit = self.yaml_data['msg_history_limit']
+              
+        # Loop through each key in the 'twitch-bots' dictionary
+        bots_automsg = self.yaml_data['twitch-bots']['auto-msg']
+        bots_chatforme = self.yaml_data['twitch-bots']['chatforme']
+        known_bots = []
 
-        #Error checking; Address message nuances 
-        try:
-            if message.author is not None:
-                self.chatforme_temp_msg_history.append({'role': 'user', 
-                                                        'name': message.author.name, 
-                                                        'content': message.content})
-            if message.author is None:
-                self.automsg_temp_msg_history.append({'role': 'user',
-                                                        'name': message.author.name, 
-                                                        'content': message.content})
-            if len(self.chatforme_temp_msg_history) > msg_history_limit:
-                self.chatforme_temp_msg_history.pop(0)
-        except AttributeError:
-            self.chatforme_temp_msg_history.append({'role': 'user', 
-                                                    'name': 'bot', 
-                                                    'content': message.content})
+        for key in self.yaml_data['twitch-bots']:
+            # Extend the known_bots list with the list of bots under the current key
+            known_bots.extend(self.yaml_data['twitch-bots'][key])
+
+        # If you want to remove duplicates
+        known_bots = list(set(known_bots))
+
+        # try:
+        if message.author is not None:
+            # for attr in dir(message):
+            #     if not attr.startswith('__'):
+            #         print(f"{attr}: {getattr(message, attr)}")
+
+            print(f'MESSAGE AUTHOR: {message.author}')
+            print(f'MESSAGE AUTHOR NAME: {message.author.name}')
+            print(f'MESSAGE CONTENT: {message.content}')
+
+            #Check whether known bot
+            if message.author.name in known_bots:
+                role = 'bot'
+            else:
+                role = 'user'
+                    
+            # Collect all metadata
+            message_metadata = {
+                'role': role,
+                'badges': message.author.badges,
+                'name': message.author.name,
+                'user_id': message.author.id,
+                'display_name': message.author.display_name,
+                'channel': message.channel.name,
+                'timestamp': message.timestamp,
+                'tags': message.tags,
+                'content': message.content
+            }
+            
+            print("MESSAGE METADATA:")
+            print(message_metadata)
+            
+            # Check if the message is triggering a command
+            if message.content.startswith('!'):
+                # TODO: Add your code here
+                print("MESSAGE CONTENT STARTS WITH = !")                    
+
+            else:
+                # Check if message from automsg bot
+                if message.author.name in bots_automsg:
+                    print(f"MESSAGE AUTHOR = AUTOMSG BOT ({message.author.name})")                    
+                    # Add GPT related fields to a variable 
+                    gptchatcompletion_keys = {'role', 'name', 'content'}
+                    filtered_dict = {key: message_metadata[key] for key in gptchatcompletion_keys}
+                    self.automsg_temp_msg_history.append(filtered_dict)
+
+                # check if message from cahtforme bot
+                if message.author.name in bots_chatforme:
+                    print(f"MESSAGE AUTHOR = CHATFORME BOT ({message.author.name})")   
+                    self.chatforme_temp_msg_history.append(message_metadata)
+
+                #All other messagers hould be from users, capture them here
+                if message_metadata['role'] != "bot":
+                    print(f"MESSAGE AUTHOR = USER ({message.author.name})") 
+                    self.nonbot_temp_msg_history.append(message_metadata)
+
+        # Check for bot or system messages
+        elif message.author is None:
+            # #printout attributes associated with event_message()
+            # for attr in dir(message):
+            #     if not attr.startswith('__'):
+            #         print(f"{attr}: {getattr(message, attr)}")
+
+            message_rawdata = message.raw_data
+            start_index = message_rawdata.find(":") + 1  # Add 1 to not include the first ':'
+            end_index = message_rawdata.find("!")
+
+            # Check if both start_index and end_index are valid
+            if start_index == 0 or end_index == -1:
+                extracted_name = 'unknown, see message.raw_data for details'
+            else:
+                extracted_name = message_rawdata[start_index:end_index]
+
+            if extracted_name in bots_automsg:
+                print(f"MESSAGE AUTHOR = AUTOMSG BOT ({extracted_name})")
+                role='bot'
+                message_metadata = {
+                    'role': role,
+                    'name': extracted_name,
+                    'content': message.content
+                }
+                self.automsg_temp_msg_history.append(message_metadata)
+        
+            if extracted_name in bots_chatforme:
+                print(f"MESSAGE AUTHOR = CHATFORME BOT ({extracted_name})")
+                role='bot'
+                message_metadata = {
+                    'role': role,
+                    'name': extracted_name,
+                    'content': message.content
+                }
+                self.chatforme_temp_msg_history.append(message_metadata)
+        # except AttributeError:
+        #     print("ATTRIBUTE ERROR: UNKONWN CAUSE")
+        #     # self.chatforme_temp_msg_history.append({
+        #     #     'role': 'user',
+        #     #     'name': 'bot',
+        #     #     'content': message.content
+        #     # })
+
+        print('----------------------')
+        print('chatforme_temp_msg_history:')
+        print(self.chatforme_temp_msg_history)
+        print('----------------------')
+        print('automsg_temp_msg_history:')
+        print(self.automsg_temp_msg_history)
+        print('----------------------')
+        print('nonbot_temp_msg_history:')
+        print(self.nonbot_temp_msg_history)
+
+
+        # TODO: ADD TO BOT SESSION LIST
+
+        # TODO: ADD TO DATABASE
 
         if message.author is not None:
             await self.handle_commands(message)

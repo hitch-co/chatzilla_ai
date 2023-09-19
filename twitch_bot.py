@@ -62,6 +62,7 @@ class Bot(twitch_commands.Bot):
         #placeholder list
         self.chatforme_temp_msg_history = []
         self.automsg_temp_msg_history = []
+        self.nonbot_temp_msg_history = []
 
 
         #NOTE/QUESTION: Should all of my twitch bot related variables be delcared
@@ -89,6 +90,7 @@ class Bot(twitch_commands.Bot):
         #automsg-prompts
         automated_message_seconds = self.yaml_data['automated_message_seconds']
         formatted_gpt_automsg_prompt_prefix = self.yaml_data['formatted_gpt_automsg_prompt_prefix']
+        formatted_gpt_automsg_prompt_suffix = self.yaml_data['formatted_gpt_automsg_prompt_suffix']
         chatgpt_automated_msg_prompts = self.yaml_data['chatgpt_automated_msg_prompts']
 
         #Eleven Labs
@@ -96,12 +98,24 @@ class Bot(twitch_commands.Bot):
         ELEVENLABS_XI_VOICE = self.env_vars['ELEVENLABS_XI_VOICE']
         ELEVENLABS_XI_VOICE_BUSINESS = self.env_vars['ELEVENLABS_XI_VOICE_BUSINESS']
         #ELEVENLABS_XI_VOICE_NEW = self.env_vars['ELEVENLABS_XI_VOICE_NEW']
-        
-       #Import voice options
+
+        #Import voice options
         from my_modules.text_to_speech import generate_t2s_object
         from elevenlabs import play
 
+        # #Get list of already said things
+        # msg_list_historic = format_previous_messages(self.automsg_temp_msg_history)
+        
+        # print("THIS IS THE MESSAGE HISTORY:")
+        # print(msg_list_historic)        
+        
         while True:
+
+            #Get list of already said things
+            msg_list_historic = format_previous_messages(self.automsg_temp_msg_history)
+        
+            print("THIS IS THE MESSAGE HISTORY:")
+            print(msg_list_historic)  
 
             # #TODO: Checks to see whether the stream is live before executing any auto
             # # messaging services.  Comment out and update indent to make live
@@ -112,6 +126,7 @@ class Bot(twitch_commands.Bot):
             # cycled through.
             automated_msg_prompt_name = str.lower(args.automated_msg_prompt_name)
             chatgpt_automated_msg_prompts_list = chatgpt_automated_msg_prompts[automated_msg_prompt_name]
+            
             include_sound = str.lower(args.include_sound)
 
             #Grab a random prompt based on % chance from the config.yaml
@@ -122,17 +137,21 @@ class Bot(twitch_commands.Bot):
             if channel:
 
                 #Build the prompt
-                gpt_auto_msg_prompt = formatted_gpt_automsg_prompt_prefix+" [everything that follows is your prompt as the aforementioned chat bot]:"+formatted_gpt_auto_msg_prompt
-                messages_dict_gpt = [{'role': 'system', 'content': gpt_auto_msg_prompt}]
+                gpt_auto_msg_prompt = formatted_gpt_automsg_prompt_prefix + " [everything that follows is your prompt as the aforementioned chat bot]:" + formatted_gpt_auto_msg_prompt
+                gpt_auto_msg_history = formatted_gpt_automsg_prompt_suffix + msg_list_historic
+                gpt_auto_msg_prompt_final = gpt_auto_msg_prompt + gpt_auto_msg_history
+
+                #Final dict submitted to GPT
+                messages_dict_gpt = [{'role': 'system', 'content': gpt_auto_msg_prompt_final}]
                 
                 #Generate the prompt response
                 generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
 
                 #Print
                 print("-----------------------------------------------")
-                print("----- THIS IS THE GPT AUTO MESSAGE PROMPT -----")
-                print(gpt_auto_msg_prompt)
                 print("-----------------------------------------------")
+                print("----- THIS IS THE GPT AUTO MESSAGE PROMPT -----")
+                print(gpt_auto_msg_prompt_final)
 
                 print("-----------------------------------------------")
                 print("------THIS IS THE GENERATED MESSAGE -----------")
@@ -151,8 +170,6 @@ class Bot(twitch_commands.Bot):
                                                             is_testing = False)
 
                     play(v2s_message_object)
-                else:
-                    print("LOG: Bot runnign with no sound")
                     
             await asyncio.sleep(int(automated_message_seconds))
 

@@ -32,7 +32,7 @@ app = Flask(__name__)
 
 ###############
 #Load yaml file & Load and Store keys/tokens from env
-yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="C:\\_repos\\chatforme_bots\\config")
+yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="config")
 load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
 
 
@@ -179,8 +179,8 @@ class Bot(twitch_commands.Bot):
     async def event_message(self, message):
         print("-----------------------------------------------")
         print("-----------------------------------------------")
-        print("BEGINNING MESSAGE CAPTGURE:")
-        print("----------------------")
+        print("----------BEGINNING MESSAGE CAPTGURE-----------")
+        print("-----------------------------------------------")
 
         msg_history_limit = self.yaml_data['msg_history_limit']
               

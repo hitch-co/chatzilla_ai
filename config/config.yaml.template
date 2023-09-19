@@ -8,19 +8,24 @@
 env_filename: 'config.env'
 env_dirname: 'C:\_repos\chatforme_bots\config'
 
+twitch-app:
+  TWITCH_BOT_CHANNEL_NAME: 'ehitch'
+  TWITCH_BOT_USERNAME: 'eh-chatforme'
+  TWITCH_BOT_REDIRECT_AUTH: ''
+  TWITCH_BOT_REDIRECT_PATH: 'callback'
+twitch-bots:
+  auto-msg: ['']
+  chatforme: ['', '']
 
-#games_countdown params
-#TODO
-server_guild_id: '' #TODO: update to take from environment variable 
-server_channel_id: '' #TODO: update to take from environment variable
-discord_games_countdown_username: 'yo daddy'
-discord_games_countdown_number_of_minutes: 15 #not in use, to be implemented
+twitch-chatforme:
+
+twitch-automsg:
 
 #CHATFORME PARAMS
 msg_history_limit: 3
 num_bot_responses: 1 
-automated_message_seconds: 5
-automated_message_wordcount: 20
+automated_message_seconds: 275
+automated_message_wordcount: 16
 
 #chatgpt_prompt_meat: "You are an assistant designed to predict the next {num_responses}"
 chatgpt_prompt_prefix: ''
@@ -71,9 +76,12 @@ formatted_gpt_automsg_prompt_prefix: >
   'You are currently being used as a chat bot.  The goal of this chat bot is to 
   send ONE AND ONLY ONE short message (~10-15 words long and always less than 400 characters) to a group of people 
   watching a stream.  The prompt below specifies what kind of message you should 
-  send.  Be informal in language and try to say things that a chat bot wouldnt.  
+  send.  Be informal in your language and try to say things that a chat bot wouldnt.  
   Whenever uncertain, be positive and kind hearted but not overly or 
   patronizingly nice'
+
+formatted_gpt_automsg_prompt_suffix: >
+  'IMPORTANT: Do not repeat the following messages you've previously sent:'
 
 ###############
 #prompt content -- The selected list of prompt dictionaries, i.e 
@@ -84,45 +92,48 @@ chatgpt_automated_msg_prompts:
 
   #this is the first list of prompt dictionaries  
   standard:
-
-    #this is how you might implement % chance 
+    nextup3:
+      - "share a fact about anythying"
+      - 1
     something_random_offtopic: 
       - "say something random and off topic"
-      - 7
+      - 1
     ask_about_everyone:
-      - "ask an overly personal question to everyone in the stream"
-      - 3
-    # say_something_positive:
-    #   - "say something positive or motivational, but not too cheesy cliche"
-    #   - 3
-    jokes_dad:
-      - "tell a short but kind of mean dad joke"
-      - 2
-    # tips_visualstudiopython: 
-    #   - "Add some random tips for using visual studio/python.  Keep these to 
-    #   keyboard shortcuts and best practices"
-    #   - 6
+      - "ask an overly personal life question to everyone in the stream"
+      - 1
+    say_something_positive:
+      - "say something positive or motivational, but not too cheesy cliche"
+      - 1
+    # jokes_dad:
+    #   - "tell a short but kind of mean dad joke"
+    #   - 8
     jokes_yomotherboard: 
       - "tell a yo-motherboard joke. Be clever, but make sure it's punny or witty"
-      - 10
-    fun_fact_about_ham:
-      - "make up an odd but believable fact about ham (yes, the food) but then say you're not sure if it's true or not"
+      - 1
+    # fun_fact_about_ham:
+    #   - "make up an odd but believable fact about ham (yes, the food) but then say you're not sure if it's true or not"
+    #   - 2
+    # fun_fact_about_video_games:
+    #   - "Give some well known lore about video games... keep responses to 15-20 words."
+    #   - 4
+    nano:
+      - "share an interesting fact about the country chille to the user nano in the stream.  Make it a pun with the food when you can"
+      - 1
+    pragith:
+      - "Share a interesting fact about family life in texas to a user named 'prag' in the stream"
+      - 1
+    architecture:
+      - "share an interesting architectural fact"
       - 2
-    fun_fact_about_video_games:
-      - "Give some well known lore about video games... keep responses to 15-20 words."
-      - 7
-    # crube:
-    #   - "Say something interesting about the C# programming language"
-    #   - 20
-    # nano:
-    #   - "share an interesting fact about the country chille to the user nano in the stream"
-    #   - 20
-    # pragith:
-    #   - "Share a interesting fact about family life in texas to a user named 'prag' in the stream"
-    #   - 20
-    # oath:
-    #   - "Share an interesting fact to a user named 'oath' in the chat about crickets history"
-    #   - 20
+    architecture2:
+      - "share an interesting fact about a random known building"
+      - 2
+    romanempire:
+      - "share an interesting fact about the roman empire"
+      - 22
+    oath:
+      - "Share an interesting fact to a user named 'oath' in the chat about crickets history"
+      - 1
 
   #this is the second list of prompt dictionaries
   nonstandard:
@@ -167,12 +178,15 @@ chatgpt_automated_msg_prompts:
       - 'nonstandard_subprompt1_content'
       - 2
 
-#prompt suffix -- TODO: TO BE REMOVED
-formatted_gpt_automsg_prompt_suffix: >
-  'you will send a message about some Red Dead Redemption lore or a fun fact 
-  about the franchise or Red dead redemption as a whole'
+##########
+#CHATFORME
 
-#formatted_gpt_chatforme_prompts -- TODO: TO BE REMOVED
+#formatted_gpt_chatforme_prompts
 formatted_gpt_chatforme_prompt_prefix: ''
-formatted_gpt_chatforme_prompt_suffix: ''
 
+#games_countdown params
+#TODO
+server_guild_id: '1110236483505377400' #TODO: update to take from environment variable 
+server_channel_id: '1145905547946762252' #TODO: update to take from environment variable
+discord_games_countdown_username: 'cire'
+discord_games_countdown_number_of_minutes: 15 #not in use, to be implemented

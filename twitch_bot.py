@@ -53,15 +53,18 @@ class Bot(twitch_commands.Bot):
             #NOTE/QUESTION:what other variables could be set here?
         )
 
+
         #capture yaml/env data from instantiated class
         self.yaml_data = yaml_data
         self.env_vars = env_vars
         self.TWITCH_BOT_CHANNEL_NAME = env_vars['TWITCH_BOT_CHANNEL_NAME']
         self.OPENAI_API_KEY = env_vars['OPENAI_API_KEY']
-        
+        self.TWITCH_BOT_USERNAME = env_vars['TWITCH_BOT_USERNAME']
+
         #placeholder list
         self.chatforme_temp_msg_history = []
         self.automsg_temp_msg_history = []
+        self.bot_temp_msg_history = []
         self.nonbot_temp_msg_history = []
 
 
@@ -113,27 +116,29 @@ class Bot(twitch_commands.Bot):
 
             #Get list of already said things
             msg_list_historic = format_previous_messages(self.automsg_temp_msg_history)
-        
+      
             print("THIS IS THE MESSAGE HISTORY:")
             print(msg_list_historic)  
-
-            # #TODO: Checks to see whether the stream is live before executing any auto
-            # # messaging services.  Comment out and update indent to make live
-            # stream_live = await self.is_stream_live()
-            # if stream_live:    
 
             #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
             # cycled through.
             automated_msg_prompt_name = str.lower(args.automated_msg_prompt_name)
             chatgpt_automated_msg_prompts_list = chatgpt_automated_msg_prompts[automated_msg_prompt_name]
             
+            #Get argument from app startup
             include_sound = str.lower(args.include_sound)
+
+            # #TODO: Checks to see whether the stream is live before executing any auto
+            # # messaging services.  Comment out and update indent to make live
+            # stream_live = await self.is_stream_live()
+            # if stream_live:    
 
             #Grab a random prompt based on % chance from the config.yaml
             formatted_gpt_auto_msg_prompt = rand_prompt(chatgpt_automated_msg_prompts_list=chatgpt_automated_msg_prompts_list)
 
             #get the channel and populate the prompt
             channel = self.get_channel(self.TWITCH_BOT_CHANNEL_NAME)
+
             if channel:
 
                 #Build the prompt
@@ -152,7 +157,9 @@ class Bot(twitch_commands.Bot):
                 print("-----------------------------------------------")
                 print("----- THIS IS THE GPT AUTO MESSAGE PROMPT -----")
                 print(gpt_auto_msg_prompt_final)
+                print("-----------------------------------------------")
 
+                print("-----------------------------------------------")
                 print("-----------------------------------------------")
                 print("------THIS IS THE GENERATED MESSAGE -----------")
                 print(generated_message)
@@ -172,7 +179,6 @@ class Bot(twitch_commands.Bot):
                     play(v2s_message_object)
                     
             await asyncio.sleep(int(automated_message_seconds))
-
 
 
     #TODO: Collects historic messages for use in chatforme
@@ -202,19 +208,11 @@ class Bot(twitch_commands.Bot):
             #     if not attr.startswith('__'):
             #         print(f"{attr}: {getattr(message, attr)}")
 
-            print(f'MESSAGE AUTHOR: {message.author}')
-            print(f'MESSAGE AUTHOR NAME: {message.author.name}')
+            print(f"---MESSAGE AUTHER = {message.author.name}---")
             print(f'MESSAGE CONTENT: {message.content}')
 
-            #Check whether known bot
-            if message.author.name in known_bots:
-                role = 'bot'
-            else:
-                role = 'user'
-                    
             # Collect all metadata
             message_metadata = {
-                'role': role,
                 'badges': message.author.badges,
                 'name': message.author.name,
                 'user_id': message.author.id,
@@ -222,35 +220,44 @@ class Bot(twitch_commands.Bot):
                 'channel': message.channel.name,
                 'timestamp': message.timestamp,
                 'tags': message.tags,
-                'content': message.content
+                'content': f'<<<{message.author.name}>>>: {message.content}'
             }
+
+            #Add bot role
+            message_metadata['role'] = 'user'
             
-            print("MESSAGE METADATA:")
+            #Filter to gpt columns, update the 'content' key to include {name}: {content}
+            gptchatcompletion_keys = {'role', 'content'}
+            filtered_message_dict = {key: message_metadata[key] for key in gptchatcompletion_keys}
+            print("message_metadata and filtered_message_dict:")
             print(message_metadata)
-            
+            print(filtered_message_dict)
+
             # Check if the message is triggering a command
             if message.content.startswith('!'):
                 # TODO: Add your code here
-                print("MESSAGE CONTENT STARTS WITH = !")                    
+                print("---MESSAGE CONTENT STARTS WITH = !---")  
+                print("NO ACTION TAKEN")                  
 
             else:
                 # Check if message from automsg bot
-                if message.author.name in bots_automsg:
-                    print(f"MESSAGE AUTHOR = AUTOMSG BOT ({message.author.name})")                    
-                    # Add GPT related fields to a variable 
-                    gptchatcompletion_keys = {'role', 'name', 'content'}
-                    filtered_dict = {key: message_metadata[key] for key in gptchatcompletion_keys}
-                    self.automsg_temp_msg_history.append(filtered_dict)
-
-                # check if message from cahtforme bot
-                if message.author.name in bots_chatforme:
+                if message.author.name in bots_automsg or message.author.name in bots_chatforme:
+                    
+                    # Add GPT related fields to automsg and chatforme variables 
+                    print(f"MESSAGE AUTHOR = AUTOMSG BOT ({message.author.name})")   
+                    self.automsg_temp_msg_history.append(filtered_message_dict)
                     print(f"MESSAGE AUTHOR = CHATFORME BOT ({message.author.name})")   
-                    self.chatforme_temp_msg_history.append(message_metadata)
+                    self.chatforme_temp_msg_history.append(filtered_message_dict)
+                else: print("MESSAGE AUTHOR NOT A AUTOMSG BOT or CHATFORME BOT")
 
                 #All other messagers hould be from users, capture them here
-                if message_metadata['role'] != "bot":
+                if message_metadata['role'] not in known_bots:
+                    # Add GPT related fields to nonbot and chatforme variables
                     print(f"MESSAGE AUTHOR = USER ({message.author.name})") 
                     self.nonbot_temp_msg_history.append(message_metadata)
+                    print(f"MESSAGE AUTHOR = CHATFORME BOT ({message.author.name})")   
+                    self.chatforme_temp_msg_history.append(filtered_message_dict)
+                else: print("MESSAGE AUTHOR NOT A AUTOMSG BOT")
 
         # Check for bot or system messages
         elif message.author is None:
@@ -258,103 +265,126 @@ class Bot(twitch_commands.Bot):
             # for attr in dir(message):
             #     if not attr.startswith('__'):
             #         print(f"{attr}: {getattr(message, attr)}")
-
+            print("---MESSAGE AUTHER = NONE---")
             message_rawdata = message.raw_data
             start_index = message_rawdata.find(":") + 1  # Add 1 to not include the first ':'
             end_index = message_rawdata.find("!")
 
             # Check if both start_index and end_index are valid
             if start_index == 0 or end_index == -1:
-                extracted_name = 'unknown, see message.raw_data for details'
+                extracted_name = 'unknown_name - see message.raw_data for details'
             else:
                 extracted_name = message_rawdata[start_index:end_index]
 
-            if extracted_name in bots_automsg:
+            if extracted_name in bots_automsg or extracted_name in bots_chatforme:
+
+                role='user'
+                message_metadata = {
+                    'role': role,
+                    'content': f'<<<{extracted_name}>>>: {message.content}'
+                    }
+
+                #add GPT elements to automsg msg list variagble
                 print(f"MESSAGE AUTHOR = AUTOMSG BOT ({extracted_name})")
-                role='bot'
-                message_metadata = {
-                    'role': role,
-                    'name': extracted_name,
-                    'content': message.content
-                }
                 self.automsg_temp_msg_history.append(message_metadata)
-        
-            if extracted_name in bots_chatforme:
+
+                #add GPT elements to chatforme msg list variagble
                 print(f"MESSAGE AUTHOR = CHATFORME BOT ({extracted_name})")
-                role='bot'
-                message_metadata = {
-                    'role': role,
-                    'name': extracted_name,
-                    'content': message.content
-                }
                 self.chatforme_temp_msg_history.append(message_metadata)
-        # except AttributeError:
-        #     print("ATTRIBUTE ERROR: UNKONWN CAUSE")
-        #     # self.chatforme_temp_msg_history.append({
-        #     #     'role': 'user',
-        #     #     'name': 'bot',
-        #     #     'content': message.content
-        #     # })
 
-        print('----------------------')
-        print('chatforme_temp_msg_history:')
-        print(self.chatforme_temp_msg_history)
-        print('----------------------')
-        print('automsg_temp_msg_history:')
-        print(self.automsg_temp_msg_history)
-        print('----------------------')
-        print('nonbot_temp_msg_history:')
-        print(self.nonbot_temp_msg_history)
-
-
-        # TODO: ADD TO BOT SESSION LIST
+        # print('----------------------')
+        # print('chatforme_temp_msg_history:')
+        # print(self.chatforme_temp_msg_history)
+        # print('----------------------')
+        # print('automsg_temp_msg_history:')
+        # print(self.automsg_temp_msg_history)
+        # print('----------------------')
+        # print('nonbot_temp_msg_history:')
+        # print(self.nonbot_temp_msg_history)
+        # print('----------------------')
 
         # TODO: ADD TO DATABASE
-
+        #
+        #
+        #
+        #
+        
         if message.author is not None:
             await self.handle_commands(message)
 
 
-    #Twitch command
+    # Import the Twitch command decorator
     @twitch_commands.command(name='chatforme')
     async def chatforme(self, ctx):
-
+        """
+        A Twitch bot command that interacts with OpenAI's GPT API.
+        It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
+        """
+        print('---------------------------------')
+        print("---STARTING CHATFORME COMMAND----")
+        print('---------------------------------')
+        print('---------------------------------')
+        print('LOAD PARAMS FROM ENV/YAML')
+        # Load settings and configurations from a YAML file
         num_bot_responses = yaml_data['num_bot_responses']
-        formatted_gpt_chatforme_prompt_suffix = str(yaml_data['formatted_gpt_chatforme_prompt_suffix'])
+        print(f"num_bot_responses: {num_bot_responses}")
         formatted_gpt_chatforme_automated_message_wordcount = str(yaml_data['formatted_gpt_chatforme_automated_message_wordcount'])
-        formatted_gpt_chatforme_prompt_prefix = str(yaml_data['formatted_gpt_chatforme_prompt_prefix'])
-        chatgpt_chatforme_prompts = yaml_data['chatgpt_chatforme_prompts']
-        
-        try:
-            request_user_name = ctx.author.name
-        except AttributeError:
-            request_user_name = 'bot?'
+        print(f"formatted_gpt_chatforme_automated_message_wordcount: {formatted_gpt_chatforme_automated_message_wordcount}")
 
-        # Build out GPT 'prompt'
-        users_in_messages_list = list(set([message['name'] for message in self.chatforme_temp_msg_history]))
+        formatted_gpt_chatforme_prompt_prefix = str(yaml_data['formatted_gpt_chatforme_prompt_prefix'])
+        print(f"formatted_gpt_chatforme_prompt_prefix: {formatted_gpt_chatforme_prompt_prefix}")
+        formatted_gpt_chatforme_prompt_suffix = str(yaml_data['formatted_gpt_chatforme_prompt_suffix'])
+        print(f"formatted_gpt_chatforme_prompt_suffix: {formatted_gpt_chatforme_prompt_suffix}")
+
+        #TODO right now 'bot' is being sent when 'bot1' or 'cire5955_dev' should be sent (The bot username)
+        # Get chat history for this session, grab the list of prompts from the yaml. 
+        message_list = self.chatforme_temp_msg_history
+        formatted_gpt_chatforme_prompts = self.yaml_data['formatted_gpt_chatforme_prompts']
+        request_user_name = ctx.message.author.name
+
+        # Extract usernames from previous chat messages stored in chatforme_temp_msg_history.
+        users_in_messages_list = list(set([message['role'] for message in message_list]))
         users_in_messages_list_text = ', '.join(users_in_messages_list)
 
-
-        # Get the formatted twitch prompts from yaml
-        formatted_gpt_chatforme_prompts = {
+        # Format the GPT prompts using 
+        # placeholders and data from the YAML file and chat history.
+        formatted_gpt_chatforme_prompts_formatted = {
             key: value.format(
+                twitch_bot_username=self.TWITCH_BOT_USERNAME,
                 num_bot_responses=num_bot_responses,
                 request_user_name=request_user_name,
                 users_in_messages_list_text=users_in_messages_list_text,
                 formatted_gpt_chatforme_automated_message_wordcount=formatted_gpt_chatforme_automated_message_wordcount
-            ) for key, value in chatgpt_chatforme_prompts.items() if isinstance(value, str)
+            ) for key, value in formatted_gpt_chatforme_prompts.items() if isinstance(value, str)
         }
-        formatted_gpt_chatforme_prompt = formatted_gpt_chatforme_prompts[args.chatforme_prompt_name]
+        #Select the prompt based on the argument on app startup
+        formatted_gpt_chatforme_prompt = formatted_gpt_chatforme_prompts_formatted[args.chatforme_prompt_name]
 
-        discord_chatgpt_chatforme_prompt = formatted_gpt_chatforme_prompt_prefix+formatted_gpt_chatforme_prompt+formatted_gpt_chatforme_prompt_suffix
-        chatgpt_prompt_dict = {'role': 'system', 'content': discord_chatgpt_chatforme_prompt}
+        #Build the chatgpt_chatforme_prompt to be added as role: system to the 
+        # chatcompletions endpoint
+        chatgpt_chatforme_prompt = formatted_gpt_chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + formatted_gpt_chatforme_prompt_suffix
+        print('---------------------------------')
+        print('---------------------------------')
+        print("REACHED #2: chatgpt_chatforme_prompt")
+        print(chatgpt_chatforme_prompt)
 
-        messages_dict_gpt = self.chatforme_temp_msg_history + [chatgpt_prompt_dict]
+        # Create a dictionary entry for the chat prompt
+        chatgpt_prompt_dict = {'role': 'system', 'content': chatgpt_chatforme_prompt}
 
-        # Final execution of chatgpt api call
+        # Combine the chat history with the new system prompt to form a list of messages for GPT.
+        messages_dict_gpt = message_list + [chatgpt_prompt_dict]
+
+        # Execute the GPT API call to get the chatbot response
         gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
-        await ctx.send(gpt_response)
 
+        print('---------------------------------')
+        print('---------------------------------')
+        print("REACHED #5: gpt_response")
+        #TODO is currently a dictionary of prompts
+        print(gpt_response)
+
+        # Send the GPT-generated response back to the Twitch chat.
+        await ctx.send(gpt_response)
 
 
 

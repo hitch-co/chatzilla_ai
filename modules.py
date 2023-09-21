@@ -38,10 +38,10 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,OPENAI_API_KEY=None):
     
     #review what's been provided by GPT
     gpt_response = completion.choices[0].message['content']
-    print('---------- Prompt Message Dictionary')
-    print(messages_dict_gpt)
-    print("----------  GPT Response:")
-    print(completion.choices[0].message)
+    # print('---------- Prompt Message Dictionary')
+    # print(messages_dict_gpt)
+    # print("----------  GPT Response:")
+    # print(completion.choices[0].message)
 
     #send the gpt response as discord bot message
     return gpt_response

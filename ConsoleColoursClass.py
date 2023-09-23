@@ -9,5 +9,12 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def printc(message, color):
-    print(color + message + bcolors.ENDC)
+def printc(message, color_name):
+    """Prints a message in a specific color.
+
+    Args:
+        message (str): The message to be printed.
+        color_name (str): One of HEADER, WARNING, FAIL, etc.
+
+    """
+    print(color_name + message + bcolors.ENDC)

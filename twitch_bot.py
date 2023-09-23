@@ -53,6 +53,9 @@ class Bot(twitch_commands.Bot):
             #NOTE/QUESTION:what other variables could be set here?
         )
 
+        #TODO: Need to work out loadiong env/yaml into the class.  See CrubeYawnes PR
+        #i.e. load_env() here
+        #i.e. load_env() here
 
         #capture yaml/env data from instantiated class
         self.yaml_data = yaml_data
@@ -187,8 +190,6 @@ class Bot(twitch_commands.Bot):
         print("-----------------------------------------------")
         print("----------BEGINNING MESSAGE CAPTGURE-----------")
         print("-----------------------------------------------")
-
-        msg_history_limit = self.yaml_data['msg_history_limit']
               
         # Loop through each key in the 'twitch-bots' dictionary
         bots_automsg = self.yaml_data['twitch-bots']['auto-msg']
@@ -229,8 +230,7 @@ class Bot(twitch_commands.Bot):
             #Filter to gpt columns, update the 'content' key to include {name}: {content}
             gptchatcompletion_keys = {'role', 'content'}
             filtered_message_dict = {key: message_metadata[key] for key in gptchatcompletion_keys}
-            print("message_metadata and filtered_message_dict:")
-            print(message_metadata)
+            print("filtered_message_dict:")
             print(filtered_message_dict)
 
             # Check if the message is triggering a command
@@ -321,10 +321,11 @@ class Bot(twitch_commands.Bot):
         It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
         """
         print('---------------------------------')
+        print('---------------------------------')
         print("---STARTING CHATFORME COMMAND----")
         print('---------------------------------')
         print('---------------------------------')
-        print('LOAD PARAMS FROM ENV/YAML')
+        print('LOG:LOAD PARAMS FROM ENV/YAML')
         # Load settings and configurations from a YAML file
         num_bot_responses = yaml_data['num_bot_responses']
         print(f"num_bot_responses: {num_bot_responses}")
@@ -365,8 +366,16 @@ class Bot(twitch_commands.Bot):
         chatgpt_chatforme_prompt = formatted_gpt_chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + formatted_gpt_chatforme_prompt_suffix
         print('---------------------------------')
         print('---------------------------------')
-        print("REACHED #2: chatgpt_chatforme_prompt")
-        print(chatgpt_chatforme_prompt)
+        print('LOG: This is the prompt prefix that was selected (formatted_gpt_chatforme_prompt_prefix)')
+        print(formatted_gpt_chatforme_prompt_prefix)
+        print('---------------------------------')
+        print('---------------------------------')
+        print('LOG: This is the prompt that was selected (formatted_gpt_chatforme_prompt)')
+        print(formatted_gpt_chatforme_prompt)
+        print('---------------------------------')
+        print('---------------------------------')
+        print("LOG: This is the prompt (formatted_gpt_chatforme_prompt_suffix)")
+        print(formatted_gpt_chatforme_prompt_suffix)
 
         # Create a dictionary entry for the chat prompt
         chatgpt_prompt_dict = {'role': 'system', 'content': chatgpt_chatforme_prompt}

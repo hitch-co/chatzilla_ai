@@ -1,7 +1,7 @@
 @echo off
 
 :: Ask user to input param1
-set /p include_ouat=Would you like to run OnceUponATime bot (default: no)?
+set /p include_ouat=Would you like to run OnceUponATime bot (default: yes)?
 set /p include_automsg=Would you like to run AUTOMSG bot (default: no)?
 set /p include_sound=Should the bots run with AUDIO (default: no)?:
 
@@ -14,7 +14,7 @@ set /p input_port_number=What PORT NUMBER would you like to run the app on? (def
 @REM SET DEFAULT VALUES.  Can't get the defaults  in arg parser to work as I planned (aka leaving the command prompt entry 
 @REM empty.)  Defaults in arg parser could thus be confusing as they are useless!
 if "%include_ouat%"=="" (
-    set include_ouat=no
+    set include_ouat=yes
 )
 if "%include_automsg%"=="" (
     set include_automsg=no
@@ -37,7 +37,12 @@ if "%input_port_number%"=="" (
 )
 
 :: Run Python command
-python "C:\_repos\chatforme_bots\twitch_bot.py" --include_ouat=%include_ouat% --include_automsg %include_automsg% --automated_msg_prompt_name %prompt_list_automsg% --include_sound %include_sound% --input_port_number=%input_port_number% --chatforme_prompt_name=%prompt_list_chatforme% --ouat_prompt_name=%prompt_list_ouat%
+python "C:\_repos\chatforme_bots\twitch_bot.py" ^
+    --include_ouat=%include_ouat% --ouat_prompt_name=%prompt_list_ouat% ^
+    --include_automsg=%include_automsg% --automated_msg_prompt_name=%prompt_list_automsg% ^
+    --chatforme_prompt_name=%prompt_list_chatforme% ^
+    --include_sound=%include_sound% ^
+    --input_port_number=%input_port_number% 
 
 :: Open a browser and go to the localhost page
 start http://localhost:%input_port_number%/auth

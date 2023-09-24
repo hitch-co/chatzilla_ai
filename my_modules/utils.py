@@ -1,5 +1,9 @@
 
-def format_previous_messages(message_list):
+def format_previous_messages_to_string(message_list):
+    # message_list=[
+    #     {'role':'bot','content':'hello there im eric'},
+    #     {'role':'bot','content':'hello there im eric'}
+    # ]
     formatted_messages = []
 
     for message in message_list:
@@ -9,7 +13,6 @@ def format_previous_messages(message_list):
     formatted_str = '\n'.join(formatted_messages)
     return formatted_str
 
-format_previous_messages(message_list=[])
 
 #########################################
 def get_user_input(predefined_text=None):

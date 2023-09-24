@@ -49,7 +49,7 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,OPENAI_API_KEY=None):
 
 #Generates a random prompt based on the list of standardized prompts
 #NOTE: should this be done here or in the __init__?
-def rand_prompt(chatgpt_automated_msg_prompts_list=None):
+def rand_prompt(prompts_list=None):
 
     import random
     import json
@@ -60,12 +60,11 @@ def rand_prompt(chatgpt_automated_msg_prompts_list=None):
     automsg_prompt_topics = []
     automsg_prompts = []
 
-    chatgpt_automated_msg_prompts_selected = chatgpt_automated_msg_prompts_list
     # print(json.dumps(obj=chatgpt_automated_msg_prompts_selected, indent=4))
 
     #For each key in yaml_data['chatgpt_automated_msg_prompts']['standard'], 
     # add relevant data to list for applying a random % chance to each prompt
-    for key, value in chatgpt_automated_msg_prompts_selected.items():
+    for key, value in prompts_list.items():
         automsg_prompt_topics.append(key)
         # print(key)
         automsg_prompts.append(value[0])

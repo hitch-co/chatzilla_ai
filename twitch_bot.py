@@ -1,8 +1,6 @@
-#twitch_bot.py
-#usage: python "C:\_repos\chatforme_bots\twitch_bot.py" --automated_msg_prompt_name standard
-
-
 #imports
+from ConsoleColoursClass import bcolors, printc
+
 from modules import load_yaml, load_env, openai_gpt_chatcompletion, get_models, rand_prompt
 import asyncio #(new_event_loop, set_event_loop)
 from twitchio.ext import commands as twitch_commands
@@ -69,12 +67,21 @@ class Bot(twitch_commands.Bot):
         self.automsg_temp_msg_history = []
         self.bot_temp_msg_history = []
         self.nonbot_temp_msg_history = []
+        self.ouat_temp_msg_history = []
 
 
-        #NOTE/QUESTION: Should all of my twitch bot related variables be delcared
-        # here rather than above/outside/before the class?
-        #i.e. yaml here....
-        #i.e. env here
+
+        #TODO/NOTE: Include all relevant app arguments in the bot class
+        self.args_include_sound = str.lower(args.include_sound)
+
+        self.args_include_automsg = str.lower(args.include_automsg)
+        self.args_automated_msg_prompt_name = str.lower(args.automated_msg_prompt_name)
+
+        #self.args_include_chatforme = str.lower(args.include_chatforme)
+        self.args_chatforme_prompt_name = str.lower(args.chatforme_prompt_name)
+
+        self.args_include_ouat = str.lower(args.include_ouat)        
+        self.args_ouat_prompt_name = str.lower(args.ouat_prompt_name)
 
 
     #Set the listener(?) to start once the bot is ready
@@ -90,100 +97,6 @@ class Bot(twitch_commands.Bot):
         #await channel.send("Hello there!")
 
 
-    #automated message every N seconds
-    async def send_periodic_message(self):
-
-        #automsg-prompts
-        automated_message_seconds = self.yaml_data['automated_message_seconds']
-        formatted_gpt_automsg_prompt_prefix = self.yaml_data['formatted_gpt_automsg_prompt_prefix']
-        formatted_gpt_automsg_prompt_suffix = self.yaml_data['formatted_gpt_automsg_prompt_suffix']
-        chatgpt_automated_msg_prompts = self.yaml_data['chatgpt_automated_msg_prompts']
-
-        #Eleven Labs
-        ELEVENLABS_XI_API_KEY = self.env_vars['ELEVENLABS_XI_API_KEY']
-        ELEVENLABS_XI_VOICE = self.env_vars['ELEVENLABS_XI_VOICE']
-        ELEVENLABS_XI_VOICE_BUSINESS = self.env_vars['ELEVENLABS_XI_VOICE_BUSINESS']
-        #ELEVENLABS_XI_VOICE_NEW = self.env_vars['ELEVENLABS_XI_VOICE_NEW']
-
-        #Import voice options
-        from my_modules.text_to_speech import generate_t2s_object
-        from elevenlabs import play
-
-        # #Get list of already said things
-        # msg_list_historic = format_previous_messages(self.automsg_temp_msg_history)
-        
-        # print("THIS IS THE MESSAGE HISTORY:")
-        # print(msg_list_historic)        
-        
-        while True:
-
-            #Get list of already said things
-            msg_list_historic = format_previous_messages(self.automsg_temp_msg_history)
-      
-            print("THIS IS THE MESSAGE HISTORY:")
-            print(msg_list_historic)  
-
-            #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
-            # cycled through.
-            automated_msg_prompt_name = str.lower(args.automated_msg_prompt_name)
-            chatgpt_automated_msg_prompts_list = chatgpt_automated_msg_prompts[automated_msg_prompt_name]
-            
-            #Get argument from app startup
-            include_sound = str.lower(args.include_sound)
-
-            # #TODO: Checks to see whether the stream is live before executing any auto
-            # # messaging services.  Comment out and update indent to make live
-            # stream_live = await self.is_stream_live()
-            # if stream_live:    
-
-            #Grab a random prompt based on % chance from the config.yaml
-            formatted_gpt_auto_msg_prompt = rand_prompt(chatgpt_automated_msg_prompts_list=chatgpt_automated_msg_prompts_list)
-
-            #get the channel and populate the prompt
-            channel = self.get_channel(self.TWITCH_BOT_CHANNEL_NAME)
-
-            if channel:
-
-                #Build the prompt
-                gpt_auto_msg_prompt = formatted_gpt_automsg_prompt_prefix + " [everything that follows is your prompt as the aforementioned chat bot]:" + formatted_gpt_auto_msg_prompt
-                gpt_auto_msg_history = formatted_gpt_automsg_prompt_suffix + msg_list_historic
-                gpt_auto_msg_prompt_final = gpt_auto_msg_prompt + gpt_auto_msg_history
-
-                #Final dict submitted to GPT
-                messages_dict_gpt = [{'role': 'system', 'content': gpt_auto_msg_prompt_final}]
-                
-                #Generate the prompt response
-                generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
-
-                #Print
-                print("-----------------------------------------------")
-                print("-----------------------------------------------")
-                print("----- THIS IS THE GPT AUTO MESSAGE PROMPT -----")
-                print(gpt_auto_msg_prompt_final)
-                print("-----------------------------------------------")
-
-                print("-----------------------------------------------")
-                print("-----------------------------------------------")
-                print("------THIS IS THE GENERATED MESSAGE -----------")
-                print(generated_message)
-                print("-----------------------------------------------")
-
-                #Send the message to twitch             
-                await channel.send(generated_message)
-
-                #if the prompt entered on startup is True, play the sound after the message is sent
-                if include_sound == 'yes':
-                    #Play the message generated/sent to TWITCH
-                    v2s_message_object = generate_t2s_object(ELEVENLABS_XI_API_KEY = ELEVENLABS_XI_API_KEY,
-                                                            voice_id = ELEVENLABS_XI_VOICE,
-                                                            text_to_say=generated_message, 
-                                                            is_testing = False)
-
-                    play(v2s_message_object)
-                    
-            await asyncio.sleep(int(automated_message_seconds))
-
-
     #TODO: Collects historic messages for use in chatforme
     async def event_message(self, message):
         print("-----------------------------------------------")
@@ -192,8 +105,9 @@ class Bot(twitch_commands.Bot):
         print("-----------------------------------------------")
               
         # Loop through each key in the 'twitch-bots' dictionary
-        bots_automsg = self.yaml_data['twitch-bots']['auto-msg']
+        bots_automsg = self.yaml_data['twitch-bots']['automsg']
         bots_chatforme = self.yaml_data['twitch-bots']['chatforme']
+        bots_ouat = self.yaml_data['twitch-bots']['onceuponatime']
         known_bots = []
 
         for key in self.yaml_data['twitch-bots']:
@@ -210,7 +124,7 @@ class Bot(twitch_commands.Bot):
             #         print(f"{attr}: {getattr(message, attr)}")
 
             print(f"---MESSAGE AUTHER = {message.author.name}---")
-            print(f'MESSAGE CONTENT: {message.content}')
+            print(f'MESSAGE CONTENT: {message.content}\n')
 
             # Collect all metadata
             message_metadata = {
@@ -232,12 +146,13 @@ class Bot(twitch_commands.Bot):
             filtered_message_dict = {key: message_metadata[key] for key in gptchatcompletion_keys}
             print("filtered_message_dict:")
             print(filtered_message_dict)
+            print("\n")
 
             # Check if the message is triggering a command
             if message.content.startswith('!'):
                 # TODO: Add your code here
                 print("---MESSAGE CONTENT STARTS WITH = !---")  
-                print("NO ACTION TAKEN")                  
+                print("NO ACTION TAKEN\n")                  
 
             else:
                 # Check if message from automsg bot
@@ -250,6 +165,12 @@ class Bot(twitch_commands.Bot):
                     self.chatforme_temp_msg_history.append(filtered_message_dict)
                 else: print("MESSAGE AUTHOR NOT A AUTOMSG BOT or CHATFORME BOT")
 
+                if message.author.name in bots_ouat:
+                    # Add GPT related fields to ouat variable 
+                    print(f"MESSAGE AUTHOR = OUAT BOT ({message.author.name})")   
+                    self.ouat_temp_msg_history.append(filtered_message_dict)
+                else: print("MESSAGE AUTHOR NOT A OUAT BOT")
+
                 #All other messagers hould be from users, capture them here
                 if message_metadata['role'] not in known_bots:
                     # Add GPT related fields to nonbot and chatforme variables
@@ -258,6 +179,7 @@ class Bot(twitch_commands.Bot):
                     print(f"MESSAGE AUTHOR = CHATFORME BOT ({message.author.name})")   
                     self.chatforme_temp_msg_history.append(filtered_message_dict)
                 else: print("MESSAGE AUTHOR NOT A AUTOMSG BOT")
+                print("\n")
 
         # Check for bot or system messages
         elif message.author is None:
@@ -291,7 +213,7 @@ class Bot(twitch_commands.Bot):
                 #add GPT elements to chatforme msg list variagble
                 print(f"MESSAGE AUTHOR = CHATFORME BOT ({extracted_name})")
                 self.chatforme_temp_msg_history.append(message_metadata)
-
+        print('\n')
         # print('----------------------')
         # print('chatforme_temp_msg_history:')
         # print(self.chatforme_temp_msg_history)
@@ -309,8 +231,137 @@ class Bot(twitch_commands.Bot):
         #
         #
         
+
+
         if message.author is not None:
             await self.handle_commands(message)
+
+
+    #Create a GPT response based on config.yaml
+    async def send_periodic_message(self):
+
+        #Eleven Labs
+        ELEVENLABS_XI_API_KEY = self.env_vars['ELEVENLABS_XI_API_KEY']
+        ELEVENLABS_XI_VOICE = self.env_vars['ELEVENLABS_XI_VOICE']
+        ELEVENLABS_XI_VOICE_BUSINESS = self.env_vars['ELEVENLABS_XI_VOICE_BUSINESS']
+        #ELEVENLABS_XI_VOICE_NEW = self.env_vars['ELEVENLABS_XI_VOICE_NEW']
+
+        #automsg-prompts
+        ouat_wordcount = self.yaml_data['ouat_wordcount']
+        automated_message_seconds = self.yaml_data['automated_message_seconds']
+        formatted_gpt_automsg_prompt_prefix = self.yaml_data['formatted_gpt_automsg_prompt_prefix']
+        formatted_gpt_automsg_prompt_suffix = self.yaml_data['formatted_gpt_automsg_prompt_suffix']
+        chatgpt_automated_msg_prompts = self.yaml_data['chatgpt_automated_msg_prompts']
+        chatgpt_ouat_prompts = self.yaml_data['chatgpt_ouat_prompts']
+
+        num_bot_responses = self.yaml_data['num_bot_responses']
+
+        #Import voice options
+        from my_modules.text_to_speech import generate_t2s_object
+        from elevenlabs import play
+
+        # #TODO: Checks to see whether the stream is live before executing any auto
+        # # messaging services.  Comment out and update indent to make live
+        # stream_live = await self.is_stream_live()
+        # if stream_live()   
+
+        printc(f"self.args_include_automsg:{self.args_include_automsg}", bcolors.OKBLUE) 
+        printc(f"self.args_automated_msg_prompt_name:{self.args_automated_msg_prompt_name}", bcolors.OKBLUE)
+        printc(f"self.args_include_ouat:{self.args_include_ouat}", bcolors.OKBLUE) 
+        printc(f"self.args_ouat_prompt_name:{self.args_ouat_prompt_name}", bcolors.OKBLUE) 
+        printc(f"self.args_chatforme_prompt_name:{self.args_chatforme_prompt_name}", bcolors.OKBLUE) 
+        printc(f"self.args_include_sound:{self.args_include_sound}", bcolors.OKBLUE) 
+
+        #Get list of already said things
+        msg_list_historic = format_previous_messages(self.automsg_temp_msg_history)
+
+        print("AUTOMSG msg_list_historic:")
+        printc(msg_list_historic, bcolors.WARNING)  
+
+        #TODO Need to introduce this control flow a bit different.  DOesn't work well with current
+        # bot launch app selections for params
+
+        #if include_automsg == 'yes'
+        if self.args_include_automsg == 'yes': 
+
+            #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
+            # cycled through.
+            selected_prompts_list = chatgpt_automated_msg_prompts[self.args_automated_msg_prompt_name]
+            printc(f"AUTOMSG selected_prompts_list:{selected_prompts_list}", bcolors.BOLD)   
+            printc(f"AUTOMSG self.args_automated_msg_prompt_name:{self.args_automated_msg_prompt_name}", bcolors.BOLD) 
+            
+            #Grab a random prompt based on % chance from the config.yaml
+            formatted_automsg_yaml_prompt = rand_prompt(prompts_list=selected_prompts_list)   
+            printc(f"OUAT formatted_automsg_yaml_prompt:{formatted_automsg_yaml_prompt}", bcolors.BOLD)  
+   
+            #Build the prompt
+            gpt_auto_msg_prompt = formatted_gpt_automsg_prompt_prefix + " [everything that follows is your prompt as the aforementioned chat bot]:" + formatted_automsg_yaml_prompt
+            printc(f"AUTOMSG gpt_auto_msg_prompt:{gpt_auto_msg_prompt}", bcolors.OKCYAN)   
+        
+        else: print("AUTOMSG is not set to yes")
+
+
+        if self.args_include_ouat == 'yes':
+
+            #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
+            # cycled through.
+            # NOTE: Doesn't use the random prompt generator because there is only one prompt
+            formatted_automsg_yaml_prompt = chatgpt_ouat_prompts[self.args_ouat_prompt_name]
+            printc(f"OUAT args_ouat_prompt_name:{self.args_ouat_prompt_name}", bcolors.BOLD) 
+
+            gpt_auto_msg_prompt = formatted_automsg_yaml_prompt
+
+        else: print("OUAT is not set to yes")
+
+        while True:
+             
+            #TODO: This seems really redundant/useless
+            channel = self.get_channel(self.TWITCH_BOT_CHANNEL_NAME)
+
+            if channel: 
+                
+                #insert variables
+                params = {"ouat_wordcount":ouat_wordcount, 
+                          'twitch_bot_username':self.TWITCH_BOT_USERNAME,
+                          'num_bot_responses':num_bot_responses}
+                gpt_auto_msg_prompt_final = gpt_auto_msg_prompt + msg_list_historic
+                gpt_auto_msg_prompt_final = gpt_auto_msg_prompt_final.format(**params)
+                printc(f"AUTOMSG gpt_auto_msg_prompt_final:{gpt_auto_msg_prompt_final}", bcolors.FAIL) 
+
+                #Final dict submitted to GPT
+                messages_dict_gpt = [{'role': 'system', 'content': gpt_auto_msg_prompt_final}]
+                printc(f"AUTOMSG messages_dict_gpt:{messages_dict_gpt}", bcolors.WARNING)   
+
+
+
+
+
+                #Generate the prompt response
+                generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
+                printc(f"AUTOMSG generated_message:{generated_message}", bcolors.WARNING)  
+
+                printc("gpt_auto_msg_prompt:", bcolors.WARNING)
+                printc(gpt_auto_msg_prompt, bcolors.WARNING)
+                print("\n")
+
+                printc("generated_message:", bcolors.WARNING)
+                printc(generated_message, bcolors.WARNING)
+                print("\n")
+
+                #Send the message to twitch             
+                await channel.send(generated_message)
+
+                #if the prompt entered on startup is True, play the sound after the message is sent
+                if self.args_include_sound == 'yes':
+                    #Play the message generated/sent to TWITCH
+                    v2s_message_object = generate_t2s_object(ELEVENLABS_XI_API_KEY = ELEVENLABS_XI_API_KEY,
+                                                            voice_id = ELEVENLABS_XI_VOICE,
+                                                            text_to_say=generated_message, 
+                                                            is_testing = False)
+
+                    play(v2s_message_object)
+                    
+            await asyncio.sleep(int(automated_message_seconds))
 
 
     # Import the Twitch command decorator
@@ -328,24 +379,25 @@ class Bot(twitch_commands.Bot):
         print('LOG:LOAD PARAMS FROM ENV/YAML')
         # Load settings and configurations from a YAML file
         num_bot_responses = yaml_data['num_bot_responses']
-        print(f"num_bot_responses: {num_bot_responses}")
         formatted_gpt_chatforme_automated_message_wordcount = str(yaml_data['formatted_gpt_chatforme_automated_message_wordcount'])
-        print(f"formatted_gpt_chatforme_automated_message_wordcount: {formatted_gpt_chatforme_automated_message_wordcount}")
-
         formatted_gpt_chatforme_prompt_prefix = str(yaml_data['formatted_gpt_chatforme_prompt_prefix'])
-        print(f"formatted_gpt_chatforme_prompt_prefix: {formatted_gpt_chatforme_prompt_prefix}")
         formatted_gpt_chatforme_prompt_suffix = str(yaml_data['formatted_gpt_chatforme_prompt_suffix'])
+        formatted_gpt_chatforme_prompts = self.yaml_data['formatted_gpt_chatforme_prompts']
+
+        print(f"num_bot_responses: {num_bot_responses}")
+        print(f"formatted_gpt_chatforme_automated_message_wordcount: {formatted_gpt_chatforme_automated_message_wordcount}")
+        print(f"formatted_gpt_chatforme_prompt_prefix: {formatted_gpt_chatforme_prompt_prefix}")
         print(f"formatted_gpt_chatforme_prompt_suffix: {formatted_gpt_chatforme_prompt_suffix}")
+        print(f'formatted_gpt_chatforme_prompts: {formatted_gpt_chatforme_prompts}')
 
         #TODO right now 'bot' is being sent when 'bot1' or 'cire5955_dev' should be sent (The bot username)
         # Get chat history for this session, grab the list of prompts from the yaml. 
         message_list = self.chatforme_temp_msg_history
-        formatted_gpt_chatforme_prompts = self.yaml_data['formatted_gpt_chatforme_prompts']
-        request_user_name = ctx.message.author.name
 
         # Extract usernames from previous chat messages stored in chatforme_temp_msg_history.
         users_in_messages_list = list(set([message['role'] for message in message_list]))
         users_in_messages_list_text = ', '.join(users_in_messages_list)
+        request_user_name = ctx.message.author.name
 
         # Format the GPT prompts using 
         # placeholders and data from the YAML file and chat history.
@@ -356,10 +408,11 @@ class Bot(twitch_commands.Bot):
                 request_user_name=request_user_name,
                 users_in_messages_list_text=users_in_messages_list_text,
                 formatted_gpt_chatforme_automated_message_wordcount=formatted_gpt_chatforme_automated_message_wordcount
+
             ) for key, value in formatted_gpt_chatforme_prompts.items() if isinstance(value, str)
         }
         #Select the prompt based on the argument on app startup
-        formatted_gpt_chatforme_prompt = formatted_gpt_chatforme_prompts_formatted[args.chatforme_prompt_name]
+        formatted_gpt_chatforme_prompt = formatted_gpt_chatforme_prompts_formatted[self.args_chatforme_prompt_name]
 
         #Build the chatgpt_chatforme_prompt to be added as role: system to the 
         # chatcompletions endpoint
@@ -507,9 +560,17 @@ def run_bot(TWITCH_BOT_ACCESS_TOKEN):
 # could cause problems
 
 if __name__ == "__main__":
+
+    # Can't get the defaults  in arg parser to work as I planned (aka leaving the command prompt entry 
+    # empty.)  Defaults in arg parser could thus be confusing as they are useless!
     parser = argparse.ArgumentParser(description="Select prompt_name for gpt_auto_msg_prompt.")
 
+    #OnceUponATime:
+    parser.add_argument("--include_ouat", default="no", dest="include_ouat")
+    parser.add_argument("--ouat_prompt_name", default="onceuponatime",dest="ouat_prompt_name", help="The name of the prompt list of dictionaries in the YAML file (default: standard):")
+
     #automsg
+    parser.add_argument("--include_automsg", default="no", dest="include_automsg")
     parser.add_argument("--automated_msg_prompt_name", default="standard",dest="automated_msg_prompt_name", help="The name of the prompt list of dictionaries in the YAML file (default: standard):")
     parser.add_argument("--include_sound", default="no", dest="include_sound", help="Should the bot run with sound? (yes/no)")
 

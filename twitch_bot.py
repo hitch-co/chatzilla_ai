@@ -23,7 +23,11 @@ from my_modules.text_to_speech import generate_t2s_object
 from elevenlabs import play
 
 #Automsg
-from my_modules.utils import format_previous_messages
+from my_modules.utils import format_previous_messages_to_string
+
+#load yaml/env
+yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="config")
+load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
 
 #Start the app
 app = Flask(__name__)
@@ -35,8 +39,7 @@ load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirn
 
 
 #Placeholder/junk
-TWITCH_CHATFORME_BOT_THREAD = None 
-
+TWITCH_CHATFORME_BOT_THREAD = None
 
 ###############################
 class Bot(twitch_commands.Bot):
@@ -55,8 +58,11 @@ class Bot(twitch_commands.Bot):
         #i.e. load_env() here
         #i.e. load_env() here
 
+        #load yaml/env
+        self.yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="config")
+        load_env(env_filename=self.yaml_data['env_filename'], env_dirname=self.yaml_data['env_dirname'])
+
         #capture yaml/env data from instantiated class
-        self.yaml_data = yaml_data
         self.env_vars = env_vars
         self.TWITCH_BOT_CHANNEL_NAME = env_vars['TWITCH_BOT_CHANNEL_NAME']
         self.OPENAI_API_KEY = env_vars['OPENAI_API_KEY']
@@ -69,15 +75,13 @@ class Bot(twitch_commands.Bot):
         self.nonbot_temp_msg_history = []
         self.ouat_temp_msg_history = []
 
-
-
-        #TODO/NOTE: Include all relevant app arguments in the bot class
+        #runtime arguments
         self.args_include_sound = str.lower(args.include_sound)
 
         self.args_include_automsg = str.lower(args.include_automsg)
         self.args_automated_msg_prompt_name = str.lower(args.automated_msg_prompt_name)
 
-        #self.args_include_chatforme = str.lower(args.include_chatforme)
+        #TODO self.args_include_chatforme = str.lower(args.include_chatforme)
         self.args_chatforme_prompt_name = str.lower(args.chatforme_prompt_name)
 
         self.args_include_ouat = str.lower(args.include_ouat)        
@@ -99,19 +103,21 @@ class Bot(twitch_commands.Bot):
 
     #TODO: Collects historic messages for use in chatforme
     async def event_message(self, message):
-        print("-----------------------------------------------")
-        print("-----------------------------------------------")
-        print("----------BEGINNING MESSAGE CAPTGURE-----------")
-        print("-----------------------------------------------")
-              
+        printc("-----------------------------------------------",bcolors.WARNING)
+        printc("BEGINNING MESSAGE CAPTGURE",bcolors.WARNING)
+        printc("-----------------------------------------------",bcolors.WARNING)
+
+        #Reload the yaml for every event messsage in case things have changed
+        self.yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="config")
+
         # Loop through each key in the 'twitch-bots' dictionary
         bots_automsg = self.yaml_data['twitch-bots']['automsg']
         bots_chatforme = self.yaml_data['twitch-bots']['chatforme']
         bots_ouat = self.yaml_data['twitch-bots']['onceuponatime']
         known_bots = []
 
+        # Extend the known_bots list with the list of bots under the current key
         for key in self.yaml_data['twitch-bots']:
-            # Extend the known_bots list with the list of bots under the current key
             known_bots.extend(self.yaml_data['twitch-bots'][key])
 
         # If you want to remove duplicates
@@ -122,9 +128,9 @@ class Bot(twitch_commands.Bot):
             # for attr in dir(message):
             #     if not attr.startswith('__'):
             #         print(f"{attr}: {getattr(message, attr)}")
-
-            print(f"---MESSAGE AUTHER = {message.author.name}---")
-            print(f'MESSAGE CONTENT: {message.content}\n')
+            printc("message.author is not None", bcolors.WARNING)  
+            printc(f"MESSAGE AUTHOR: {message.author.name}", bcolors.OKBLUE)
+            printc(f'MESSAGE CONTENT: {message.content}\n', bcolors.OKBLUE)
 
             # Collect all metadata
             message_metadata = {
@@ -141,53 +147,55 @@ class Bot(twitch_commands.Bot):
             #Add bot role
             message_metadata['role'] = 'user'
             
-            #Filter to gpt columns, update the 'content' key to include {name}: {content}
+            # Filter to gpt columns, update the 'content' key to include {name}: {content}
             gptchatcompletion_keys = {'role', 'content'}
             filtered_message_dict = {key: message_metadata[key] for key in gptchatcompletion_keys}
-            print("filtered_message_dict:")
+            printc("filtered_message_dict:", bcolors.WARNING)
             print(filtered_message_dict)
             print("\n")
 
             # Check if the message is triggering a command
             if message.content.startswith('!'):
                 # TODO: Add your code here
-                print("---MESSAGE CONTENT STARTS WITH = !---")  
-                print("NO ACTION TAKEN\n")                  
+                printc("MESSAGE CONTENT STARTS WITH = ! NO ACTION TAKEN\n", bcolors.WARNING)  
 
             else:
-                # Check if message from automsg bot
+                # Check if message from automsg or chatforme bot
                 if message.author.name in bots_automsg or message.author.name in bots_chatforme:
-                    
+                    printc('message.author.name in bots_automsg or message.author.name in bots_chatforme',bcolors.WARNING)
                     # Add GPT related fields to automsg and chatforme variables 
-                    print(f"MESSAGE AUTHOR = AUTOMSG BOT ({message.author.name})")   
+                    printc(f"MESSAGE AUTHOR = AUTOMSG BOT ({message.author.name})",bcolors.OKBLUE)   
                     self.automsg_temp_msg_history.append(filtered_message_dict)
-                    print(f"MESSAGE AUTHOR = CHATFORME BOT ({message.author.name})")   
+                    printc(f"MESSAGE AUTHOR = CHATFORME BOT ({message.author.name})",bcolors.OKBLUE)   
                     self.chatforme_temp_msg_history.append(filtered_message_dict)
-                else: print("MESSAGE AUTHOR NOT A AUTOMSG BOT or CHATFORME BOT")
+                else: printc("MESSAGE AUTHOR NOT A AUTOMSG BOT or CHATFORME BOT", bcolors.WARNING)
 
                 if message.author.name in bots_ouat:
+                    printc('message.author.name in bots_ouat',bcolors.WARNING)
                     # Add GPT related fields to ouat variable 
-                    print(f"MESSAGE AUTHOR = OUAT BOT ({message.author.name})")   
+                    printc(f"MESSAGE AUTHOR = OUAT BOT ({message.author.name})", bcolors.OKBLUE)   
                     self.ouat_temp_msg_history.append(filtered_message_dict)
-                else: print("MESSAGE AUTHOR NOT A OUAT BOT")
+                else: printc("MESSAGE AUTHOR NOT A OUAT BOT", bcolors.FAIL)
 
                 #All other messagers hould be from users, capture them here
                 if message_metadata['role'] not in known_bots:
+                    printc(f"message_metadata['role'] not in known_bots",bcolors.WARNING) 
                     # Add GPT related fields to nonbot and chatforme variables
-                    print(f"MESSAGE AUTHOR = USER ({message.author.name})") 
+                    printc(f"MESSAGE AUTHOR = USER ({message.author.name})",bcolors.OKBLUE) 
                     self.nonbot_temp_msg_history.append(message_metadata)
                     print(f"MESSAGE AUTHOR = CHATFORME BOT ({message.author.name})")   
                     self.chatforme_temp_msg_history.append(filtered_message_dict)
-                else: print("MESSAGE AUTHOR NOT A AUTOMSG BOT")
+                else: printc("MESSAGE AUTHOR NOT A AUTOMSG BOT", bcolors.WARNING)
                 print("\n")
 
         # Check for bot or system messages
         elif message.author is None:
+            printc("message.author is None", bcolors.WARNING)  
             # #printout attributes associated with event_message()
             # for attr in dir(message):
             #     if not attr.startswith('__'):
             #         print(f"{attr}: {getattr(message, attr)}")
-            print("---MESSAGE AUTHER = NONE---")
+            printc("MESSAGE AUTHER = NONE",bcolors.FAIL)
             message_rawdata = message.raw_data
             start_index = message_rawdata.find(":") + 1  # Add 1 to not include the first ':'
             end_index = message_rawdata.find("!")
@@ -207,11 +215,11 @@ class Bot(twitch_commands.Bot):
                     }
 
                 #add GPT elements to automsg msg list variagble
-                print(f"MESSAGE AUTHOR = AUTOMSG BOT ({extracted_name})")
+                printc(f"MESSAGE AUTHOR = AUTOMSG BOT ({extracted_name})",bcolors.OKBLUE)
                 self.automsg_temp_msg_history.append(message_metadata)
 
                 #add GPT elements to chatforme msg list variagble
-                print(f"MESSAGE AUTHOR = CHATFORME BOT ({extracted_name})")
+                printc(f"MESSAGE AUTHOR = CHATFORME BOT ({extracted_name})",bcolors.OKBLUE)
                 self.chatforme_temp_msg_history.append(message_metadata)
         print('\n')
         # print('----------------------')
@@ -231,30 +239,37 @@ class Bot(twitch_commands.Bot):
         #
         #
         
-
-
         if message.author is not None:
             await self.handle_commands(message)
 
 
     #Create a GPT response based on config.yaml
     async def send_periodic_message(self):
-
+        
+        #ensure at least one bot was set to activate
+        if self.args_include_automsg != 'yes' and self.args_include_ouat != 'yes':
+            return printc('Neither AUTOMSG or OUAT were set to YES at app launch', bcolors.FAIL)
+        
         #Eleven Labs
         ELEVENLABS_XI_API_KEY = self.env_vars['ELEVENLABS_XI_API_KEY']
         ELEVENLABS_XI_VOICE = self.env_vars['ELEVENLABS_XI_VOICE']
         ELEVENLABS_XI_VOICE_BUSINESS = self.env_vars['ELEVENLABS_XI_VOICE_BUSINESS']
         #ELEVENLABS_XI_VOICE_NEW = self.env_vars['ELEVENLABS_XI_VOICE_NEW']
 
-        #automsg-prompts
-        ouat_wordcount = self.yaml_data['ouat_wordcount']
-        automated_message_seconds = self.yaml_data['automated_message_seconds']
-        formatted_gpt_automsg_prompt_prefix = self.yaml_data['formatted_gpt_automsg_prompt_prefix']
-        formatted_gpt_automsg_prompt_suffix = self.yaml_data['formatted_gpt_automsg_prompt_suffix']
-        chatgpt_automated_msg_prompts = self.yaml_data['chatgpt_automated_msg_prompts']
-        chatgpt_ouat_prompts = self.yaml_data['chatgpt_ouat_prompts']
+        #load yaml in case it has changed
+        self.yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="config")
 
+        #general config
         num_bot_responses = self.yaml_data['num_bot_responses']
+
+        #ouat prompts
+        ouat_wordcount = self.yaml_data['ouat_wordcount']
+        ouat_prompts = self.yaml_data['ouat_prompts']
+
+        #automsg prompts
+        automated_message_seconds = self.yaml_data['automated_message_seconds']
+        automsg_prompt_prefix = self.yaml_data['automsg_prompt_prefix']
+        chatgpt_automated_msg_prompts = self.yaml_data['chatgpt_automated_msg_prompts']
 
         #Import voice options
         from my_modules.text_to_speech import generate_t2s_object
@@ -264,7 +279,7 @@ class Bot(twitch_commands.Bot):
         # # messaging services.  Comment out and update indent to make live
         # stream_live = await self.is_stream_live()
         # if stream_live()   
-
+        printc("These are the runtime params for this bot:", bcolors.WARNING)
         printc(f"self.args_include_automsg:{self.args_include_automsg}", bcolors.OKBLUE) 
         printc(f"self.args_automated_msg_prompt_name:{self.args_automated_msg_prompt_name}", bcolors.OKBLUE)
         printc(f"self.args_include_ouat:{self.args_include_ouat}", bcolors.OKBLUE) 
@@ -272,11 +287,10 @@ class Bot(twitch_commands.Bot):
         printc(f"self.args_chatforme_prompt_name:{self.args_chatforme_prompt_name}", bcolors.OKBLUE) 
         printc(f"self.args_include_sound:{self.args_include_sound}", bcolors.OKBLUE) 
 
-        #Get list of already said things
-        msg_list_historic = format_previous_messages(self.automsg_temp_msg_history)
 
-        print("AUTOMSG msg_list_historic:")
-        printc(msg_list_historic, bcolors.WARNING)  
+        #Set channel
+        channel = self.get_channel(self.TWITCH_BOT_CHANNEL_NAME)
+
 
         #TODO Need to introduce this control flow a bit different.  DOesn't work well with current
         # bot launch app selections for params
@@ -287,36 +301,44 @@ class Bot(twitch_commands.Bot):
             #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
             # cycled through.
             selected_prompts_list = chatgpt_automated_msg_prompts[self.args_automated_msg_prompt_name]
-            printc(f"AUTOMSG selected_prompts_list:{selected_prompts_list}", bcolors.BOLD)   
-            printc(f"AUTOMSG self.args_automated_msg_prompt_name:{self.args_automated_msg_prompt_name}", bcolors.BOLD) 
+            printc("AUTMSG: These are the variables for AUTOMSG", bcolors.WARNING)
+            printc(f"AUTOMSG selected_prompts_list:{selected_prompts_list}", bcolors.OKBLUE)   
+            printc(f"AUTOMSG self.args_automated_msg_prompt_name:{self.args_automated_msg_prompt_name}", bcolors.OKBLUE) 
             
             #Grab a random prompt based on % chance from the config.yaml
-            formatted_automsg_yaml_prompt = rand_prompt(prompts_list=selected_prompts_list)   
-            printc(f"OUAT formatted_automsg_yaml_prompt:{formatted_automsg_yaml_prompt}", bcolors.BOLD)  
+            automsg_prompt = rand_prompt(prompts_list=selected_prompts_list)   
+            printc(f"OUAT automsg_prompt:{automsg_prompt}", bcolors.OKBLUE)  
    
             #Build the prompt
-            gpt_auto_msg_prompt = formatted_gpt_automsg_prompt_prefix + " [everything that follows is your prompt as the aforementioned chat bot]:" + formatted_automsg_yaml_prompt
-            printc(f"AUTOMSG gpt_auto_msg_prompt:{gpt_auto_msg_prompt}", bcolors.OKCYAN)   
-        
-        else: print("AUTOMSG is not set to yes")
+            gpt_prompt = automsg_prompt_prefix + " [everything that follows is your prompt as the aforementioned chat bot]:" + automsg_prompt
+            printc(f"AUTOMSG gpt_prompt:{gpt_prompt}", bcolors.OKBLUE)   
+            print("\n")
+        else: printc("AUTOMSG is not set to yes\n", bcolors.WARNING)
 
 
         if self.args_include_ouat == 'yes':
 
+            await channel.send("---NEW STORY---")
+
             #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
             # cycled through.
             # NOTE: Doesn't use the random prompt generator because there is only one prompt
-            formatted_automsg_yaml_prompt = chatgpt_ouat_prompts[self.args_ouat_prompt_name]
-            printc(f"OUAT args_ouat_prompt_name:{self.args_ouat_prompt_name}", bcolors.BOLD) 
+            ouat_prompt = ouat_prompts[self.args_ouat_prompt_name]
+            printc("OUAT: These are the variables for OUAT", bcolors.WARNING)
+            printc(f"OUAT args_ouat_prompt_name:{self.args_ouat_prompt_name}", bcolors.OKBLUE) 
 
-            gpt_auto_msg_prompt = formatted_automsg_yaml_prompt
+            gpt_prompt = ouat_prompt
+            printc(f"OUAT gpt_prompt:{gpt_prompt}\n", bcolors.OKBLUE) 
 
-        else: print("OUAT is not set to yes")
+        else: printc("OUAT is not set to yes\n", bcolors.WARNING)
 
         while True:
-             
-            #TODO: This seems really redundant/useless
-            channel = self.get_channel(self.TWITCH_BOT_CHANNEL_NAME)
+
+            #Get list of already said things
+            msg_list_historic = self.automsg_temp_msg_history
+            printc(f'FINAL self.automsg_temp_msg_history type:{type(self.automsg_temp_msg_history)}',bcolors.WARNING)
+            printc(f'{self.automsg_temp_msg_history}', bcolors.OKBLUE)
+            print("\n")
 
             if channel: 
                 
@@ -324,28 +346,35 @@ class Bot(twitch_commands.Bot):
                 params = {"ouat_wordcount":ouat_wordcount, 
                           'twitch_bot_username':self.TWITCH_BOT_USERNAME,
                           'num_bot_responses':num_bot_responses}
-                gpt_auto_msg_prompt_final = gpt_auto_msg_prompt + msg_list_historic
-                gpt_auto_msg_prompt_final = gpt_auto_msg_prompt_final.format(**params)
-                printc(f"AUTOMSG gpt_auto_msg_prompt_final:{gpt_auto_msg_prompt_final}", bcolors.FAIL) 
+                gpt_prompt_final = gpt_prompt.format(**params)
+                printc(f"FINAL gpt_prompt:",bcolors.WARNING)
+                printc(gpt_prompt, bcolors.OKBLUE) 
+                print("\n")
+                printc(f"FINAL gpt_prompt_final:", bcolors.WARNING)
+                printc(gpt_prompt_final, bcolors.OKBLUE) 
+                print("\n")
 
-                #Final dict submitted to GPT
-                messages_dict_gpt = [{'role': 'system', 'content': gpt_auto_msg_prompt_final}]
-                printc(f"AUTOMSG messages_dict_gpt:{messages_dict_gpt}", bcolors.WARNING)   
+                #Final prompt dict submitted to GPT
+                gpt_prompt_dict = [{'role': 'system', 'content': gpt_prompt_final}]
 
+                #Final combined prompt dictionary (historic + prompt)
+                messages_dict_gpt = msg_list_historic + gpt_prompt_dict
 
-
-
+                # Combine the chat history with the new system prompt to form a list of messages for GPT.
+                printc(f"FINAL msg_list_historic type: {type(msg_list_historic)}", bcolors.WARNING)
+                print(msg_list_historic)
+                print("\n") 
+                printc(f"FINAL gpt_prompt_dict type: {type(gpt_prompt_dict)}", bcolors.WARNING)
+                print(gpt_prompt_dict)
+                print("\n") 
+                printc(f"FINAL messages_dict_gpt type: {type(messages_dict_gpt)}", bcolors.WARNING)
+                print(messages_dict_gpt)
+                print("\n") 
 
                 #Generate the prompt response
                 generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
-                printc(f"AUTOMSG generated_message:{generated_message}", bcolors.WARNING)  
-
-                printc("gpt_auto_msg_prompt:", bcolors.WARNING)
-                printc(gpt_auto_msg_prompt, bcolors.WARNING)
-                print("\n")
-
-                printc("generated_message:", bcolors.WARNING)
-                printc(generated_message, bcolors.WARNING)
+                printc(f"FINAL generated_message:", bcolors.FAIL)  
+                printc(generated_message, bcolors.WARNING)  
                 print("\n")
 
                 #Send the message to twitch             
@@ -378,14 +407,14 @@ class Bot(twitch_commands.Bot):
         print('---------------------------------')
         print('LOG:LOAD PARAMS FROM ENV/YAML')
         # Load settings and configurations from a YAML file
-        num_bot_responses = yaml_data['num_bot_responses']
-        formatted_gpt_chatforme_automated_message_wordcount = str(yaml_data['formatted_gpt_chatforme_automated_message_wordcount'])
-        formatted_gpt_chatforme_prompt_prefix = str(yaml_data['formatted_gpt_chatforme_prompt_prefix'])
-        formatted_gpt_chatforme_prompt_suffix = str(yaml_data['formatted_gpt_chatforme_prompt_suffix'])
+        num_bot_responses = self.yaml_data['num_bot_responses']
+        chatforme_message_wordcount = str(self.yaml_data['chatforme_message_wordcount'])
+        formatted_gpt_chatforme_prompt_prefix = str(self.yaml_data['formatted_gpt_chatforme_prompt_prefix'])
+        formatted_gpt_chatforme_prompt_suffix = str(self.yaml_data['formatted_gpt_chatforme_prompt_suffix'])
         formatted_gpt_chatforme_prompts = self.yaml_data['formatted_gpt_chatforme_prompts']
 
         print(f"num_bot_responses: {num_bot_responses}")
-        print(f"formatted_gpt_chatforme_automated_message_wordcount: {formatted_gpt_chatforme_automated_message_wordcount}")
+        print(f"chatforme_message_wordcount: {chatforme_message_wordcount}")
         print(f"formatted_gpt_chatforme_prompt_prefix: {formatted_gpt_chatforme_prompt_prefix}")
         print(f"formatted_gpt_chatforme_prompt_suffix: {formatted_gpt_chatforme_prompt_suffix}")
         print(f'formatted_gpt_chatforme_prompts: {formatted_gpt_chatforme_prompts}')
@@ -407,7 +436,7 @@ class Bot(twitch_commands.Bot):
                 num_bot_responses=num_bot_responses,
                 request_user_name=request_user_name,
                 users_in_messages_list_text=users_in_messages_list_text,
-                formatted_gpt_chatforme_automated_message_wordcount=formatted_gpt_chatforme_automated_message_wordcount
+                chatforme_message_wordcount=chatforme_message_wordcount
 
             ) for key, value in formatted_gpt_chatforme_prompts.items() if isinstance(value, str)
         }
@@ -563,7 +592,7 @@ if __name__ == "__main__":
 
     # Can't get the defaults  in arg parser to work as I planned (aka leaving the command prompt entry 
     # empty.)  Defaults in arg parser could thus be confusing as they are useless!
-    parser = argparse.ArgumentParser(description="Select prompt_name for gpt_auto_msg_prompt.")
+    parser = argparse.ArgumentParser(description="Select your runtime arguments")
 
     #OnceUponATime:
     parser.add_argument("--include_ouat", default="no", dest="include_ouat")

@@ -68,13 +68,6 @@ class Bot(twitch_commands.Bot):
         self.OPENAI_API_KEY = env_vars['OPENAI_API_KEY']
         self.TWITCH_BOT_USERNAME = env_vars['TWITCH_BOT_USERNAME']
 
-        #placeholder list
-        self.chatforme_temp_msg_history = []
-        self.automsg_temp_msg_history = []
-        self.bot_temp_msg_history = []
-        self.nonbot_temp_msg_history = []
-        self.ouat_temp_msg_history = []
-
         #runtime arguments
         self.args_include_sound = str.lower(args.include_sound)
 
@@ -87,6 +80,12 @@ class Bot(twitch_commands.Bot):
         self.args_include_ouat = str.lower(args.include_ouat)        
         self.args_ouat_prompt_name = str.lower(args.ouat_prompt_name)
 
+        #placeholder list
+        self.chatforme_temp_msg_history = []
+        self.automsg_temp_msg_history = []
+        self.bot_temp_msg_history = []
+        self.nonbot_temp_msg_history = []
+        self.ouat_temp_msg_history = []
 
     #Set the listener(?) to start once the bot is ready
     async def event_ready(self):

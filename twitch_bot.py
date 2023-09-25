@@ -25,10 +25,6 @@ from elevenlabs import play
 #Automsg
 from my_modules.utils import format_previous_messages_to_string
 
-#load yaml/env
-yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="config")
-load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
-
 #Start the app
 app = Flask(__name__)
 
@@ -36,7 +32,6 @@ app = Flask(__name__)
 #Load yaml file & Load and Store keys/tokens from env
 yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="config")
 load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
-
 
 #Placeholder/junk
 TWITCH_CHATFORME_BOT_THREAD = None

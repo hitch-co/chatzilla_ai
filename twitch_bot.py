@@ -1,5 +1,5 @@
 #imports
-from ConsoleColoursClass import bcolors, printc
+from classes.ConsoleColoursClass import bcolors, printc
 
 from modules import load_yaml, load_env, openai_gpt_chatcompletion, get_models, rand_prompt
 import asyncio #(new_event_loop, set_event_loop)
@@ -239,11 +239,11 @@ class Bot(twitch_commands.Bot):
 
     #Create a GPT response based on config.yaml
     async def send_periodic_message(self):
-        
-        #ensure at least one bot was set to activate
-        if self.args_include_automsg != 'yes' and self.args_include_ouat != 'yes':
-            return printc('Neither AUTOMSG or OUAT were set to YES at app launch', bcolors.FAIL)
-        
+
+        #Import voice options
+        from my_modules.text_to_speech import generate_t2s_object
+        from elevenlabs import play        
+
         #Eleven Labs
         ELEVENLABS_XI_API_KEY = self.env_vars['ELEVENLABS_XI_API_KEY']
         ELEVENLABS_XI_VOICE = self.env_vars['ELEVENLABS_XI_VOICE']
@@ -265,10 +265,6 @@ class Bot(twitch_commands.Bot):
         automsg_prompt_prefix = self.yaml_data['automsg_prompt_prefix']
         chatgpt_automated_msg_prompts = self.yaml_data['chatgpt_automated_msg_prompts']
 
-        #Import voice options
-        from my_modules.text_to_speech import generate_t2s_object
-        from elevenlabs import play
-
         # #TODO: Checks to see whether the stream is live before executing any auto
         # # messaging services.  Comment out and update indent to make live
         # stream_live = await self.is_stream_live()
@@ -281,13 +277,12 @@ class Bot(twitch_commands.Bot):
         printc(f"self.args_chatforme_prompt_name:{self.args_chatforme_prompt_name}", bcolors.OKBLUE) 
         printc(f"self.args_include_sound:{self.args_include_sound}", bcolors.OKBLUE) 
 
-
+        #ensure at least one bot was set to activate
+        if self.args_include_automsg != 'yes' and self.args_include_ouat != 'yes':
+            return printc('Neither AUTOMSG or OUAT were set to YES at app launch', bcolors.FAIL)
+        
         #Set channel
         channel = self.get_channel(self.TWITCH_BOT_CHANNEL_NAME)
-
-
-        #TODO Need to introduce this control flow a bit different.  DOesn't work well with current
-        # bot launch app selections for params
 
         #if include_automsg == 'yes'
         if self.args_include_automsg == 'yes': 

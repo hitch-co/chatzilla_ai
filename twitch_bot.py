@@ -1,5 +1,8 @@
 #imports
+use_reloader_bool=False
+
 from classes.ConsoleColoursClass import bcolors, printc
+from classes import ArticleGeneratorClass
 
 from modules import load_yaml, load_env, openai_gpt_chatcompletion, get_models, rand_prompt
 import asyncio #(new_event_loop, set_event_loop)
@@ -24,6 +27,7 @@ from elevenlabs import play
 
 #Automsg
 from my_modules.utils import format_previous_messages_to_string
+
 
 #Start the app
 app = Flask(__name__)
@@ -307,6 +311,17 @@ class Bot(twitch_commands.Bot):
 
         if self.args_include_ouat == 'yes':
 
+            if self.args_ouat_prompt_name=='newsarticle':
+                #Run the article through the summarizer()
+                rss_link = "http://rss.cnn.com/rss/cnn_showbiz.rss"
+                article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=rss_link)
+
+                random_article_dictionary = article_generator.fetch_random_article(trunc_characters_at=500)
+                random_article_content = random_article_dictionary['content']
+            else: 
+                random_article_content = ""
+                printc(f"OUATH Prompt: {self.args_include_ouat} does not require an RSS feed",bcolors.FAIL)
+            
             await channel.send("---NEW STORY---")
 
             #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
@@ -321,66 +336,95 @@ class Bot(twitch_commands.Bot):
 
         else: printc("OUAT is not set to yes\n", bcolors.WARNING)
 
+        #TODO Could intorduce some functionality here that makes a short story, i.e. detectrs how many messages have
+        # been sent in the story and thenstarts to wrap up by feeding a new "end of story" prompt to GPT
+        # num_messages_sent = 0
+        # KeepTellingStory = True
+        # If messages_sent >10
+        #   - "start to wrap up story in the next paragraph"
+        # If messages_sent >15
+        #   - "This is your last storyline.  "
+        #   await.channel.send("---STORY OVER---
+        #   KeepTellingStory=False 
         while True:
-
+            
             #Get list of already said things
             msg_list_historic = self.automsg_temp_msg_history
             printc(f'FINAL self.automsg_temp_msg_history type:{type(self.automsg_temp_msg_history)}',bcolors.WARNING)
             printc(f'{self.automsg_temp_msg_history}', bcolors.OKBLUE)
             print("\n")
 
-            if channel: 
-                
-                #insert variables
-                params = {"ouat_wordcount":ouat_wordcount, 
-                          'twitch_bot_username':self.TWITCH_BOT_USERNAME,
-                          'num_bot_responses':num_bot_responses}
-                gpt_prompt_final = gpt_prompt.format(**params)
-                printc(f"FINAL gpt_prompt:",bcolors.WARNING)
-                printc(gpt_prompt, bcolors.OKBLUE) 
-                print("\n")
-                printc(f"FINAL gpt_prompt_final:", bcolors.WARNING)
-                printc(gpt_prompt_final, bcolors.OKBLUE) 
-                print("\n")
-
-                #Final prompt dict submitted to GPT
-                gpt_prompt_dict = [{'role': 'system', 'content': gpt_prompt_final}]
-
-                #Final combined prompt dictionary (historic + prompt)
-                messages_dict_gpt = msg_list_historic + gpt_prompt_dict
-
-                # Combine the chat history with the new system prompt to form a list of messages for GPT.
-                printc(f"FINAL msg_list_historic type: {type(msg_list_historic)}", bcolors.WARNING)
-                print(msg_list_historic)
-                print("\n") 
-                printc(f"FINAL gpt_prompt_dict type: {type(gpt_prompt_dict)}", bcolors.WARNING)
-                print(gpt_prompt_dict)
-                print("\n") 
-                printc(f"FINAL messages_dict_gpt type: {type(messages_dict_gpt)}", bcolors.WARNING)
-                print(messages_dict_gpt)
-                print("\n") 
-
-                #Generate the prompt response
-                generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
-                printc(f"FINAL generated_message:", bcolors.FAIL)  
-                printc(generated_message, bcolors.WARNING)  
-                print("\n")
-
-                #Send the message to twitch             
-                await channel.send(generated_message)
-
-                #if the prompt entered on startup is True, play the sound after the message is sent
-                if self.args_include_sound == 'yes':
-                    #Play the message generated/sent to TWITCH
-                    v2s_message_object = generate_t2s_object(ELEVENLABS_XI_API_KEY = ELEVENLABS_XI_API_KEY,
-                                                            voice_id = ELEVENLABS_XI_VOICE,
-                                                            text_to_say=generated_message, 
-                                                            is_testing = False)
-
-                    play(v2s_message_object)
+            try:
+                if channel: 
                     
-            await asyncio.sleep(int(automated_message_seconds))
+                    #insert variables
+                    params = {"ouat_wordcount":ouat_wordcount, 
+                            'twitch_bot_username':self.TWITCH_BOT_USERNAME,
+                            'num_bot_responses':num_bot_responses,
+                            'rss_feed_article_text':random_article_content}
+                    gpt_prompt_final = gpt_prompt.format(**params)
+                    printc(f"FINAL gpt_prompt:",bcolors.WARNING)
+                    printc(gpt_prompt, bcolors.OKBLUE) 
+                    print("\n")
+                    printc(f"FINAL gpt_prompt_final:", bcolors.WARNING)
+                    printc(gpt_prompt_final, bcolors.OKBLUE) 
+                    print("\n")
 
+                    #Final prompt dict submitted to GPT
+                    gpt_prompt_dict = [{'role': 'system', 'content': gpt_prompt_final}]
+
+                    #Final combined prompt dictionary (historic + prompt)
+                    messages_dict_gpt = msg_list_historic + gpt_prompt_dict
+
+                    # Combine the chat history with the new system prompt to form a list of messages for GPT.
+                    printc(f"FINAL msg_list_historic type: {type(msg_list_historic)}", bcolors.WARNING)
+                    print(msg_list_historic)
+                    print("\n") 
+                    printc(f"FINAL gpt_prompt_dict type: {type(gpt_prompt_dict)}", bcolors.WARNING)
+                    print(gpt_prompt_dict)
+                    print("\n") 
+                    printc(f"FINAL messages_dict_gpt type: {type(messages_dict_gpt)}", bcolors.WARNING)
+                    print(messages_dict_gpt)
+                    print("\n") 
+
+                    KeepGoing = True
+                    gpt_call_tries = 0
+                    while KeepGoing==True:
+                        if gpt_call_tries >=5:
+                            raise Exception("Maximum GPT call retries exceeded")
+                        #Generate the prompt response
+                        generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
+
+                        if len(generated_message) < 500:
+                            KeepGoing = False
+                        else:
+                            gpt_call_tries += 1
+                            printc('The generated message was >500 characters, retrying call to openai_gpt_chatcompletion', bcolors.WARNING)
+                            
+
+                    printc(f"FINAL generated_message:", bcolors.FAIL)  
+                    printc(generated_message, bcolors.WARNING)  
+                    print("\n")
+
+                    #Send the message to twitch             
+                    await channel.send(generated_message)
+
+                    #if the prompt entered on startup is True, play the sound after the message is sent
+                    if self.args_include_sound == 'yes':
+                        #Play the message generated/sent to TWITCH
+                        v2s_message_object = generate_t2s_object(ELEVENLABS_XI_API_KEY = ELEVENLABS_XI_API_KEY,
+                                                                voice_id = ELEVENLABS_XI_VOICE,
+                                                                text_to_say=generated_message, 
+                                                                is_testing = False)
+
+                        play(v2s_message_object)
+                        
+                await asyncio.sleep(int(automated_message_seconds))
+            
+            #Except block
+            except Exception as e:
+                print(f"An error occurred: {str(e)}")
+                break  # Exit the while loop               
 
     # Import the Twitch command decorator
     @twitch_commands.command(name='chatforme')
@@ -398,9 +442,11 @@ class Bot(twitch_commands.Bot):
         # Load settings and configurations from a YAML file
         num_bot_responses = self.yaml_data['num_bot_responses']
         chatforme_message_wordcount = str(self.yaml_data['chatforme_message_wordcount'])
+
         formatted_gpt_chatforme_prompt_prefix = str(self.yaml_data['formatted_gpt_chatforme_prompt_prefix'])
         formatted_gpt_chatforme_prompt_suffix = str(self.yaml_data['formatted_gpt_chatforme_prompt_suffix'])
         formatted_gpt_chatforme_prompts = self.yaml_data['formatted_gpt_chatforme_prompts']
+
 
         print(f"num_bot_responses: {num_bot_responses}")
         print(f"chatforme_message_wordcount: {chatforme_message_wordcount}")
@@ -426,7 +472,6 @@ class Bot(twitch_commands.Bot):
                 request_user_name=request_user_name,
                 users_in_messages_list_text=users_in_messages_list_text,
                 chatforme_message_wordcount=chatforme_message_wordcount
-
             ) for key, value in formatted_gpt_chatforme_prompts.items() if isinstance(value, str)
         }
         #Select the prompt based on the argument on app startup
@@ -601,4 +646,4 @@ if __name__ == "__main__":
 
     #run app
     args = parser.parse_args()
-    app.run(port=args.input_port_number, debug=True)
+    app.run(port=args.input_port_number, debug=True, use_reloader=use_reloader_bool)

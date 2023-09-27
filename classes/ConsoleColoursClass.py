@@ -8,6 +8,7 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+    PRAG_SUX = '\033[91m'
 
 def printc(message, color_name):
     """Prints a message in a specific color.

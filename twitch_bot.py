@@ -28,7 +28,6 @@ from elevenlabs import play
 #Automsg
 from my_modules.utils import format_previous_messages_to_string
 
-
 #Start the app
 app = Flask(__name__)
 
@@ -126,9 +125,9 @@ class Bot(twitch_commands.Bot):
             # for attr in dir(message):
             #     if not attr.startswith('__'):
             #         print(f"{attr}: {getattr(message, attr)}")
-            printc("message.author is not None", bcolors.WARNING)  
-            printc(f"MESSAGE AUTHOR: {message.author.name}", bcolors.OKBLUE)
-            printc(f'MESSAGE CONTENT: {message.content}\n', bcolors.OKBLUE)
+            printc("message.author is not None", bcolors.FAIL)  
+            printc(f"message.author.name: {message.author.name}", bcolors.OKBLUE)
+            printc(f'message.content: {message.content[:25]}...\n', bcolors.OKBLUE)
 
             # Collect all metadata
             message_metadata = {
@@ -148,9 +147,6 @@ class Bot(twitch_commands.Bot):
             # Filter to gpt columns, update the 'content' key to include {name}: {content}
             gptchatcompletion_keys = {'role', 'content'}
             filtered_message_dict = {key: message_metadata[key] for key in gptchatcompletion_keys}
-            printc("filtered_message_dict:", bcolors.WARNING)
-            print(filtered_message_dict)
-            print("\n")
 
             # Check if the message is triggering a command
             if message.content.startswith('!'):
@@ -160,40 +156,40 @@ class Bot(twitch_commands.Bot):
             else:
                 # Check if message from automsg or chatforme bot
                 if message.author.name in bots_automsg or message.author.name in bots_chatforme:
-                    printc('message.author.name in bots_automsg or message.author.name in bots_chatforme',bcolors.WARNING)
+                    printc(f'message.author.name:{message.author.name} IS IN bots_automsg or bots_chatforme',bcolors.WARNING)
                     # Add GPT related fields to automsg and chatforme variables 
                     printc(f"MESSAGE AUTHOR = AUTOMSG BOT ({message.author.name})",bcolors.OKBLUE)   
                     self.automsg_temp_msg_history.append(filtered_message_dict)
                     printc(f"MESSAGE AUTHOR = CHATFORME BOT ({message.author.name})",bcolors.OKBLUE)   
                     self.chatforme_temp_msg_history.append(filtered_message_dict)
-                else: printc("MESSAGE AUTHOR NOT A AUTOMSG BOT or CHATFORME BOT", bcolors.WARNING)
+                else: printc(f'message.author.name:{message.author.name} IS NOT IN bots_automsg or bots_chatforme',bcolors.WARNING)
 
                 if message.author.name in bots_ouat:
-                    printc('message.author.name in bots_ouat',bcolors.WARNING)
+                    printc(f'message.author.name: {message.author.name} IS IN bots_ouat',bcolors.WARNING)
                     # Add GPT related fields to ouat variable 
                     printc(f"MESSAGE AUTHOR = OUAT BOT ({message.author.name})", bcolors.OKBLUE)   
                     self.ouat_temp_msg_history.append(filtered_message_dict)
-                else: printc("MESSAGE AUTHOR NOT A OUAT BOT", bcolors.FAIL)
+                else: printc(f'message.author.name: {message.author.name} IS NOT IN bots_ouat',bcolors.WARNING)
 
                 #All other messagers hould be from users, capture them here
-                if message_metadata['role'] not in known_bots:
-                    printc(f"message_metadata['role'] not in known_bots",bcolors.WARNING) 
+                if message.author.name not in known_bots:
+                    printc(f"message.author.name: {message.author.name} IS NOT IN known_bots",bcolors.WARNING) 
+                    printc(message_metadata['role'], bcolors.OKBLUE)
                     # Add GPT related fields to nonbot and chatforme variables
-                    printc(f"MESSAGE AUTHOR = USER ({message.author.name})",bcolors.OKBLUE) 
+                    printc(f"message.author.name = USER ({message.author.name})",bcolors.OKBLUE) 
                     self.nonbot_temp_msg_history.append(message_metadata)
-                    print(f"MESSAGE AUTHOR = CHATFORME BOT ({message.author.name})")   
+                    printc(f"message.author.name = CHATFORME BOT ({message.author.name})", bcolors.OKBLUE)   
                     self.chatforme_temp_msg_history.append(filtered_message_dict)
-                else: printc("MESSAGE AUTHOR NOT A AUTOMSG BOT", bcolors.WARNING)
+                else: printc(f"message.author.name: {message.author.name} IS IN known_bots",bcolors.WARNING) 
                 print("\n")
 
         # Check for bot or system messages
         elif message.author is None:
-            printc("message.author is None", bcolors.WARNING)  
+            printc("message.author is None", bcolors.FAIL)  
             # #printout attributes associated with event_message()
             # for attr in dir(message):
             #     if not attr.startswith('__'):
             #         print(f"{attr}: {getattr(message, attr)}")
-            printc("MESSAGE AUTHER = NONE",bcolors.FAIL)
             message_rawdata = message.raw_data
             start_index = message_rawdata.find(":") + 1  # Add 1 to not include the first ':'
             end_index = message_rawdata.find("!")
@@ -220,16 +216,6 @@ class Bot(twitch_commands.Bot):
                 printc(f"MESSAGE AUTHOR = CHATFORME BOT ({extracted_name})",bcolors.OKBLUE)
                 self.chatforme_temp_msg_history.append(message_metadata)
         print('\n')
-        # print('----------------------')
-        # print('chatforme_temp_msg_history:')
-        # print(self.chatforme_temp_msg_history)
-        # print('----------------------')
-        # print('automsg_temp_msg_history:')
-        # print(self.automsg_temp_msg_history)
-        # print('----------------------')
-        # print('nonbot_temp_msg_history:')
-        # print(self.nonbot_temp_msg_history)
-        # print('----------------------')
 
         # TODO: ADD TO DATABASE
         #
@@ -268,6 +254,7 @@ class Bot(twitch_commands.Bot):
         automated_message_seconds = self.yaml_data['automated_message_seconds']
         automsg_prompt_prefix = self.yaml_data['automsg_prompt_prefix']
         chatgpt_automated_msg_prompts = self.yaml_data['chatgpt_automated_msg_prompts']
+        newsarticle_rss_feed = self.yaml_data['twitch-automsg']['newsarticle_rss_feed']
 
         # #TODO: Checks to see whether the stream is live before executing any auto
         # # messaging services.  Comment out and update indent to make live

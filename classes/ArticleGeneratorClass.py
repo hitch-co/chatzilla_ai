@@ -1,26 +1,16 @@
-#USAGE EXAMPLE
-# #Run the article through the summarizer()
-# rss_link = "http://rss.cnn.com/rss/cnn_showbiz.rss"
-# article_generator = ArticleGenerator(rss_link="http://rss.cnn.com/rss/cnn_showbiz.rss")
-
-# random_article_dictionary = article_generator.fetch_random_article(trunc_characters_at=500)
-
-# print(random_article_dictionary['content'])
-
 import requests
 import numpy as np
 from bs4 import BeautifulSoup
+
+from classes.ConsoleColoursClass import bcolors, printc
 
 class ArticleGenerator:
     def __init__(self, rss_link="http://rss.cnn.com/rss/cnn_showbiz.rss"):
         self.rss_link = rss_link
         self.articles = []
+        self.article_details = []
 
     def fetch_articles(self):
-        self.rss_link
-        import requests
-        from bs4 import BeautifulSoup
-        
         response = requests.get(self.rss_link)
         if response.status_code != 200:
             print("Failed to fetch the RSS feed.")
@@ -30,20 +20,47 @@ class ArticleGenerator:
         self.articles = []
         
         for item in soup.find_all('item'):
-            article_dict = {}
-            title = item.title.string if item.title else "N/A"
-            link = item.link.string if item.link else "N/A"
-            pub_date = item.pubDate.string if item.pubDate else "N/A"
-            description = item.description.string if item.description else "N/A"
-            
-            article_dict["title"] = title
-            article_dict["link"] = link
-            article_dict["pub_date"] = pub_date
-            article_dict["description"] = description        
+            article_dict = {
+                'title': item.title.string if item.title else "N/A",
+                'link': item.link.string if item.link else "N/A",
+                'pub_date': item.pubDate.string if item.pubDate else "N/A",
+                'description': item.description.string if item.description else "N/A"
+            }
             self.articles.append(article_dict)
-            
+        printc(f"Successfully fetched: {len(self.articles)} article titles and links", bcolors.FAIL)
+        print(self.articles[:4])
+        
         return self.articles
 
+
+    def fetch_content(self):
+        if not self.articles:
+            print("Missing URL or article data.")
+            return []
+        
+        for article in self.articles:
+            this_article = {}
+            full_url = article['link']
+            response = requests.get(full_url)
+            
+            if response.status_code != 200:
+                printc(f"Failed to fetch the article at {full_url}.", bcolors.FAIL)
+                continue
+
+            soup = BeautifulSoup(response.content, 'html.parser')
+            content_html_soup = soup.find('div', {'class': 'article__content'})
+            
+            if content_html_soup:
+                content_text = content_html_soup.get_text()
+            else: 
+                printc(f"Successfully fetched article at {full_url} but Article contains no content", bcolors.FAIL)
+                continue
+
+            this_article['content'] = self.clean_html_text(content_text)
+            self.article_details.append(this_article)
+            if not self.article_details:
+                printc("ERROR: Article details list is empty!", bcolors.FAIL)
+        return self.article_details
 
 
     def clean_html_text(self, text):
@@ -82,74 +99,44 @@ class ArticleGenerator:
         # Remove any leading or trailing spaces but keep leading or trailing newlines
         text = text.strip(' ')
 
+        # Make sure it ends with the last complete sentence.
+        sentence_match = re.findall(r'[^.!?]*[.!?]', text)
+        if sentence_match:
+            text = ''.join(sentence_match)
+
         return text
 
 
-
-    def fetch_content(self):
-        import requests
-        from bs4 import BeautifulSoup
-
-        # Check if both parameters are provided
-        if not self.articles:
-            print("Missing URL or article data.")
-            return []
+    def fetch_random_article(self, trunc_characters_at=200):
+        self.fetch_articles()
+        self.fetch_content()
         
-        # Initialize an empty list to hold the dictionaries with article details
-        article_details = []
+        printc('Preview of article_details:', bcolors.FAIL)
+        print(f"len(article_details):{len(self.article_details)}")
+        for article in self.article_details[:10]:
+            temp_article = {key: (value[:trunc_characters_at] if key == 'content' else value) for key, value in article.items()}
+            printc(f'\nArticle content (truncated):',bcolors.OKBLUE)
+            print(temp_article)
         
-        # Loop through each dictionary in the list
-        for article in self.articles:
-            # Initialize a new dictionary to hold this article's details
-            this_article = {}
-            
-            # The URL is already absolute in your data structure
-            full_url = article['link']
-            
-            # Perform the GET request for each URL
-            response = requests.get(full_url)
-            if response.status_code != 200:
-                print(f"Failed to fetch the article at {full_url}.")
-                continue
-                
-            soup = BeautifulSoup(response.content, 'html.parser')
-            
-            # The title is already in your data structure
-            this_article['title'] = article['title']
-            
-            # Here, you'll need to inspect the CNN article's HTML to identify the correct tag and class
-            # that holds the article text. In this example, I've used placeholders.
-            content_html_text = soup.find('div', {'class': 'article__content'})
-
-            content_text_clean = self.clean_html_text(content_html_text.get_text())
-
-            if content_text_clean:
-                this_article['content'] = content_text_clean
-            else:
-                this_article['content'] = "Could not retrieve content."
-                
-            this_article['url'] = full_url
-            article_details.append(this_article)
-        
-        return article_details
-
-
-    def fetch_random_article(self,
-                             trunc_characters_at=100):
-        #News stuff
-        ##################################################################
-        import numpy as np
-        import time
-
-        #get article details from some site
-        article_title_and_links = self.fetch_articles()
-        article_details = self.fetch_content()
-
-        #select the article you wish you use
-        random_article_dictionary = np.random.choice(article_details)
+        random_article_dictionary = np.random.choice(self.article_details)
         random_article_dictionary['content'] = random_article_dictionary['content'][:trunc_characters_at]
-
-        #Print details
-        print(f"URL: {random_article_dictionary['url']}\nTitle: {random_article_dictionary['title']}\nchar_length: {len(random_article_dictionary['content'])}\n\n")
-
+        
+        printc(f"\nrandom_article_dictionary 'content' (type: {type(random_article_dictionary)})':",bcolors.FAIL)
+        print(random_article_dictionary['content'])
+        
         return random_article_dictionary
+
+def main(rss_link=None):
+    article_generator = ArticleGenerator(rss_link=rss_link)
+    random_article_dictionary = article_generator.fetch_random_article(trunc_characters_at=500)
+    print(random_article_dictionary['content'])
+
+if __name__ == "__main__":
+    main(rss_link="http://rss.cnn.com/rss/cnn_showbiz.rss")
+
+
+# article_generator = ArticleGenerator(rss_link="http://rss.cnn.com/rss/cnn_showbiz.rss")
+
+# articles = article_generator.fetch_articles()
+# article_content = article_generator.fetch_content()
+

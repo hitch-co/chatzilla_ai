@@ -16,6 +16,7 @@ import argparse
 import json
 import random
 import openai
+import re
 
 #separate modules file
 #TODO: modules should be reorganized
@@ -403,6 +404,7 @@ class Bot(twitch_commands.Bot):
                             raise Exception("Maximum GPT call retries exceeded")
                         #Generate the prompt response
                         generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
+                        generated_message = re.sub(r'<<<.*?>>>', '', generated_message)
 
                         if len(generated_message) < 500:
                             KeepGoing = False

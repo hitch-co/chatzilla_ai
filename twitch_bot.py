@@ -299,15 +299,17 @@ class Bot(twitch_commands.Bot):
         if self.args_include_ouat == 'yes':
 
             if self.args_ouat_prompt_name=='newsarticle':
-                #Run the article through the summarizer()
-                rss_link = "http://rss.cnn.com/rss/cnn_showbiz.rss"
-                article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=rss_link)
 
+                #Grab a random article                
+                article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=newsarticle_rss_feed)
                 random_article_dictionary = article_generator.fetch_random_article(trunc_characters_at=500)
+
+                #attach the content for use in GPT prompt
                 random_article_content = random_article_dictionary['content']
+
             else: 
                 random_article_content = ""
-                printc(f"OUATH Prompt: {self.args_include_ouat} does not require an RSS feed",bcolors.FAIL)
+                printc(f"OUATH Prompt: '{self.args_ouat_prompt_name}' does not require an RSS feed",bcolors.FAIL)
             
             await channel.send("---NEW STORY---")
 
@@ -315,11 +317,10 @@ class Bot(twitch_commands.Bot):
             # cycled through.
             # NOTE: Doesn't use the random prompt generator because there is only one prompt
             ouat_prompt = ouat_prompts[self.args_ouat_prompt_name]
-            printc("OUAT: These are the variables for OUAT", bcolors.WARNING)
+            printc("OUAT: These are the variables for OUAT", bcolors.FAIL)
             printc(f"OUAT args_ouat_prompt_name:{self.args_ouat_prompt_name}", bcolors.OKBLUE) 
 
             gpt_prompt = ouat_prompt
-            printc(f"OUAT gpt_prompt:{gpt_prompt}\n", bcolors.OKBLUE) 
 
         else: printc("OUAT is not set to yes\n", bcolors.WARNING)
 
@@ -337,9 +338,6 @@ class Bot(twitch_commands.Bot):
             
             #Get list of already said things
             msg_list_historic = self.automsg_temp_msg_history
-            printc(f'FINAL self.automsg_temp_msg_history type:{type(self.automsg_temp_msg_history)}',bcolors.WARNING)
-            printc(f'{self.automsg_temp_msg_history}', bcolors.OKBLUE)
-            print("\n")
 
             try:
                 if channel: 
@@ -350,9 +348,6 @@ class Bot(twitch_commands.Bot):
                             'num_bot_responses':num_bot_responses,
                             'rss_feed_article_text':random_article_content}
                     gpt_prompt_final = gpt_prompt.format(**params)
-                    printc(f"FINAL gpt_prompt:",bcolors.WARNING)
-                    printc(gpt_prompt, bcolors.OKBLUE) 
-                    print("\n")
                     printc(f"FINAL gpt_prompt_final:", bcolors.WARNING)
                     printc(gpt_prompt_final, bcolors.OKBLUE) 
                     print("\n")
@@ -365,13 +360,8 @@ class Bot(twitch_commands.Bot):
 
                     # Combine the chat history with the new system prompt to form a list of messages for GPT.
                     printc(f"FINAL msg_list_historic type: {type(msg_list_historic)}", bcolors.WARNING)
-                    print(msg_list_historic)
-                    print("\n") 
                     printc(f"FINAL gpt_prompt_dict type: {type(gpt_prompt_dict)}", bcolors.WARNING)
-                    print(gpt_prompt_dict)
-                    print("\n") 
                     printc(f"FINAL messages_dict_gpt type: {type(messages_dict_gpt)}", bcolors.WARNING)
-                    print(messages_dict_gpt)
                     print("\n") 
 
                     KeepGoing = True

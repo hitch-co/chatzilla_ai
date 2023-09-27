@@ -103,6 +103,8 @@ class ArticleGenerator:
         sentence_match = re.findall(r'[^.!?]*[.!?]', text)
         if sentence_match:
             text = ''.join(sentence_match)
+        elif text and text[-1] not in ".!?":
+            text = text + '.'
 
         return text
 

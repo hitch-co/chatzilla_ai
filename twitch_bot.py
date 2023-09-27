@@ -89,6 +89,11 @@ class Bot(twitch_commands.Bot):
         self.is_loop_active = False  # controls if the loop should run
         self.message_history = []  # to store and clear message history
         self.random_article_content = ''
+        self.ouat_prompts = self.yaml_data['ouat_prompts']
+        self.newsarticle_rss_feed = self.yaml_data['twitch-automsg']['newsarticle_rss_feed']
+
+        #GPT Prompt
+        self.gpt_prompt = ''
 
     #Set the listener(?) to start once the bot is ready
     async def event_ready(self):
@@ -105,6 +110,33 @@ class Bot(twitch_commands.Bot):
 
     async def start_loop(self):
         self.is_loop_active = True
+
+        ############################################
+        if self.args_include_ouat == 'yes':
+
+            if self.args_ouat_prompt_name=='newsarticle':
+
+                #Grab a random article                
+                article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.newsarticle_rss_feed)
+                random_article_dictionary = article_generator.fetch_random_article(trunc_characters_at=500)
+
+                #attach the content for use in GPT prompt
+                self.random_article_content = random_article_dictionary['content']
+
+            else: 
+                self.random_article_content = ""
+                printc(f"OUATH Prompt: '{self.args_ouat_prompt_name}' does not require an RSS feed",bcolors.FAIL)
+
+            #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
+            # cycled through.
+            # NOTE: Doesn't use the random prompt generator because there is only one prompt
+            ouat_prompt = self.ouat_prompts[self.args_ouat_prompt_name]
+            printc("OUAT: These are the variables for OUAT", bcolors.FAIL)
+            print(f"OUAT args_ouat_prompt_name:{self.args_ouat_prompt_name}") 
+
+            self.gpt_prompt = ouat_prompt
+
+        else: printc("OUAT is not set to yes\n", bcolors.WARNING)
 
 
     async def stop_loop(self):
@@ -165,9 +197,9 @@ class Bot(twitch_commands.Bot):
             if message.content.startswith('!'):
                 # TODO: Add your code here
                 printc("MESSAGE CONTENT STARTS WITH = ! NO ACTION TAKEN\n", bcolors.WARNING)  
-                if message.content == "!startstory":
+                if message.content == "!startstory" and message.author.name == 'ehitch':
                     await self.start_loop()
-                elif message.content == "!stopstory":
+                elif message.content == "!stopstory" and message.author.name == 'ehitch':
                     await self.stop_loop()
 
             else:
@@ -267,13 +299,13 @@ class Bot(twitch_commands.Bot):
 
         #ouat prompts
         ouat_wordcount = self.yaml_data['ouat_wordcount']
-        ouat_prompts = self.yaml_data['ouat_prompts']
+
 
         #automsg prompts
         automated_message_seconds = self.yaml_data['automated_message_seconds']
         automsg_prompt_prefix = self.yaml_data['automsg_prompt_prefix']
         chatgpt_automated_msg_prompts = self.yaml_data['chatgpt_automated_msg_prompts']
-        newsarticle_rss_feed = self.yaml_data['twitch-automsg']['newsarticle_rss_feed']
+
 
         # #TODO: Checks to see whether the stream is live before executing any auto
         # # messaging services.  Comment out and update indent to make live
@@ -310,38 +342,11 @@ class Bot(twitch_commands.Bot):
             printc(f"OUAT automsg_prompt:{automsg_prompt}", bcolors.OKBLUE)  
    
             #Build the prompt
-            gpt_prompt = automsg_prompt_prefix + " [everything that follows is your prompt as the aforementioned chat bot]:" + automsg_prompt
-            printc(f"AUTOMSG gpt_prompt:{gpt_prompt}", bcolors.OKBLUE)   
+            self.gpt_prompt = automsg_prompt_prefix + " [everything that follows is your prompt as the aforementioned chat bot]:" + automsg_prompt
+            printc(f"AUTOMSG self.gpt_prompt:{self.gpt_prompt}", bcolors.OKBLUE)   
             print("\n")
-        else: printc("AUTOMSG is not set to yes\n", bcolors.WARNING)
+        else: printc("AUTOMSG is not set to yes\n", bcolors.FAIL)
 
-
-        ############################################
-        if self.args_include_ouat == 'yes':
-
-            if self.args_ouat_prompt_name=='newsarticle':
-
-                #Grab a random article                
-                article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=newsarticle_rss_feed)
-                random_article_dictionary = article_generator.fetch_random_article(trunc_characters_at=500)
-
-                #attach the content for use in GPT prompt
-                self.random_article_content = random_article_dictionary['content']
-
-            else: 
-                self.random_article_content = ""
-                printc(f"OUATH Prompt: '{self.args_ouat_prompt_name}' does not require an RSS feed",bcolors.FAIL)
-
-            #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
-            # cycled through.
-            # NOTE: Doesn't use the random prompt generator because there is only one prompt
-            ouat_prompt = ouat_prompts[self.args_ouat_prompt_name]
-            printc("OUAT: These are the variables for OUAT", bcolors.FAIL)
-            print(f"OUAT args_ouat_prompt_name:{self.args_ouat_prompt_name}") 
-
-            gpt_prompt = ouat_prompt
-
-        else: printc("OUAT is not set to yes\n", bcolors.WARNING)
 
         #TODO Could intorduce some functionality here that makes a short story, i.e. detectrs how many messages have
         # been sent in the story and thenstarts to wrap up by feeding a new "end of story" prompt to GPT
@@ -374,7 +379,7 @@ class Bot(twitch_commands.Bot):
                             'twitch_bot_username':self.TWITCH_BOT_USERNAME,
                             'num_bot_responses':num_bot_responses,
                             'rss_feed_article_text':self.random_article_content}
-                    gpt_prompt_final = gpt_prompt.format(**params)
+                    gpt_prompt_final = self.gpt_prompt.format(**params)
                     printc(f"FINAL gpt_prompt_final:", bcolors.WARNING)
                     printc(gpt_prompt_final, bcolors.OKBLUE) 
                     print("\n")

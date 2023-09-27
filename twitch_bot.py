@@ -1,5 +1,8 @@
 #imports
+use_reloader_bool=False
+
 from classes.ConsoleColoursClass import bcolors, printc
+from classes import ArticleGeneratorClass
 
 from modules import load_yaml, load_env, openai_gpt_chatcompletion, get_models, rand_prompt
 import asyncio #(new_event_loop, set_event_loop)
@@ -122,9 +125,9 @@ class Bot(twitch_commands.Bot):
             # for attr in dir(message):
             #     if not attr.startswith('__'):
             #         print(f"{attr}: {getattr(message, attr)}")
-            printc("message.author is not None", bcolors.WARNING)  
-            printc(f"MESSAGE AUTHOR: {message.author.name}", bcolors.OKBLUE)
-            printc(f'MESSAGE CONTENT: {message.content}\n', bcolors.OKBLUE)
+            printc("message.author is not None", bcolors.FAIL)  
+            printc(f"message.author.name: {message.author.name}", bcolors.OKBLUE)
+            printc(f'message.content: {message.content[:25]}...\n', bcolors.OKBLUE)
 
             # Collect all metadata
             message_metadata = {
@@ -144,9 +147,6 @@ class Bot(twitch_commands.Bot):
             # Filter to gpt columns, update the 'content' key to include {name}: {content}
             gptchatcompletion_keys = {'role', 'content'}
             filtered_message_dict = {key: message_metadata[key] for key in gptchatcompletion_keys}
-            printc("filtered_message_dict:", bcolors.WARNING)
-            print(filtered_message_dict)
-            print("\n")
 
             # Check if the message is triggering a command
             if message.content.startswith('!'):
@@ -156,40 +156,40 @@ class Bot(twitch_commands.Bot):
             else:
                 # Check if message from automsg or chatforme bot
                 if message.author.name in bots_automsg or message.author.name in bots_chatforme:
-                    printc('message.author.name in bots_automsg or message.author.name in bots_chatforme',bcolors.WARNING)
+                    printc(f'message.author.name:{message.author.name} IS IN bots_automsg or bots_chatforme',bcolors.WARNING)
                     # Add GPT related fields to automsg and chatforme variables 
                     printc(f"MESSAGE AUTHOR = AUTOMSG BOT ({message.author.name})",bcolors.OKBLUE)   
                     self.automsg_temp_msg_history.append(filtered_message_dict)
                     printc(f"MESSAGE AUTHOR = CHATFORME BOT ({message.author.name})",bcolors.OKBLUE)   
                     self.chatforme_temp_msg_history.append(filtered_message_dict)
-                else: printc("MESSAGE AUTHOR NOT A AUTOMSG BOT or CHATFORME BOT", bcolors.WARNING)
+                else: printc(f'message.author.name:{message.author.name} IS NOT IN bots_automsg or bots_chatforme',bcolors.WARNING)
 
                 if message.author.name in bots_ouat:
-                    printc('message.author.name in bots_ouat',bcolors.WARNING)
+                    printc(f'message.author.name: {message.author.name} IS IN bots_ouat',bcolors.WARNING)
                     # Add GPT related fields to ouat variable 
                     printc(f"MESSAGE AUTHOR = OUAT BOT ({message.author.name})", bcolors.OKBLUE)   
                     self.ouat_temp_msg_history.append(filtered_message_dict)
-                else: printc("MESSAGE AUTHOR NOT A OUAT BOT", bcolors.FAIL)
+                else: printc(f'message.author.name: {message.author.name} IS NOT IN bots_ouat',bcolors.WARNING)
 
                 #All other messagers hould be from users, capture them here
-                if message_metadata['role'] not in known_bots:
-                    printc(f"message_metadata['role'] not in known_bots",bcolors.WARNING) 
+                if message.author.name not in known_bots:
+                    printc(f"message.author.name: {message.author.name} IS NOT IN known_bots",bcolors.WARNING) 
+                    printc(message_metadata['role'], bcolors.OKBLUE)
                     # Add GPT related fields to nonbot and chatforme variables
-                    printc(f"MESSAGE AUTHOR = USER ({message.author.name})",bcolors.OKBLUE) 
+                    printc(f"message.author.name = USER ({message.author.name})",bcolors.OKBLUE) 
                     self.nonbot_temp_msg_history.append(message_metadata)
-                    print(f"MESSAGE AUTHOR = CHATFORME BOT ({message.author.name})")   
+                    printc(f"message.author.name = CHATFORME BOT ({message.author.name})", bcolors.OKBLUE)   
                     self.chatforme_temp_msg_history.append(filtered_message_dict)
-                else: printc("MESSAGE AUTHOR NOT A AUTOMSG BOT", bcolors.WARNING)
+                else: printc(f"message.author.name: {message.author.name} IS IN known_bots",bcolors.WARNING) 
                 print("\n")
 
         # Check for bot or system messages
         elif message.author is None:
-            printc("message.author is None", bcolors.WARNING)  
+            printc("message.author is None", bcolors.FAIL)  
             # #printout attributes associated with event_message()
             # for attr in dir(message):
             #     if not attr.startswith('__'):
             #         print(f"{attr}: {getattr(message, attr)}")
-            printc("MESSAGE AUTHER = NONE",bcolors.FAIL)
             message_rawdata = message.raw_data
             start_index = message_rawdata.find(":") + 1  # Add 1 to not include the first ':'
             end_index = message_rawdata.find("!")
@@ -216,16 +216,6 @@ class Bot(twitch_commands.Bot):
                 printc(f"MESSAGE AUTHOR = CHATFORME BOT ({extracted_name})",bcolors.OKBLUE)
                 self.chatforme_temp_msg_history.append(message_metadata)
         print('\n')
-        # print('----------------------')
-        # print('chatforme_temp_msg_history:')
-        # print(self.chatforme_temp_msg_history)
-        # print('----------------------')
-        # print('automsg_temp_msg_history:')
-        # print(self.automsg_temp_msg_history)
-        # print('----------------------')
-        # print('nonbot_temp_msg_history:')
-        # print(self.nonbot_temp_msg_history)
-        # print('----------------------')
 
         # TODO: ADD TO DATABASE
         #
@@ -264,6 +254,7 @@ class Bot(twitch_commands.Bot):
         automated_message_seconds = self.yaml_data['automated_message_seconds']
         automsg_prompt_prefix = self.yaml_data['automsg_prompt_prefix']
         chatgpt_automated_msg_prompts = self.yaml_data['chatgpt_automated_msg_prompts']
+        newsarticle_rss_feed = self.yaml_data['twitch-automsg']['newsarticle_rss_feed']
 
         # #TODO: Checks to see whether the stream is live before executing any auto
         # # messaging services.  Comment out and update indent to make live
@@ -307,80 +298,110 @@ class Bot(twitch_commands.Bot):
 
         if self.args_include_ouat == 'yes':
 
+            if self.args_ouat_prompt_name=='newsarticle':
+
+                #Grab a random article                
+                article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=newsarticle_rss_feed)
+                random_article_dictionary = article_generator.fetch_random_article(trunc_characters_at=500)
+
+                #attach the content for use in GPT prompt
+                random_article_content = random_article_dictionary['content']
+
+            else: 
+                random_article_content = ""
+                printc(f"OUATH Prompt: '{self.args_ouat_prompt_name}' does not require an RSS feed",bcolors.FAIL)
+            
             await channel.send("---NEW STORY---")
 
             #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
             # cycled through.
             # NOTE: Doesn't use the random prompt generator because there is only one prompt
             ouat_prompt = ouat_prompts[self.args_ouat_prompt_name]
-            printc("OUAT: These are the variables for OUAT", bcolors.WARNING)
+            printc("OUAT: These are the variables for OUAT", bcolors.FAIL)
             printc(f"OUAT args_ouat_prompt_name:{self.args_ouat_prompt_name}", bcolors.OKBLUE) 
 
             gpt_prompt = ouat_prompt
-            printc(f"OUAT gpt_prompt:{gpt_prompt}\n", bcolors.OKBLUE) 
 
         else: printc("OUAT is not set to yes\n", bcolors.WARNING)
 
+        #TODO Could intorduce some functionality here that makes a short story, i.e. detectrs how many messages have
+        # been sent in the story and thenstarts to wrap up by feeding a new "end of story" prompt to GPT
+        # num_messages_sent = 0
+        # KeepTellingStory = True
+        # If messages_sent >10
+        #   - "start to wrap up story in the next paragraph"
+        # If messages_sent >15
+        #   - "This is your last storyline.  "
+        #   await.channel.send("---STORY OVER---
+        #   KeepTellingStory=False 
         while True:
-
+            
             #Get list of already said things
             msg_list_historic = self.automsg_temp_msg_history
-            printc(f'FINAL self.automsg_temp_msg_history type:{type(self.automsg_temp_msg_history)}',bcolors.WARNING)
-            printc(f'{self.automsg_temp_msg_history}', bcolors.OKBLUE)
-            print("\n")
 
-            if channel: 
-                
-                #insert variables
-                params = {"ouat_wordcount":ouat_wordcount, 
-                          'twitch_bot_username':self.TWITCH_BOT_USERNAME,
-                          'num_bot_responses':num_bot_responses}
-                gpt_prompt_final = gpt_prompt.format(**params)
-                printc(f"FINAL gpt_prompt:",bcolors.WARNING)
-                printc(gpt_prompt, bcolors.OKBLUE) 
-                print("\n")
-                printc(f"FINAL gpt_prompt_final:", bcolors.WARNING)
-                printc(gpt_prompt_final, bcolors.OKBLUE) 
-                print("\n")
-
-                #Final prompt dict submitted to GPT
-                gpt_prompt_dict = [{'role': 'system', 'content': gpt_prompt_final}]
-
-                #Final combined prompt dictionary (historic + prompt)
-                messages_dict_gpt = msg_list_historic + gpt_prompt_dict
-
-                # Combine the chat history with the new system prompt to form a list of messages for GPT.
-                printc(f"FINAL msg_list_historic type: {type(msg_list_historic)}", bcolors.WARNING)
-                print(msg_list_historic)
-                print("\n") 
-                printc(f"FINAL gpt_prompt_dict type: {type(gpt_prompt_dict)}", bcolors.WARNING)
-                print(gpt_prompt_dict)
-                print("\n") 
-                printc(f"FINAL messages_dict_gpt type: {type(messages_dict_gpt)}", bcolors.WARNING)
-                print(messages_dict_gpt)
-                print("\n") 
-
-                #Generate the prompt response
-                generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
-                printc(f"FINAL generated_message:", bcolors.FAIL)  
-                printc(generated_message, bcolors.WARNING)  
-                print("\n")
-
-                #Send the message to twitch             
-                await channel.send(generated_message)
-
-                #if the prompt entered on startup is True, play the sound after the message is sent
-                if self.args_include_sound == 'yes':
-                    #Play the message generated/sent to TWITCH
-                    v2s_message_object = generate_t2s_object(ELEVENLABS_XI_API_KEY = ELEVENLABS_XI_API_KEY,
-                                                            voice_id = ELEVENLABS_XI_VOICE,
-                                                            text_to_say=generated_message, 
-                                                            is_testing = False)
-
-                    play(v2s_message_object)
+            try:
+                if channel: 
                     
-            await asyncio.sleep(int(automated_message_seconds))
+                    #insert variables
+                    params = {"ouat_wordcount":ouat_wordcount, 
+                            'twitch_bot_username':self.TWITCH_BOT_USERNAME,
+                            'num_bot_responses':num_bot_responses,
+                            'rss_feed_article_text':random_article_content}
+                    gpt_prompt_final = gpt_prompt.format(**params)
+                    printc(f"FINAL gpt_prompt_final:", bcolors.WARNING)
+                    printc(gpt_prompt_final, bcolors.OKBLUE) 
+                    print("\n")
 
+                    #Final prompt dict submitted to GPT
+                    gpt_prompt_dict = [{'role': 'system', 'content': gpt_prompt_final}]
+
+                    #Final combined prompt dictionary (historic + prompt)
+                    messages_dict_gpt = msg_list_historic + gpt_prompt_dict
+
+                    # Combine the chat history with the new system prompt to form a list of messages for GPT.
+                    printc(f"FINAL msg_list_historic type: {type(msg_list_historic)}", bcolors.WARNING)
+                    printc(f"FINAL gpt_prompt_dict type: {type(gpt_prompt_dict)}", bcolors.WARNING)
+                    printc(f"FINAL messages_dict_gpt type: {type(messages_dict_gpt)}", bcolors.WARNING)
+                    print("\n") 
+
+                    KeepGoing = True
+                    gpt_call_tries = 0
+                    while KeepGoing==True:
+                        if gpt_call_tries >=5:
+                            raise Exception("Maximum GPT call retries exceeded")
+                        #Generate the prompt response
+                        generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
+
+                        if len(generated_message) < 500:
+                            KeepGoing = False
+                        else:
+                            gpt_call_tries += 1
+                            printc('The generated message was >500 characters, retrying call to openai_gpt_chatcompletion', bcolors.WARNING)
+                            
+
+                    printc(f"FINAL generated_message:", bcolors.FAIL)  
+                    printc(generated_message, bcolors.WARNING)  
+                    print("\n")
+
+                    #Send the message to twitch             
+                    await channel.send(generated_message)
+
+                    #if the prompt entered on startup is True, play the sound after the message is sent
+                    if self.args_include_sound == 'yes':
+                        #Play the message generated/sent to TWITCH
+                        v2s_message_object = generate_t2s_object(ELEVENLABS_XI_API_KEY = ELEVENLABS_XI_API_KEY,
+                                                                voice_id = ELEVENLABS_XI_VOICE,
+                                                                text_to_say=generated_message, 
+                                                                is_testing = False)
+
+                        play(v2s_message_object)
+                        
+                await asyncio.sleep(int(automated_message_seconds))
+            
+            #Except block
+            except Exception as e:
+                print(f"An error occurred: {str(e)}")
+                break  # Exit the while loop               
 
     # Import the Twitch command decorator
     @twitch_commands.command(name='chatforme')
@@ -398,9 +419,11 @@ class Bot(twitch_commands.Bot):
         # Load settings and configurations from a YAML file
         num_bot_responses = self.yaml_data['num_bot_responses']
         chatforme_message_wordcount = str(self.yaml_data['chatforme_message_wordcount'])
+
         formatted_gpt_chatforme_prompt_prefix = str(self.yaml_data['formatted_gpt_chatforme_prompt_prefix'])
         formatted_gpt_chatforme_prompt_suffix = str(self.yaml_data['formatted_gpt_chatforme_prompt_suffix'])
         formatted_gpt_chatforme_prompts = self.yaml_data['formatted_gpt_chatforme_prompts']
+
 
         print(f"num_bot_responses: {num_bot_responses}")
         print(f"chatforme_message_wordcount: {chatforme_message_wordcount}")
@@ -426,7 +449,6 @@ class Bot(twitch_commands.Bot):
                 request_user_name=request_user_name,
                 users_in_messages_list_text=users_in_messages_list_text,
                 chatforme_message_wordcount=chatforme_message_wordcount
-
             ) for key, value in formatted_gpt_chatforme_prompts.items() if isinstance(value, str)
         }
         #Select the prompt based on the argument on app startup
@@ -601,4 +623,4 @@ if __name__ == "__main__":
 
     #run app
     args = parser.parse_args()
-    app.run(port=args.input_port_number, debug=True)
+    app.run(port=args.input_port_number, debug=True, use_reloader=use_reloader_bool)

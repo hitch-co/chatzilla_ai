@@ -120,7 +120,7 @@ class Bot(twitch_commands.Bot):
         # If you want to remove duplicates
         known_bots = list(set(known_bots))
 
-        # try:
+        ############################################
         if message.author is not None:
             # for attr in dir(message):
             #     if not attr.startswith('__'):
@@ -148,12 +148,14 @@ class Bot(twitch_commands.Bot):
             gptchatcompletion_keys = {'role', 'content'}
             filtered_message_dict = {key: message_metadata[key] for key in gptchatcompletion_keys}
 
+            ############################################
             # Check if the message is triggering a command
             if message.content.startswith('!'):
                 # TODO: Add your code here
                 printc("MESSAGE CONTENT STARTS WITH = ! NO ACTION TAKEN\n", bcolors.WARNING)  
 
             else:
+                ############################################
                 # Check if message from automsg or chatforme bot
                 if message.author.name in bots_automsg or message.author.name in bots_chatforme:
                     printc(f'message.author.name:{message.author.name} IS IN bots_automsg or bots_chatforme',bcolors.WARNING)
@@ -164,6 +166,7 @@ class Bot(twitch_commands.Bot):
                     self.chatforme_temp_msg_history.append(filtered_message_dict)
                 else: printc(f'message.author.name:{message.author.name} IS NOT IN bots_automsg or bots_chatforme',bcolors.WARNING)
 
+                ############################################
                 if message.author.name in bots_ouat:
                     printc(f'message.author.name: {message.author.name} IS IN bots_ouat',bcolors.WARNING)
                     # Add GPT related fields to ouat variable 
@@ -171,6 +174,7 @@ class Bot(twitch_commands.Bot):
                     self.ouat_temp_msg_history.append(filtered_message_dict)
                 else: printc(f'message.author.name: {message.author.name} IS NOT IN bots_ouat',bcolors.WARNING)
 
+                ############################################
                 #All other messagers hould be from users, capture them here
                 if message.author.name not in known_bots:
                     printc(f"message.author.name: {message.author.name} IS NOT IN known_bots",bcolors.WARNING) 
@@ -183,6 +187,7 @@ class Bot(twitch_commands.Bot):
                 else: printc(f"message.author.name: {message.author.name} IS IN known_bots",bcolors.WARNING) 
                 print("\n")
 
+        ############################################
         # Check for bot or system messages
         elif message.author is None:
             printc("message.author is None", bcolors.FAIL)  
@@ -268,6 +273,7 @@ class Bot(twitch_commands.Bot):
         printc(f"self.args_chatforme_prompt_name:{self.args_chatforme_prompt_name}", bcolors.OKBLUE) 
         printc(f"self.args_include_sound:{self.args_include_sound}", bcolors.OKBLUE) 
 
+        ############################################
         #ensure at least one bot was set to activate
         if self.args_include_automsg != 'yes' and self.args_include_ouat != 'yes':
             return printc('Neither AUTOMSG or OUAT were set to YES at app launch', bcolors.FAIL)
@@ -275,7 +281,7 @@ class Bot(twitch_commands.Bot):
         #Set channel
         channel = self.get_channel(self.TWITCH_BOT_CHANNEL_NAME)
 
-        #if include_automsg == 'yes'
+        ############################################
         if self.args_include_automsg == 'yes': 
 
             #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
@@ -296,6 +302,7 @@ class Bot(twitch_commands.Bot):
         else: printc("AUTOMSG is not set to yes\n", bcolors.WARNING)
 
 
+        ############################################
         if self.args_include_ouat == 'yes':
 
             if self.args_ouat_prompt_name=='newsarticle':
@@ -334,12 +341,15 @@ class Bot(twitch_commands.Bot):
         #   - "This is your last storyline.  "
         #   await.channel.send("---STORY OVER---
         #   KeepTellingStory=False 
+        ############################################
+        ############################################
         while True:
             
             #Get list of already said things
             msg_list_historic = self.automsg_temp_msg_history
 
             try:
+                ############################################
                 if channel: 
                     
                     #insert variables

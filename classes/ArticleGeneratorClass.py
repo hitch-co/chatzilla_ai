@@ -113,10 +113,12 @@ class ArticleGenerator:
         
         printc('Preview of article_details:', bcolors.FAIL)
         print(f"len(article_details):{len(self.article_details)}")
-        for article in self.article_details[:10]:
-            temp_article = {key: (value[:trunc_characters_at] if key == 'content' else value) for key, value in article.items()}
-            printc(f'\nArticle content (truncated):',bcolors.OKBLUE)
-            print(temp_article)
+        
+        #Print statement to view partial articles in console
+        #for article in self.article_details[:10]:
+        #    temp_article = {key: (value[:trunc_characters_at] if key == 'content' else value) for key, value in article.items()}
+        #    printc(f'\nArticle content (truncated):',bcolors.OKBLUE)
+        #    print(temp_article)
         
         random_article_dictionary = np.random.choice(self.article_details)
         random_article_dictionary['content'] = random_article_dictionary['content'][:trunc_characters_at]

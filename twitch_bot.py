@@ -439,7 +439,7 @@ class Bot(twitch_commands.Bot):
 
     # Import the Twitch command decorator
     @twitch_commands.command(name='chatforme')
-    async def chatforme(self, ctx):
+    async def chatforme2(self, ctx):
         """
         A Twitch bot command that interacts with OpenAI's GPT API.
         It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.

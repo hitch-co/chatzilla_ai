@@ -115,18 +115,25 @@ class Bot(twitch_commands.Bot):
         ############################################
         if self.args_include_ouat == 'yes':
 
-            if self.args_ouat_prompt_name=='newsarticle':
+            if self.args_ouat_prompt_name:
 
                 #Grab a random article                
                 article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.newsarticle_rss_feed)
                 random_article_dictionary = article_generator.fetch_random_article(trunc_characters_at=500)
-
-                #attach the content for use in GPT prompt
                 self.random_article_content = random_article_dictionary['content']
+                params = {"rss_article_content":self.random_article_content}
+                random_article_content_prompt = self.random_article_content.format(**params)
 
-            else: 
+                #Final prompt dict submitted to GPT
+                gpt_prompt_dict = [{'role': 'system', 'content': random_article_content_prompt}]
+
+                self.random_article_content_prompt = openai_gpt_chatcompletion(gpt_prompt_dict)
+            
+            else:
+                printc(f"OUATH Prompt: NOT SET, setting default to ''",bcolors.FAIL)
                 self.random_article_content = ""
-                printc(f"OUATH Prompt: '{self.args_ouat_prompt_name}' does not require an RSS feed",bcolors.FAIL)
+                #self.logger.exception()
+                
 
             #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
             # cycled through.
@@ -301,12 +308,10 @@ class Bot(twitch_commands.Bot):
         #ouat prompts
         ouat_wordcount = self.yaml_data['ouat_wordcount']
 
-
         #automsg prompts
         automated_message_seconds = self.yaml_data['automated_message_seconds']
         automsg_prompt_prefix = self.yaml_data['automsg_prompt_prefix']
         chatgpt_automated_msg_prompts = self.yaml_data['chatgpt_automated_msg_prompts']
-
 
         # #TODO: Checks to see whether the stream is live before executing any auto
         # # messaging services.  Comment out and update indent to make live

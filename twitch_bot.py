@@ -18,6 +18,8 @@ import random
 import openai
 import re
 
+from my_modules.gpt import get_random_rss_article_summary_prompt
+
 #separate modules file
 #TODO: modules should be reorganized
 from my_modules import text_to_speech
@@ -92,6 +94,7 @@ class Bot(twitch_commands.Bot):
         self.random_article_content = ''
         self.ouat_prompts = self.yaml_data['ouat_prompts']
         self.newsarticle_rss_feed = self.yaml_data['twitch-automsg']['newsarticle_rss_feed']
+        self.ouat_news_article_summary_prompt = yaml_data['ouat_news_article_summary_prompt'] 
 
         #GPT Prompt
         self.gpt_prompt = ''
@@ -115,28 +118,25 @@ class Bot(twitch_commands.Bot):
         ############################################
         if self.args_include_ouat == 'yes':
 
-            if self.args_ouat_prompt_name=='newsarticle':
+            if self.args_ouat_prompt_name.startswith('newsarticle') :
 
-                #Grab a random article                
-                article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.newsarticle_rss_feed)
-                random_article_dictionary = article_generator.fetch_random_article(trunc_characters_at=500)
+                # #Grab a random article                
+                # article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.newsarticle_rss_feed)
+                # random_article_dictionary = article_generator.fetch_random_article(trunc_characters_at=500)
+                # rss_article_content = random_article_dictionary['content']
 
-                #attach the content for use in GPT prompt
-                self.random_article_content = random_article_dictionary['content']
+                # #replace ouat_news_article_summary_prompt placeholder params
+                # params = {"rss_article_content":rss_article_content}
+                # random_article_content_prompt = self.ouat_news_article_summary_prompt.format(**params)
 
-            else: 
-                self.random_article_content = ""
-                printc(f"OUATH Prompt: '{self.args_ouat_prompt_name}' does not require an RSS feed",bcolors.FAIL)
-
-            #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
-            # cycled through.
-            # NOTE: Doesn't use the random prompt generator because there is only one prompt
-            ouat_prompt = self.ouat_prompts[self.args_ouat_prompt_name]
-            printc("OUAT: These are the variables for OUAT", bcolors.FAIL)
-            print(f"OUAT args_ouat_prompt_name:{self.args_ouat_prompt_name}") 
-
-            self.gpt_prompt = ouat_prompt
-
+                # #Final prompt dict submitted to GPT
+                # gpt_prompt_dict = [{'role': 'system', 'content': random_article_content_prompt}]
+                # random_article_content_prompt = openai_gpt_chatcompletion(gpt_prompt_dict, OPENAI_API_KEY=self.OPENAI_API_KEY)
+            
+                self.news_article_content_plot_summary = get_random_rss_article_summary_prompt(newsarticle_rss_feed=self.newsarticle_rss_feed,
+                                                                                    summary_prompt=self.ouat_news_article_summary_prompt,
+                                                                                    OPENAI_API_KEY=self.OPENAI_API_KEY)
+                return 
         else: printc("OUAT is not set to yes\n", bcolors.WARNING)
 
 
@@ -279,12 +279,13 @@ class Bot(twitch_commands.Bot):
             await self.handle_commands(message)
 
 
+
+
+
+
+
     #Create a GPT response based on config.yaml
     async def send_periodic_message(self):
-
-        #Import voice options
-        from my_modules.text_to_speech import generate_t2s_object
-        from elevenlabs import play        
 
         #Eleven Labs
         ELEVENLABS_XI_API_KEY = self.env_vars['ELEVENLABS_XI_API_KEY']
@@ -301,12 +302,10 @@ class Bot(twitch_commands.Bot):
         #ouat prompts
         ouat_wordcount = self.yaml_data['ouat_wordcount']
 
-
         #automsg prompts
         automated_message_seconds = self.yaml_data['automated_message_seconds']
         automsg_prompt_prefix = self.yaml_data['automsg_prompt_prefix']
         chatgpt_automated_msg_prompts = self.yaml_data['chatgpt_automated_msg_prompts']
-
 
         # #TODO: Checks to see whether the stream is live before executing any auto
         # # messaging services.  Comment out and update indent to make live
@@ -328,25 +327,41 @@ class Bot(twitch_commands.Bot):
         #Set channel
         channel = self.get_channel(self.TWITCH_BOT_CHANNEL_NAME)
 
-        ############################################
-        if self.args_include_automsg == 'yes': 
+        # ############################################
+        # if self.args_include_automsg == 'yes': 
 
-            #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
-            # cycled through.
-            selected_prompts_list = chatgpt_automated_msg_prompts[self.args_automated_msg_prompt_name]
-            printc("AUTMSG: These are the variables for AUTOMSG", bcolors.WARNING)
-            printc(f"AUTOMSG selected_prompts_list:{selected_prompts_list}", bcolors.OKBLUE)   
-            printc(f"AUTOMSG self.args_automated_msg_prompt_name:{self.args_automated_msg_prompt_name}", bcolors.OKBLUE) 
+        #     #Argument from runnign twitch_bot.py.  This will determine which respective set of propmts is randomly 
+        #     # cycled through.
+        #     selected_prompts_list = chatgpt_automated_msg_prompts[self.args_automated_msg_prompt_name]
+        #     printc("AUTMSG: These are the variables for AUTOMSG", bcolors.WARNING)
+        #     printc(f"AUTOMSG selected_prompts_list:{selected_prompts_list}", bcolors.OKBLUE)   
+        #     printc(f"AUTOMSG self.args_automated_msg_prompt_name:{self.args_automated_msg_prompt_name}", bcolors.OKBLUE) 
             
-            #Grab a random prompt based on % chance from the config.yaml
-            automsg_prompt = rand_prompt(prompts_list=selected_prompts_list)   
-            printc(f"OUAT automsg_prompt:{automsg_prompt}", bcolors.OKBLUE)  
+        #     #Grab a random prompt based on % chance from the config.yaml
+        #     automsg_prompt = rand_prompt(prompts_list=selected_prompts_list)   
+        #     printc(f"OUAT automsg_prompt:{automsg_prompt}", bcolors.OKBLUE)  
    
+        #     #Build the prompt
+        #     self.gpt_automsg_prompt = automsg_prompt_prefix + " [everything that follows is your prompt as the aforementioned chat bot]:" + automsg_prompt
+        #     printc(f"AUTOMSG self.gpt_prompt:{self.gpt_prompt}", bcolors.OKBLUE)   
+        #     print("\n")
+        # else: printc("AUTOMSG is not set to yes\n", bcolors.FAIL)
+
+        ############################################
+        if self.args_include_ouat == 'yes': 
+
             #Build the prompt
-            self.gpt_prompt = automsg_prompt_prefix + " [everything that follows is your prompt as the aforementioned chat bot]:" + automsg_prompt
-            printc(f"AUTOMSG self.gpt_prompt:{self.gpt_prompt}", bcolors.OKBLUE)   
+            self.gpt_ouat_prompt = self.ouat_prompts[self.args_ouat_prompt_name]
+            printc("OUAT: These are the variables for OUAT", bcolors.WARNING)
+            printc(f"OUAT self.args_automated_msg_prompt_name:{self.args_ouat_prompt_name}", bcolors.OKBLUE) 
+            printc(f"OUAT selected_prompts_list:{self.gpt_ouat_prompt}", bcolors.OKBLUE)   
             print("\n")
+
         else: printc("AUTOMSG is not set to yes\n", bcolors.FAIL)
+
+
+
+
 
 
         #TODO Could intorduce some functionality here that makes a short story, i.e. detectrs how many messages have
@@ -374,13 +389,18 @@ class Bot(twitch_commands.Bot):
             try:
                 ############################################
                 if channel: 
-                    
                     #insert variables
                     params = {"ouat_wordcount":ouat_wordcount, 
                             'twitch_bot_username':self.TWITCH_BOT_USERNAME,
                             'num_bot_responses':num_bot_responses,
-                            'rss_feed_article_text':self.random_article_content}
-                    gpt_prompt_final = self.gpt_prompt.format(**params)
+                            'rss_feed_article_text':self.news_article_content_plot_summary}
+                    
+                    if self.args_include_ouat == 'yes':
+                        gpt_prompt_final = self.gpt_ouat_prompt.format(**params)     
+                    elif self.args_include_automsg == 'yes':
+                        gpt_prompt_final = self.gpt_ouat_prompt.format(**params)    
+                    else: print("Neither automsg or ouat enabled with argument")
+
                     printc(f"FINAL gpt_prompt_final:", bcolors.WARNING)
                     printc(gpt_prompt_final, bcolors.OKBLUE) 
                     print("\n")
@@ -716,3 +736,4 @@ if __name__ == "__main__":
     #run app
     args = parser.parse_args()
     app.run(port=args.input_port_number, debug=True, use_reloader=use_reloader_bool)
+

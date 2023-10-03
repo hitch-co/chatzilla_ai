@@ -28,7 +28,7 @@ class ArticleGenerator:
             }
             self.articles.append(article_dict)
         printc(f"Successfully fetched: {len(self.articles)} article titles and links", bcolors.FAIL)
-        print(self.articles[:4])
+        # print(self.articles[:1])
         
         return self.articles
 
@@ -108,8 +108,29 @@ class ArticleGenerator:
 
         return text
 
+    # def fetch_articles_content(self):
+    #     self.fetch_articles()
+    #     self.fetch_content()
 
-    def fetch_random_article(self, trunc_characters_at=200):
+    # def fetch_random_article2(self, trunc_characters_at=1000):
+    #     printc('Preview of article_details:', bcolors.FAIL)
+    #     print(f"len(article_details):{len(self.article_details)}")
+        
+    #     #Print statement to view partial articles in console
+    #     #for article in self.article_details[:10]:
+    #     #    temp_article = {key: (value[:trunc_characters_at] if key == 'content' else value) for key, value in article.items()}
+    #     #    printc(f'\nArticle content (truncated):',bcolors.OKBLUE)
+    #     #    print(temp_article)
+        
+    #     random_article_dictionary = np.random.choice(self.article_details)
+    #     random_article_dictionary['content'] = random_article_dictionary['content'][:trunc_characters_at]
+        
+    #     printc(f"\nrandom_article_dictionary 'content' (type: {type(random_article_dictionary)})':",bcolors.FAIL)
+    #     print(random_article_dictionary['content'])
+        
+    #     return random_article_dictionary       
+
+    def fetch_random_article(self, trunc_characters_at=1000):
         self.fetch_articles()
         self.fetch_content()
         

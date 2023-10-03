@@ -1,24 +1,27 @@
-#imports
+#Whether or not to refresh flask app live
 use_reloader_bool=False
+runtime_logger_level = 'DEBUG'
 
-from classes.ConsoleColoursClass import bcolors, printc
-from classes import ArticleGeneratorClass
-
-from modules import load_yaml, load_env, openai_gpt_chatcompletion, get_models, rand_prompt
+#imports
 import asyncio #(new_event_loop, set_event_loop)
 from twitchio.ext import commands as twitch_commands
 from threading import Thread
-from flask import Flask, request, url_for
+from flask import Flask, request
 import uuid
 import requests
 import os
 import argparse
-import json
-import random
-import openai
 import re
 
-from my_modules.gpt import get_random_rss_article_summary_prompt
+
+from classes.ConsoleColoursClass import bcolors, printc
+from classes import ArticleGeneratorClass
+from classes.CustomExceptions import BotFeatureNotEnabledException
+from my_modules.gpt import get_random_rss_article_summary_prompt, openai_gpt_chatcompletion
+from my_modules.gpt import generate_ouat_prompt, generate_automsg_prompt, combine_msghistory_and_prompt
+from my_modules.my_logging import my_logger 
+
+from modules import load_yaml, load_env
 
 #separate modules file
 #TODO: modules should be reorganized
@@ -30,6 +33,10 @@ from elevenlabs import play
 
 #Automsg
 from my_modules.utils import format_previous_messages_to_string
+
+# configure the root logger
+root_logger = my_logger(dirname='log', logger_name='root_logger', debug_level=runtime_logger_level)
+root_logger.info("this is a root log!")
 
 #Start the app
 app = Flask(__name__)

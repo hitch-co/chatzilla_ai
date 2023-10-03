@@ -4,7 +4,7 @@
 set include_ouat=yes
 set include_automsg=no
 set include_sound=no
-set prompt_list_ouat=newsarticle_og2
+set prompt_list_ouat=newsarticle_og
 set prompt_list_automsg=videogames
 set prompt_list_chatforme=standard
 set input_port_number=3000

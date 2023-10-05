@@ -9,10 +9,9 @@ env_filename: 'config.env'
 env_dirname: 'C:\_repos\chatforme_bots\config'
 
 twitch-app:
-  TWITCH_BOT_CHANNEL_NAME: 'ehitch'
-  TWITCH_BOT_USERNAME: 'eh-chatforme'
-  TWITCH_BOT_REDIRECT_AUTH: ''
-  TWITCH_BOT_REDIRECT_PATH: 'callback'
+#  TWITCH_BOT_CHANNEL_NAME: 'ehitch'
+#  TWITCH_BOT_USERNAME: 'eh-chatforme'
+   TWITCH_BOT_REDIRECT_PATH: 'callback'
 twitch-bots:
   auto-msg: ['']
   chatforme: ['', '']

@@ -2,15 +2,13 @@ import requests
 import os
 import json
 
-from modules import load_env, load_yaml
+from my_modules.config import load_env, load_yaml
 
 #config yaml
 yaml_data = load_yaml(yaml_dirname='config', yaml_filename='config.yaml')
-env_dirname=yaml_data['env_dirname']
-env_filename=yaml_data['env_filename']
 
 #config env
-load_env(env_filename=env_filename, env_dirname=env_dirname)
+load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
 ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')
 ELEVENLABS_XI_VOICE_PERSONAL= os.getenv('ELEVENLABS_XI_VOICE_PERSONAL')
 ELEVENLABS_XI_VOICE_BUSINESS=''

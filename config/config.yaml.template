@@ -1,120 +1,198 @@
-######
-#USAGE
-#- twitch_bot.py W/OUT directory: python twitch_bot.py --automated_msg_prompt_name standard
-#- twitch_bot.py WITH directory : python "C:\_repos\chatforme_bots\twitch_bot.py" --automated_msg_prompt_name standard
-
-
 #CONFIG
 env_filename: 'config.env'
-env_dirname: 'C:\_repos\chatforme_bots\config'
+env_dirname: ''
 
 twitch-app:
-#  TWITCH_BOT_CHANNEL_NAME: 'ehitch'
-#  TWITCH_BOT_USERNAME: 'eh-chatforme'
-   TWITCH_BOT_REDIRECT_PATH: 'callback'
+  twitch_bot_username: ''
+  twitch_bot_channel_name: ''
+  twitch_bot_redirect_path: 'callback'
+  twitch_bot_redirect_auth: ''
 twitch-bots:
-  auto-msg: ['']
-  chatforme: ['', '']
+  automsg: ['', '']
+  chatforme: ['', '', ''] 
+  onceuponatime: ['', '']
 
 twitch-chatforme:
 
 twitch-automsg:
+  #newsarticle_rss_feed: 'http://rss.cnn.com/rss/cnn_showbiz.rss'
+  newsarticle_rss_feed: 'http://rss.cnn.com/rss/cnn_topstories.rss'
+
+
+#################################################################
+#OUAT
+
+#ONCEUPONATIME PARAMS
+ouat_wordcount: 27
+ouat_message_recurrence_seconds: 21
+ouat_story_progression_number: 4
+ouat_story_max_counter: 12
+
+#style: "Poetic, Dark"
+ouat_news_article_summary_prompt: >
+  "Based on the article content, remove any mention of news outlets and create a 
+  short list of bullet points outlining a science fiction movie/sitcom episode, 
+  adding complexity and character dillemma as you see fit: 
+  [[[{random_article_content}]]]"
+
+ouat_prompt_startstory: >
+  "You are a chatbot whose job is to start story based on the [plot] line 
+  summarized below.  Add one short paragraph 
+  ({ouat_wordcount} words and less than 300 characters) to the story. Most 
+  importantly, the message you send should be less than 300 characters long. 
+
+  [plot]: 
+  {rss_feed_article_plot}"
+
+ouat_prompt_progression: >
+  "You're a chatbot whose job is to contribute a single short paragraph to this  
+  screenplay based on the plot and the last messages received.  This should develop
+  the issues at hand based on the [plot].  
+
+  Add one short paragraph ({ouat_wordcount} words) to the story. Aim for a 
+  coherent and smooth flow, without repeating what's already been said
+  
+  With that in mind, start to wrap up any loose ends introduced in the story 
+  thus far, and don't use hashtags.  Most importantly, the message you send 
+  should be less than 300 characters long. 
+
+  The plot is below but take more consideration into the message history.
+
+  plot: 
+  {rss_feed_article_plot}
+  "
+
+ouat_prompt_endstory: >
+  "You're a chatbot whose job is add the last single paragraph ending the 
+  screenplay based on the conversation history and the plot.  Add one short 
+  paragraph {ouat_wordcount} words long to finish the story. Most importantly, the message you
+  send should be less than 300 characters long.  Dont use hashtags.  Dont repeat
+  what's already been said.
+
+  Conditions
+    - No sequels.  Finish the story.
+
+  This is the plot:
+  {rss_feed_article_plot}"
+
+ouat_prompts:
+
+  newsarticle_og: >
+    "You're a chatbot designed to contribute a single thought to extend the short story based on the plot below. 
+    Keep your response under {ouat_wordcount} words and aim for a coherent flow with previous messages. 
+
+    Conditions:
+    - Keep your response under {ouat_wordcount} words
+    - Avoid repetition from previous messages.
+    - don't repeat what's already been said
+    - One response per turn
+
+    Key Points:
+    - Blend archetypal and gonzo style journalism storytelling styles
+
+    Themes:
+    - Characters' dilemma
+    - Dialogue
+    - Imagery
+    
+    This is the plot:
+    {rss_feed_article_plot}"
+
+  nonstandard:
+    -"_____NOT SET____"
+
+
+#################################################################
+#CHATFORME
 
 #CHATFORME PARAMS
-msg_history_limit: 3
+msg_history_limit: 25
 num_bot_responses: 1 
-automated_message_seconds: 275
-automated_message_wordcount: 16
+chatforme_message_wordcount: 22
 
-#chatgpt_prompt_meat: "You are an assistant designed to predict the next {num_responses}"
-chatgpt_prompt_prefix: ''
-chatgpt_prompt_suffix: ''
+#CHATFORME PROMPTS
+formatted_gpt_chatforme_prompt_prefix: '--NOTSET1--'
+formatted_gpt_chatforme_prompt_suffix: '--NOTSET2--'
 
-#default prompts
-chatgpt_settings:
-  automated_msg_prompt_name: "motivational_dad"
-  chatforme_prompt_name: "standard_discord"
-
-#prompt lists
-#python twitch_bot.py --automated_msg_prompt_name coding_tips
-chatgpt_automated_prompts:
+formatted_gpt_chatforme_prompts:
+#'You are currently being used as a chat bot and your name is...'
   standard: >
-    "at random, either say something positive, ask how the weather is, ask how 
-    everyones day is going, or tell a short dad joke"
-  coding_tips: > 
-    "Add some random tips for using visual studio/python.  Keep these to 
-    keyboard shortcuts/plugins and best practices"
-  motivational_dad: >
-    "Speak like a dad and say something hip or cool.  Tell a quick dad joke to 
-    end things... Make sure your response is <{automated_message_wordcount} 
-    words and always try to make unique meaningful statements."
-  gtav: >
-    "Give some brief tips about the game Grand Theft Auto 5... Make sure your 
-    response is <{automated_message_wordcount} words and talk like a gangster 
-    while you are doing it."
-  sea_of_thieves: >
-    "Sample prompt 2 for Twitch ChatGPT automated."
-  diablo4: >
-    "Sample prompt 3 for Twitch ChatGPT automated."
+    'You are in a virtual chat scenario and your name is {twitch_bot_username} and you are a millenial. Your mission is
+    to send {num_bot_responses} concise replies (~10-{chatforme_message_wordcount} words, max 400 chars) to
+    an audience on a stream. Engage in the conversation; ask questions or 
+    make insightful remarks.
+    
+    While minimizing repetition, aim to foster ongoing dialogue rather than
+    suggesting a topic switch. Key points:
+    
+    - Each message is framed with "<<<" and ">>>" around usernames.  Do not include this frame in your response
+    - Current chat roster: {users_in_messages_list_text}
+    - Aim for responses that defy typical bot behavior.
+    
+    Give {num_bot_responses} response; leave your name out.
+    
+    Adopt a relaxed yet intellectually stimulating tone while talking like a millenial.
+    
+    If confrontation is required, stand your ground.
+    
+    When uncertain, opt for a positive outlook but talk like a millenial.'
 
-#python twitch_bot.py --chatforme_prompt_name coding_tips
-chatgpt_chatforme_prompts:
-  standard: "Sample prompt 1 for Discord ChatGPT Chatforme."
-  standard_twitch: "Sample prompt 2 for Discord ChatGPT Chatforme."
-  standard_discord: "Sample prompt 3 for Discord ChatGPT Chatforme."
-  prompt_4: "Sample prompt 4 for Discord ChatGPT Chatforme."
+  botthot: >
+    'You are in a virtual chat scenario and your name is {twitch_bot_username} and you are a millenial with genz vibes. Your mission is
+    to send {num_bot_responses} concise replies (~10-{chatforme_message_wordcount} words) to
+    an audience on a stream. Engage in the conversation; ask questions or 
+    make insightful remarks.
+    
+    While minimizing repetition, aim to resolve a question or a problem that anybody in the most recent chat has mentioned:
+    
+    - Do not use other users names in your responses
+    - Current chat roster: {users_in_messages_list_text}
+    - Aim for responses that defy typical bot behavior.
+    - Make sure you answer the question or state an opinion depending on the messages sent 
+    - try not to excessively mention character names unelss its unclear
+    
+    Give {num_bot_responses} response; leave your name out of it.
+    
+    Talk heavily like someone from the millenial or genz generations.
+    
+    If confrontation or a harsh answer is required, go for it.'
 
+#################################################################
+#AUTOMSG
 
-########################################################
-########################################################
-#ADDED 2023-08-29
+#AUTOMSG PARAMS
+automated_message_wordcount: 22
 
-##############
-#prompt prefix -- THIS IS ALWAYS USED IN THE PROMPT
-formatted_gpt_automsg_prompt_prefix: >
+#prompt prefix
+automsg_prompt_prefix: >
   'You are currently being used as a chat bot.  The goal of this chat bot is to 
   send ONE AND ONLY ONE short message (~10-15 words long and always less than 400 characters) to a group of people 
   watching a stream.  The prompt below specifies what kind of message you should 
   send.  Be informal in your language and try to say things that a chat bot wouldnt.  
   Whenever uncertain, be positive and kind hearted but not overly or 
-  patronizingly nice'
+  patronizingly nice.  Everything that follows is your prompt as the chat bot in question:"
 
-formatted_gpt_automsg_prompt_suffix: >
-  'IMPORTANT: Do not repeat the following messages you've previously sent:'
-
-###############
-#prompt content -- The selected list of prompt dictionaries, i.e 
-# `chatgpt_automated_msg_prompts > standard` is set at runtime using the flag
-#  `--chatgpt_automated_msg_prompts`.  from each dictionary item
-
+#List of prompt libraries
 chatgpt_automated_msg_prompts:
-
-  #this is the first list of prompt dictionaries  
   standard:
     nextup3:
       - "share a fact about anythying"
-      - 1
+      - 5
     something_random_offtopic: 
       - "say something random and off topic"
-      - 1
+      - 8
     ask_about_everyone:
       - "ask an overly personal life question to everyone in the stream"
-      - 1
+      - 2
     say_something_positive:
       - "say something positive or motivational, but not too cheesy cliche"
       - 1
-    # jokes_dad:
-    #   - "tell a short but kind of mean dad joke"
-    #   - 8
+    jokes_dad:
+      - "tell a short but kind of mean dad joke"
+      - 1
     jokes_yomotherboard: 
       - "tell a yo-motherboard joke. Be clever, but make sure it's punny or witty"
       - 1
-    # fun_fact_about_ham:
-    #   - "make up an odd but believable fact about ham (yes, the food) but then say you're not sure if it's true or not"
-    #   - 2
-    # fun_fact_about_video_games:
-    #   - "Give some well known lore about video games... keep responses to 15-20 words."
-    #   - 4
     nano:
       - "share an interesting fact about the country chille to the user nano in the stream.  Make it a pun with the food when you can"
       - 1
@@ -129,63 +207,37 @@ chatgpt_automated_msg_prompts:
       - 2
     romanempire:
       - "share an interesting fact about the roman empire"
-      - 22
+      - 1
     oath:
-      - "Share an interesting fact to a user named 'oath' in the chat about crickets history"
+      - "Share an interesting fact to a user named 'oath' in the chat about the history of the sport cricket"
+      - 1
+    crube:
+      - "share something lesser known about the history of video game development"
       - 1
 
   #this is the second list of prompt dictionaries
-  nonstandard:
-
-    #this is how you might implement % chance 
-    something_random_offtopic: 
-      - "say something random and off topic"
-      - 7
-    # ask_about_everyone:
-    #   - "ask a very personal question to everyone in the stream"
-    #   - 3
-    # say_something_positive:
-    #   - "say something positive or motivational, but not too cheesy cliche"
-    #   - 3
-    jokes_dad:
-      - "tell a short but mildy mean dad joke"
-      - 2
-    # tips_visualstudiopython: 
-    #   - "Add some random tips for using visual studio/python.  Keep these to 
-    #   keyboard shortcuts and best practices"
-    #   - 6
+  videogames:
+    two_sentence_story:
+      - "Tell me a two-sentence story."
+      - 1
+    favorite_book_line:
+      - "Summarize your favorite book in one line."
+      - 1
+    travel_destination:
+      - "If you could travel anywhere, where would you go?"
+      - 1
+    historical_figure:
+      - "Name your favorite historical figure and say one thing about them."
+      - 1
+    tongue_twister:
+      - "Share a tongue twister."
+      - 1
     jokes_yomotherboard: 
       - "tell a yo-motherboard joke. Be clever, risky, and witty"
-      - 13
-    fun_fact_about_ham:
-      - "make up an odd but believable fact about ham (yes, the food) but then say you're not sure if it's true or not"
-      - 2
-    fun_fact_about_video_games:
-      - "Give some lore about the development of the game 7 days to die and other zombie games... keep responses to 15-20 words."
-      - 8
-    confuse_crube:
-      - "say something somewhat antagonizing but playful to a chatter/person called 'Crubeyawne'"
-      - 0
+      - 1
 
-  #this is the third list of prompt dictionaries
-  thirdpromptlistofdictionaruies:
-
-    thirdpromptlist_dictionaryitem1:
-      - 'nonstandard_subprompt1_content'
-      - 2
-    thirdpromptlist_dictionaryitem2:
-      - 'nonstandard_subprompt1_content'
-      - 2
-
-##########
-#CHATFORME
-
-#formatted_gpt_chatforme_prompts
-formatted_gpt_chatforme_prompt_prefix: ''
-
+#################################################################
 #games_countdown params
 #TODO
-server_guild_id: '1110236483505377400' #TODO: update to take from environment variable 
-server_channel_id: '1145905547946762252' #TODO: update to take from environment variable
-discord_games_countdown_username: 'cire'
+discord_games_countdown_username: ''
 discord_games_countdown_number_of_minutes: 15 #not in use, to be implemented

@@ -3,7 +3,7 @@ from classes.ConsoleColoursClass import bcolors, printc
 from my_modules.my_logging import my_logger
 
 import os
-from modules import load_env, load_yaml
+from my_modules.config import load_env, load_yaml
 import random
 import requests
 import openai
@@ -15,7 +15,8 @@ import json
 def openai_gpt_chatcompletion(messages_dict_gpt=None,
                               OPENAI_API_KEY=None, 
                               max_characters=500,
-                              max_attempts=5): 
+                              max_attempts=5,
+                              model="gpt-3.5-turbo"): 
     """
     Send a message to OpenAI GPT-3.5-turbo for completion and get the response.
 
@@ -29,17 +30,19 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
     openai.api_key = OPENAI_API_KEY
 
     #setup logger
-    logger_gptchatcompletion = my_logger(dirname='log', logger_name='logger_openai_gpt_chatcompletion')
+    logger_gptchatcompletion = my_logger(dirname='log',
+                                         logger_name='logger_openai_gpt_chatcompletion',
+                                         mode='a')
     logger_gptchatcompletion.debug(messages_dict_gpt)
 
     for _ in range(max_attempts):
         generated_response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            #model="gpt-4-turbo",
+            model=model,
             messages=messages_dict_gpt)
         gpt_response_text = generated_response.choices[0].message['content']
-        logger_gptchatcompletion.debug(f'The --{_}--call to gpt_chat_completion had a response of {len(gpt_response_text)} characters')
-
+        logger_gptchatcompletion.debug(f'The --{_}-- call to gpt_chat_completion had a response of {len(gpt_response_text)} characters')
+        logger_gptchatcompletion.debug(f'')
+        
         if len(gpt_response_text) < max_characters:
             logger_gptchatcompletion.info(f'The generated message was <{max_characters} characters')
             break  # Successfully got a short enough message; exit the loop
@@ -95,49 +98,104 @@ def rand_prompt(prompts_list=None):
     return selected_prompt
 
 
-def format_prompt(text, replacements_dict):
-    text_formatted = text.format(**replacements_dict)  
-    print(f"\ntext_formatted:{text_formatted}\n")
-    return text_formatted
 
+# def generate_automsg_prompt(automsg_prompts_list,
+#                             automsg_prompt_prefix,
+#                             replacements_dict):
+#     #setup logger
+#     logger_generateautomsgprompt = my_logger(dirname='log', 
+#                                              logger_name='logger_generate_automsg_prompt',
+#                                              mode='a')
 
-def generate_automsg_prompt(automsg_prompts_list,
-                            automsg_prompt_prefix,
-                            replacements_dict):
-    #setup logger
-    logger_generateautomsgprompt = my_logger(dirname='log', logger_name='logger_generate_automsg_prompt')
+#     automsg_prompt = rand_prompt(automsg_prompts_list)   
+#     logger_generateautomsgprompt.debug(f"\nreplacements_dict:")
+#     logger_generateautomsgprompt.debug(replacements_dict)    
+#     logger_generateautomsgprompt.debug(f"\nautomsg_prompt:")
+#     logger_generateautomsgprompt.debug(automsg_prompt)    
 
-    automsg_prompt = rand_prompt(automsg_prompts_list)   
-    logger_generateautomsgprompt.debug(f"\nreplacements_dict:")
-    logger_generateautomsgprompt.debug(replacements_dict)    
-    logger_generateautomsgprompt.debug(f"\nautomsg_prompt:")
-    logger_generateautomsgprompt.debug(automsg_prompt)    
-
-    gpt_automsg_prompt =  automsg_prompt_prefix + automsg_prompt
+#     gpt_automsg_prompt =  automsg_prompt_prefix + automsg_prompt
     
-    gpt_prompt_final = format_prompt(text=gpt_automsg_prompt,
-                                     replacements_dict=replacements_dict)
+#     gpt_prompt_final = format_prompt(text=gpt_automsg_prompt,
+#                                      replacements_dict=replacements_dict)
     
-    printc(f"\nAUTMSG: These are the variables for AUTOMSG prompt", bcolors.WARNING)
-    printc(f"AUTOMSG gpt_prompt_final:{gpt_prompt_final}", bcolors.OKBLUE)  
-    return gpt_prompt_final
+#     printc(f"\nAUTMSG: These are the variables for AUTOMSG prompt", bcolors.WARNING)
+#     printc(f"AUTOMSG gpt_prompt_final:{gpt_prompt_final}", bcolors.OKBLUE)  
+#     return gpt_prompt_final
 
-
-def generate_ouat_prompt(gpt_ouat_prompt,
+def prompt_text_replacement(gpt_prompt_text,
                          replacements_dict):
-    ouat_prompt_formatted = format_prompt(gpt_ouat_prompt,
-                                          replacements_dict=replacements_dict)
-    return ouat_prompt_formatted
+    prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
+    return prompt_text_replaced
 
-def combine_msghistory_and_prompt(prompt_text,
-                                  msg_history_dict):
-    #Final prompt dict submitted to GPT
-    gpt_prompt_dict = [{'role': 'system', 'content': prompt_text}]
 
-    #Final combined prompt dictionary (historic + prompt)
-    messages_dict_gpt = msg_history_dict + gpt_prompt_dict
+def create_custom_gpt_message_dict(name, 
+                                   content,
+                                   role='user'):
+    gpt_ready_msg_dict = {
+        'role': role,
+        'content': f'<<<{name}>>>: {content}'
+    }
+    return gpt_ready_msg_dict
+
+
+def create_gpt_message_dict_from_twitchmessage(message_metadata, role='user'):
+    """
+    Create a dictionary suitable for GPT chat completion.
     
-    return messages_dict_gpt
+    Args:
+    - message_metadata (dict): The original metadata dictionary.
+    - role (str, optional): The role (default is 'user').
+    
+    Returns:
+    - dict: A filtered and formatted dictionary.
+    """    
+    logger_create_gpt_message_dict_from_twitchmsg = my_logger(
+        dirname='log', 
+        logger_name='logger_create_gpt_message_dict_from_twitchmsg',
+        debug_level='DEBUG',
+        mode='a')
+    
+    gpt_ready_msg_dict = {}
+    gpt_ready_msg_dict['role'] = role
+    gpt_ready_msg_dict['content'] = message_metadata['content']
+
+    logger_create_gpt_message_dict_from_twitchmsg.debug('\nmessage_metadata details:')
+    logger_create_gpt_message_dict_from_twitchmsg.debug(message_metadata)
+    logger_create_gpt_message_dict_from_twitchmsg.debug('\ncreate_gpt_message_dict_from_twitchmessage details:')
+    logger_create_gpt_message_dict_from_twitchmsg.debug(gpt_ready_msg_dict)
+    
+    return gpt_ready_msg_dict
+
+
+def combine_msghistory_and_prompttext(prompt_text,
+                                      name='unknown',
+                                      msg_history_list_dict=None):
+    
+    #setup logger
+    logger_msghistory_and_prompt = my_logger(dirname='log',
+                                             logger_name='logger_msghistory_and_prompt',
+                                             debug_level='DEBUG',
+                                             mode='a')
+
+    prompt_dict = {'role': 'user', 'content': f'<<<{name}>>>: {prompt_text}'}
+
+    # Check if msg_history_list_dict is the correct data type
+    if msg_history_list_dict is not None:
+        if not isinstance(msg_history_list_dict, list) or \
+           (msg_history_list_dict and not isinstance(msg_history_list_dict[0], dict)):
+            raise ValueError("msg_history_list_dict should be a list of dictionaries or None")
+
+    #initialize msg_historic_list_dict
+    if not msg_history_list_dict:
+        msg_history_list_dict = [prompt_dict]
+    else:
+        msg_history_list_dict.append(prompt_dict) 
+
+
+    logger_msghistory_and_prompt.debug(f'this is prompt_dict:{type(prompt_dict)}')
+    logger_msghistory_and_prompt.debug(prompt_dict)
+
+    return msg_history_list_dict
 
 
 def get_models(api_key=None):
@@ -167,13 +225,19 @@ if __name__ == '__main__':
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
     gpt_models = get_models(OPENAI_API_KEY)
-    json.dumps(gpt_models, indent=4)
-    # #test1 -- get_random_rss_article_summary_prompt
-    # summary_prompt = yaml_data['ouat_news_article_summary_prompt']
-    # response = get_random_rss_article_summary_prompt(newsarticle_rss_feed='http://rss.cnn.com/rss/cnn_showbiz.rss',
-    #                                                 summary_prompt=summary_prompt,
-    #                                                 OPENAI_API_KEY=OPENAI_API_KEY)
-    # print(response)
+    print("GPT Models:")
+    print(json.dumps(gpt_models, indent=4))
+
+    #test1 -- get_random_rss_article_summary_prompt
+    summary_prompt = yaml_data['ouat_news_article_summary_prompt']
+    
+    summary_prompt_response = get_random_rss_article_summary_prompt(
+        newsarticle_rss_feed='http://rss.cnn.com/rss/cnn_showbiz.rss',
+        summary_prompt=summary_prompt,
+        OPENAI_API_KEY=OPENAI_API_KEY
+        )
+    print("summary_prompt_response:")
+    print(summary_prompt_response)
 
 
 

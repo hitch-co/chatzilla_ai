@@ -4,7 +4,8 @@ import inspect
 def my_logger(dirname='log', 
               logger_name=None, 
               debug_level='DEBUG', 
-              mode='w'
+              mode='w',
+              stream_logs = True
               ):
     
     level_mapping = {
@@ -32,14 +33,14 @@ def my_logger(dirname='log',
     file_handler = logging.FileHandler(f'{dirname}/{logger_name}.log', mode=mode)
     file_handler.setLevel(level_mapping[debug_level.upper()])
     file_handler.setFormatter(formatter)
-
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(level_mapping[debug_level.upper()])
-    stream_handler.setFormatter(formatter)
-
     logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
 
+    if stream_logs == True:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(level_mapping[debug_level.upper()])
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(stream_handler)
+    
     return logger
 
 

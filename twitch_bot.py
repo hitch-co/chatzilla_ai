@@ -209,6 +209,8 @@ class Bot(twitch_commands.Bot):
         self.ouat_temp_msg_history.clear()
         self.ouat_counter = 0
 
+    async def end_story(self):
+        self.ouat_counter = self.ouat_story_max_counter
 
     async def print_runtime_params(self, args_list=None):        
         self.logger.info("These are the runtime params for this bot:")
@@ -244,14 +246,14 @@ class Bot(twitch_commands.Bot):
             ###########################################
             #TODO: Should be a command not a condition 
             # Check if the message is triggering a command
-            if message.content.startswith('!') and self.ouat_counter == 0:
+            if message.content.startswith('!'):
 
                 # TODO: Add your code here
                 printc("MESSAGE CONTENT STARTS WITH = !\n", bcolors.WARNING)  
                 
 
                 ###########################################
-                if message.content == "!startstory" and (message.author.name == self.twitch_bot_channel_name or message.author.is_mod):
+                if message.content == "!startstory" and self.ouat_counter == 0: #and (message.author.name == self.twitch_bot_channel_name or message.author.is_mod):
                     self.random_article_content = self.article_generator.fetch_random_article_content()                    
                     replacements_dict = {"random_article_content":self.random_article_content}
                     
@@ -275,8 +277,13 @@ class Bot(twitch_commands.Bot):
                     await self.start_send_periodic_msg_loop()
 
                 ###########################################
-                elif message.content == "!stopstory" and (message.author.name == self.twitch_bot_channel_name or message.author.is_mod):
+                elif message.content == "!stopstory" and message.author.is_mod:
                     await self.stop_loop()
+
+                ###########################################
+                elif message.content == "!endstory" and message.author.is_mod:
+                    await self.end_story()
+
 
             ###########################################
             #Regular collection of messages and assignment to the appropriate
@@ -348,7 +355,6 @@ class Bot(twitch_commands.Bot):
     #Create a GPT response based on config.yaml
     async def send_periodic_message(self):
         self.load_configuration()
-        self.ouat_counter = 0
     
         #load article links (prepping for reading random article)
         if self.args_include_ouat == 'yes' and self.args_ouat_prompt_name.startswith('newsarticle'):
@@ -371,9 +377,9 @@ class Bot(twitch_commands.Bot):
                 self.logger.debug(f'{replacements_dict}')
 
                 #######################################
-                self.ouat_counter += 1   
-                self.logger.warning(f"ouat_counter is: {self.ouat_counter}")
                 if self.args_include_ouat == 'yes':
+                    self.ouat_counter += 1   
+                    self.logger.warning(f"ouat_counter is: {self.ouat_counter}")
 
                     if self.ouat_counter == 1:
                         gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_startstory,

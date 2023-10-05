@@ -38,7 +38,11 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
     for _ in range(max_attempts):
         generated_response = openai.ChatCompletion.create(
             model=model,
-            messages=messages_dict_gpt)
+            messages=messages_dict_gpt
+            )
+        logger_gptchatcompletion.debug(f"The generated_response object is of type {type(generated_response)}")
+        logger_gptchatcompletion.debug(generated_response)
+
         gpt_response_text = generated_response.choices[0].message['content']
         logger_gptchatcompletion.debug(f'The --{_}-- call to gpt_chat_completion had a response of {len(gpt_response_text)} characters')
         logger_gptchatcompletion.debug(f'')
@@ -168,6 +172,7 @@ def create_gpt_message_dict_from_twitchmessage(message_metadata, role='user'):
 
 
 def combine_msghistory_and_prompttext(prompt_text,
+                                      role='user',
                                       name='unknown',
                                       msg_history_list_dict=None):
     
@@ -177,7 +182,7 @@ def combine_msghistory_and_prompttext(prompt_text,
                                              debug_level='DEBUG',
                                              mode='a')
 
-    prompt_dict = {'role': 'user', 'content': f'<<<{name}>>>: {prompt_text}'}
+    prompt_dict = {'role': role, 'content': f'<<<{name}>>>: {prompt_text}'}
 
     # Check if msg_history_list_dict is the correct data type
     if msg_history_list_dict is not None:

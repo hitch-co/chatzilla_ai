@@ -377,22 +377,22 @@ class Bot(twitch_commands.Bot):
 
                     if self.ouat_counter == 1:
                         gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_startstory,
-                                                                replacements_dict=replacements_dict)         
+                                                                   replacements_dict=replacements_dict)         
                         self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')
 
                     if self.ouat_counter < self.ouat_story_progression_number:
                         gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.gpt_ouat_prompt_begin,
-                                                                replacements_dict=replacements_dict)         
+                                                                   replacements_dict=replacements_dict)         
                         self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')
 
                     elif self.ouat_counter < self.ouat_story_max_counter:
                         gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_progression,
-                                                                replacements_dict=replacements_dict) 
+                                                                   replacements_dict=replacements_dict) 
                         self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')
                         
                     elif self.ouat_counter == self.ouat_story_max_counter:
                         gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_endstory,
-                                                                replacements_dict=replacements_dict)
+                                                                   replacements_dict=replacements_dict)
                         self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')                                       
 
                     elif self.ouat_counter > self.ouat_story_max_counter:
@@ -404,12 +404,11 @@ class Bot(twitch_commands.Bot):
                 else: print("Neither automsg or ouat enabled with argument")
 
                 messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
+                                                                      role='system',
                                                                       msg_history_list_dict=self.ouat_temp_msg_history)
-                self.logger.debug("-------------------------------")
-                self.logger.debug("\nThis is the self.ouat_temp_msg_history:")
+                self.logger.debug("This is the self.ouat_temp_msg_history:")
                 self.logger.debug(self.ouat_temp_msg_history)
-                self.logger.debug("-------------------------------")
-                self.logger.debug("\nThis is the messages_dict_gpt:")
+                self.logger.debug("This is the messages_dict_gpt:")
                 self.logger.debug(messages_dict_gpt)
 
                 ##################################################################################

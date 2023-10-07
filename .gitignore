@@ -189,4 +189,4 @@ ffprobe.exe
 ffmpeg.exe
 ffplay.exe
 log/
-log/final_ouat_temp_msg_history.json
+/log

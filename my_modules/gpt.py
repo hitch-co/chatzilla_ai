@@ -10,8 +10,6 @@ import openai
 import re
 import json
 
-#LOGGING
-stream_logs=False
 
 # call to chat gpt for completion TODO: Could add  limits here?
 def openai_gpt_chatcompletion(messages_dict_gpt=None,
@@ -34,9 +32,7 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
     #setup logger
     logger_gptchatcompletion = my_logger(dirname='log',
                                          logger_name='logger_openai_gpt_chatcompletion',
-                                         mode='a',
-                                         stream_logs=stream_logs)
-    logger_gptchatcompletion.debug("This is the messages_dict_gpt submitted to GPT ChatCompletion")
+                                         mode='a')
     logger_gptchatcompletion.debug(messages_dict_gpt)
 
     for _ in range(max_attempts):
@@ -44,19 +40,19 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
             model=model,
             messages=messages_dict_gpt
             )
-        gpt_response_text = generated_response.choices[0].message['content']
-
-        logger_gptchatcompletion.debug(f"\nThe generated_response object is of type {type(generated_response)}")
+        logger_gptchatcompletion.debug(f"The generated_response object is of type {type(generated_response)}")
         logger_gptchatcompletion.debug(generated_response)
-        logger_gptchatcompletion.debug(f'\nThe --{_}-- call to gpt_chat_completion had a response of {len(gpt_response_text)} characters')
-        logger_gptchatcompletion.error(f"The generated_response object is of type {type(gpt_response_text)}")        
+
+        gpt_response_text = generated_response.choices[0].message['content']
+        logger_gptchatcompletion.debug(f'The --{_}-- call to gpt_chat_completion had a response of {len(gpt_response_text)} characters')
+        logger_gptchatcompletion.debug(f'')
         
         if len(gpt_response_text) < max_characters:
-            logger_gptchatcompletion.info(f'\nOK: The generated message was <{max_characters} characters')
-
+            logger_gptchatcompletion.info(f'The generated message was <{max_characters} characters')
             break  # Successfully got a short enough message; exit the loop
         else:
-            logger_gptchatcompletion.warning(f'\nFAIL: The generated message was >{max_characters} characters, retrying call to openai_gpt_chatcompletion')
+            logger_gptchatcompletion.warning(f'The generated message was >{max_characters} characters, retrying call to openai_gpt_chatcompletion')
+            logger_gptchatcompletion.warning(gpt_response_text)
     else:
         message = "Maxium GPT call retries exceeded"
         logger_gptchatcompletion.error(message)        
@@ -82,8 +78,8 @@ def get_random_rss_article_summary_prompt(newsarticle_rss_feed = 'http://rss.cnn
     random_article_content_prompt = summary_prompt.format(**params)
 
     #Final prompt dict submitted to GPT
-    gpt_prompt_dict = create_custom_gpt_message_dict(random_article_content_prompt,
-                                                     role='system')
+    gpt_prompt_dict = [{'role': 'system', 'content': random_article_content_prompt}]
+
     random_article_content_prompt_summary = openai_gpt_chatcompletion(gpt_prompt_dict, 
                                                                       OPENAI_API_KEY=OPENAI_API_KEY, 
                                                                       max_characters=2000)
@@ -136,15 +132,13 @@ def prompt_text_replacement(gpt_prompt_text,
     return prompt_text_replaced
 
 
-def create_custom_gpt_message_dict(prompt_text,
-                                   role='user',
-                                   name=None):
-    
-    if role == 'system':
-        gpt_ready_msg_dict = {'role': role, 'content': f'{prompt_text}'}
-    if role in ['user','assistant']:
-        gpt_ready_msg_dict = {'role': role, 'content': f'<<<{name}>>>: {prompt_text}'}
-
+def create_custom_gpt_message_dict(name, 
+                                   content,
+                                   role='user'):
+    gpt_ready_msg_dict = {
+        'role': role,
+        'content': f'<<<{name}>>>: {content}'
+    }
     return gpt_ready_msg_dict
 
 
@@ -163,9 +157,8 @@ def create_gpt_message_dict_from_twitchmessage(message_metadata, role='user'):
         dirname='log', 
         logger_name='logger_create_gpt_message_dict_from_twitchmsg',
         debug_level='DEBUG',
-        mode='a',
-        stream_logs=stream_logs)
-
+        mode='a')
+    
     gpt_ready_msg_dict = {}
     gpt_ready_msg_dict['role'] = role
     gpt_ready_msg_dict['content'] = message_metadata['content']
@@ -178,55 +171,36 @@ def create_gpt_message_dict_from_twitchmessage(message_metadata, role='user'):
     return gpt_ready_msg_dict
 
 
-# combine_msghistory_and_prompttext(prompt_text = 'hello this is a prompt',
-#                                   role='system',
-#                                   name='unknown',
-#                                   msg_history_list_dict=[{'role':'assistant', 'content':'this is content1'},
-#                                                          {'role':'user', 'content':'this is content2'}],
-#                                   combine_messages=False)
 def combine_msghistory_and_prompttext(prompt_text,
                                       role='user',
                                       name='unknown',
-                                      msg_history_list_dict=None,
-                                      combine_messages=False) -> [dict]:
+                                      msg_history_list_dict=None):
     
     #setup logger
-    logger_msghistory_and_prompt = my_logger(
-        dirname='log',
-        logger_name='logger_msghistory_and_prompt',
-        debug_level='DEBUG',
-        mode='a',
-        stream_logs=stream_logs
-        )
+    logger_msghistory_and_prompt = my_logger(dirname='log',
+                                             logger_name='logger_msghistory_and_prompt',
+                                             debug_level='DEBUG',
+                                             mode='a')
 
-    #deal with prompt text
-    if role == 'system':
-        prompt_dict = {'role': role, 'content': f'{prompt_text}'}
-    if role in ['user', 'assistant']:
-        prompt_dict = {'role': role, 'content': f'<<<{name}>>>: {prompt_text}'}
-
-    if not msg_history_list_dict:
-        msg_history_list_dict = [prompt_dict]
+    prompt_dict = {'role': role, 'content': f'<<<{name}>>>: {prompt_text}'}
 
     # Check if msg_history_list_dict is the correct data type
-    if (msg_history_list_dict is not None and not isinstance(msg_history_list_dict, list)) or \
-    (msg_history_list_dict and not all(isinstance(item, dict) for item in msg_history_list_dict)):
-        logger_msghistory_and_prompt.debug("msg_history_list_dict is not a list of dictionaries or None")
-        raise ValueError("msg_history_list_dict should be a list of dictionaries or None")
-    
+    if msg_history_list_dict is not None:
+        if not isinstance(msg_history_list_dict, list) or \
+           (msg_history_list_dict and not isinstance(msg_history_list_dict[0], dict)):
+            raise ValueError("msg_history_list_dict should be a list of dictionaries or None")
+
+    #initialize msg_historic_list_dict
+    if not msg_history_list_dict:
+        msg_history_list_dict = [prompt_dict]
     else:
-        if combine_messages:
-            msg_history_list_dict = [{
-                'role':role, 
-                'content':" ".join(item["content"] for item in msg_history_list_dict if item['role'] != 'system')
-            }]            
-            msg_history_list_dict.append(prompt_dict)
-            return msg_history_list_dict
-        else:
-            msg_history_list_dict.append(prompt_dict) 
-            return msg_history_list_dict
+        msg_history_list_dict.append(prompt_dict) 
 
 
+    logger_msghistory_and_prompt.debug(f'this is prompt_dict:{type(prompt_dict)}')
+    logger_msghistory_and_prompt.debug(prompt_dict)
+
+    return msg_history_list_dict
 
 
 def get_models(api_key=None):

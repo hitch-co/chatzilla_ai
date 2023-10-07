@@ -1,9 +1,3 @@
-import json
-import os
-
-from my_modules.my_logging import my_logger
-
-logger = my_logger(dirname='log', logger_name='logger_utils.log',debug_level='DEBUG',mode='a',stream_logs=False)
 
 def format_previous_messages_to_string(message_list):
     # message_list=[
@@ -76,18 +70,3 @@ def shutdown_server():
     if func is None:
         raise RuntimeError('Not running with the Werkzeug Server')
     func()
-
-
-
-def write_msg_history_to_file(msg_history, variable_name_text, logger, dirname='log'):
-    # Ensure logs directory exists
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
-
-    # Construct the filename
-    filename = f"{dirname}/final_{variable_name_text}.json"
-    
-    with open(filename, 'w') as file:
-        json.dump(msg_history, file, indent=4)
-
-    logger.info(f"Message history written to {filename}")

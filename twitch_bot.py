@@ -21,13 +21,13 @@ from my_modules.gpt import openai_gpt_chatcompletion, create_custom_gpt_message_
 from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext
 from my_modules.gpt import create_gpt_message_dict_from_twitchmessage
 
-from my_modules.my_logging import my_logger, log_list_or_dict
+from my_modules.my_logging import my_logger 
 from my_modules.twitchio_helpers import extract_name_from_rawdata
 from my_modules.config import load_yaml, load_env
 from my_modules import text_to_speech
 from my_modules.text_to_speech import generate_t2s_object
 from elevenlabs import play
-from my_modules.utils import format_previous_messages_to_string, write_msg_history_to_file
+from my_modules.utils import format_previous_messages_to_string
 
 # configure the root logger
 root_logger = my_logger(dirname='log', 
@@ -65,7 +65,7 @@ class Bot(twitch_commands.Bot):
                                 debug_level=runtime_logger_level,
                                 mode='a')
 
-        #May be redundant.  I think I should leave these here but then need to handle
+        #May be redundant.  I think I should leave these here but then ened to handle
         # Configuration in the bot(run()) section of the script which is outside both classes
         # and thus might need it's own class
         self.yaml_data = yaml_data
@@ -198,39 +198,19 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='addtostory')
     async def add_to_story_ouat(self, ctx, *args):
-        prompt_text = ' '.join(args)
-        gpt_ready_msg_dict = {'role':'user', 'content':prompt_text}
-        self.logger.debug(f"len(self.ouat_temp_msg_history) before append:{len(self.ouat_temp_msg_history)} in add_to_story_ouat():")
-        self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
-        self.logger.debug(f"len(self.ouat_temp_msg_history) after append:{len(self.ouat_temp_msg_history)} in add_to_story_ouat():")
+        sentence = ' '.join(args)
+        sentence_dict = {'role':'user', 'content':sentence}
+        self.ouat_temp_msg_history.append(sentence_dict)
 
-    @twitch_commands.command(name='extendstory')
-    async def extend_story(self, ctx, *args) -> None:
-        self.ouat_counter = 2
-        self.logger.warning(f"self.ouat_counter has been reset to {self.ouat_counter}")
 
     #stops and clears the ouat loop/message history
-    async def stop_loop(self) -> None:
-        await self.channel.send("---TheEnd1---")
+    async def stop_loop(self):
         self.is_ouat_loop_active = False
-        
-        write_msg_history_to_file(
-            logger=self.logger,
-            msg_history=self.ouat_temp_msg_history, 
-            variable_name_text='ouat_temp_msg_history',
-            dirname='log'
-            )
-
-        self.logger.info("This is the final ouat_temp_msg_history object prior to clear() via !stopstory -> stop_loop()")
-        self.logger.debug(f"len(self.ouat_temp_msg_history) before clear:{len(self.ouat_temp_msg_history)} in stop_loop():")
         self.ouat_temp_msg_history.clear()
-        self.logger.debug(f"len(self.ouat_temp_msg_history) after clear:{len(self.ouat_temp_msg_history)} in stop_loop():")
         self.ouat_counter = 0
-
 
     async def end_story(self):
         self.ouat_counter = self.ouat_story_max_counter
-
 
     async def print_runtime_params(self, args_list=None):        
         self.logger.info("These are the runtime params for this bot:")
@@ -259,16 +239,9 @@ class Bot(twitch_commands.Bot):
                 'tags': message.tags,
                 'content': f'<<<{message.author.name}>>>: {message.content}',
             }
-            
-            #prepare a gpt_ready_msg_dict
-            if message.author.name in self.known_bots:
-                # Filter to gpt columns, update the 'content' key to include {name}: {content}
-                gpt_ready_msg_dict = create_gpt_message_dict_from_twitchmessage(message_metadata=message_metadata,
-                                                                                role='user')
-            else: 
-                # Filter to gpt columns, update the 'content' key to include {name}: {content}
-                gpt_ready_msg_dict = create_gpt_message_dict_from_twitchmessage(message_metadata=message_metadata,
-                                                                                role='user')
+            # Filter to gpt columns, update the 'content' key to include {name}: {content}
+            gpt_ready_msg_dict = create_gpt_message_dict_from_twitchmessage(message_metadata=message_metadata,
+                                                                            role='user')
 
             ###########################################
             #TODO: Should be a command not a condition 
@@ -305,7 +278,6 @@ class Bot(twitch_commands.Bot):
 
                 ###########################################
                 elif message.content == "!stopstory" and message.author.is_mod:
-                    await self.channel.send("---Story To Be Continued (!stopstory)---")
                     await self.stop_loop()
 
                 ###########################################
@@ -320,32 +292,23 @@ class Bot(twitch_commands.Bot):
 
                 ############################################
                 if message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:
-                    self.logger.debug(f"len(self.automsg_temp_msg_history) before append:{len(self.automsg_temp_msg_history)} in message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:")
-                    self.logger.debug(f"len(self.chatforme_temp_msg_history) before append:{len(self.chatforme_temp_msg_history)} in message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:")
                     self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
                     self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
-                    self.logger.debug(f"len(self.automsg_temp_msg_history) after append:{len(self.automsg_temp_msg_history)} in message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:")
-                    self.logger.debug(f"len(self.chatforme_temp_msg_history) after append:{len(self.chatforme_temp_msg_history)} in message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:")
-
+                    self.logger.debug(f"{message.author.name}'s message added to automsg_temp_msg_history") 
+                    self.logger.debug(f"{message.author.name}'s message added to chatforme_temp_msg_history")
                 else: self.logger.debug(f'message.author.name:{message.author.name} IS NOT IN self.bots_automsg or self.bots_chatforme')
 
                 ############################################
                 if message.author.name in self.bots_ouat:    
-                    self.logger.debug(f"len(self.ouat_temp_msg_history) before append:{len(self.ouat_temp_msg_history)} in message.author.name in self.bots_ouat:")
                     self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
-                    self.logger.debug(f"len(self.ouat_temp_msg_history) after append:{len(self.ouat_temp_msg_history)} in message.author.name in self.bots_ouat:")
-
+                    self.logger.debug(f"len(self.ouat_temp_msg_history) after append:{len(self.ouat_temp_msg_history)}")
                 else: self.logger.debug(f'{message.author.name} IS NOT IN self.bots_ouat')
 
                 ############################################
                 #All other messagers hould be from users, capture them here
                 if message.author.name not in self.known_bots:
-                    self.logger.debug(f"len(self.nonbot_temp_msg_history) before append:{len(self.nonbot_temp_msg_history)} in message.author.name in self.known_bots:")
-                    self.logger.debug(f"len(self.chatforme_temp_msg_history) before append:{len(self.chatforme_temp_msg_history)} in message.author.name in self.known_bots:")
-                    self.nonbot_temp_msg_history.append(gpt_ready_msg_dict)
+                    self.nonbot_temp_msg_history.append(message_metadata)
                     self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
-                    self.logger.debug(f"len(self.nonbot_temp_msg_history) after append:{len(self.nonbot_temp_msg_history)} in message.author.name in self.known_bots:")
-                    self.logger.debug(f"len(self.chatforme_temp_msg_history) after append:{len(self.chatforme_temp_msg_history)} in message.author.name in self.known_bots:")
 
                     self.logger.debug(f"{message.author.name} is NOT IN self.known_bots")
                     self.logger.debug(f"{message.author.name}'s message added to nonbot_temp_msg_history") 
@@ -353,40 +316,31 @@ class Bot(twitch_commands.Bot):
                 else: self.logger.debug(f"message.author.name: {message.author.name} IS IN self.known_bots") 
 
         ############################################
-        ############################################
         # Check for bot or system messages
         elif message.author is None:
             self.logger.debug("message.author is None")            
-            extracted_name = extract_name_from_rawdata(message.raw_data)
-            self.logger.debug(f"The extracted_name is: '{extracted_name}'")  
-
-            gpt_ready_msg_dict = create_custom_gpt_message_dict(role = 'user',
-                                                                name = extracted_name,
-                                                                prompt_text = message.content)
+            extracted_name = extract_name_from_rawdata(message.raw_data)           
+            message_metadata = create_custom_gpt_message_dict(role = 'user',
+                                                              name = extracted_name,
+                                                              content = message.content)
 
             ############################################
             if extracted_name in self.bots_ouat:
                 #add GPT elements to ouat msg history list variagble
                 self.logger.debug(f"MESSAGE AUTHOR = OUAT BOT ({extracted_name})")
-                self.logger.debug(f"len(self.ouat_temp_msg_history) before append:{len(self.ouat_temp_msg_history)} in extracted_name in self.bots_ouat:")
-                self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
-                self.logger.debug(f"len(self.ouat_temp_msg_history) after append:{len(self.ouat_temp_msg_history)} in extracted_name in self.bots_ouat:")
+                self.ouat_temp_msg_history.append(message_metadata)
 
             ############################################
             if extracted_name in self.bots_automsg:
                 #add GPT elements to automsg msg list variagble
                 self.logger.debug(f"MESSAGE AUTHOR = AUTOMSG BOT ({extracted_name})")
-                self.logger.debug(f"len(self.automsg_temp_msg_history) before append:{len(self.automsg_temp_msg_history)} in extracted_name in self.bots_automsg:")
-                self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
-                self.logger.debug(f"len(self.automsg_temp_msg_history) after append:{len(self.automsg_temp_msg_history)} in extracted_name in self.bots_automsg:")
+                self.automsg_temp_msg_history.append(message_metadata)
 
             ############################################
             if extracted_name in self.bots_chatforme:
                 #add GPT elements to chatforme msg list variagble
                 self.logger.debug(f"MESSAGE AUTHOR = CHATFORME BOT ({extracted_name})")
-                self.logger.debug(f"len(self.chatforme_temp_msg_history) before append:{len(self.chatforme_temp_msg_history)} in extracted_name in self.bots_chatforme:")
-                self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
-                self.logger.debug(f"len(self.chatforme_temp_msg_history) before append:{len(self.chatforme_temp_msg_history)} in extracted_name in self.bots_chatforme:")
+                self.chatforme_temp_msg_history.append(message_metadata)
         
         # TODO: ADD TO DATABASE
         #
@@ -419,39 +373,47 @@ class Bot(twitch_commands.Bot):
                                      'num_bot_responses':self.num_bot_responses,
                                      'rss_feed_article_plot':self.random_article_content_prompt_summary,
                                      'param_in_text':'variable_from_scope'}
+                self.logger.debug(f'replacements_dict: ')
+                self.logger.debug(f'{replacements_dict}')
 
                 #######################################
                 if self.args_include_ouat == 'yes':
+                    self.ouat_counter += 1   
                     self.logger.warning(f"ouat_counter is: {self.ouat_counter}")
 
-                    if self.ouat_counter == 0:
+                    if self.ouat_counter == 1:
                         gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_startstory,
                                                                    replacements_dict=replacements_dict)         
+                        self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')
 
                     if self.ouat_counter < self.ouat_story_progression_number:
                         gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.gpt_ouat_prompt_begin,
                                                                    replacements_dict=replacements_dict)         
+                        self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')
 
                     elif self.ouat_counter < self.ouat_story_max_counter:
                         gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_progression,
                                                                    replacements_dict=replacements_dict) 
+                        self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')
                         
                     elif self.ouat_counter == self.ouat_story_max_counter:
                         gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_endstory,
                                                                    replacements_dict=replacements_dict)
-                                                        
+                        self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')                                       
+
                     elif self.ouat_counter > self.ouat_story_max_counter:
-                        await self.channel.send("---TheEnd2---")
+                        message = "---TheEnd---"
+                        await self.channel.send(message)
                         await self.stop_loop()
                         continue
-                    #self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')   
-                
-                else: self.logger.error("Neither automsg or ouat enabled with app startup argument")
+
+                else: print("Neither automsg or ouat enabled with argument")
 
                 messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
                                                                       role='system',
-                                                                      msg_history_list_dict=self.ouat_temp_msg_history,
-                                                                      combine_messages=True)
+                                                                      msg_history_list_dict=self.ouat_temp_msg_history)
+                self.logger.debug("This is the self.ouat_temp_msg_history:")
+                self.logger.debug(self.ouat_temp_msg_history)
                 self.logger.debug("This is the messages_dict_gpt:")
                 self.logger.debug(messages_dict_gpt)
 
@@ -459,10 +421,8 @@ class Bot(twitch_commands.Bot):
                 generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
                                                                 OPENAI_API_KEY=self.OPENAI_API_KEY,
                                                                 max_attempts=3)
-                generated_message = re.sub(r'<<<.*?>>>\s*:', '', generated_message)
+                generated_message = re.sub(r'<<<.*?>>>', '', generated_message)
 
-                #self.ouat_temp_msg_history_text.append()
-                
                 if self.args_include_sound == 'yes':
                     v2s_message_object = generate_t2s_object(
                         ELEVENLABS_XI_API_KEY = self.ELEVENLABS_XI_API_KEY,
@@ -472,13 +432,10 @@ class Bot(twitch_commands.Bot):
                     play(v2s_message_object)
 
                 self.logger.info(f"\nFINAL generated_message type: {type(generated_message)}")
-                self.logger.info(f"FINAL generated_message: {generated_message}")  
+                self.logger.info(f"\nFINAL generated_message: {generated_message}")  
 
                 await self.channel.send(generated_message)
-
-                if self.ouat_counter == self.ouat_story_max_counter:
-                    await self.channel.send("---TheEnd---")
-                self.ouat_counter += 1   
+            
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
 
 

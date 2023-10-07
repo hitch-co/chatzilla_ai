@@ -14,8 +14,7 @@ class ArticleGenerator:
         self.root_logger = my_logger(dirname='log', 
                                      logger_name='root_ArticleGenerator_logger',
                                      debug_level='DEBUG',
-                                     mode='a',
-                                     stream_logs=False)
+                                     mode='a')
 
 
     def fetch_articles(self):
@@ -67,13 +66,16 @@ class ArticleGenerator:
             if content_html_soup:
                 content_text = content_html_soup.get_text()
                 random_article_content = self.clean_html_text(content_text)
-                printc(f"\nSuccessfully fetched article at {random_article_link} with content", bcolors.OKBLUE)
+                printc(f"Successfully fetched article at {random_article_link} with content", bcolors.OKBLUE)
                 printc(f'Preview of article: {random_article_content[:100]}...', bcolors.UNDERLINE)
                 found_article = True
 
             else: 
                 printc(f"Successfully fetched article at {random_article_link} but Article contains no content after retrieving, trying again...", bcolors.FAIL)
                 return []
+
+            self.root_logger.debug(f"random_article_content:")
+            self.root_logger.debug(random_article_content)
 
         return random_article_content
 

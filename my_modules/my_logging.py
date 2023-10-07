@@ -71,3 +71,12 @@ def my_function_logger(dirname = 'log',
 
     return logger    
 
+def log_list_or_dict(logger, obj:list|dict=None):
+    # Logging logic
+    if isinstance(obj, list):
+        for item in obj:
+            logger.debug("Role: %s, Content: %.50s%s", item['role'], item['content'], '...' if len(item['content']) > 50 else '')
+    elif isinstance(obj, dict):
+        logger.debug("Role: %s, Content: %.50s%s", obj['role'], obj['content'], '...' if len(item['content']) > 50 else '')
+    else:
+        logger.warning("Unsupported data type")

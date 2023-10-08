@@ -45,24 +45,34 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
             messages=messages_dict_gpt
             )
         gpt_response_text = generated_response.choices[0].message['content']
-
+        gpt_response_text_len = len(gpt_response_text)
         logger_gptchatcompletion.debug(f"\nThe generated_response object is of type {type(generated_response)}")
         logger_gptchatcompletion.debug(generated_response)
-        logger_gptchatcompletion.debug(f'\nThe --{_}-- call to gpt_chat_completion had a response of {len(gpt_response_text)} characters')
+        logger_gptchatcompletion.debug(f'\nThe --{_}-- call to gpt_chat_completion had a response of {gpt_response_text_len} characters')
         logger_gptchatcompletion.error(f"The generated_response object is of type {type(gpt_response_text)}")        
         
-        if len(gpt_response_text) < max_characters:
+        if gpt_response_text_len < max_characters:
             logger_gptchatcompletion.info(f'\nOK: The generated message was <{max_characters} characters')
-
-            break  # Successfully got a short enough message; exit the loop
-        else:
+            break  
+        else: # Did not get a msg < n chars, try again.
             logger_gptchatcompletion.warning(f'\nFAIL: The generated message was >{max_characters} characters, retrying call to openai_gpt_chatcompletion')
+            
+            messages_dict_gpt_updated = {'role':'user', 'content':f"Shorten this message to less than 400 characters: {gpt_response_text}"}
+            generated_response = openai.ChatCompletion.create(
+                model=model,
+                messages=messages_dict_gpt_updated
+                )
+            gpt_response_text = generated_response.choices[0].message['content']
+            gpt_response_text_len = len(gpt_response_text)
+            if gpt_response_text_len > max_characters:
+                break
+            logger_gptchatcompletion.info(f'\nOK on second try: The generated message was {gpt_response_text_len} characters')
     else:
         message = "Maxium GPT call retries exceeded"
         logger_gptchatcompletion.error(message)        
         raise Exception(message)
 
-    logger_gptchatcompletion.info(f'call to gpt_chat_completion ended with gpt_response_text of {len(gpt_response_text)} characters')
+    logger_gptchatcompletion.info(f'call to gpt_chat_completion ended with gpt_response_text of {gpt_response_text_len} characters')
 
     return gpt_response_text
 

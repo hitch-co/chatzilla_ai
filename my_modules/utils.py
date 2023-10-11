@@ -1,9 +1,10 @@
 import json
 import os
+from datetime import datetime
 
 from my_modules.my_logging import my_logger
 
-logger = my_logger(dirname='log', logger_name='logger_utils.log',debug_level='DEBUG',mode='a',stream_logs=False)
+logger = my_logger(dirname='log', logger_name='logger_utils',debug_level='DEBUG',mode='a',stream_logs=False)
 
 def format_previous_messages_to_string(message_list):
     # message_list=[
@@ -19,8 +20,6 @@ def format_previous_messages_to_string(message_list):
     formatted_str = '\n'.join(formatted_messages)
     return formatted_str
 
-
-#########################################
 def get_user_input(predefined_text=None):
     """
     Get user input with basic error-checking.
@@ -69,7 +68,6 @@ def get_user_input(predefined_text=None):
             
         return user_text
     
-
 def shutdown_server():
     from flask import request 
     func = request.environ.get('werkzeug.server.shutdown')
@@ -77,17 +75,30 @@ def shutdown_server():
         raise RuntimeError('Not running with the Werkzeug Server')
     func()
 
+def write_msg_history_to_file(msg_history, variable_name_text, logger, dirname='log/ouat_story_history'):
 
-
-def write_msg_history_to_file(msg_history, variable_name_text, logger, dirname='log'):
-    # Ensure logs directory exists
+    current_datetime = datetime.now().strftime('%Y%m%d-%H%M%S')
     if not os.path.exists(dirname):
         os.makedirs(dirname)
-
-    # Construct the filename
-    filename = f"{dirname}/final_{variable_name_text}.json"
+    filename = f"{dirname}/final_{variable_name_text}_{current_datetime}.json"
     
     with open(filename, 'w') as file:
         json.dump(msg_history, file, indent=4)
 
-    logger.info(f"Message history written to {filename}")
+    logger.debug(f"Message history written to {filename}")
+    
+def combine_json_files(directory ='.path/to/directory/of/jsonfiles') -> list[list[dict]]:
+    combined_data = []
+
+    # List all the .json files in the given directory
+    files = [f for f in os.listdir(directory) if f.endswith('.json')]
+
+    for filename in files:
+        filepath = os.path.join(directory, filename)
+        
+        # Open the .json file and load its content
+        with open(filepath, 'r') as file:
+            data = json.load(file)
+            combined_data.append(data)
+    
+    return combined_data

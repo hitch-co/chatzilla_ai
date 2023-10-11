@@ -209,9 +209,18 @@ class Bot(twitch_commands.Bot):
         self.ouat_counter = 2
         self.logger.warning(f"self.ouat_counter has been reset to {self.ouat_counter}")
 
+    @twitch_commands.command(name='stopstory')
+    async def stop_story(self):
+        await self.channel.send("---Story To Be Continued...--- (!stopstory)")
+        await self.stop_loop()
+
+    @twitch_commands.command(name='endstory')
+    async def end_story(self):
+        self.ouat_counter = self.ouat_story_max_counter
+
     #stops and clears the ouat loop/message history
     async def stop_loop(self) -> None:
-        await self.channel.send("---TheEnd1---")
+        await self.channel.send("---ThEeNd--- (stop_loop())")
         self.is_ouat_loop_active = False
         
         write_msg_history_to_file(
@@ -227,16 +236,10 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(f"len(self.ouat_temp_msg_history) after clear:{len(self.ouat_temp_msg_history)} in stop_loop():")
         self.ouat_counter = 0
 
-
-    async def end_story(self):
-        self.ouat_counter = self.ouat_story_max_counter
-
-
     async def print_runtime_params(self, args_list=None):        
         self.logger.info("These are the runtime params for this bot:")
         for arg in args_list:
             self.logger.info(f"{arg}: {getattr(self, arg)}")
-
 
     #TODO: Collects historic messages for use in chatforme
     async def event_message(self, message):
@@ -288,30 +291,26 @@ class Bot(twitch_commands.Bot):
                         gpt_prompt_text=self.ouat_news_article_summary_prompt,
                         replacements_dict=replacements_dict
                         )
+                    self.logger.debug(f'This is the self.random_article_content:')
+                    self.logger.debug(self.random_article_content[:25]+"...")
 
                     gpt_ready_list_dict = combine_msghistory_and_prompttext(
                         prompt_text=self.random_article_content,
                         name=self.twitch_bot_username,
                         msg_history_list_dict=None
                         )
+                    self.logger.debug(f'This is the gpt_ready_list_dict:')
+                    self.logger.debug(gpt_ready_list_dict)
 
                     self.random_article_content_prompt_summary = openai_gpt_chatcompletion(
                         messages_dict_gpt=gpt_ready_list_dict, 
                         OPENAI_API_KEY=self.OPENAI_API_KEY, 
                         max_characters=1200
                         )  
-                    
+                    self.logger.debug(f'This is the self.random_article_content_prompt_summary:')
+                    self.logger.debug(self.random_article_content_prompt_summary)
+
                     await self.start_send_periodic_msg_loop()
-
-                ###########################################
-                elif message.content == "!stopstory" and message.author.is_mod:
-                    await self.channel.send("---Story To Be Continued (!stopstory)---")
-                    await self.stop_loop()
-
-                ###########################################
-                elif message.content == "!endstory" and message.author.is_mod:
-                    await self.end_story()
-
 
             ###########################################
             #Regular collection of messages and assignment to the appropriate
@@ -482,7 +481,6 @@ class Bot(twitch_commands.Bot):
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
 
 
-    # Import the Twitch command decorator
     @twitch_commands.command(name='chatforme')
     async def chatforme2(self, ctx):
         """
@@ -532,7 +530,6 @@ class Bot(twitch_commands.Bot):
         return print(f"Sent gpt_response to chat: {gpt_response}")
 
 
-    # Import the Twitch command decorator
     @twitch_commands.command(name='botthot')
     async def chatforme(self, ctx):
         """
@@ -596,7 +593,6 @@ class Bot(twitch_commands.Bot):
 
         # Send the GPT-generated response back to the Twitch chat.
         await ctx.send(gpt_response)
-
 
 
 ################################
@@ -731,4 +727,3 @@ if __name__ == "__main__":
     #run app
     args = parser.parse_args()
     app.run(port=args.input_port_number, debug=True, use_reloader=use_reloader_bool)
-

@@ -47,26 +47,29 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
         gpt_response_text = generated_response.choices[0].message['content']
         gpt_response_text_len = len(gpt_response_text)
         logger_gptchatcompletion.debug(f"\nThe generated_response object is of type {type(generated_response)}")
-        logger_gptchatcompletion.debug(generated_response)
         logger_gptchatcompletion.debug(f'\nThe --{_}-- call to gpt_chat_completion had a response of {gpt_response_text_len} characters')
-        logger_gptchatcompletion.error(f"The generated_response object is of type {type(gpt_response_text)}")        
+        logger_gptchatcompletion.debug(f"The generated_response object is of type {type(gpt_response_text)}")        
         
         if gpt_response_text_len < max_characters:
             logger_gptchatcompletion.info(f'\nOK: The generated message was <{max_characters} characters')
             break  
+
         else: # Did not get a msg < n chars, try again.
-            logger_gptchatcompletion.warning(f'\nFAIL: The generated message was >{max_characters} characters, retrying call to openai_gpt_chatcompletion')
+            logger_gptchatcompletion.warning(f'\The generated message was >{max_characters} characters, retrying call to openai_gpt_chatcompletion')
             
             messages_dict_gpt_updated = {'role':'user', 'content':f"Shorten this message to less than 400 characters: {gpt_response_text}"}
             generated_response = openai.ChatCompletion.create(
                 model=model,
-                messages=messages_dict_gpt_updated
+                messages=[messages_dict_gpt_updated]
                 )
             gpt_response_text = generated_response.choices[0].message['content']
             gpt_response_text_len = len(gpt_response_text)
+
             if gpt_response_text_len > max_characters:
+                logger_gptchatcompletion.warning(f'\nThe generated message was gpt_response_text_len characters (>{max_characters}) on the second try, retrying call to openai_gpt_chatcompletion')
+            elif gpt_response_text_len < max_characters:
+                logger_gptchatcompletion.info(f'\nOK on second try: The generated message was {gpt_response_text_len} characters')
                 break
-            logger_gptchatcompletion.info(f'\nOK on second try: The generated message was {gpt_response_text_len} characters')
     else:
         message = "Maxium GPT call retries exceeded"
         logger_gptchatcompletion.error(message)        
@@ -116,30 +119,6 @@ def rand_prompt(prompts_list=None):
     return selected_prompt
 
 
-
-# def generate_automsg_prompt(automsg_prompts_list,
-#                             automsg_prompt_prefix,
-#                             replacements_dict):
-#     #setup logger
-#     logger_generateautomsgprompt = my_logger(dirname='log', 
-#                                              logger_name='logger_generate_automsg_prompt',
-#                                              mode='a')
-
-#     automsg_prompt = rand_prompt(automsg_prompts_list)   
-#     logger_generateautomsgprompt.debug(f"\nreplacements_dict:")
-#     logger_generateautomsgprompt.debug(replacements_dict)    
-#     logger_generateautomsgprompt.debug(f"\nautomsg_prompt:")
-#     logger_generateautomsgprompt.debug(automsg_prompt)    
-
-#     gpt_automsg_prompt =  automsg_prompt_prefix + automsg_prompt
-    
-#     gpt_prompt_final = format_prompt(text=gpt_automsg_prompt,
-#                                      replacements_dict=replacements_dict)
-    
-#     printc(f"\nAUTMSG: These are the variables for AUTOMSG prompt", bcolors.WARNING)
-#     printc(f"AUTOMSG gpt_prompt_final:{gpt_prompt_final}", bcolors.OKBLUE)  
-#     return gpt_prompt_final
-
 def prompt_text_replacement(gpt_prompt_text,
                          replacements_dict):
     prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
@@ -188,12 +167,6 @@ def create_gpt_message_dict_from_twitchmessage(message_metadata, role='user'):
     return gpt_ready_msg_dict
 
 
-# combine_msghistory_and_prompttext(prompt_text = 'hello this is a prompt',
-#                                   role='system',
-#                                   name='unknown',
-#                                   msg_history_list_dict=[{'role':'assistant', 'content':'this is content1'},
-#                                                          {'role':'user', 'content':'this is content2'}],
-#                                   combine_messages=False)
 def combine_msghistory_and_prompttext(prompt_text,
                                       role='user',
                                       name='unknown',
@@ -237,8 +210,6 @@ def combine_msghistory_and_prompttext(prompt_text,
             return msg_history_list_dict
 
 
-
-
 def get_models(api_key=None):
     """
     Function to fetch the available models from the OpenAI API.
@@ -265,20 +236,21 @@ if __name__ == '__main__':
     load_env(env_dirname='config')
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
-    gpt_models = get_models(OPENAI_API_KEY)
-    print("GPT Models:")
-    print(json.dumps(gpt_models, indent=4))
+    # #test2 -- Get models
+    # gpt_models = get_models(OPENAI_API_KEY)
+    # print("GPT Models:")
+    # print(json.dumps(gpt_models, indent=4))
 
-    #test1 -- get_random_rss_article_summary_prompt
-    summary_prompt = yaml_data['ouat_news_article_summary_prompt']
+    # #test1 -- get_random_rss_article_summary_prompt
+    # summary_prompt = yaml_data['ouat_news_article_summary_prompt']
     
-    summary_prompt_response = get_random_rss_article_summary_prompt(
-        newsarticle_rss_feed='http://rss.cnn.com/rss/cnn_showbiz.rss',
-        summary_prompt=summary_prompt,
-        OPENAI_API_KEY=OPENAI_API_KEY
-        )
-    print("summary_prompt_response:")
-    print(summary_prompt_response)
+    # summary_prompt_response = get_random_rss_article_summary_prompt(
+    #     newsarticle_rss_feed='http://rss.cnn.com/rss/cnn_showbiz.rss',
+    #     summary_prompt=summary_prompt,
+    #     OPENAI_API_KEY=OPENAI_API_KEY
+    #     )
+    # print("summary_prompt_response:")
+    # print(summary_prompt_response)
 
 
 

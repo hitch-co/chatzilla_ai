@@ -44,7 +44,7 @@ class ArticleGenerator:
         found_article = False
         if not self.articles:
             print("Missing URL or article data.")
-            return []
+            return ['']
         
         while found_article == False:
             self.root_logger.debug(f"type(self.articles): {type(self.articles)}")
@@ -55,14 +55,14 @@ class ArticleGenerator:
                 response.raise_for_status()  # This will raise if HTTP request returned an unsuccessful status code
             except requests.RequestException as e:
                 printc(f"Failed to fetch the article at {random_article_link}. Error: {e}", bcolors.FAIL)
-                return []
+                return ['']
 
             try:
                 soup = BeautifulSoup(response.content, 'html.parser')
                 content_html_soup = soup.find('div', {'class': 'article__content'})
             except Exception as e:
                 printc(f"Error during parsing the article at {random_article_link}. Error: {e}", bcolors.FAIL)
-                return []
+                return ['']
 
             if content_html_soup:
                 content_text = content_html_soup.get_text()
@@ -73,7 +73,6 @@ class ArticleGenerator:
 
             else: 
                 printc(f"Successfully fetched article at {random_article_link} but Article contains no content after retrieving, trying again...", bcolors.FAIL)
-                return []
 
         return random_article_content
 

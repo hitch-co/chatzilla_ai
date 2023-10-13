@@ -3,7 +3,8 @@ import argparse
 
 from elevenlabs import play
 
-from modules import load_env, load_yaml, openai_gpt_chatcompletion
+from my_modules.config import load_env, load_yaml 
+from my_modules.gpt import openai_gpt_chatcompletion
 from my_modules.text_to_speech import generate_t2s_object
 from my_modules.utils import get_user_input
 

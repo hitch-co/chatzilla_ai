@@ -50,7 +50,7 @@ Author
 Eric Hitchman, with the assistance of GPT4
 
 """
-from modules import load_yaml, load_env
+from my_modules.config import load_yaml, load_env
 from my_modules.utils import shutdown_server
 
 import discord

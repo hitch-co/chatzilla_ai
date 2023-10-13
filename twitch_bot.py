@@ -22,7 +22,7 @@ from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_promp
 from my_modules.gpt import create_gpt_message_dict_from_twitchmessage
 
 from my_modules.my_logging import my_logger, log_list_or_dict
-from my_modules.twitchio_helpers import extract_name_from_rawdata
+from my_modules.twitchio_helpers import extract_name_from_rawdata, extract_usernames_string_from_chat_history, extract_usernames_string_from_usernames_list
 from my_modules.config import load_yaml, load_env
 from my_modules import text_to_speech
 from my_modules.text_to_speech import generate_t2s_object
@@ -86,6 +86,9 @@ class Bot(twitch_commands.Bot):
         self.bot_temp_msg_history = []
         self.nonbot_temp_msg_history = []
         self.ouat_temp_msg_history = []
+
+        #placeholder list
+        self.users_in_messages_list = []
 
         #counters
         self.ouat_counter = 0
@@ -161,7 +164,6 @@ class Bot(twitch_commands.Bot):
 
         return self.logger.info("Configuration attributes loaded/refreshed from YAML/env variables")  
 
-
     #Set the listener(?) to start once the bot is ready
     async def event_ready(self):
         self.channel = self.get_channel(self.twitch_bot_channel_name)
@@ -195,15 +197,23 @@ class Bot(twitch_commands.Bot):
             self.logger.error("Neither automsg or ouat enabled with app argument")
             raise BotFeatureNotEnabledException("Neither automsg or ouat enabled with app argument")
 
-
     @twitch_commands.command(name='addtostory')
     async def add_to_story_ouat(self, ctx, *args):
+        author=ctx.message.author.name
         prompt_text = ' '.join(args)
-        gpt_ready_msg_dict = {'role':'user', 'content':prompt_text}
+        gpt_ready_msg_dict = create_custom_gpt_message_dict(
+            prompt_text=prompt_text,
+            role='user',
+            name=author
+            )
+        #gpt_ready_msg_dict = {'role':'user', 'content':prompt_text}
         self.logger.debug(f"len(self.ouat_temp_msg_history) before append:{len(self.ouat_temp_msg_history)} in add_to_story_ouat():")
         self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
-        self.logger.debug(f"len(self.ouat_temp_msg_history) after append:{len(self.ouat_temp_msg_history)} in add_to_story_ouat():")
+        self.users_in_messages_list.append(author)
+        self.users_in_messages_list = list(set(self.users_in_messages_list))
 
+        self.logger.debug(f"len(self.ouat_temp_msg_history) after append:{len(self.ouat_temp_msg_history)} in add_to_story_ouat():")
+        
     @twitch_commands.command(name='extendstory')
     async def extend_story(self, ctx, *args) -> None:
         self.ouat_counter = 2
@@ -244,12 +254,16 @@ class Bot(twitch_commands.Bot):
     #TODO: Collects historic messages for use in chatforme
     async def event_message(self, message):
 
+
         ############################################
         ############################################
         if message.author is not None:
             printc("message.author is not None", bcolors.FAIL)  
             printc(f"message.author.name: {message.author.name}", bcolors.OKBLUE)
             printc(f'message.content: {message.content[:25]}...\n', bcolors.OKBLUE)
+
+            self.users_in_messages_list.append(message.author.name)
+            self.users_in_messages_list = list(set(self.users_in_messages_list))
 
             # Collect all metadata
             message_metadata = {
@@ -357,6 +371,8 @@ class Bot(twitch_commands.Bot):
         elif message.author is None:
             self.logger.debug("message.author is None")            
             extracted_name = extract_name_from_rawdata(message.raw_data)
+            self.users_in_messages_list.append(extracted_name)
+            self.users_in_messages_list = list(set(self.users_in_messages_list))
             self.logger.debug(f"The extracted_name is: '{extracted_name}'")  
 
             gpt_ready_msg_dict = create_custom_gpt_message_dict(role = 'user',
@@ -395,7 +411,6 @@ class Bot(twitch_commands.Bot):
         
         if message.author is not None:
             await self.handle_commands(message)
-
 
     #Create a GPT response based on config.yaml
     async def send_periodic_message(self):
@@ -480,7 +495,6 @@ class Bot(twitch_commands.Bot):
                 self.ouat_counter += 1   
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
 
-
     @twitch_commands.command(name='chatforme')
     async def chatforme2(self, ctx):
         """
@@ -491,44 +505,37 @@ class Bot(twitch_commands.Bot):
         request_user_name = ctx.message.author.name
 
         # Extract usernames from previous chat messages stored in chatforme_temp_msg_history.
-        users_in_messages_list = list(set([message['role'] for message in self.chatforme_temp_msg_history]))
-        users_in_messages_list_text = ', '.join(users_in_messages_list)
+        users_in_messages_list_text = extract_usernames_string_from_usernames_list(
+            usernames_list=self.users_in_messages_list
+            )
 
-        # Format the GPT prompts using 
-        # placeholders and data from the YAML file and chat history.
-        # TODO: Redo using format_prompt() function
-        formatted_gpt_chatforme_prompts_formatted = {
-            key: value.format(
-                twitch_bot_username=self.twitch_bot_username,
-                num_bot_responses=self.num_bot_responses,
-                request_user_name=request_user_name,
-                users_in_messages_list_text=users_in_messages_list_text,
-                chatforme_message_wordcount=self.chatforme_message_wordcount
-            ) for key, value in self.formatted_gpt_chatforme_prompts.items() if isinstance(value, str)
-        }
-
-        #TODO: Can be replaced by a function
-        #Select the prompt based on the argument on app startup
-        formatted_gpt_chatforme_prompt = formatted_gpt_chatforme_prompts_formatted[self.args_chatforme_prompt_name]
-
-        #Build the chatgpt_chatforme_prompt to be added as role: system to the 
-        # chatcompletions endpoint
+        #Select prompt from argument, build the final prompt textand format replacements
+        formatted_gpt_chatforme_prompt = self.formatted_gpt_chatforme_prompts[self.args_chatforme_prompt_name]
         chatgpt_chatforme_prompt = self.formatted_gpt_chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.formatted_gpt_chatforme_prompt_suffix
+        replacements_dict = {
+            "twitch_bot_username":self.twitch_bot_username,
+            "num_bot_responses":self.num_bot_responses,
+            "request_user_name":request_user_name,
+            "users_in_messages_list_text":users_in_messages_list_text,
+            "chatforme_message_wordcount":self.chatforme_message_wordcount
+        }
+        chatgpt_chatforme_prompt = prompt_text_replacement(
+            gpt_prompt_text=chatgpt_chatforme_prompt,
+            replacements_dict = replacements_dict
+            )
 
-        # Create a dictionary entry for the chat prompt
-        chatgpt_prompt_dict = [{'role': 'system', 'content': chatgpt_chatforme_prompt}]
-
-        # Combine the chat history with the new system prompt to form a list of messages for GPT.
-        messages_dict_gpt = self.chatforme_temp_msg_history + chatgpt_prompt_dict
-
-        # Execute the GPT API call to get the chatbot response
-        gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
-
-        # Send the GPT-generated response back to the Twitch chat.
-        await ctx.send(gpt_response)
+        messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text = chatgpt_chatforme_prompt,
+                                                                role='system',
+                                                                msg_history_list_dict=self.chatforme_temp_msg_history,
+                                                                combine_messages=False)
         
-        return print(f"Sent gpt_response to chat: {gpt_response}")
+        # Execute the GPT API call to get the chatbot response
+        gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
+                                                 OPENAI_API_KEY=self.OPENAI_API_KEY)
+        gpt_response_formatted = re.sub(r'<<<.*?>>>\s*:', '', gpt_response)
 
+        await ctx.send(gpt_response_formatted)      
+        return print(f"Sent gpt_response to chat: {gpt_response_formatted}")
 
     @twitch_commands.command(name='botthot')
     async def chatforme(self, ctx):
@@ -539,60 +546,38 @@ class Bot(twitch_commands.Bot):
         self.load_configuration()
         request_user_name = ctx.message.author.name
 
-        # printc('CHATFORME command issued', bcolors.WARNING)
-        # printc(f"Request Username:{request_user_name}", bcolors.OKBLUE)
-        # printc(f"num_bot_responses: {self.num_bot_responses}", bcolors.OKBLUE)
-        # printc(f"chatforme_message_wordcount: {self.chatforme_message_wordcount}", bcolors.OKBLUE)
-        # printc(f"formatted_gpt_chatforme_prompt_prefix: {self.formatted_gpt_chatforme_prompt_prefix}", bcolors.OKBLUE)
-        # printc(f"formatted_gpt_chatforme_prompt_suffix: {self.formatted_gpt_chatforme_prompt_suffix}", bcolors.OKBLUE)
-        # printc(f'formatted_gpt_chatforme_prompts: {self.formatted_gpt_chatforme_prompts}', bcolors.OKBLUE)
-
-        #TODO right now 'bot' is being sent when 'bot1' or 'cire5955_dev' should be sent (The bot username)
-        # Get chat history for this session, grab the list of prompts from the yaml. 
-        message_list = self.chatforme_temp_msg_history
-
         # Extract usernames from previous chat messages stored in chatforme_temp_msg_history.
-        users_in_messages_list = list(set([message['role'] for message in message_list]))
-        users_in_messages_list_text = ', '.join(users_in_messages_list)
+        users_in_messages_list_text = extract_usernames_string_from_usernames_list(
+            usernames_list=self.users_in_messages_list
+            )
 
-        # Format the GPT prompts using placeholders and data from the YAML file and chat history.
-        formatted_gpt_chatforme_prompts_formatted = {
-            key: value.format(
-                twitch_bot_username=self.twitch_bot_username,
-                num_bot_responses=self.num_bot_responses,
-                request_user_name=request_user_name,
-                users_in_messages_list_text=users_in_messages_list_text,
-                chatforme_message_wordcount=self.chatforme_message_wordcount
-            ) for key, value in self.formatted_gpt_chatforme_prompts.items() if isinstance(value, str)
-        }
-        #Select the prompt based on the argument on app startup
-        formatted_gpt_chatforme_prompt = formatted_gpt_chatforme_prompts_formatted[self.args_botthot_prompt_name]
-
-        #Build the chatgpt_chatforme_prompt to be added as role: system to the 
+        #Select the prompt, build the chatgpt_chatforme_prompt to be added as role: system to the 
         # chatcompletions endpoint
+        formatted_gpt_chatforme_prompt = self.formatted_gpt_chatforme_prompts[self.args_botthot_prompt_name]
         chatgpt_chatforme_prompt = self.formatted_gpt_chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.formatted_gpt_chatforme_prompt_suffix
+        replacements_dict = {
+            "twitch_bot_username":self.twitch_bot_username,
+            "num_bot_responses":self.num_bot_responses,
+            "request_user_name":request_user_name,
+            "users_in_messages_list_text":users_in_messages_list_text,
+            "chatforme_message_wordcount":self.chatforme_message_wordcount
+        }
+        chatgpt_chatforme_prompt = prompt_text_replacement(gpt_prompt_text=formatted_gpt_chatforme_prompt,
+                                    replacements_dict=replacements_dict)
 
-        # Create a dictionary entry for the chat prompt
-        chatgpt_prompt_dict = [{'role': 'system', 'content': chatgpt_chatforme_prompt}]
-
-        # Combine the chat history with the new system prompt to form a list of messages for GPT.
-        messages_dict_gpt = message_list + chatgpt_prompt_dict
-
+        # # Combine the chat history with the new system prompt to form a list of messages for GPT.
+        messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=chatgpt_chatforme_prompt,
+                                                              role='system',
+                                                              name='unknown',
+                                                              msg_history_list_dict=self.chatforme_temp_msg_history,
+                                                              combine_messages=False)
+        
         # Execute the GPT API call to get the chatbot response
         gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
+        gpt_response_formatted = re.sub(r'<<<.*?>>>\s*:', '', gpt_response)
 
-        # #Print out Final prompt
-        # printc('\nLOG: This is the prompt prefix that was selected (formatted_gpt_chatforme_prompt_prefix)', bcolors.WARNING)
-        # print(self.formatted_gpt_chatforme_prompt_prefix)
-        # printc('\nLOG: This is the prompt that was selected (formatted_gpt_chatforme_prompt)', bcolors.WARNING)
-        # print(formatted_gpt_chatforme_prompt)
-        # printc("\nLOG: This is the prompt (formatted_gpt_chatforme_prompt_suffix)", bcolors.WARNING)
-        # print(self.formatted_gpt_chatforme_prompt_suffix)
-        # printc("\nFINAL gpt_response:", bcolors.WARNING)
-        # print(gpt_response)
-
-        # Send the GPT-generated response back to the Twitch chat.
-        await ctx.send(gpt_response)
+        await ctx.send(gpt_response_formatted)
+        return print(f"Sent gpt_response to chat: {gpt_response_formatted}")
 
 
 ################################
@@ -612,7 +597,6 @@ twitch_bot_scope = 'chat:read+chat:edit'
 def hello_world():
     return "Hello, you're probably looking for the /auth page!"
 
-
 #app route auth
 @app.route('/auth')
 def auth():
@@ -623,7 +607,6 @@ def auth():
     url = base_url_auth+params_auth
     print(f"Generated redirect_uri: {redirect_uri}")
     return f'<a href="{url}">Connect with Twitch</a>'
-
 
 #app route auth callback
 @app.route('/callback')
@@ -674,7 +657,6 @@ def callback():
         # output['response.text'] = response.json()
         return '<a>There was an issue retrieving and setting the access token.  If you would like to include more detail in this message, return "template.html" or equivalent using the render_template() method from flask and add it to this response...'
 
-
 #This is run immediately after the authentication process.
 def run_bot(TWITCH_BOT_ACCESS_TOKEN):
 
@@ -699,10 +681,8 @@ def run_bot(TWITCH_BOT_ACCESS_TOKEN):
     bot = Bot(TWITCH_BOT_ACCESS_TOKEN, yaml_data, env_vars)
     bot.run()
 
-
 #TODO/NOTE: Everytime /callback is hit, a new bot instance is being started.  This 
 # could cause problems
-
 if __name__ == "__main__":
 
     # Can't get the defaults  in arg parser to work as I planned (aka leaving the command prompt entry 

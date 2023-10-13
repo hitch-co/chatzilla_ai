@@ -18,7 +18,7 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
                               OPENAI_API_KEY=None, 
                               max_characters=500,
                               max_attempts=5,
-                              model="gpt-3.5-turbo"): 
+                              model="gpt-4"): 
     """
     Send a message to OpenAI GPT-3.5-turbo for completion and get the response.
 
@@ -120,14 +120,14 @@ def rand_prompt(prompts_list=None):
 
 
 def prompt_text_replacement(gpt_prompt_text,
-                         replacements_dict):
+                            replacements_dict):
     prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
     return prompt_text_replaced
 
 
 def create_custom_gpt_message_dict(prompt_text,
                                    role='user',
-                                   name=None):
+                                   name='unknown'):
     
     if role == 'system':
         gpt_ready_msg_dict = {'role': role, 'content': f'{prompt_text}'}
@@ -137,7 +137,8 @@ def create_custom_gpt_message_dict(prompt_text,
     return gpt_ready_msg_dict
 
 
-def create_gpt_message_dict_from_twitchmessage(message_metadata, role='user'):
+def create_gpt_message_dict_from_twitchmessage(message_metadata, 
+                                               role='user'):
     """
     Create a dictionary suitable for GPT chat completion.
     
@@ -198,7 +199,7 @@ def combine_msghistory_and_prompttext(prompt_text,
         raise ValueError("msg_history_list_dict should be a list of dictionaries or None")
     
     else:
-        if combine_messages:
+        if combine_messages == True:
             msg_history_list_dict = [{
                 'role':role, 
                 'content':" ".join(item["content"] for item in msg_history_list_dict if item['role'] != 'system')
@@ -236,10 +237,10 @@ if __name__ == '__main__':
     load_env(env_dirname='config')
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
-    # #test2 -- Get models
-    # gpt_models = get_models(OPENAI_API_KEY)
-    # print("GPT Models:")
-    # print(json.dumps(gpt_models, indent=4))
+    #test2 -- Get models
+    gpt_models = get_models(OPENAI_API_KEY)
+    print("GPT Models:")
+    print(json.dumps(gpt_models, indent=4))
 
     # #test1 -- get_random_rss_article_summary_prompt
     # summary_prompt = yaml_data['ouat_news_article_summary_prompt']

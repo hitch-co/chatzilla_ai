@@ -18,7 +18,7 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
                               OPENAI_API_KEY=None, 
                               max_characters=500,
                               max_attempts=5,
-                              model="gpt-4"): 
+                              model="gpt-3.5-turbo"): 
     """
     Send a message to OpenAI GPT-3.5-turbo for completion and get the response.
 

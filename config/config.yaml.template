@@ -14,7 +14,7 @@ twitch-bots:
 
 twitch-chatforme:
 
-twitch-automsg:
+twitch-ouat:
   #newsarticle_rss_feed: 'http://rss.cnn.com/rss/cnn_showbiz.rss'
   newsarticle_rss_feed: 'http://rss.cnn.com/rss/cnn_topstories.rss'
 

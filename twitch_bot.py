@@ -124,7 +124,7 @@ class Bot(twitch_commands.Bot):
         self.ouat_message_recurrence_seconds = self.yaml_data['ouat_message_recurrence_seconds']
 
         self.ouat_prompts = self.yaml_data['ouat_prompts']
-        self.newsarticle_rss_feed = self.yaml_data['twitch-automsg']['newsarticle_rss_feed']
+        self.newsarticle_rss_feed = self.yaml_data['twitch-ouat']['newsarticle_rss_feed']
         self.ouat_news_article_summary_prompt = self.yaml_data['ouat_news_article_summary_prompt'] 
 
         self.gpt_ouat_prompt_begin = self.ouat_prompts[self.args_ouat_prompt_name]
@@ -455,7 +455,6 @@ class Bot(twitch_commands.Bot):
                                                                    replacements_dict=replacements_dict)
                                                         
                     elif self.ouat_counter > self.ouat_story_max_counter:
-                        await self.channel.send("---TheEnd2---")
                         await self.stop_loop()
                         continue
                     #self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')   

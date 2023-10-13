@@ -161,7 +161,6 @@ class Bot(twitch_commands.Bot):
 
         return self.logger.info("Configuration attributes loaded/refreshed from YAML/env variables")  
 
-
     #Set the listener(?) to start once the bot is ready
     async def event_ready(self):
         self.channel = self.get_channel(self.twitch_bot_channel_name)
@@ -194,7 +193,6 @@ class Bot(twitch_commands.Bot):
         if not any([self.args_include_automsg == 'yes', self.args_include_ouat == 'yes']):
             self.logger.error("Neither automsg or ouat enabled with app argument")
             raise BotFeatureNotEnabledException("Neither automsg or ouat enabled with app argument")
-
 
     @twitch_commands.command(name='addtostory')
     async def add_to_story_ouat(self, ctx, *args):
@@ -396,7 +394,6 @@ class Bot(twitch_commands.Bot):
         if message.author is not None:
             await self.handle_commands(message)
 
-
     #Create a GPT response based on config.yaml
     async def send_periodic_message(self):
         self.load_configuration()
@@ -480,7 +477,6 @@ class Bot(twitch_commands.Bot):
                 self.ouat_counter += 1   
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
 
-
     @twitch_commands.command(name='chatforme')
     async def chatforme2(self, ctx):
         """
@@ -494,26 +490,18 @@ class Bot(twitch_commands.Bot):
         users_in_messages_list = list(set([message['role'] for message in self.chatforme_temp_msg_history]))
         users_in_messages_list_text = ', '.join(users_in_messages_list)
 
-        # Format the GPT prompts using 
-        # placeholders and data from the YAML file and chat history.
-        # TODO: Redo using format_prompt() function
-        formatted_gpt_chatforme_prompts_formatted = {
-            key: value.format(
-                twitch_bot_username=self.twitch_bot_username,
-                num_bot_responses=self.num_bot_responses,
-                request_user_name=request_user_name,
-                users_in_messages_list_text=users_in_messages_list_text,
-                chatforme_message_wordcount=self.chatforme_message_wordcount
-            ) for key, value in self.formatted_gpt_chatforme_prompts.items() if isinstance(value, str)
-        }
-
-        #TODO: Can be replaced by a function
-        #Select the prompt based on the argument on app startup
-        formatted_gpt_chatforme_prompt = formatted_gpt_chatforme_prompts_formatted[self.args_chatforme_prompt_name]
-
-        #Build the chatgpt_chatforme_prompt to be added as role: system to the 
-        # chatcompletions endpoint
+        #Select prompt from argument, build the final prompt textand format replacements
+        formatted_gpt_chatforme_prompt = self.formatted_gpt_chatforme_prompts[self.args_chatforme_prompt_name]
         chatgpt_chatforme_prompt = self.formatted_gpt_chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.formatted_gpt_chatforme_prompt_suffix
+        replacements_dict = {
+            "twitch_bot_username":self.twitch_bot_username,
+            "num_bot_responses":self.num_bot_responses,
+            "request_user_name":request_user_name,
+            "users_in_messages_list_text":users_in_messages_list_text,
+            "chatforme_message_wordcount":self.chatforme_message_wordcount
+        }
+        prompt_text_replacement(gpt_prompt_text = chatgpt_chatforme_prompt,
+                                replacements_dict = replacements_dict)
 
         # Create a dictionary entry for the chat prompt
         chatgpt_prompt_dict = [{'role': 'system', 'content': chatgpt_chatforme_prompt}]
@@ -529,7 +517,6 @@ class Bot(twitch_commands.Bot):
         
         return print(f"Sent gpt_response to chat: {gpt_response}")
 
-
     @twitch_commands.command(name='botthot')
     async def chatforme(self, ctx):
         """
@@ -539,14 +526,6 @@ class Bot(twitch_commands.Bot):
         self.load_configuration()
         request_user_name = ctx.message.author.name
 
-        # printc('CHATFORME command issued', bcolors.WARNING)
-        # printc(f"Request Username:{request_user_name}", bcolors.OKBLUE)
-        # printc(f"num_bot_responses: {self.num_bot_responses}", bcolors.OKBLUE)
-        # printc(f"chatforme_message_wordcount: {self.chatforme_message_wordcount}", bcolors.OKBLUE)
-        # printc(f"formatted_gpt_chatforme_prompt_prefix: {self.formatted_gpt_chatforme_prompt_prefix}", bcolors.OKBLUE)
-        # printc(f"formatted_gpt_chatforme_prompt_suffix: {self.formatted_gpt_chatforme_prompt_suffix}", bcolors.OKBLUE)
-        # printc(f'formatted_gpt_chatforme_prompts: {self.formatted_gpt_chatforme_prompts}', bcolors.OKBLUE)
-
         #TODO right now 'bot' is being sent when 'bot1' or 'cire5955_dev' should be sent (The bot username)
         # Get chat history for this session, grab the list of prompts from the yaml. 
         message_list = self.chatforme_temp_msg_history
@@ -555,22 +534,22 @@ class Bot(twitch_commands.Bot):
         users_in_messages_list = list(set([message['role'] for message in message_list]))
         users_in_messages_list_text = ', '.join(users_in_messages_list)
 
-        # Format the GPT prompts using placeholders and data from the YAML file and chat history.
-        formatted_gpt_chatforme_prompts_formatted = {
-            key: value.format(
-                twitch_bot_username=self.twitch_bot_username,
-                num_bot_responses=self.num_bot_responses,
-                request_user_name=request_user_name,
-                users_in_messages_list_text=users_in_messages_list_text,
-                chatforme_message_wordcount=self.chatforme_message_wordcount
-            ) for key, value in self.formatted_gpt_chatforme_prompts.items() if isinstance(value, str)
-        }
         #Select the prompt based on the argument on app startup
-        formatted_gpt_chatforme_prompt = formatted_gpt_chatforme_prompts_formatted[self.args_botthot_prompt_name]
+        #TODO: Update prompt, check on message collection and try to give thebot a personality and get it to stop including the freaking username handles. 
+        formatted_gpt_chatforme_prompt = self.formatted_gpt_chatforme_prompts[self.args_botthot_prompt_name]
 
         #Build the chatgpt_chatforme_prompt to be added as role: system to the 
         # chatcompletions endpoint
         chatgpt_chatforme_prompt = self.formatted_gpt_chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.formatted_gpt_chatforme_prompt_suffix
+        replacements_dict = {
+            "twitch_bot_username":self.twitch_bot_username,
+            "num_bot_responses":self.num_bot_responses,
+            "request_user_name":request_user_name,
+            "users_in_messages_list_text":users_in_messages_list_text,
+            "chatforme_message_wordcount":self.chatforme_message_wordcount
+        }
+        prompt_text_replacement(gpt_prompt_text=formatted_gpt_chatforme_prompt,
+                                    replacements_dict=replacements_dict)
 
         # Create a dictionary entry for the chat prompt
         chatgpt_prompt_dict = [{'role': 'system', 'content': chatgpt_chatforme_prompt}]
@@ -580,16 +559,6 @@ class Bot(twitch_commands.Bot):
 
         # Execute the GPT API call to get the chatbot response
         gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
-
-        # #Print out Final prompt
-        # printc('\nLOG: This is the prompt prefix that was selected (formatted_gpt_chatforme_prompt_prefix)', bcolors.WARNING)
-        # print(self.formatted_gpt_chatforme_prompt_prefix)
-        # printc('\nLOG: This is the prompt that was selected (formatted_gpt_chatforme_prompt)', bcolors.WARNING)
-        # print(formatted_gpt_chatforme_prompt)
-        # printc("\nLOG: This is the prompt (formatted_gpt_chatforme_prompt_suffix)", bcolors.WARNING)
-        # print(self.formatted_gpt_chatforme_prompt_suffix)
-        # printc("\nFINAL gpt_response:", bcolors.WARNING)
-        # print(gpt_response)
 
         # Send the GPT-generated response back to the Twitch chat.
         await ctx.send(gpt_response)

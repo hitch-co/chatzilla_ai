@@ -120,7 +120,7 @@ def rand_prompt(prompts_list=None):
 
 
 def prompt_text_replacement(gpt_prompt_text,
-                         replacements_dict):
+                            replacements_dict):
     prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
     return prompt_text_replaced
 

@@ -206,7 +206,6 @@ class Bot(twitch_commands.Bot):
             role='user',
             name=author
             )
-        #gpt_ready_msg_dict = {'role':'user', 'content':prompt_text}
         self.logger.debug(f"len(self.ouat_temp_msg_history) before append:{len(self.ouat_temp_msg_history)} in add_to_story_ouat():")
         self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
         self.users_in_messages_list.append(author)
@@ -217,33 +216,29 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='extendstory')
     async def extend_story(self, ctx, *args) -> None:
         self.ouat_counter = 2
-        self.logger.warning(f"self.ouat_counter has been reset to {self.ouat_counter}")
+        self.logger.debug(f"Story extension requested, self.ouat_counter has been set to {self.ouat_counter}")
 
     @twitch_commands.command(name='stopstory')
     async def stop_story(self):
-        await self.channel.send("---Story To Be Continued...--- (!stopstory)")
+        await self.channel.send("--ToBeCoNtInUeD--")
         await self.stop_loop()
 
     @twitch_commands.command(name='endstory')
-    async def end_story(self):
+    async def endstory(self, ctx):
         self.ouat_counter = self.ouat_story_max_counter
+        self.logger.debug(f"Story is being forced to end, counter is at {self.ouat_counter}")
 
-    #stops and clears the ouat loop/message history
     async def stop_loop(self) -> None:
-        await self.channel.send("---ThEeNd--- (stop_loop())")
+        await self.channel.send("---ThEeNd---")
         self.is_ouat_loop_active = False
         
         write_msg_history_to_file(
             logger=self.logger,
             msg_history=self.ouat_temp_msg_history, 
             variable_name_text='ouat_temp_msg_history',
-            dirname='log'
+            dirname='log/ouat_story_history'
             )
-
-        self.logger.info("This is the final ouat_temp_msg_history object prior to clear() via !stopstory -> stop_loop()")
-        self.logger.debug(f"len(self.ouat_temp_msg_history) before clear:{len(self.ouat_temp_msg_history)} in stop_loop():")
         self.ouat_temp_msg_history.clear()
-        self.logger.debug(f"len(self.ouat_temp_msg_history) after clear:{len(self.ouat_temp_msg_history)} in stop_loop():")
         self.ouat_counter = 0
 
     async def print_runtime_params(self, args_list=None):        
@@ -251,9 +246,7 @@ class Bot(twitch_commands.Bot):
         for arg in args_list:
             self.logger.info(f"{arg}: {getattr(self, arg)}")
 
-    #TODO: Collects historic messages for use in chatforme
     async def event_message(self, message):
-
 
         ############################################
         ############################################
@@ -276,16 +269,10 @@ class Bot(twitch_commands.Bot):
                 'tags': message.tags,
                 'content': f'<<<{message.author.name}>>>: {message.content}',
             }
-            
+
             #prepare a gpt_ready_msg_dict
-            if message.author.name in self.known_bots:
-                # Filter to gpt columns, update the 'content' key to include {name}: {content}
-                gpt_ready_msg_dict = create_gpt_message_dict_from_twitchmessage(message_metadata=message_metadata,
-                                                                                role='user')
-            else: 
-                # Filter to gpt columns, update the 'content' key to include {name}: {content}
-                gpt_ready_msg_dict = create_gpt_message_dict_from_twitchmessage(message_metadata=message_metadata,
-                                                                                role='user')
+            gpt_ready_msg_dict = create_gpt_message_dict_from_twitchmessage(message_metadata=message_metadata,
+                                                                            role='user')            
 
             ###########################################
             #TODO: Should be a command not a condition 
@@ -294,19 +281,17 @@ class Bot(twitch_commands.Bot):
 
                 # TODO: Add your code here
                 printc("MESSAGE CONTENT STARTS WITH = !\n", bcolors.WARNING)  
-                
+                printc(f"Author ID: {message.author.id}", bcolors.WARNING)
 
                 ###########################################
                 if message.content == "!startstory" and self.ouat_counter == 0: #and (message.author.name == self.twitch_bot_channel_name or message.author.is_mod):
-                    self.random_article_content = self.article_generator.fetch_random_article_content()                    
+                    self.random_article_content = self.article_generator.fetch_random_article_content(article_char_trunc=500)                    
                     replacements_dict = {"random_article_content":self.random_article_content}
                     
                     self.random_article_content = prompt_text_replacement(
                         gpt_prompt_text=self.ouat_news_article_summary_prompt,
                         replacements_dict=replacements_dict
                         )
-                    self.logger.debug(f'This is the self.random_article_content:')
-                    self.logger.debug(self.random_article_content[:25]+"...")
 
                     gpt_ready_list_dict = combine_msghistory_and_prompttext(
                         prompt_text=self.random_article_content,
@@ -412,7 +397,6 @@ class Bot(twitch_commands.Bot):
         if message.author is not None:
             await self.handle_commands(message)
 
-    #Create a GPT response based on config.yaml
     async def send_periodic_message(self):
         self.load_configuration()
     
@@ -436,7 +420,7 @@ class Bot(twitch_commands.Bot):
 
                 #######################################
                 if self.args_include_ouat == 'yes':
-                    self.logger.warning(f"ouat_counter is: {self.ouat_counter}")
+                    self.logger.debug(f"ouat_counter is: {self.ouat_counter}")
 
                     if self.ouat_counter == 0:
                         gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_startstory,
@@ -461,6 +445,7 @@ class Bot(twitch_commands.Bot):
                 
                 else: self.logger.error("Neither automsg or ouat enabled with app startup argument")
 
+                self.logger.warning(f"The self.ouat_counter is currently at {self.ouat_counter}")
                 messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
                                                                       role='system',
                                                                       msg_history_list_dict=self.ouat_temp_msg_history,
@@ -484,18 +469,19 @@ class Bot(twitch_commands.Bot):
                         is_testing = False)
                     play(v2s_message_object)
 
-                self.logger.info(f"\nFINAL generated_message type: {type(generated_message)}")
+                self.logger.info(f"FINAL generated_message type: {type(generated_message)}")
                 self.logger.info(f"FINAL generated_message: {generated_message}")  
 
                 await self.channel.send(generated_message)
 
                 if self.ouat_counter == self.ouat_story_max_counter:
                     await self.channel.send("---TheEnd---")
+
                 self.ouat_counter += 1   
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
 
     @twitch_commands.command(name='chatforme')
-    async def chatforme2(self, ctx):
+    async def chatforme(self, ctx):
         """
         A Twitch bot command that interacts with OpenAI's GPT API.
         It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
@@ -537,7 +523,7 @@ class Bot(twitch_commands.Bot):
         return print(f"Sent gpt_response to chat: {gpt_response_formatted}")
 
     @twitch_commands.command(name='botthot')
-    async def chatforme(self, ctx):
+    async def botthot(self, ctx):
         """
         A Twitch bot command that interacts with OpenAI's GPT API.
         It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
@@ -589,7 +575,7 @@ load_env(env_dirname=yaml_data['env_dirname'], env_filename=yaml_data['env_filen
 twitch_bot_redirect_path = yaml_data['twitch-app']['twitch_bot_redirect_path']
 TWITCH_BOT_CLIENT_ID = os.getenv('TWITCH_BOT_CLIENT_ID')
 TWITCH_BOT_CLIENT_SECRET = os.getenv('TWITCH_BOT_CLIENT_SECRET')
-twitch_bot_scope = 'chat:read+chat:edit'
+TWITCH_BOT_SCOPE = os.getenv('TWITCH_BOT_SCOPE')
 
 #App route home
 @app.route('/')
@@ -602,7 +588,7 @@ def auth():
     base_url_auth = 'https://id.twitch.tv/oauth2/authorize'
     input_port_number = str(args.input_port_number)
     redirect_uri = f'http://localhost:{input_port_number}/{twitch_bot_redirect_path}'
-    params_auth = f'?response_type=code&client_id={TWITCH_BOT_CLIENT_ID}&redirect_uri={redirect_uri}&scope={twitch_bot_scope}&state={uuid.uuid4().hex}'
+    params_auth = f'?response_type=code&client_id={TWITCH_BOT_CLIENT_ID}&redirect_uri={redirect_uri}&scope={TWITCH_BOT_SCOPE}&state={uuid.uuid4().hex}'
     url = base_url_auth+params_auth
     print(f"Generated redirect_uri: {redirect_uri}")
     return f'<a href="{url}">Connect with Twitch</a>'
@@ -648,7 +634,6 @@ def callback():
         else: 
             twitch_bot_status = 'Twitch bot was active so the existing bot thread was left active.'
 
-        #print( f'<a>{twitch_bot_status}\nAccess token:{TWITCH_BOT_ACCESS_TOKEN}, Refresh Token: {TWITCH_BOT_REFRESH_TOKEN}</a>')
         return f'<a>{twitch_bot_status} Access Token and Refresh Token have been captured and set in the current environment</a>'
 
     else:

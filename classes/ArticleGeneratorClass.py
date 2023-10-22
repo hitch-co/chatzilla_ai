@@ -1,6 +1,8 @@
 import requests
 import numpy as np
+import json
 from bs4 import BeautifulSoup
+import os
 
 from classes.ConsoleColoursClass import bcolors, printc
 from my_modules.my_logging import my_logger
@@ -39,9 +41,29 @@ class ArticleGenerator:
         self.root_logger.debug(f"Successfully fetched --{len(self.articles)}-- article titles and links")
         return self.articles
 
+    def load_disallowed_terms(self,
+                              dir_path='config',
+                              file_name='disallowed_terms.json'):
+        file_path = os.path.join(dir_path, file_name)
+        
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        
+        return data['disallowed_terms']
+
+    def check_for_disallowed_terms(self,
+                                   article_content,
+                                   list_of_disallowed_terms):
+        for term in list_of_disallowed_terms:
+            if term in article_content:
+                return True
+        return False
 
     def fetch_random_article_content(self, article_char_trunc=500):
         found_article = False
+        list_of_disallowed_terms = self.load_disallowed_terms(dir_path='config',
+                                                              file_name='disallowed_terms.json')
+        
         if not self.articles:
             print("Missing URL or article data.")
             return ['']
@@ -67,28 +89,18 @@ class ArticleGenerator:
             if content_html_soup:
                 content_text = content_html_soup.get_text()
                 random_article_content = self.clean_html_text(content_text)
-                printc(f"\nSuccessfully fetched article at {random_article_link} with content", bcolors.OKBLUE)
-                printc(f'Preview of article: {random_article_content[:100]}...', bcolors.UNDERLINE)
-                found_article = True
-
+                found_article = False if self.check_for_disallowed_terms(article_content=random_article_content,
+                                                                         list_of_disallowed_terms=list_of_disallowed_terms) else True
+                if found_article:
+                    printc(f"\nSuccessfully fetched article with content  (source:{random_article_link})", bcolors.OKBLUE)
+                    printc(f'Preview of article: {random_article_content[:300]}...', bcolors.UNDERLINE)
+                else:
+                    printc(f"\nSuccessfully fetched article but it contained disallowed_terms (source: {random_article_link}) ", bcolors.FAIL)   
             else: 
-                printc(f"Successfully fetched article at {random_article_link} but Article contains no content after retrieving, trying again...", bcolors.FAIL)
+                printc(f"\nSuccessfully fetched article but it contained no content.  Trying again... \n(source: {random_article_link}", bcolors.FAIL)
 
-        return random_article_content
-
-
-    # def fetch_random_article(self, trunc_characters_at=1000):
-    #     self.fetch_articles()
-    #     self.fetch_content()
-
-    #     random_article_dictionary = np.random.choice(self.article_details)
-    #     random_article_dictionary['content'] = random_article_dictionary['content'][:trunc_characters_at]
-
-    #     printc('Preview of article_details:', bcolors.FAIL)
-    #     print(f"len(article_details):{len(self.article_details)}")        
-    #     printc(f"\nrandom_article_dictionary 'content' (type: {type(random_article_dictionary)})':",bcolors.FAIL)
-    #     return random_article_dictionary
-
+        trimmed_article = random_article_content[:article_char_trunc]
+        return trimmed_article
 
     def clean_html_text(self, text):
         import re
@@ -134,6 +146,7 @@ class ArticleGenerator:
             text = text + '.'
 
         return text
+
 
 
 def main(rss_link=None):

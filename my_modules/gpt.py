@@ -46,12 +46,12 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
             )
         gpt_response_text = generated_response.choices[0].message['content']
         gpt_response_text_len = len(gpt_response_text)
-        logger_gptchatcompletion.debug(f"\nThe generated_response object is of type {type(generated_response)}")
-        logger_gptchatcompletion.debug(f'\nThe --{_}-- call to gpt_chat_completion had a response of {gpt_response_text_len} characters')
+        logger_gptchatcompletion.debug(f"The generated_response object is of type {type(generated_response)}")
+        logger_gptchatcompletion.debug(f'The --{_}-- call to gpt_chat_completion had a response of {gpt_response_text_len} characters')
         logger_gptchatcompletion.debug(f"The generated_response object is of type {type(gpt_response_text)}")        
         
         if gpt_response_text_len < max_characters:
-            logger_gptchatcompletion.info(f'\nOK: The generated message was <{max_characters} characters')
+            logger_gptchatcompletion.info(f'OK: The generated message was <{max_characters} characters')
             break  
 
         else: # Did not get a msg < n chars, try again.
@@ -66,9 +66,9 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
             gpt_response_text_len = len(gpt_response_text)
 
             if gpt_response_text_len > max_characters:
-                logger_gptchatcompletion.warning(f'\nThe generated message was gpt_response_text_len characters (>{max_characters}) on the second try, retrying call to openai_gpt_chatcompletion')
+                logger_gptchatcompletion.warning(f'The generated message was gpt_response_text_len characters (>{max_characters}) on the second try, retrying call to openai_gpt_chatcompletion')
             elif gpt_response_text_len < max_characters:
-                logger_gptchatcompletion.info(f'\nOK on second try: The generated message was {gpt_response_text_len} characters')
+                logger_gptchatcompletion.info(f'OK on second try: The generated message was {gpt_response_text_len} characters')
                 break
     else:
         message = "Maxium GPT call retries exceeded"
@@ -160,9 +160,9 @@ def create_gpt_message_dict_from_twitchmessage(message_metadata,
     gpt_ready_msg_dict['role'] = role
     gpt_ready_msg_dict['content'] = message_metadata['content']
 
-    logger_create_gpt_message_dict_from_twitchmsg.debug('\nmessage_metadata details:')
+    logger_create_gpt_message_dict_from_twitchmsg.debug('message_metadata details:')
     logger_create_gpt_message_dict_from_twitchmsg.debug(message_metadata)
-    logger_create_gpt_message_dict_from_twitchmsg.debug('\ncreate_gpt_message_dict_from_twitchmessage details:')
+    logger_create_gpt_message_dict_from_twitchmsg.debug('create_gpt_message_dict_from_twitchmessage details:')
     logger_create_gpt_message_dict_from_twitchmsg.debug(gpt_ready_msg_dict)
     
     return gpt_ready_msg_dict

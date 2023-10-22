@@ -22,7 +22,7 @@ from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_promp
 from my_modules.gpt import create_gpt_message_dict_from_twitchmessage
 
 from my_modules.my_logging import my_logger, log_list_or_dict
-from my_modules.twitchio_helpers import extract_name_from_rawdata, extract_usernames_string_from_chat_history, extract_usernames_string_from_usernames_list
+from my_modules.twitchio_helpers import extract_name_from_rawdata, extract_usernames_string_from_chat_history, extract_usernames_string_from_usernames_list, get_channel_chatters
 from my_modules.config import load_yaml, load_env
 from my_modules import text_to_speech
 from my_modules.text_to_speech import generate_t2s_object
@@ -92,6 +92,11 @@ class Bot(twitch_commands.Bot):
 
         #counters
         self.ouat_counter = 0
+
+    @twitch_commands.command(name='get_chatters')
+    async def get_chatters2(self):
+        temp_response = get_channel_chatters(bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
+        print(temp_response)
 
     #Load configurations
     def load_configuration(self):
@@ -197,6 +202,10 @@ class Bot(twitch_commands.Bot):
             self.logger.error("Neither automsg or ouat enabled with app argument")
             raise BotFeatureNotEnabledException("Neither automsg or ouat enabled with app argument")
 
+    @twitch_commands.command(name='startstory2')
+    async def startstory2(self):
+        print("start story2 not ready")
+
     @twitch_commands.command(name='addtostory')
     async def add_to_story_ouat(self, ctx, *args):
         author=ctx.message.author.name
@@ -229,7 +238,7 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(f"Story is being forced to end, counter is at {self.ouat_counter}")
 
     async def stop_loop(self) -> None:
-        await self.channel.send("---ThEeNd---")
+        await self.channel.send("---ThEeNd (stoploop)---")
         self.is_ouat_loop_active = False
         
         write_msg_history_to_file(
@@ -278,6 +287,10 @@ class Bot(twitch_commands.Bot):
             #TODO: Should be a command not a condition 
             # Check if the message is triggering a command
             if message.content.startswith('!'):
+
+                if message.content.startswith('!get_chattes'):
+                    temp_response = get_channel_chatters(bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
+                    print(temp_response)
 
                 # TODO: Add your code here
                 printc("MESSAGE CONTENT STARTS WITH = !\n", bcolors.WARNING)  
@@ -394,8 +407,8 @@ class Bot(twitch_commands.Bot):
         #
         #
         
-        if message.author is not None:
-            await self.handle_commands(message)
+        # if message.author is not None:
+        #     await self.handle_commands(message)
 
     async def send_periodic_message(self):
         self.load_configuration()
@@ -475,7 +488,7 @@ class Bot(twitch_commands.Bot):
                 await self.channel.send(generated_message)
 
                 if self.ouat_counter == self.ouat_story_max_counter:
-                    await self.channel.send("---TheEnd---")
+                    await self.channel.send("---TheEnd (sendperiodicmessage)---")
 
                 self.ouat_counter += 1   
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))

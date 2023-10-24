@@ -22,12 +22,16 @@ from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_promp
 from my_modules.gpt import create_gpt_message_dict_from_twitchmessage
 
 from my_modules.my_logging import my_logger, log_list_or_dict
-from my_modules.twitchio_helpers import extract_name_from_rawdata, extract_usernames_string_from_chat_history, extract_usernames_string_from_usernames_list, get_channel_chatters
+from my_modules.twitchio_helpers import extract_name_from_rawdata
+from my_modules.twitchio_helpers import extract_usernames_string_from_chat_history, extract_usernames_string_from_usernames_list
 from my_modules.config import load_yaml, load_env
 from my_modules import text_to_speech
 from my_modules.text_to_speech import generate_t2s_object
 from elevenlabs import play
 from my_modules.utils import format_previous_messages_to_string, write_msg_history_to_file
+
+from classes._ChatUploader import TwitchChatData
+
 
 # configure the root logger
 root_logger = my_logger(dirname='log', 
@@ -202,6 +206,15 @@ class Bot(twitch_commands.Bot):
             self.logger.error("Neither automsg or ouat enabled with app argument")
             raise BotFeatureNotEnabledException("Neither automsg or ouat enabled with app argument")
 
+    @twitch_commands.command(name='get_chatters')
+    async def get_chatters(self, ctx):
+        try:
+            twitchchatdata = TwitchChatData()
+            temp_response = twitchchatdata.get_channel_viewers(bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
+        except Exception as e:
+            self.logger.exception('An error occurred while fetching channel viewers: %s', e)
+        return temp_response
+
     @twitch_commands.command(name='startstory2')
     async def startstory2(self):
         print("start story2 not ready")
@@ -287,10 +300,6 @@ class Bot(twitch_commands.Bot):
             #TODO: Should be a command not a condition 
             # Check if the message is triggering a command
             if message.content.startswith('!'):
-
-                if message.content.startswith('!get_chattes'):
-                    temp_response = get_channel_chatters(bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
-                    print(temp_response)
 
                 # TODO: Add your code here
                 printc("MESSAGE CONTENT STARTS WITH = !\n", bcolors.WARNING)  

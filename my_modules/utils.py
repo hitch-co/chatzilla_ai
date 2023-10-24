@@ -76,8 +76,8 @@ def shutdown_server():
     func()
 
 def write_msg_history_to_file(msg_history, variable_name_text, logger, dirname='log/ouat_story_history'):
+    current_datetime = get_datetime_formats()['filename_format']
 
-    current_datetime = datetime.now().strftime('%Y%m%d-%H%M%S')
     if not os.path.exists(dirname):
         os.makedirs(dirname)
     filename = f"{dirname}/final_{variable_name_text}_{current_datetime}.json"
@@ -86,7 +86,22 @@ def write_msg_history_to_file(msg_history, variable_name_text, logger, dirname='
         json.dump(msg_history, file, indent=4)
 
     logger.debug(f"Message history written to {filename}")
+
+def write_json_to_file(self, data, variable_name_text, dirname='log/get_chatters_data'):
+    current_datetime = get_datetime_formats()['filename_format']
+
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+        logger.debug(f"Directory {dirname} created.")
     
+    filename = f"{dirname}/final_{variable_name_text}_{current_datetime}.json"
+
+    with open(filename, 'w') as file:
+        json.dump(data, file, indent=4)
+        file.close()
+
+    logger.debug(f"JSON data written to {filename}")
+
 def combine_json_files(directory ='.path/to/directory/of/jsonfiles') -> list[list[dict]]:
     combined_data = []
 
@@ -102,3 +117,10 @@ def combine_json_files(directory ='.path/to/directory/of/jsonfiles') -> list[lis
             combined_data.append(data)
     
     return combined_data
+
+def get_datetime_formats():
+    now = datetime.now()
+    sql_format = now.strftime('%Y-%m-%d %H:%M:%S')
+    filename_format = now.strftime('%Y-%m-%d_%H-%M-%S')
+    dates_dict = {"sql_format":sql_format, "filename_format":filename_format}
+    return dates_dict

@@ -97,11 +97,6 @@ class Bot(twitch_commands.Bot):
         #counters
         self.ouat_counter = 0
 
-    @twitch_commands.command(name='get_chatters')
-    async def get_chatters2(self):
-        temp_response = get_channel_chatters(bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
-        print(temp_response)
-
     #Load configurations
     def load_configuration(self):
         #load yaml/env

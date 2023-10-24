@@ -411,8 +411,9 @@ class Bot(twitch_commands.Bot):
         #
         #
         
-        # if message.author is not None:
-        #     await self.handle_commands(message)
+        #self.handle_commands directs the twitch bot when to take action on bot specific commands (say !startstory)
+        if message.author is not None:
+            await self.handle_commands(message)
 
     async def send_periodic_message(self):
         self.load_configuration()

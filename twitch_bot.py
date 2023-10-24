@@ -206,6 +206,11 @@ class Bot(twitch_commands.Bot):
         try:
             twitchchatdata = TwitchChatData()
             temp_response = twitchchatdata.get_channel_viewers(bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
+            channel_viewers_list_dict = twitchchatdata.process_channel_viewers(response = temp_response)
+            table_id=yaml_data['twitch-ouat']['talkzillaai_userdata_table_id']
+            channel_viewers_query = twitchchatdata.generate_bq_query(table_id=table_id, channel_viewers_list_dict=channel_viewers_list_dict)
+            print(channel_viewers_query)
+            #twitchchatdata.send_to_bq(table_id=table_id,query=channel_viewers_query)
         except Exception as e:
             self.logger.exception('An error occurred while fetching channel viewers: %s', e)
         return temp_response

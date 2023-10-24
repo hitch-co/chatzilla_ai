@@ -44,50 +44,68 @@ class TwitchChatData:
         self.logger.debug('Wrote json file...')
         return response
 
-    # def process_channel_viewers(self, channel_viewers_response):
-    #     self.logger.debug('Processing channel viewers response: %s', channel_viewers_response)
-    #     channel_viewers_response
-    #     if channel_viewers_response.status_code == 200:
-    #         self.logger.debug("Success: %s", channel_viewers_response.json())
-    #         channel_viewers_response['timestamp'] = get_datetime_formats()['sql_format']
-    #     else:
-    #         self.logger.error("Failed: %s, %s", channel_viewers_response.status_code, channel_viewers_response.text)
-    #         channel_viewers_response.raise_for_status()
-    #     channel_viewers_response_json = channel_viewers_response.json()
-    #     return channel_viewers_response_json
+    def process_channel_viewers(self, response):
+        self.logger.debug('Processing channel viewers response: %s', response)
+        timestamp = get_datetime_formats()['sql_format']
+        if response.status_code == 200:
+            self.logger.debug("Response.json(): %s", response.json())
+            response_json = response.json()
+            channel_viewers_list_dict = response_json['data']
+            for item in channel_viewers_list_dict:
+                item['timestamp'] = timestamp
+            self.logger.debug(f"channel_viewers_list_dict:")
+            self.logger.debug(channel_viewers_list_dict)
+        else:
+            self.logger.error("Failed: %s, %s", response.status_code, response.text)
+            response.raise_for_status()
+        return channel_viewers_list_dict
 
-    # def process_viewers_data(self, channel_viewers_response_json):
-    #     self.logger.debug('Processing viewers data: %s', channel_viewers_response_json)
-    #     # Extracting relevant fields from each item in the data list
-    #     viewers_records_list = [
-    #         {
-    #             'user_id': item['user_id'],
-    #             'user_login': item['user_login'],
-    #             'user_name': item['user_name'],
-    #             'last_seen': channel_viewers_response_json['timestamp']
-    #         } for item in channel_viewers_response_json['data']
-    #         ]
-    #     return viewers_records_list #List of dicts ready for BigQuery
+    def generate_bq_query(self, table_id, channel_viewers_list_dict):
+        
+        testing_list_dict = [
+            {
+                "user_id": "654447790",
+                "user_login": "aliceydra",
+                "user_name": "aliceydra"
+            },
+            {
+                "user_id": "105166207",
+                "user_login": "streamlabs",
+                "user_name": "Streamlabs"
+            }
+            ]
 
-    # def process_chatter_data(self, chatters_response_object):
-    #     self.logger.debug('Processing chatter data: %s', chatters_response_object)
-    #     # Assuming interactions_data is derived somehow, or it could be an empty list if not used
-    #     interactions_records_list = {
-    #         'user_id': chatters_response_object['user_id'],
-    #         'interaction_type':chatters_response_object['interaction_type'],
-    #         'interaction_contents':chatters_response_object['interaction_contents']
-    #         } 
-    #     interactions_records_list['timestamp'] = chatters_response_object['timestamp']
-    #     return interactions_records_list
+        # Start building the MERGE statement
+        merge_query = f"""
+            MERGE {table_id} AS target
+            USING (
+                SELECT
+                    user_id,
+                    user_login,
+                    user_name,
+                    timestamp AS last_seen
+                FROM
+                    UNNEST([%s]) AS channel_viewers(user_id, user_login, user_name, timestamp)
+            ) AS source
+            ON target.user_id = source.user_id
+            WHEN MATCHED THEN
+                UPDATE SET
+                    target.user_login = source.user_login,
+                    target.user_name = source.user_name,
+                    target.last_seen = source.last_seen
+            WHEN NOT MATCHED THEN
+                INSERT (user_id, user_login, user_name, last_seen)
+                VALUES(source.user_id, source.user_login, source.user_name, source.last_seen);
+        """
 
-    # def send_to_bq(self, table_id, data):
-    #     self.logger.debug('Sending data to BigQuery, table_id: %s, data: %s', table_id, data)
-    #     table = self.bq_client.get_table(table_id)
-    #     errors = self.bq_client.insert_rows_json(table, data)
-    #     self.logger.debug('Insertion errors: %s', errors)
-    #     # if errors:
-    #     #     self.logger.error('BigQueryError: %s', errors)
-    #     #     raise BigQueryError(errors)
+        # Serialize the channel_viewers_list_dict to a JSON string
+        channel_viewers_json_str = json.dumps(channel_viewers_list_dict)
+
+        # Format the merge_query with the JSON string
+        formatted_query = merge_query % channel_viewers_json_str
+
+        return formatted_query
+    
 
 # if __name__ == '__main__':
 #     chatdataclass = TwitchChatData()

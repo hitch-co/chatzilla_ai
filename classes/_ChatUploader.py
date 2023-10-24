@@ -8,6 +8,7 @@ import json
 from my_modules import my_logging
 from my_modules.utils import write_json_to_file
 
+
 load_env()
 
 class TwitchChatData:
@@ -106,6 +107,13 @@ class TwitchChatData:
 
         return formatted_query
     
+    def send_to_bq(self, table_id, query):
+        self.logger.debug('Sending data to BigQuery, table_id: %s, query: %s', table_id, query)
+        full_query = f"INSERT INTO `{table_id}` {query}"
+        query_job = self.bq_client.query(full_query)
+        result = query_job.result()
+        self.logger.debug('Query completed.')
+        return result
 
 # if __name__ == '__main__':
 #     chatdataclass = TwitchChatData()

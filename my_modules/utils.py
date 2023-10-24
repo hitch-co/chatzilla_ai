@@ -119,6 +119,14 @@ def combine_json_files(directory ='.path/to/directory/of/jsonfiles') -> list[lis
     return combined_data
 
 def get_datetime_formats():
+    """
+    Generate a dictionary containing formatted datetime strings for SQL and filenames.
+
+    Returns:
+    dict: A dictionary with the following keys and values:
+        - 'sql_format': A string representing the current date and time formatted as 'YYYY-MM-DD HH:MM:SS'.
+        - 'filename_format': A string representing the current date and time formatted as 'YYYY-MM-DD_HH-MM-SS'.
+    """
     now = datetime.now()
     sql_format = now.strftime('%Y-%m-%d %H:%M:%S')
     filename_format = now.strftime('%Y-%m-%d_%H-%M-%S')

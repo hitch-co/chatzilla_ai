@@ -241,7 +241,7 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(f"Story extension requested, self.ouat_counter has been set to {self.ouat_counter}")
 
     @twitch_commands.command(name='stopstory')
-    async def stop_story(self):
+    async def stop_story(self, ctx):
         await self.channel.send("--ToBeCoNtInUeD--")
         await self.stop_loop()
 
@@ -251,7 +251,6 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(f"Story is being forced to end, counter is at {self.ouat_counter}")
 
     async def stop_loop(self) -> None:
-        await self.channel.send("---ThEeNd (stoploop)---")
         self.is_ouat_loop_active = False
         
         write_msg_history_to_file(
@@ -481,8 +480,6 @@ class Bot(twitch_commands.Bot):
                                                                 OPENAI_API_KEY=self.OPENAI_API_KEY,
                                                                 max_attempts=3)
                 generated_message = re.sub(r'<<<.*?>>>\s*:', '', generated_message)
-
-                #self.ouat_temp_msg_history_text.append()
                 
                 if self.args_include_sound == 'yes':
                     v2s_message_object = generate_t2s_object(
@@ -492,13 +489,13 @@ class Bot(twitch_commands.Bot):
                         is_testing = False)
                     play(v2s_message_object)
 
-                self.logger.info(f"FINAL generated_message type: {type(generated_message)}")
-                self.logger.info(f"FINAL generated_message: {generated_message}")  
+                self.logger.info(f"FINAL generated_message (type: {type(generated_message)}): \n{generated_message}")  
 
                 await self.channel.send(generated_message)
 
                 if self.ouat_counter == self.ouat_story_max_counter:
-                    await self.channel.send("---TheEnd (sendperiodicmessage)---")
+                    print("self.ouat_counter == self.ouat_story_max_counter:  That was the last message")
+                    self.logger.info(f"That was the final message (self.ouat_counter == {self.ouat_story_max_counter})")  
 
                 self.ouat_counter += 1   
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))

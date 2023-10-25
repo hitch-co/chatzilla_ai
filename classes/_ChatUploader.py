@@ -1,12 +1,13 @@
 import os
 import requests
-from google.cloud import bigquery 
+from google.cloud import bigquery
+from google.api_core.exceptions import GoogleAPIError
 
 from my_modules.utils import get_datetime_formats
 from my_modules.config import load_env, load_yaml
 import json
 from my_modules import my_logging
-from my_modules.utils import write_json_to_file
+from my_modules.utils import write_json_to_file, write_query_to_file
 
 
 load_env()
@@ -25,6 +26,8 @@ class TwitchChatData:
                                            mode='w',
                                            stream_logs=False)
         self.logger.debug('TwitchChatData initialized.')
+
+        # os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'config/keys/eh-talkzilla-ai-e51a66031f48.json'
 
     def get_channel_viewers(self,
                             bearer_token=None):
@@ -62,31 +65,22 @@ class TwitchChatData:
         return channel_viewers_list_dict
 
     def generate_bq_query(self, table_id, channel_viewers_list_dict):
-        
-        testing_list_dict = [
-            {
-                "user_id": "654447790",
-                "user_login": "aliceydra",
-                "user_name": "aliceydra"
-            },
-            {
-                "user_id": "105166207",
-                "user_login": "streamlabs",
-                "user_name": "Streamlabs"
-            }
-            ]
 
-        # Start building the MERGE statement
+        # Build the UNION ALL part of the query
+        union_all_query = " UNION ALL ".join([
+            f"SELECT '{viewer['user_id']}' as user_id, '{viewer['user_login']}' as user_login, "
+            f"'{viewer['user_name']}' as user_name, PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{viewer['timestamp']}') as last_seen"
+            for viewer in channel_viewers_list_dict
+        ])
+        write_query_to_file(formatted_query=union_all_query, 
+                            dirname='log/queries',
+                            queryname='unionall')
+        
+        # Add the union all query to our final query to be sent to BQ jobs
         merge_query = f"""
             MERGE {table_id} AS target
             USING (
-                SELECT
-                    user_id,
-                    user_login,
-                    user_name,
-                    timestamp AS last_seen
-                FROM
-                    UNNEST([%s]) AS channel_viewers(user_id, user_login, user_name, timestamp)
+                {union_all_query}
             ) AS source
             ON target.user_id = source.user_id
             WHEN MATCHED THEN
@@ -98,22 +92,40 @@ class TwitchChatData:
                 INSERT (user_id, user_login, user_name, last_seen)
                 VALUES(source.user_id, source.user_login, source.user_name, source.last_seen);
         """
-
-        # Serialize the channel_viewers_list_dict to a JSON string
-        channel_viewers_json_str = json.dumps(channel_viewers_list_dict)
-
-        # Format the merge_query with the JSON string
-        formatted_query = merge_query % channel_viewers_json_str
-
-        return formatted_query
+        write_query_to_file(formatted_query=merge_query, 
+                            dirname='log/queries',
+                            queryname='final')
+        
+        return merge_query
     
-    def send_to_bq(self, table_id, query):
-        self.logger.debug('Sending data to BigQuery, table_id: %s, query: %s', table_id, query)
-        full_query = f"INSERT INTO `{table_id}` {query}"
-        query_job = self.bq_client.query(full_query)
-        result = query_job.result()
-        self.logger.debug('Query completed.')
-        return result
+    def send_to_bq(self, query):
+        # Initialize a BigQuery client
+        client = bigquery.Client()
+
+        try:
+            # Start the query job
+            self.logger.info("Starting BigQuery job...")
+            query_job = client.query(query)
+
+            # Wait for the job to complete (this will block until the job is done)
+            self.logger.info(f"Executing query: {query}")
+            query_job.result()
+
+            # Log job completion
+            self.logger.info(f"Query job {query_job.job_id} completed successfully.")
+
+        except GoogleAPIError as e:
+            # Log any API errors
+            self.logger.error(f"BigQuery job failed: {e}")
+
+        except Exception as e:
+            # Log any other exceptions
+            self.logger.error(f"An unexpected error occurred: {e}")
+
+        else:
+            # Optionally, get and log job statistics
+            job_stats = query_job.query_plan
+            self.logger.info(f"Query plan: {job_stats}")
 
 # if __name__ == '__main__':
 #     chatdataclass = TwitchChatData()

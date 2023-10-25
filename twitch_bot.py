@@ -32,7 +32,6 @@ from my_modules.utils import format_previous_messages_to_string, write_msg_histo
 
 from classes._ChatUploader import TwitchChatData
 
-
 # configure the root logger
 root_logger = my_logger(dirname='log', 
                         logger_name='root_logger', 
@@ -77,6 +76,10 @@ class Bot(twitch_commands.Bot):
 
         #load cofiguration
         self.load_configuration()
+
+        #Google Service Account Credentials
+        google_application_credentials_file = yaml_data['twitch-ouat']['google_service_account_credentials_file']
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_application_credentials_file
 
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
@@ -209,8 +212,7 @@ class Bot(twitch_commands.Bot):
             channel_viewers_list_dict = twitchchatdata.process_channel_viewers(response = temp_response)
             table_id=yaml_data['twitch-ouat']['talkzillaai_userdata_table_id']
             channel_viewers_query = twitchchatdata.generate_bq_query(table_id=table_id, channel_viewers_list_dict=channel_viewers_list_dict)
-            print(channel_viewers_query)
-            #twitchchatdata.send_to_bq(table_id=table_id,query=channel_viewers_query)
+            twitchchatdata.send_to_bq(query=channel_viewers_query)
         except Exception as e:
             self.logger.exception('An error occurred while fetching channel viewers: %s', e)
         return temp_response

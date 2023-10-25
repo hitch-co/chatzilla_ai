@@ -75,33 +75,6 @@ def shutdown_server():
         raise RuntimeError('Not running with the Werkzeug Server')
     func()
 
-def write_msg_history_to_file(msg_history, variable_name_text, logger, dirname='log/ouat_story_history'):
-    current_datetime = get_datetime_formats()['filename_format']
-
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
-    filename = f"{dirname}/final_{variable_name_text}_{current_datetime}.json"
-    
-    with open(filename, 'w') as file:
-        json.dump(msg_history, file, indent=4)
-
-    logger.debug(f"Message history written to {filename}")
-
-def write_json_to_file(self, data, variable_name_text, dirname='log/get_chatters_data'):
-    current_datetime = get_datetime_formats()['filename_format']
-
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
-        logger.debug(f"Directory {dirname} created.")
-    
-    filename = f"{dirname}/final_{variable_name_text}_{current_datetime}.json"
-
-    with open(filename, 'w') as file:
-        json.dump(data, file, indent=4)
-        file.close()
-
-    logger.debug(f"JSON data written to {filename}")
-
 def combine_json_files(directory ='.path/to/directory/of/jsonfiles') -> list[list[dict]]:
     combined_data = []
 
@@ -132,3 +105,45 @@ def get_datetime_formats():
     filename_format = now.strftime('%Y-%m-%d_%H-%M-%S')
     dates_dict = {"sql_format":sql_format, "filename_format":filename_format}
     return dates_dict
+
+def write_msg_history_to_file(msg_history, variable_name_text, logger, dirname='log/ouat_story_history'):
+    current_datetime = get_datetime_formats()['filename_format']
+
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    filename = f"{dirname}/final_{variable_name_text}_{current_datetime}.json"
+    
+    with open(filename, 'w') as file:
+        json.dump(msg_history, file, indent=4)
+
+    logger.debug(f"Message history written to {filename}")
+
+def write_json_to_file(self, data, variable_name_text, dirname='log/get_chatters_data'):
+    current_datetime = get_datetime_formats()['filename_format']
+
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+        logger.debug(f"Directory {dirname} created.")
+    
+    filename = f"{dirname}/final_{variable_name_text}_{current_datetime}.json"
+
+    with open(filename, 'w') as file:
+        json.dump(data, file, indent=4)
+        file.close()
+
+    logger.debug(f"JSON data written to {filename}")
+
+def write_query_to_file(formatted_query, dirname='log/queries', queryname='default'):
+    current_datetime = get_datetime_formats()['filename_format']
+
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+        logger.debug(f"Directory {dirname} created.")
+
+    filename = f"{dirname}/{queryname}_{current_datetime}.sql"
+
+    with open(filename, 'w') as file:
+        file.write(formatted_query)
+        # No need to close the file explicitly when using with statement
+
+    logger.debug(f"Query written to {filename}")

@@ -22,12 +22,15 @@ from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_promp
 from my_modules.gpt import create_gpt_message_dict_from_twitchmessage
 
 from my_modules.my_logging import my_logger, log_list_or_dict
-from my_modules.twitchio_helpers import extract_name_from_rawdata, extract_usernames_string_from_chat_history, extract_usernames_string_from_usernames_list
+from my_modules.twitchio_helpers import extract_name_from_rawdata
+from my_modules.twitchio_helpers import extract_usernames_string_from_chat_history, extract_usernames_string_from_usernames_list
 from my_modules.config import load_yaml, load_env
 from my_modules import text_to_speech
 from my_modules.text_to_speech import generate_t2s_object
 from elevenlabs import play
 from my_modules.utils import format_previous_messages_to_string, write_msg_history_to_file
+
+from classes._ChatUploader import TwitchChatData
 
 # configure the root logger
 root_logger = my_logger(dirname='log', 
@@ -73,6 +76,10 @@ class Bot(twitch_commands.Bot):
 
         #load cofiguration
         self.load_configuration()
+
+        #Google Service Account Credentials
+        google_application_credentials_file = yaml_data['twitch-ouat']['google_service_account_credentials_file']
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_application_credentials_file
 
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
@@ -197,6 +204,23 @@ class Bot(twitch_commands.Bot):
             self.logger.error("Neither automsg or ouat enabled with app argument")
             raise BotFeatureNotEnabledException("Neither automsg or ouat enabled with app argument")
 
+    @twitch_commands.command(name='get_chatters')
+    async def get_chatters(self, ctx):
+        try:
+            twitchchatdata = TwitchChatData()
+            temp_response = twitchchatdata.get_channel_viewers(bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
+            channel_viewers_list_dict = twitchchatdata.process_channel_viewers(response = temp_response)
+            table_id=yaml_data['twitch-ouat']['talkzillaai_userdata_table_id']
+            channel_viewers_query = twitchchatdata.generate_bq_query(table_id=table_id, channel_viewers_list_dict=channel_viewers_list_dict)
+            twitchchatdata.send_to_bq(query=channel_viewers_query)
+        except Exception as e:
+            self.logger.exception('An error occurred while fetching channel viewers: %s', e)
+        return temp_response
+
+    @twitch_commands.command(name='startstory2')
+    async def startstory2(self):
+        print("start story2 not ready")
+
     @twitch_commands.command(name='addtostory')
     async def add_to_story_ouat(self, ctx, *args):
         author=ctx.message.author.name
@@ -219,7 +243,7 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(f"Story extension requested, self.ouat_counter has been set to {self.ouat_counter}")
 
     @twitch_commands.command(name='stopstory')
-    async def stop_story(self):
+    async def stop_story(self, ctx):
         await self.channel.send("--ToBeCoNtInUeD--")
         await self.stop_loop()
 
@@ -229,7 +253,6 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(f"Story is being forced to end, counter is at {self.ouat_counter}")
 
     async def stop_loop(self) -> None:
-        await self.channel.send("---ThEeNd---")
         self.is_ouat_loop_active = False
         
         write_msg_history_to_file(
@@ -394,6 +417,7 @@ class Bot(twitch_commands.Bot):
         #
         #
         
+        #self.handle_commands directs the twitch bot when to take action on bot specific commands (say !startstory)
         if message.author is not None:
             await self.handle_commands(message)
 
@@ -458,8 +482,6 @@ class Bot(twitch_commands.Bot):
                                                                 OPENAI_API_KEY=self.OPENAI_API_KEY,
                                                                 max_attempts=3)
                 generated_message = re.sub(r'<<<.*?>>>\s*:', '', generated_message)
-
-                #self.ouat_temp_msg_history_text.append()
                 
                 if self.args_include_sound == 'yes':
                     v2s_message_object = generate_t2s_object(
@@ -469,13 +491,13 @@ class Bot(twitch_commands.Bot):
                         is_testing = False)
                     play(v2s_message_object)
 
-                self.logger.info(f"FINAL generated_message type: {type(generated_message)}")
-                self.logger.info(f"FINAL generated_message: {generated_message}")  
+                self.logger.info(f"FINAL generated_message (type: {type(generated_message)}): \n{generated_message}")  
 
                 await self.channel.send(generated_message)
 
                 if self.ouat_counter == self.ouat_story_max_counter:
-                    await self.channel.send("---TheEnd---")
+                    print("self.ouat_counter == self.ouat_story_max_counter:  That was the last message")
+                    self.logger.info(f"That was the final message (self.ouat_counter == {self.ouat_story_max_counter})")  
 
                 self.ouat_counter += 1   
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))

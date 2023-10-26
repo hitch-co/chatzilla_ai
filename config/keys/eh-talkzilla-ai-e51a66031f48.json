@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "eh-talkzilla-ai",
+  "private_key_id": "e51a66031f48c65eb64d79f9b5f44e4cf7b1d04d",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDZpk9SrTTaO771\nVHfbYioD44q4fOIpAeeHL/LsT7TX57N+WW2fKVgsRpCL+wNh3KEaEk5kkFNl10VH\n9bwqtogG0xCEIZYfPGqk6cvbN69Jo0k/+ny3gtry3FmerQsvwkuzpCazI6Nu1c4A\neQ3vquqkuzkifwLx1psZDF76f73Opu6PiWhS0DsSDBqB9YDCkd3AsUBbXglG/8+N\n1DFeQpNlcMQU7ExL8MIsPWRG9IYRNaJu6Ge+jMh1PZxOAL8G+3gtBUD6nSAr2Biv\njqMlPVBOlFNQtYkBwQYFrjBO8PTAA8+ftl+yYDMhXmHfzQl9rrcOqT+L8TjgN0Wr\ncj4XXO0BAgMBAAECggEAEoxnAoY//1XhJRo7lAbjysINCUJHVImqLW4Lgf0cTdwc\nAr65+2WeyI3Y9WerzEltB1ebtlv1vN5MNAuVVined3/BpBO9WKXMTDKf4hZMSiEa\nyyjckRfF82A5A69T8+WB5b+DDCLo44y1X3qcPUUadcso3YTn1Nazur5AUpEpYAos\nknZHt1rQWJ9ZLGsJtcYW8lK3evfMIv/yS7MGRarqeQ6ViAPBY2cSexGiwpKdDyV+\nc4OhEuQYyhZ5+z8iEP1mIV/4dlEoPO75DOI26snaQAAf+FS28Ch5JzfOI5Uo2AqI\n7JQ93/Esg1CQrFdr0CSfuEGfxLha7W2Uwgbv5TbEYwKBgQD+xGNJPSxlpbmIOE5n\n1GXXyWYzaDz9HtDxk+av9LwstH5l4XMJ4qSbOpS6iDO5UnOyv8LzuramiGh7wivn\nuCvd/pxwanfeVzuR5HBwtKj6O21G3o2ek2r7XrE4ItN4IlTp/NlV5y75XZqi8IL4\ngVXw+T6kxUlo0M12BC/P7vpQ0wKBgQDas/CdiAlvQCqNCubPjliqMQ/Dc4xIbrxV\nQ78qvFlgXAafkN20hQmaoms6aIbVogv02RMbc6zlIYIrQvR91Li1n9NCoosIZOxP\n27ikU3gTpn1OG4p5G6r38UwgZ+rF4Ac9QOeqpz9Kp9rRKKAdpB2uvGFOc5Ckx0CU\nv+Etm0XGWwKBgQDJBywVAXlD5+YjT9LGaTnHcPr8+3aMgMF8rijslN/bIr1OJPyC\nQ12Bw1LScWDnDeGPnXL2oVE4zRAs/4VnfdLXg+3rYoedYRX3Q9tZg6SGd1f+AOSc\nyVQ0b37Ffe2BsQ1x6PuRpi9Rw4OeqMufzWaEFBhTKf2IAKLvSdR0be0E0wKBgEbx\ndcz0EvNmoibscWDEsRhMH+vr8IaSfT8/YaSwQmHSmEdsi66CNVJW+2eP/qUQEsbT\nH7KY/G27R+lWp86lkWFBPhtwdJ89dbaV9LhBZ0Mgj6cloe6VPgl92Y7thqe3e0Gw\nazXdWNeTyZRtlDrpQMOs0ffL3xDEnbti3t2Xb7PfAoGBAPAujsQMnR9YorICFFpz\ny3VWGo2wvXk6U11GNs5bHpShJ7+1r+0h67NGG4k6WhrzND6GmG0NUpkN5qxqsjgv\nnEXXBGj+jKfFR/49uCZx2c2oaukXZVh/GEoQGCMH9v2vJlMjJyRoYphBvkmGoIUj\nV6o7OytlYs2BaL34xlXoDIKS\n-----END PRIVATE KEY-----\n",
+  "client_email": "talkzilla-ai@eh-talkzilla-ai.iam.gserviceaccount.com",
+  "client_id": "106398229887580998372",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/talkzilla-ai%40eh-talkzilla-ai.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

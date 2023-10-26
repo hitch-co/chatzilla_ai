@@ -10,6 +10,9 @@ import openai
 import re
 import json
 
+#should a messageHandlerClass.py be instantiated in GPT so that it can use the 
+# create_gpt_message_dict_from_twitchmessage() method to ensure proper gpt format
+
 #LOGGING
 stream_logs=False
 

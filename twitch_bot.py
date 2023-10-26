@@ -30,6 +30,8 @@ from my_modules.text_to_speech import generate_t2s_object
 from elevenlabs import play
 from my_modules.utils import format_previous_messages_to_string, write_msg_history_to_file
 
+from classes.MessageHandlerClass import MessageHandler
+
 from classes._ChatUploader import TwitchChatData
 
 # configure the root logger
@@ -61,6 +63,9 @@ class Bot(twitch_commands.Bot):
             nick = 'chatforme_bot'
             #NOTE/QUESTION:what other variables should be set here?
         )
+
+        #instantiate amessage handler class
+        self.message_handler = MessageHandler()
 
         #setup logger
         self.logger = my_logger(dirname='log', 
@@ -270,7 +275,6 @@ class Bot(twitch_commands.Bot):
             self.logger.info(f"{arg}: {getattr(self, arg)}")
 
     async def event_message(self, message):
-
         ############################################
         ############################################
         if message.author is not None:
@@ -278,23 +282,18 @@ class Bot(twitch_commands.Bot):
             printc(f"message.author.name: {message.author.name}", bcolors.OKBLUE)
             printc(f'message.content: {message.content[:25]}...\n', bcolors.OKBLUE)
 
-            self.users_in_messages_list.append(message.author.name)
-            self.users_in_messages_list = list(set(self.users_in_messages_list))
+            #Get message metadata and log it
+            self.message_metadata = self.message_handler.get_message_metadata(message)
+            self.logger.info("Here is the message_data:")
+            log_dynamic_dict(logger=self.logger, obj=self.message_metadata)
 
-            # Collect all metadata
-            message_metadata = {
-                'badges': message.author.badges,
-                'name': message.author.name,
-                'user_id': message.author.id,
-                'display_name': message.author.display_name,
-                'channel': message.channel.name,
-                'timestamp': message.timestamp,
-                'tags': message.tags,
-                'content': f'<<<{message.author.name}>>>: {message.content}',
-            }
-
+            #Add the user names to the usernamelist and log it!
+            self.users_in_messages_list = self.message_handler.add_user_to_messages_list(users_in_messages_list=self.users_in_messages_list,
+                                                                                         message_metadata=self.message_metadata)
+            log_dynamic_dict(logger = self.logger, obj=self.users_in_messages_list)
+ 
             #prepare a gpt_ready_msg_dict
-            gpt_ready_msg_dict = create_gpt_message_dict_from_twitchmessage(message_metadata=message_metadata,
+            gpt_ready_msg_dict = create_gpt_message_dict_from_twitchmessage(message_metadata=self.message_metadata,
                                                                             role='user')            
 
             ###########################################
@@ -306,6 +305,10 @@ class Bot(twitch_commands.Bot):
                 printc("MESSAGE CONTENT STARTS WITH = !\n", bcolors.WARNING)  
                 printc(f"Author ID: {message.author.id}", bcolors.WARNING)
 
+
+                #SHOULD BE MOVED INTO A !twitch_commands
+                #SHOULD BE MOVED INTO A !twitch_commands
+                #SHOULD BE MOVED INTO A !twitch_commands
                 ###########################################
                 if message.content == "!startstory" and self.ouat_counter == 0: #and (message.author.name == self.twitch_bot_channel_name or message.author.is_mod):
                     self.random_article_content = self.article_generator.fetch_random_article_content(article_char_trunc=500)                    
@@ -343,8 +346,10 @@ class Bot(twitch_commands.Bot):
                 if message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:
                     self.logger.debug(f"len(self.automsg_temp_msg_history) before append:{len(self.automsg_temp_msg_history)} in message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:")
                     self.logger.debug(f"len(self.chatforme_temp_msg_history) before append:{len(self.chatforme_temp_msg_history)} in message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:")
+
                     self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
                     self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
+
                     self.logger.debug(f"len(self.automsg_temp_msg_history) after append:{len(self.automsg_temp_msg_history)} in message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:")
                     self.logger.debug(f"len(self.chatforme_temp_msg_history) after append:{len(self.chatforme_temp_msg_history)} in message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:")
 
@@ -353,7 +358,9 @@ class Bot(twitch_commands.Bot):
                 ############################################
                 if message.author.name in self.bots_ouat:    
                     self.logger.debug(f"len(self.ouat_temp_msg_history) before append:{len(self.ouat_temp_msg_history)} in message.author.name in self.bots_ouat:")
+
                     self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
+
                     self.logger.debug(f"len(self.ouat_temp_msg_history) after append:{len(self.ouat_temp_msg_history)} in message.author.name in self.bots_ouat:")
 
                 else: self.logger.debug(f'{message.author.name} IS NOT IN self.bots_ouat')
@@ -363,11 +370,12 @@ class Bot(twitch_commands.Bot):
                 if message.author.name not in self.known_bots:
                     self.logger.debug(f"len(self.nonbot_temp_msg_history) before append:{len(self.nonbot_temp_msg_history)} in message.author.name in self.known_bots:")
                     self.logger.debug(f"len(self.chatforme_temp_msg_history) before append:{len(self.chatforme_temp_msg_history)} in message.author.name in self.known_bots:")
+
                     self.nonbot_temp_msg_history.append(gpt_ready_msg_dict)
                     self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
+
                     self.logger.debug(f"len(self.nonbot_temp_msg_history) after append:{len(self.nonbot_temp_msg_history)} in message.author.name in self.known_bots:")
                     self.logger.debug(f"len(self.chatforme_temp_msg_history) after append:{len(self.chatforme_temp_msg_history)} in message.author.name in self.known_bots:")
-
                     self.logger.debug(f"{message.author.name} is NOT IN self.known_bots")
                     self.logger.debug(f"{message.author.name}'s message added to nonbot_temp_msg_history") 
                     self.logger.debug(f"{message.author.name}'s message added to chatforme_temp_msg_history")  
@@ -378,14 +386,17 @@ class Bot(twitch_commands.Bot):
         # Check for bot or system messages
         elif message.author is None:
             self.logger.debug("message.author is None")            
+            
             extracted_name = extract_name_from_rawdata(message.raw_data)
-            self.users_in_messages_list.append(extracted_name)
-            self.users_in_messages_list = list(set(self.users_in_messages_list))
-            self.logger.debug(f"The extracted_name is: '{extracted_name}'")  
-
+            self.logger.debug(f"The extracted_name is: '{extracted_name}'")
+            
             gpt_ready_msg_dict = create_custom_gpt_message_dict(role = 'user',
                                                                 name = extracted_name,
                                                                 prompt_text = message.content)
+
+            #Add the user names to the usernamelist and log it!
+            self.users_in_messages_list = self.message_handler.add_user_to_messages_list(users_in_messages_list=self.users_in_messages_list,
+                                                                                         message_metadata=self.message_metadata)
 
             ############################################
             if extracted_name in self.bots_ouat:

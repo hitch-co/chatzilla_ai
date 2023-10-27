@@ -3,34 +3,32 @@ use_reloader_bool=False
 runtime_logger_level = 'DEBUG'
 
 #imports
-import asyncio #(new_event_loop, set_event_loop)
+import asyncio
 from twitchio.ext import commands as twitch_commands
 from threading import Thread
 from flask import Flask, request
 import uuid
+import re
 import requests
 import os
 import argparse
-import re
+
+from elevenlabs import play
+
+from my_modules.gpt import openai_gpt_chatcompletion
+from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext
+from my_modules.my_logging import my_logger, log_dynamic_dict
+from my_modules.twitchio_helpers import get_string_of_users
+from my_modules.config import load_yaml, load_env
+from my_modules.text_to_speech import generate_t2s_object
+from my_modules.utils import write_msg_history_to_file
 
 from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
 from classes.CustomExceptions import BotFeatureNotEnabledException
-
-from my_modules.gpt import openai_gpt_chatcompletion, create_custom_gpt_message_dict
-from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext
-from my_modules.gpt import create_gpt_message_dict_from_twitchmessage
-
-from my_modules.my_logging import my_logger, log_list_or_dict
-from my_modules.twitchio_helpers import extract_name_from_rawdata
-from my_modules.twitchio_helpers import extract_usernames_string_from_chat_history, extract_usernames_string_from_usernames_list
-from my_modules.config import load_yaml, load_env
-from my_modules import text_to_speech
-from my_modules.text_to_speech import generate_t2s_object
-from elevenlabs import play
-from my_modules.utils import format_previous_messages_to_string, write_msg_history_to_file
-
-from classes._ChatUploader import TwitchChatData
+from classes.MessageHandlerClass import MessageHandler
+from classes.ChatUploaderClass import TwitchChatData
+from classes.PromptHandlerClass import PromptHandler
 
 # configure the root logger
 root_logger = my_logger(dirname='log', 
@@ -51,22 +49,28 @@ TWITCH_CHATFORME_BOT_THREAD = None
 
 ###############################
 class Bot(twitch_commands.Bot):
+    loop_sleep_time = 4
 
     def __init__(self, TWITCH_BOT_ACCESS_TOKEN, yaml_data, env_vars):
         super().__init__(
-            token=TWITCH_BOT_ACCESS_TOKEN, #chagned from irc_token
-            name=yaml_data['twitch-app']['twitch_bot_username'], #env_vars['TWITCH_BOT_USERNAME'],
+            token=TWITCH_BOT_ACCESS_TOKEN,
+            name=yaml_data['twitch-app']['twitch_bot_username'],
             prefix='!',
-            initial_channels=[yaml_data['twitch-app']['twitch_bot_channel_name']],#[env_vars['TWITCH_BOT_CHANNEL_NAME']],
+            initial_channels=[yaml_data['twitch-app']['twitch_bot_channel_name']],
             nick = 'chatforme_bot'
             #NOTE/QUESTION:what other variables should be set here?
         )
+
+        #instantiate amessage handler class
+        self.message_handler = MessageHandler()
 
         #setup logger
         self.logger = my_logger(dirname='log', 
                                 logger_name='logger_BotClass', 
                                 debug_level=runtime_logger_level,
-                                mode='a')
+                                mode='a',
+                                stream_logs=False,
+                                encoding='UTF-8')
 
         #May be redundant.  I think I should leave these here but then need to handle
         # Configuration in the bot(run()) section of the script which is outside both classes
@@ -86,16 +90,6 @@ class Bot(twitch_commands.Bot):
 
         #Set default loop state
         self.is_ouat_loop_active = False  # controls if the loop should runZ
-
-        #placeholder list
-        self.chatforme_temp_msg_history = []
-        self.automsg_temp_msg_history = []
-        self.bot_temp_msg_history = []
-        self.nonbot_temp_msg_history = []
-        self.ouat_temp_msg_history = []
-
-        #placeholder list
-        self.users_in_messages_list = []
 
         #counters
         self.ouat_counter = 0
@@ -158,10 +152,6 @@ class Bot(twitch_commands.Bot):
         #GPT Prompt
         self.gpt_prompt = ''  
 
-        self.bots_automsg = self.yaml_data['twitch-bots']['automsg']
-        self.bots_chatforme = self.yaml_data['twitch-bots']['chatforme']
-        self.bots_ouat = self.yaml_data['twitch-bots']['onceuponatime']
-
         # Load settings and configurations from a YAML file
         # TODO: Can be moved into the load_configurations() function
         self.chatforme_message_wordcount = str(self.yaml_data['chatforme_message_wordcount'])
@@ -184,14 +174,6 @@ class Bot(twitch_commands.Bot):
             "args_include_sound"
             ]
         await self.print_runtime_params(args_list=args_list)
-
-        #known bots list
-        self.known_bots = []
-        for key in self.yaml_data['twitch-bots']:
-            self.known_bots.extend(self.yaml_data['twitch-bots'][key])
-        self.known_bots = list(set(self.known_bots))
-        self.logger.debug("these are the self.known_bots")
-        self.logger.debug(self.known_bots)
 
         #start loop
         self.loop.create_task(self.send_periodic_message())
@@ -225,17 +207,15 @@ class Bot(twitch_commands.Bot):
     async def add_to_story_ouat(self, ctx, *args):
         author=ctx.message.author.name
         prompt_text = ' '.join(args)
-        gpt_ready_msg_dict = create_custom_gpt_message_dict(
+        gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_strings(
+            self,
             prompt_text=prompt_text,
             role='user',
             name=author
             )
-        self.logger.debug(f"len(self.ouat_temp_msg_history) before append:{len(self.ouat_temp_msg_history)} in add_to_story_ouat():")
-        self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
-        self.users_in_messages_list.append(author)
-        self.users_in_messages_list = list(set(self.users_in_messages_list))
-
-        self.logger.debug(f"len(self.ouat_temp_msg_history) after append:{len(self.ouat_temp_msg_history)} in add_to_story_ouat():")
+        self.logger.debug(f"len(self.message_handler.ouat_temp_msg_history) before append:{len(self.message_handler.ouat_temp_msg_history)} in add_to_story_ouat():")
+        self.message_handler.ouat_temp_msg_history.append(gpt_ready_msg_dict)
+        self.logger.debug(f"len(self.message_handler.ouat_temp_msg_history) after append:{len(self.message_handler.ouat_temp_msg_history)} in add_to_story_ouat():")
         
     @twitch_commands.command(name='extendstory')
     async def extend_story(self, ctx, *args) -> None:
@@ -257,11 +237,11 @@ class Bot(twitch_commands.Bot):
         
         write_msg_history_to_file(
             logger=self.logger,
-            msg_history=self.ouat_temp_msg_history, 
+            msg_history=self.message_handler.ouat_temp_msg_history, 
             variable_name_text='ouat_temp_msg_history',
             dirname='log/ouat_story_history'
             )
-        self.ouat_temp_msg_history.clear()
+        self.message_handler.ouat_temp_msg_history.clear()
         self.ouat_counter = 0
 
     async def print_runtime_params(self, args_list=None):        
@@ -270,154 +250,52 @@ class Bot(twitch_commands.Bot):
             self.logger.info(f"{arg}: {getattr(self, arg)}")
 
     async def event_message(self, message):
+        
+        ###########################################
+        #TODO: Should be a command not a condition 
+        # Check if the message is triggering a command
+        if message.content.startswith('!'):
 
-        ############################################
-        ############################################
-        if message.author is not None:
-            printc("message.author is not None", bcolors.FAIL)  
-            printc(f"message.author.name: {message.author.name}", bcolors.OKBLUE)
-            printc(f'message.content: {message.content[:25]}...\n', bcolors.OKBLUE)
-
-            self.users_in_messages_list.append(message.author.name)
-            self.users_in_messages_list = list(set(self.users_in_messages_list))
-
-            # Collect all metadata
-            message_metadata = {
-                'badges': message.author.badges,
-                'name': message.author.name,
-                'user_id': message.author.id,
-                'display_name': message.author.display_name,
-                'channel': message.channel.name,
-                'timestamp': message.timestamp,
-                'tags': message.tags,
-                'content': f'<<<{message.author.name}>>>: {message.content}',
-            }
-
-            #prepare a gpt_ready_msg_dict
-            gpt_ready_msg_dict = create_gpt_message_dict_from_twitchmessage(message_metadata=message_metadata,
-                                                                            role='user')            
-
+            #SHOULD BE MOVED INTO A !twitch_commands
+            #SHOULD BE MOVED INTO A !twitch_commands
+            #SHOULD BE MOVED INTO A !twitch_commands
             ###########################################
-            #TODO: Should be a command not a condition 
-            # Check if the message is triggering a command
-            if message.content.startswith('!'):
+            if message.content == "!startstory" and self.ouat_counter == 0: #and (message.author.name == self.twitch_bot_channel_name or message.author.is_mod):
 
-                # TODO: Add your code here
                 printc("MESSAGE CONTENT STARTS WITH = !\n", bcolors.WARNING)  
                 printc(f"Author ID: {message.author.id}", bcolors.WARNING)
+                
+                self.random_article_content = self.article_generator.fetch_random_article_content(article_char_trunc=500)                    
+                replacements_dict = {"random_article_content":self.random_article_content}
 
-                ###########################################
-                if message.content == "!startstory" and self.ouat_counter == 0: #and (message.author.name == self.twitch_bot_channel_name or message.author.is_mod):
-                    self.random_article_content = self.article_generator.fetch_random_article_content(article_char_trunc=500)                    
-                    replacements_dict = {"random_article_content":self.random_article_content}
-                    
-                    self.random_article_content = prompt_text_replacement(
-                        gpt_prompt_text=self.ouat_news_article_summary_prompt,
-                        replacements_dict=replacements_dict
-                        )
+                self.random_article_content = prompt_text_replacement(
+                    gpt_prompt_text=self.ouat_news_article_summary_prompt,
+                    replacements_dict=replacements_dict
+                    )
 
-                    gpt_ready_list_dict = combine_msghistory_and_prompttext(
-                        prompt_text=self.random_article_content,
-                        name=self.twitch_bot_username,
-                        msg_history_list_dict=None
-                        )
-                    self.logger.debug(f'This is the gpt_ready_list_dict:')
-                    self.logger.debug(gpt_ready_list_dict)
+                gpt_ready_list_dict = combine_msghistory_and_prompttext(
+                    prompt_text=self.random_article_content,
+                    name=self.twitch_bot_username,
+                    msg_history_list_dict=None
+                    )
+                
+                self.logger.debug(f'This is the gpt_ready_list_dict:')
+                self.logger.debug(gpt_ready_list_dict)
 
-                    self.random_article_content_prompt_summary = openai_gpt_chatcompletion(
-                        messages_dict_gpt=gpt_ready_list_dict, 
-                        OPENAI_API_KEY=self.OPENAI_API_KEY, 
-                        max_characters=1200
-                        )  
-                    self.logger.debug(f'This is the self.random_article_content_prompt_summary:')
-                    self.logger.debug(self.random_article_content_prompt_summary)
+                self.random_article_content_prompt_summary = openai_gpt_chatcompletion(
+                    messages_dict_gpt=gpt_ready_list_dict, 
+                    OPENAI_API_KEY=self.OPENAI_API_KEY, 
+                    max_characters=1200
+                    )  
+                self.logger.debug(f'This is the self.random_article_content_prompt_summary:')
+                self.logger.debug(self.random_article_content_prompt_summary)
 
-                    await self.start_send_periodic_msg_loop()
+                await self.start_send_periodic_msg_loop()
 
-            ###########################################
-            #Regular collection of messages and assignment to the appropriate
-            # msg history list
-            else:
-
-                ############################################
-                if message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:
-                    self.logger.debug(f"len(self.automsg_temp_msg_history) before append:{len(self.automsg_temp_msg_history)} in message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:")
-                    self.logger.debug(f"len(self.chatforme_temp_msg_history) before append:{len(self.chatforme_temp_msg_history)} in message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:")
-                    self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
-                    self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
-                    self.logger.debug(f"len(self.automsg_temp_msg_history) after append:{len(self.automsg_temp_msg_history)} in message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:")
-                    self.logger.debug(f"len(self.chatforme_temp_msg_history) after append:{len(self.chatforme_temp_msg_history)} in message.author.name in self.bots_automsg or message.author.name in self.bots_chatforme:")
-
-                else: self.logger.debug(f'message.author.name:{message.author.name} IS NOT IN self.bots_automsg or self.bots_chatforme')
-
-                ############################################
-                if message.author.name in self.bots_ouat:    
-                    self.logger.debug(f"len(self.ouat_temp_msg_history) before append:{len(self.ouat_temp_msg_history)} in message.author.name in self.bots_ouat:")
-                    self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
-                    self.logger.debug(f"len(self.ouat_temp_msg_history) after append:{len(self.ouat_temp_msg_history)} in message.author.name in self.bots_ouat:")
-
-                else: self.logger.debug(f'{message.author.name} IS NOT IN self.bots_ouat')
-
-                ############################################
-                #All other messagers hould be from users, capture them here
-                if message.author.name not in self.known_bots:
-                    self.logger.debug(f"len(self.nonbot_temp_msg_history) before append:{len(self.nonbot_temp_msg_history)} in message.author.name in self.known_bots:")
-                    self.logger.debug(f"len(self.chatforme_temp_msg_history) before append:{len(self.chatforme_temp_msg_history)} in message.author.name in self.known_bots:")
-                    self.nonbot_temp_msg_history.append(gpt_ready_msg_dict)
-                    self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
-                    self.logger.debug(f"len(self.nonbot_temp_msg_history) after append:{len(self.nonbot_temp_msg_history)} in message.author.name in self.known_bots:")
-                    self.logger.debug(f"len(self.chatforme_temp_msg_history) after append:{len(self.chatforme_temp_msg_history)} in message.author.name in self.known_bots:")
-
-                    self.logger.debug(f"{message.author.name} is NOT IN self.known_bots")
-                    self.logger.debug(f"{message.author.name}'s message added to nonbot_temp_msg_history") 
-                    self.logger.debug(f"{message.author.name}'s message added to chatforme_temp_msg_history")  
-                else: self.logger.debug(f"message.author.name: {message.author.name} IS IN self.known_bots") 
-
-        ############################################
-        ############################################
-        # Check for bot or system messages
-        elif message.author is None:
-            self.logger.debug("message.author is None")            
-            extracted_name = extract_name_from_rawdata(message.raw_data)
-            self.users_in_messages_list.append(extracted_name)
-            self.users_in_messages_list = list(set(self.users_in_messages_list))
-            self.logger.debug(f"The extracted_name is: '{extracted_name}'")  
-
-            gpt_ready_msg_dict = create_custom_gpt_message_dict(role = 'user',
-                                                                name = extracted_name,
-                                                                prompt_text = message.content)
-
-            ############################################
-            if extracted_name in self.bots_ouat:
-                #add GPT elements to ouat msg history list variagble
-                self.logger.debug(f"MESSAGE AUTHOR = OUAT BOT ({extracted_name})")
-                self.logger.debug(f"len(self.ouat_temp_msg_history) before append:{len(self.ouat_temp_msg_history)} in extracted_name in self.bots_ouat:")
-                self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
-                self.logger.debug(f"len(self.ouat_temp_msg_history) after append:{len(self.ouat_temp_msg_history)} in extracted_name in self.bots_ouat:")
-
-            ############################################
-            if extracted_name in self.bots_automsg:
-                #add GPT elements to automsg msg list variagble
-                self.logger.debug(f"MESSAGE AUTHOR = AUTOMSG BOT ({extracted_name})")
-                self.logger.debug(f"len(self.automsg_temp_msg_history) before append:{len(self.automsg_temp_msg_history)} in extracted_name in self.bots_automsg:")
-                self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
-                self.logger.debug(f"len(self.automsg_temp_msg_history) after append:{len(self.automsg_temp_msg_history)} in extracted_name in self.bots_automsg:")
-
-            ############################################
-            if extracted_name in self.bots_chatforme:
-                #add GPT elements to chatforme msg list variagble
-                self.logger.debug(f"MESSAGE AUTHOR = CHATFORME BOT ({extracted_name})")
-                self.logger.debug(f"len(self.chatforme_temp_msg_history) before append:{len(self.chatforme_temp_msg_history)} in extracted_name in self.bots_chatforme:")
-                self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
-                self.logger.debug(f"len(self.chatforme_temp_msg_history) before append:{len(self.chatforme_temp_msg_history)} in extracted_name in self.bots_chatforme:")
+        #This is the control flow for creating messag ehistories from MessageHandlerClass
+        self.message_handler.add_to_appropriate_message_history(message)
         
-        # TODO: ADD TO DATABASE
-        #
-        #
-        #
-        #
-        
-        #self.handle_commands directs the twitch bot when to take action on bot specific commands (say !startstory)
+        # self.handle_commands directs the twitch bot when to take action on bot specific commands (say !startstory)
         if message.author is not None:
             await self.handle_commands(message)
 
@@ -431,8 +309,8 @@ class Bot(twitch_commands.Bot):
 
         #This is the while loop that generates the occurring GPT response
         while True:
-            if self.is_ouat_loop_active == False:
-                await asyncio.sleep(4)
+            if self.is_ouat_loop_active is False:
+                await asyncio.sleep(self.loop_sleep_time)
                 continue
                       
             else:
@@ -440,7 +318,7 @@ class Bot(twitch_commands.Bot):
                                      'twitch_bot_username':self.twitch_bot_username,
                                      'num_bot_responses':self.num_bot_responses,
                                      'rss_feed_article_plot':self.random_article_content_prompt_summary,
-                                     'param_in_text':'variable_from_scope'}
+                                     'param_in_text':'variable_from_scope'} #for future use
 
                 #######################################
                 if self.args_include_ouat == 'yes':
@@ -469,10 +347,10 @@ class Bot(twitch_commands.Bot):
                 
                 else: self.logger.error("Neither automsg or ouat enabled with app startup argument")
 
-                self.logger.warning(f"The self.ouat_counter is currently at {self.ouat_counter}")
+                self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter}")
                 messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
                                                                       role='system',
-                                                                      msg_history_list_dict=self.ouat_temp_msg_history,
+                                                                      msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
                                                                       combine_messages=True)
                 self.logger.debug("This is the messages_dict_gpt:")
                 self.logger.debug(messages_dict_gpt)
@@ -512,9 +390,7 @@ class Bot(twitch_commands.Bot):
         request_user_name = ctx.message.author.name
 
         # Extract usernames from previous chat messages stored in chatforme_temp_msg_history.
-        users_in_messages_list_text = extract_usernames_string_from_usernames_list(
-            usernames_list=self.users_in_messages_list
-            )
+        users_in_messages_list_text = get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
 
         #Select prompt from argument, build the final prompt textand format replacements
         formatted_gpt_chatforme_prompt = self.formatted_gpt_chatforme_prompts[self.args_chatforme_prompt_name]
@@ -533,7 +409,7 @@ class Bot(twitch_commands.Bot):
 
         messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text = chatgpt_chatforme_prompt,
                                                                 role='system',
-                                                                msg_history_list_dict=self.chatforme_temp_msg_history,
+                                                                msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
                                                                 combine_messages=False)
         
         # Execute the GPT API call to get the chatbot response
@@ -554,9 +430,7 @@ class Bot(twitch_commands.Bot):
         request_user_name = ctx.message.author.name
 
         # Extract usernames from previous chat messages stored in chatforme_temp_msg_history.
-        users_in_messages_list_text = extract_usernames_string_from_usernames_list(
-            usernames_list=self.users_in_messages_list
-            )
+        users_in_messages_list_text = get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
 
         #Select the prompt, build the chatgpt_chatforme_prompt to be added as role: system to the 
         # chatcompletions endpoint
@@ -576,7 +450,7 @@ class Bot(twitch_commands.Bot):
         messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=chatgpt_chatforme_prompt,
                                                               role='system',
                                                               name='unknown',
-                                                              msg_history_list_dict=self.chatforme_temp_msg_history,
+                                                              msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
                                                               combine_messages=False)
         
         # Execute the GPT API call to get the chatbot response

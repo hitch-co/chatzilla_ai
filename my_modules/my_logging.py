@@ -5,7 +5,8 @@ def my_logger(dirname='log',
               logger_name=None, 
               debug_level='DEBUG', 
               mode='w',
-              stream_logs = True
+              stream_logs = True,
+              encoding='UTF-8'
               ):
     
     level_mapping = {
@@ -30,7 +31,7 @@ def my_logger(dirname='log',
 
     formatter = logging.Formatter('%(asctime)s - %(module)s - %(levelname)s - Name: %(funcName)s - Line: %(lineno)d - %(message)s')
 
-    file_handler = logging.FileHandler(f'{dirname}/{logger_name}.log', mode=mode)
+    file_handler = logging.FileHandler(f'{dirname}/{logger_name}.log', mode=mode, encoding=encoding)
     file_handler.setLevel(level_mapping[debug_level.upper()])
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
@@ -80,3 +81,17 @@ def log_list_or_dict(logger, obj:list|dict=None):
         logger.debug("Role: %s, Content: %.50s%s", obj['role'], obj['content'], '...' if len(item['content']) > 50 else '')
     else:
         logger.warning("Unsupported data type")
+
+def log_dynamic_dict(logger, obj: dict = None):
+    # Logging logic for a generic dictionary
+    if obj is None:
+        logger.warning("Empty dictionary passed")
+        return
+
+    if not isinstance(obj, dict):
+        logger.warning("Unsupported data type")
+        return
+
+    for key, value in obj.items():
+        truncated_value = str(value)[:50]  # Truncate the value to 50 characters if needed
+        logger.debug("Key: %s, Value: %.50s%s", key, truncated_value, '...' if len(str(value)) > 50 else '')

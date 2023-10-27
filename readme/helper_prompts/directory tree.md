@@ -14,7 +14,7 @@ C:.
 │   │   ArticleGeneratorClass.py
 │   │   ConsoleColoursClass.py
 │   │   CustomExceptions.py
-│   │   _ChatUploader
+│   │   ChatUploaderClass.py
 │   │   __init__.py
 │   │
 │   └───__pycache__

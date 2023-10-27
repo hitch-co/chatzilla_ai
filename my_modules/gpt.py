@@ -10,9 +10,6 @@ import openai
 import re
 import json
 
-#should a messageHandlerClass.py be instantiated in GPT so that it can use the 
-# create_gpt_message_dict_from_twitchmessage() method to ensure proper gpt format
-
 #LOGGING
 stream_logs=False
 
@@ -83,92 +80,12 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
     return gpt_response_text
 
 
-def get_random_rss_article_summary_prompt(newsarticle_rss_feed = 'http://rss.cnn.com/rss/cnn_showbiz.rss',
-                                          summary_prompt = 'none',
-                                          OPENAI_API_KEY = None):
-    
-    #Grab a random article                
-    article_generator = ArticleGenerator(rss_link=newsarticle_rss_feed)
-    random_article_dictionary = article_generator.fetch_random_article()
-
-    #NOTE: rss_article_content is confusing here...
-    #replace ouat_news_article_summary_prompt placeholder params
-    rss_article_content = random_article_dictionary['content']
-    params = {"rss_article_content":rss_article_content}
-    random_article_content_prompt = summary_prompt.format(**params)
-
-    #Final prompt dict submitted to GPT
-    gpt_prompt_dict = create_custom_gpt_message_dict(random_article_content_prompt,
-                                                     role='system')
-    random_article_content_prompt_summary = openai_gpt_chatcompletion(gpt_prompt_dict, 
-                                                                      OPENAI_API_KEY=OPENAI_API_KEY, 
-                                                                      max_characters=2000)
-    
-    return random_article_content_prompt_summary
-
-
-#Generates a random prompt based on the list of standardized prompts
-def rand_prompt(prompts_list=None):
-    automsg_percent_chance_list = []
-    automsg_prompt_topics = []
-    automsg_prompts = []
-    
-    for key, value in prompts_list.items():
-        automsg_prompt_topics.append(key)
-        automsg_prompts.append(value[0])
-        automsg_percent_chance_list.append(value[1])
-
-    selected_prompt = random.choices(automsg_prompts, weights=automsg_percent_chance_list, k=1)[0]
-    return selected_prompt
-
 
 def prompt_text_replacement(gpt_prompt_text,
                             replacements_dict):
     prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
     return prompt_text_replaced
 
-
-def create_custom_gpt_message_dict(prompt_text,
-                                   role='user',
-                                   name='unknown'):
-    
-    if role == 'system':
-        gpt_ready_msg_dict = {'role': role, 'content': f'{prompt_text}'}
-    if role in ['user','assistant']:
-        gpt_ready_msg_dict = {'role': role, 'content': f'<<<{name}>>>: {prompt_text}'}
-
-    return gpt_ready_msg_dict
-
-
-def create_gpt_message_dict_from_twitchmessage(message_metadata, 
-                                               role='user'):
-    """
-    Create a dictionary suitable for GPT chat completion.
-    
-    Args:
-    - message_metadata (dict): The original metadata dictionary.
-    - role (str, optional): The role (default is 'user').
-    
-    Returns:
-    - dict: A filtered and formatted dictionary.
-    """    
-    logger_create_gpt_message_dict_from_twitchmsg = my_logger(
-        dirname='log', 
-        logger_name='logger_create_gpt_message_dict_from_twitchmsg',
-        debug_level='DEBUG',
-        mode='a',
-        stream_logs=stream_logs)
-
-    gpt_ready_msg_dict = {}
-    gpt_ready_msg_dict['role'] = role
-    gpt_ready_msg_dict['content'] = message_metadata['content']
-
-    logger_create_gpt_message_dict_from_twitchmsg.debug('message_metadata details:')
-    logger_create_gpt_message_dict_from_twitchmsg.debug(message_metadata)
-    logger_create_gpt_message_dict_from_twitchmsg.debug('create_gpt_message_dict_from_twitchmessage details:')
-    logger_create_gpt_message_dict_from_twitchmsg.debug(gpt_ready_msg_dict)
-    
-    return gpt_ready_msg_dict
 
 
 def combine_msghistory_and_prompttext(prompt_text,
@@ -214,6 +131,7 @@ def combine_msghistory_and_prompttext(prompt_text,
             return msg_history_list_dict
 
 
+
 def get_models(api_key=None):
     """
     Function to fetch the available models from the OpenAI API.
@@ -234,7 +152,6 @@ def get_models(api_key=None):
 
     return response.json()
 
-
 if __name__ == '__main__':
     yaml_data = load_yaml(yaml_dirname='config')
     load_env(env_dirname='config')
@@ -244,18 +161,3 @@ if __name__ == '__main__':
     gpt_models = get_models(OPENAI_API_KEY)
     print("GPT Models:")
     print(json.dumps(gpt_models, indent=4))
-
-    # #test1 -- get_random_rss_article_summary_prompt
-    # summary_prompt = yaml_data['ouat_news_article_summary_prompt']
-    
-    # summary_prompt_response = get_random_rss_article_summary_prompt(
-    #     newsarticle_rss_feed='http://rss.cnn.com/rss/cnn_showbiz.rss',
-    #     summary_prompt=summary_prompt,
-    #     OPENAI_API_KEY=OPENAI_API_KEY
-    #     )
-    # print("summary_prompt_response:")
-    # print(summary_prompt_response)
-
-
-
-

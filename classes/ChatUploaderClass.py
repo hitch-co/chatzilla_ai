@@ -10,10 +10,13 @@ from my_modules import my_logging
 from my_modules.utils import write_json_to_file, write_query_to_file
 
 
-load_env()
+
 
 class TwitchChatData:
     def __init__(self):
+
+        load_env()
+
         self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
         self.twitch_bot_moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
         self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
@@ -27,7 +30,8 @@ class TwitchChatData:
                                            stream_logs=False)
         self.logger.debug('TwitchChatData initialized.')
 
-        # os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'config/keys/eh-talkzilla-ai-e51a66031f48.json'
+        #also set in twitch_bot.py
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'config/keys/eh-talkzilla-ai-1bcb1963d5b4.json'
 
     def get_channel_viewers(self,
                             bearer_token=None):

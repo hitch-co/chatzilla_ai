@@ -59,7 +59,7 @@ class ArticleGenerator:
                 return True
         return False
 
-    def fetch_random_article_content(self, article_char_trunc=500):
+    def fetch_random_article_content(self, article_char_trunc=300):
         found_article = False
         list_of_disallowed_terms = self.load_disallowed_terms(dir_path='config',
                                                               file_name='disallowed_terms.json')

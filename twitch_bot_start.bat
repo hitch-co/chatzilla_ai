@@ -22,8 +22,10 @@ set input_port_number=3000
 
 :: Run Python command
 python "C:\_repos\chatforme_bots\twitch_bot.py" ^
-    --include_ouat=%include_ouat% --ouat_prompt_name=%prompt_list_ouat% ^
-    --include_automsg=%include_automsg% --automated_msg_prompt_name=%prompt_list_automsg% ^
+    --include_ouat=%include_ouat% ^ 
+    --ouat_prompt_name=%prompt_list_ouat% ^
+    --include_automsg=%include_automsg% ^ 
+    --automated_msg_prompt_name=%prompt_list_automsg% ^
     --chatforme_prompt_name=%prompt_list_chatforme% ^
     --include_sound=%include_sound% ^
     --input_port_number=%input_port_number% 

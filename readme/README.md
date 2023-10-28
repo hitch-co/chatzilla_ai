@@ -41,7 +41,7 @@ The Twitch bot is implemented in the `twitch_bot.py` script. Here is a brief run
 
 - The `Bot` class inherits from the `twitch_commands.Bot` class and contains all the logic for interacting with the Twitch API and OpenAI's GPT-4. It stores all recent messages in a list, and it can generate and send automated messages periodically.
 - The `event_ready` method is called when the bot successfully connects to the Twitch channel. It sends a greeting message and starts a background task for sending automated messages.
-- The `send_periodic_message` method generates and sends a message every `automated_message_seconds` seconds. It fetches the prompts from the `config.yaml` file and uses GPT-4 to generate the message content.
+- The `ouat_storyteller` method generates and sends a message every `automated_message_seconds` seconds. It fetches the prompts from the `config.yaml` file and uses GPT-4 to generate the message content.
 - The `event_message` method is called whenever a new message is sent in the Twitch channel. It adds the message to the history (excluding messages sent by the bot itself or command messages), and then it passes the message to the command handler.
 - The `chatforme` command generates a response from GPT-4 based on the recent message history and the current prompt.
 - The `/auth` and `/callback` routes handle the OAuth2 flow for the Twitch API.

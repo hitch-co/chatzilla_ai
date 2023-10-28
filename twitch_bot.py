@@ -229,7 +229,10 @@ class Bot(twitch_commands.Bot):
                 max_characters=1200
                 )
 
-            printc(f"A story was started by {message.author.id}", bcolors.WARNING)
+            printc(f"A story was started by {message.author.name} ({message.author.id})", bcolors.WARNING)
+            printc(f"Theme: {self.selected_theme}", bcolors.OKBLUE)
+            printc(f"Writing Tone: {self.selected_writing_tone}", bcolors.OKBLUE)
+            printc(f"Writing Style: {self.selected_writing_style}", bcolors.OKBLUE)
             self.logger.debug(f"A story was started by {message.author.id}")
             self.logger.debug(f'This is the gpt_ready_list_dict:')
             self.logger.debug(gpt_ready_list_dict)  
@@ -239,7 +242,7 @@ class Bot(twitch_commands.Bot):
             await self.start_ouat_storyteller_msg_loop()
 
     @twitch_commands.command(name='addtostory')
-    async def add_to_story_ouat(self, ctx, *args):
+    async def add_to_story_ouat(self, ctx,  *args):
         author=ctx.message.author.name
         prompt_text = ' '.join(args)
         gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_strings(
@@ -249,6 +252,9 @@ class Bot(twitch_commands.Bot):
             name=author
             )
         self.message_handler.ouat_temp_msg_history.append(gpt_ready_msg_dict)
+        
+        printc(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'", bcolors.WARNING)
+        self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'")
 
     @twitch_commands.command(name='extendstory')
     async def extend_story(self, ctx, *args) -> None:

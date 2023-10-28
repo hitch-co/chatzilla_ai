@@ -4,6 +4,8 @@ import json
 
 from my_modules.config import load_env, load_yaml
 
+from elevenlabs import play
+
 #config yaml
 yaml_data = load_yaml(yaml_dirname='config', yaml_filename='config.yaml')
 
@@ -13,8 +15,6 @@ ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')
 ELEVENLABS_XI_VOICE_PERSONAL= os.getenv('ELEVENLABS_XI_VOICE_PERSONAL')
 ELEVENLABS_XI_VOICE_BUSINESS=''
 
-
-#####################################################
 def generate_t2s_object(ELEVENLABS_XI_API_KEY = None,
                        voice_id = None,
                        text_to_say='this is default text', 
@@ -49,13 +49,14 @@ def generate_t2s_object(ELEVENLABS_XI_API_KEY = None,
     headers={'xi-api-key':ELEVENLABS_XI_API_KEY}
     set_api_key(ELEVENLABS_XI_API_KEY)
 
-    audio = generate(text=text_to_say,
+    audio_object = generate(text=text_to_say,
                     voice = voice_id)
 
-    return(audio)
+    return audio_object
 
+def play_t2s_object(audio_object):
+    play(audio_object)
 
-####################
 def get_voice_ids():
     """
     Fetch available voice IDs from ElevenLabs API.
@@ -86,8 +87,6 @@ def get_voice_ids():
     return formatted_json
     #EoF
 
-
-########################
 def get_voice_history():
     """
     Fetch voice generation history from ElevenLabs API.

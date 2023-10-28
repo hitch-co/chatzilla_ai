@@ -367,11 +367,7 @@ class Bot(twitch_commands.Bot):
                         voice_id = self.ELEVENLABS_XI_VOICE,
                         text_to_say=generated_message, 
                         is_testing = False)
-                    play(v2s_message_object)
-
-                self.logger.info(f"FINAL generated_message (type: {type(generated_message)}): \n{generated_message}")  
-
-                await self.channel.send(generated_message)
+                    play_t2s_object(v2s_message_object)
 
                 if self.ouat_counter == self.ouat_story_max_counter:
                     print("self.ouat_counter == self.ouat_story_max_counter:  That was the last message")

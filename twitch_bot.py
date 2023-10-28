@@ -199,8 +199,10 @@ class Bot(twitch_commands.Bot):
         return temp_response
 
     @twitch_commands.command(name='startstory')
-    async def startstory(self, message):
+    async def startstory(self, message, *args):
         if self.ouat_counter == 0:
+            user_requested_plotline = ' '.join(args)
+
 
             # Capture writing tone/style/theme and randomly select one item from each list
             writing_tone_values = list(yaml_data['ouat-writing-parameters']['writing_tone'].values())
@@ -212,7 +214,8 @@ class Bot(twitch_commands.Bot):
 
             # Fetch random article
             self.random_article_content = self.article_generator.fetch_random_article_content(article_char_trunc=300)                    
-            replacements_dict = {"random_article_content":self.random_article_content}
+            replacements_dict = {"random_article_content":self.random_article_content,
+                                 "user_requested_plotline":user_requested_plotline}
 
             self.random_article_content = prompt_text_replacement(
                 gpt_prompt_text=self.ouat_news_article_summary_prompt,

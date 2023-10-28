@@ -31,7 +31,6 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
     """     
     openai.api_key = OPENAI_API_KEY
 
-    #setup logger
     logger_gptchatcompletion = my_logger(dirname='log',
                                          logger_name='logger_openai_gpt_chatcompletion',
                                          mode='a',
@@ -79,22 +78,21 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
 
     return gpt_response_text
 
-
-
 def prompt_text_replacement(gpt_prompt_text,
                             replacements_dict):
+    logger_prompt_text_replacement = my_logger(dirname='log',
+                                         logger_name='logger_prompt_text_replacement',
+                                         mode='a',
+                                         stream_logs=stream_logs)
     prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
+    logger_prompt_text_replacement.info(f"prompt_text_replaced: {prompt_text_replaced}")
     return prompt_text_replaced
-
-
 
 def combine_msghistory_and_prompttext(prompt_text,
                                       role='user',
                                       name='unknown',
                                       msg_history_list_dict=None,
                                       combine_messages=False) -> [dict]:
-    
-    #setup logger
     logger_msghistory_and_prompt = my_logger(
         dirname='log',
         logger_name='logger_msghistory_and_prompt',
@@ -129,8 +127,6 @@ def combine_msghistory_and_prompttext(prompt_text,
         else:
             msg_history_list_dict.append(prompt_dict) 
             return msg_history_list_dict
-
-
 
 def get_models(api_key=None):
     """

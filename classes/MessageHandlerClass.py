@@ -6,7 +6,7 @@ import json
 from my_modules import my_logging
 from my_modules.my_logging import log_dynamic_dict
 
-from my_modules.utils import write_json_to_file, write_query_to_file
+from my_modules.utils import write_json_to_file, write_query_to_file, format_record_timestamp, conv_datetime_formats
 
 from classes.PromptHandlerClass import PromptHandler
 
@@ -24,6 +24,9 @@ class MessageHandler:
 
         #Users in message history
         self.users_in_messages_list = []
+
+        #message_history_raw
+        self.message_history_raw = []
 
         #Message History Lists
         self.ouat_temp_msg_history = []
@@ -44,25 +47,32 @@ class MessageHandler:
         self.logger.debug("these are the self.known_bots")
         self.logger.debug(self.known_bots)
         
-        
+    def get_bot_message_metadata(self, message) -> None:
+        message_metadata = {
+            'badges': 'unknown', #message.tags.get('badges', 'NULL'),
+            'name': self.extract_name_from_message(message=message), #message.author.get('name', 'NULL'),
+            'user_id': self.extract_name_from_message(message=message), #message.author.get('id', 'NULL'),
+            'display_name': 'unknown', #message.author.get('display_name', 'NULL'),
+            'channel': 'unknown', #message.channel.get('name', 'NULL'),
+            'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M:%S'), #conv_datetime_formats(message.timestamp),
+            'tags': {'color':'unkonwn'}, #message.get('tags', 'NULL'),
+            'content': message.content #f'<<<{message.author.get("name", "Unknown Author")}>>>: {message.get("content","No Content")}',
+        }
+        return message_metadata
+
     def get_message_metadata(self, message) -> None:
         # Collect all metadata
         message_metadata = {
-            'badges': message.author.badges,
+            'badges': message.tags.get('badges', ''),
             'name': message.author.name,
             'user_id': message.author.id,
             'display_name': message.author.display_name,
             'channel': message.channel.name,
-            'timestamp': message.timestamp,
+            'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M:%S'), #conv_datetime_formats(message.timestamp),
             'tags': message.tags,
             'content': f'<<<{message.author.name}>>>: {message.content}',
         }
         return message_metadata
-
-    def add_to_message_history(self, message_history: list[dict], 
-                               message_metadata: dict) -> None:
-        message_history.append(message_metadata)
-        self.message_history = message_history
 
     def add_user_to_users_list(self, message_metadata: dict) -> None:
         self.users_in_messages_list.append(message_metadata['name'])
@@ -70,12 +80,21 @@ class MessageHandler:
 
     def extract_name_from_message(self, message):
         message_rawdata = message.raw_data
+
         start_index = message_rawdata.find(":") + 1
         end_index = message_rawdata.find("!")
+
+        if 'userstate' in message.raw_data.lower():
+            print("THE RAW DATA CONTAINS USERSTATE")
+
         if start_index == 0 or end_index == -1:
+            self.logger.info(message.raw_data)
             return 'unknown_name - see message.raw_data for details'
         else:
-            return message_rawdata[start_index:end_index]
+            extracted_name = message_rawdata[start_index:end_index]
+            self.logger.info(f"This is the extracted_name: {extracted_name} and raw_message_data:")
+            self.logger.info(message.raw_data)
+            return extracted_name
 
     def add_to_appropriate_message_history(self, message):
 
@@ -83,15 +102,18 @@ class MessageHandler:
             #Message Metadata
             message_metadata = self.get_message_metadata(message)            
             name = message_metadata['name']
-            self.logger.info("Here is the message_data:")
-            self.logger.debug(message_metadata)
             self.add_user_to_users_list(message_metadata)
+
+            # Add to message_history_raw
+            self.logger.info("Here is the USER message_data:")
+            self.logger.debug(message_metadata)
+            self.message_history_raw.append(message_metadata)
 
             # Create GPT-ready message dict
             gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_metadata(self,
                                                                                      message_metadata=message_metadata)
-            self.logger.debug("This is the gpt_ready_msg_dict")
-            log_dynamic_dict(self.logger, gpt_ready_msg_dict)
+            # self.logger.debug("This is the gpt_ready_msg_dict")
+            # log_dynamic_dict(self.logger, gpt_ready_msg_dict)
 
             if name in self.bots_automsg or name in self.bots_chatforme:
                 self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
@@ -105,14 +127,27 @@ class MessageHandler:
                 self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
 
         elif message.author is None:
+
+            #TODO Add weith xtract name from message and cleanup the output
+            # e.g. make sure self.messaage_history_raw gets a copy of bot data
+            # e.g. make sure that message histories are applied correctly
+            message_metadata = self.get_bot_message_metadata(message)   
+            self.message_history_raw.append(message_metadata)
+
+            self.logger.info('Here is the BOT message_metadata:')
+            self.logger.info(message_metadata)
             
             extracted_name = self.extract_name_from_message(message)
             message_metadata = {'name':extracted_name}
+
             gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_strings(self,
                                                                                     role='user',
                                                                                     name=extracted_name,
                                                                                     content=message.content)
             self.add_user_to_users_list(message_metadata)
+
+            # self.logger.debug(f"This is the bot name (extracted_name): {extracted_name}")
+            # log_dynamic_dict(self.logger, gpt_ready_msg_dict)
 
             if extracted_name in self.bots_ouat:
                 self.ouat_temp_msg_history.append(gpt_ready_msg_dict)

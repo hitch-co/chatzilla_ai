@@ -20,7 +20,7 @@ from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
 from classes.CustomExceptions import BotFeatureNotEnabledException
 from classes.MessageHandlerClass import MessageHandler
-from classes.ChatUploaderClass import TwitchChatData
+from classes.TwitchChatBQUploaderClass import TwitchChatBQUploader
 from classes.PromptHandlerClass import PromptHandler
 from classes.ArgsConfigManagerClass import ArgsConfigManager
 
@@ -45,13 +45,14 @@ class Bot(twitch_commands.Bot):
         #instantiate amessage handler class
         self.message_handler = MessageHandler()
         self.args_config = ArgsConfigManager()
+        self.twitch_chat_uploader = TwitchChatBQUploader() #TODO should be instantiated with a access token
 
         #setup logger
         self.logger = my_logger(dirname='log', 
                                 logger_name='logger_BotClass', 
                                 debug_level=runtime_logger_level,
                                 mode='a',
-                                stream_logs=False,
+                                stream_logs=True,
                                 encoding='UTF-8')
 
         #May be redundant.  I think I should leave these here but then need to handle
@@ -160,6 +161,37 @@ class Bot(twitch_commands.Bot):
         #start loop
         self.loop.create_task(self.ouat_storyteller())
 
+    async def event_message(self, message):
+        
+        #This is the control flow function for creating message histories
+        self.message_handler.add_to_appropriate_message_history(message)
+        
+        #Get chatter data and store in queue
+        channel_viewers_queue_query = self.twitch_chat_uploader.get_process_queue_create_channel_viewers_query(
+            bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
+
+        #Send the data to BQ
+
+        if len(self.message_handler.message_history_raw)==3:
+            self.logger.info("channel_viewers_query")
+            self.logger.info(channel_viewers_queue_query)
+            
+            #execute channel viewers query
+            self.twitch_chat_uploader.send_to_bq(query=channel_viewers_queue_query)            
+
+            #generate and execute user interaction query
+            viewer_interactions_query = self.twitch_chat_uploader.generate_bq_user_interactions_query(
+                records = self.message_handler.message_history_raw)
+            self.twitch_chat_uploader.send_to_bq(query=viewer_interactions_query)
+
+            #clear the queues
+            self.message_handler.message_history_raw.clear()
+            self.twitch_chat_uploader.channel_viewers_queue.clear()
+
+        # self.handle_commands runs through bot commands
+        if message.author is not None:
+            await self.handle_commands(message)
+
     #controls ouat_storyteller()
     async def start_ouat_storyteller_msg_loop(self):
         self.is_ouat_loop_active = True
@@ -167,19 +199,6 @@ class Bot(twitch_commands.Bot):
         if not any([self.args_include_automsg == 'yes', self.args_include_ouat == 'yes']):
             self.logger.error("Neither automsg or ouat enabled with app argument")
             raise BotFeatureNotEnabledException("Neither automsg or ouat enabled with app argument")
-
-    @twitch_commands.command(name='get_chatters')
-    async def get_chatters(self, ctx):
-        try:
-            twitchchatdata = TwitchChatData()
-            temp_response = twitchchatdata.get_channel_viewers(bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
-            channel_viewers_list_dict = twitchchatdata.process_channel_viewers(response = temp_response)
-            table_id=yaml_data['twitch-ouat']['talkzillaai_userdata_table_id']
-            channel_viewers_query = twitchchatdata.generate_bq_query(table_id=table_id, channel_viewers_list_dict=channel_viewers_list_dict)
-            twitchchatdata.send_to_bq(query=channel_viewers_query)
-        except Exception as e:
-            self.logger.exception('An error occurred while fetching channel viewers: %s', e)
-        return temp_response
 
     @twitch_commands.command(name='startstory')
     async def startstory(self, message, *args):
@@ -273,14 +292,6 @@ class Bot(twitch_commands.Bot):
         self.logger.info("These are the runtime params for this bot:")
         for arg in args_list:
             self.logger.info(f"{arg}: {getattr(self, arg)}")
-
-    async def event_message(self, message):
-        #This is the control flow function for creating message histories
-        self.message_handler.add_to_appropriate_message_history(message)
-        
-        # self.handle_commands directs the twitch bot when to take action on bot specific commands (say !startstory)
-        if message.author is not None:
-            await self.handle_commands(message)
 
     async def ouat_storyteller(self):
         self.load_configuration()

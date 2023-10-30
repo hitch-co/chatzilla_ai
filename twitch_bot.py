@@ -1,45 +1,41 @@
-#Whether or not to refresh flask app live
-use_reloader_bool=False
-runtime_logger_level = 'DEBUG'
-
-#imports
+# Import required modules
 import asyncio
-
 from threading import Thread
 from flask import Flask, request
 import uuid
-
 import requests
 import os
-
 from my_modules.my_logging import my_logger, log_dynamic_dict
 from my_modules.config import load_yaml, load_env
-
 from classes.TwitchBotClass import Bot
 from classes.ArgsConfigManagerClass import ArgsConfigManager
 
-# configure the root logger
-root_logger = my_logger(dirname='log', 
-                        logger_name='root_logger', 
-                        debug_level=runtime_logger_level,
-                        mode='a')
+# Configuration
+use_reloader_bool = False
+runtime_logger_level = 'DEBUG'
+
+# Initialize the root logger
+root_logger = my_logger(
+    dirname='log',
+    logger_name='root_logger',
+    debug_level=runtime_logger_level,
+    mode='a'
+)
 root_logger.info("----- This is the start of an app start root log! -----")
 
-#Placeholder/junk
+# Global Variables
 TWITCH_CHATFORME_BOT_THREAD = None
 
-#TWITCH_BOT_REDIRECT_PATH = os.getenv('TWITCH_BOT_REDIRECT_PATH')
+# Load configurations from YAML and environment variables
 yaml_data = load_yaml(yaml_dirname='config', yaml_filename='config.yaml')
 load_env(env_dirname=yaml_data['env_dirname'], env_filename=yaml_data['env_filename'])
-
 twitch_bot_redirect_path = yaml_data['twitch-app']['twitch_bot_redirect_path']
 TWITCH_BOT_CLIENT_ID = os.getenv('TWITCH_BOT_CLIENT_ID')
 TWITCH_BOT_CLIENT_SECRET = os.getenv('TWITCH_BOT_CLIENT_SECRET')
 TWITCH_BOT_SCOPE = os.getenv('TWITCH_BOT_SCOPE')
 
-#Start the app
+# Initialize Flask app
 app = Flask(__name__)
-
 args_config = ArgsConfigManager()
 
 #App route home

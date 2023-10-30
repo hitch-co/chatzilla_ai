@@ -106,6 +106,16 @@ def get_datetime_formats():
     dates_dict = {"sql_format":sql_format, "filename_format":filename_format}
     return dates_dict
 
+def conv_datetime_formats(ctx_message_timestamp):
+    timestamp_formatted = datetime.utcfromtimestamp(ctx_message_timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S')
+    print("convert")
+    return timestamp_formatted
+
+def format_record_timestamp(record: dict) -> dict:
+    """Format the 'timestamp' field in a record."""
+    record['timestamp'] = datetime.utcfromtimestamp(record['timestamp'] / 1000).strftime('%Y-%m-%d %H:%M:%S')
+    return record
+
 def write_msg_history_to_file(msg_history, variable_name_text, logger, dirname='log/ouat_story_history'):
     current_datetime = get_datetime_formats()['filename_format']
 

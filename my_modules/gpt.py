@@ -8,18 +8,22 @@ from my_modules.config import load_env, load_yaml
 import random
 import requests
 import openai
+import tiktoken
+from typing import List
+
 import re
 import json
 
 #LOGGING
 stream_logs=False
+mode="gpt-3.5-turbo"
 
 # call to chat gpt for completion TODO: Could add  limits here?
-def openai_gpt_chatcompletion(messages_dict_gpt=None,
+def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
                               OPENAI_API_KEY=None, 
                               max_characters=250,
                               max_attempts=5,
-                              model="gpt-3.5-turbo",
+                              model=mode,
                               frequency_penalty=1,
                               presence_penalty=1,
                               temperature=0.7) -> str: 
@@ -42,6 +46,17 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
     logger_gptchatcompletion.debug("This is the messages_dict_gpt submitted to GPT ChatCompletion")
     logger_gptchatcompletion.debug(messages_dict_gpt)
 
+    #Error checking for token length, etc.
+    counter=0
+    while count_tokens_in_messages(messages=messages_dict_gpt) > 750:
+        logger_gptchatcompletion.warning("The messages_dict_gpt contained too many tokens, .pop() first dict")
+        messages_dict_gpt.pop(0)
+        counter+=1
+        if counter>3:
+            logger_gptchatcompletion.error("Too many tokens even after 5 attempts to reduce count. Exiting program.")
+            exit(1)
+    
+    #Call to OpenAI
     for _ in range(max_attempts):
         generated_response = openai.ChatCompletion.create(
             model=model,
@@ -146,24 +161,33 @@ def combine_msghistory_and_prompttext(prompt_text,
                 'content':msg_history_string
             }]            
             reformatted_msg_history_list_dict.append(prompt_dict)
-            logger_msghistory_and_prompt.debug(reformatted_msg_history_list_dict)
-            utils.write_json_to_file(
-                data=reformatted_msg_history_list_dict, 
-                variable_name_text='reformatted_msg_history_list_dict', 
-                dirname='log/get_combine_msghistory_and_prompttext_combined', 
-                include_datetime=False
-                )
-            return reformatted_msg_history_list_dict
+            msg_history_list_dict=reformatted_msg_history_list_dict
+
         else:
             msg_history_list_dict.append(prompt_dict) 
             logger_msghistory_and_prompt.debug(msg_history_list_dict)
-            utils.write_json_to_file(
-                data=msg_history_list_dict, 
-                variable_name_text='msg_history_list_dict', 
-                dirname='log/get_combine_msghistory_and_prompttext_notcombined', 
-                include_datetime=False
-                )
-            return msg_history_list_dict
+
+        logger_msghistory_and_prompt.debug(msg_history_list_dict)
+        utils.write_json_to_file(
+            data=msg_history_list_dict, 
+            variable_name_text='msg_history_list_dict', 
+            dirname='log/get_combine_msghistory_and_prompttext_combined', 
+            include_datetime=False
+            )
+        return msg_history_list_dict
+
+def _count_tokens(text:str, model="gpt-3.5-turbo") -> int:
+    encoding = tiktoken.encoding_for_model(model_name=model)
+    tokens_in_text = len(encoding.encode(text))
+    return tokens_in_text
+
+def count_tokens_in_messages(messages: List[dict]) -> int:
+    total_tokens = 0
+    for message in messages:
+        role = message['role']
+        content = message['content']
+        total_tokens += _count_tokens(role) + _count_tokens(content)
+    return total_tokens
 
 def get_models(api_key=None):
     """

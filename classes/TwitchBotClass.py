@@ -171,8 +171,9 @@ class Bot(twitch_commands.Bot):
         #This is the control flow function for creating message histories
         self.message_handler.add_to_appropriate_message_history(message)
         
-        #Get chatter data and store in queue
+        #Get chatter data, store in queue, generate query for sending to BQ
         channel_viewers_queue_query = self.twitch_chat_uploader.get_process_queue_create_channel_viewers_query(
+            table_id=self.userdata_table_id,
             bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
 
         #Send the data to BQ
@@ -181,12 +182,19 @@ class Bot(twitch_commands.Bot):
             self.logger.info(channel_viewers_queue_query)
             
             #execute channel viewers query
-            self.twitch_chat_uploader.send_to_bq(query=channel_viewers_queue_query)            
+            self.twitch_chat_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
 
             #generate and execute user interaction query
-            viewer_interactions_query = self.twitch_chat_uploader.generate_bq_user_interactions_query(
-                records = self.message_handler.message_history_raw)
-            self.twitch_chat_uploader.send_to_bq(query=viewer_interactions_query)
+            self.logger.info("These are the message_history_raw:")
+            self.logger.info(self.message_handler.message_history_raw)
+            viewer_interaction_records = self.twitch_chat_uploader.generate_bq_user_interactions_records(records=self.message_handler.message_history_raw)
+            self.logger.info("These are the viewer_interaction_records:")
+            self.logger.info(viewer_interaction_records)
+
+            self.twitch_chat_uploader.send_recordsjob_to_bq(
+                table_id=self.usertransactions_table_id,
+                records=viewer_interaction_records
+                )
 
             #clear the queues
             self.message_handler.message_history_raw.clear()

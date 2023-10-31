@@ -14,7 +14,7 @@ class MessageHandler:
     def __init__(self):
         self.logger = my_logging.my_logger(dirname='log', 
                                            logger_name='logger_MessageHandler',
-                                           debug_level='DEBUG',
+                                           debug_level='INFO',
                                            mode='w',
                                            stream_logs=True)
         self.logger.debug('MessageHandler initialized.')
@@ -108,8 +108,11 @@ class MessageHandler:
             self.message_history_raw.append(message_metadata)
 
             # Create GPT-ready message dict
-            gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_metadata(self, message_metadata=message_metadata)
-
+            gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_metadata(
+                self, 
+                role='user',
+                message_metadata=message_metadata
+                )
 
             if name in self.bots_automsg or name in self.bots_chatforme:
                 self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
@@ -140,7 +143,7 @@ class MessageHandler:
             message_metadata = {'name':extracted_name}
 
             gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_strings(
-                self, role='user',
+                self, role='assistant',
                 name=extracted_name,
                 content=message.content)
 

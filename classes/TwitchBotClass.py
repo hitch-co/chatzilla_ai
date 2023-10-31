@@ -69,6 +69,10 @@ class Bot(twitch_commands.Bot):
         google_application_credentials_file = yaml_data['twitch-ouat']['google_service_account_credentials_file']
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_application_credentials_file
 
+        #BQ Table IDs
+        self.userdata_table_id=self.yaml_data['twitch-ouat']['talkzillaai_userdata_table_id']
+        self.usertransactions_table_id=self.yaml_data['twitch-ouat']['talkzillaai_usertransactions_table_id']
+
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
 
@@ -224,7 +228,7 @@ class Bot(twitch_commands.Bot):
                 )
             gpt_ready_list_dict = combine_msghistory_and_prompttext(
                 prompt_text=self.random_article_content,
-                name=self.twitch_bot_username,
+                prompt_text_name=self.twitch_bot_username,
                 msg_history_list_dict=None
                 )
             self.random_article_content_prompt_summary = openai_gpt_chatcompletion(
@@ -334,15 +338,16 @@ class Bot(twitch_commands.Bot):
                     elif self.ouat_counter > self.ouat_story_max_counter:
                         await self.stop_loop()
                         continue
-                    #self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')   
                 
                 else: self.logger.error("Neither automsg or ouat enabled with app startup argument")
 
                 self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter}")
+                self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')
+
                 messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
-                                                                      role='system',
+                                                                      prompt_text_role='system',
                                                                       msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
-                                                                      combine_messages=True)
+                                                                      combine_messages=False)
 
                 ##################################################################################
                 gpt_response_text = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
@@ -399,9 +404,9 @@ class Bot(twitch_commands.Bot):
             )
 
         messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text = chatgpt_chatforme_prompt,
-                                                                role='system',
-                                                                msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
-                                                                combine_messages=False)
+                                                              prompt_text_role='system',
+                                                              msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
+                                                              combine_messages=False)
         
         # Execute the GPT API call to get the chatbot response
         gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
@@ -441,8 +446,8 @@ class Bot(twitch_commands.Bot):
 
         # # Combine the chat history with the new system prompt to form a list of messages for GPT.
         messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=chatgpt_chatforme_prompt,
-                                                              role='system',
-                                                              name='unknown',
+                                                              prompt_text_role='system',
+                                                              prompt_text_name='unknown',
                                                               msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
                                                               combine_messages=False)
         

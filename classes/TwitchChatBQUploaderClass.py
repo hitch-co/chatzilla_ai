@@ -22,6 +22,16 @@ class TwitchChatBQUploader:
         load_env()
         self.yaml_data = load_yaml()
 
+        #env variables
+        self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
+        self.twitch_bot_moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
+        self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
+        self.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
+
+        #also set in twitch_bot.py
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'config/keys/eh-talkzilla-ai-1bcb1963d5b4.json'
+
+        #logger
         self.logger = my_logging.my_logger(dirname='log', 
                                            logger_name='logger_ChatUploader',
                                            debug_level='INFO',
@@ -29,18 +39,8 @@ class TwitchChatBQUploader:
                                            stream_logs=True)
         self.logger.debug('TwitchChatBQUploader Logger initialized.')
 
-        self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
-        self.twitch_bot_moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
-        self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
-        self.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
+        #Build the client
         self.bq_client = bigquery.Client()
-
-        #also set in twitch_bot.py
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'config/keys/eh-talkzilla-ai-1bcb1963d5b4.json'
-
-        #BQ Table IDs
-        self.userdata_table_id=self.yaml_data['twitch-ouat']['talkzillaai_userdata_table_id']
-        self.usertransactions_table_id=self.yaml_data['twitch-ouat']['talkzillaai_usertransactions_table_id']
 
         self.channel_viewers_list_dict_temp = []
         self.channel_viewers_queue = []

@@ -1,5 +1,6 @@
 from classes.ArticleGeneratorClass import ArticleGenerator
 from classes.ConsoleColoursClass import bcolors, printc
+from my_modules import utils
 from my_modules.my_logging import my_logger
 
 import os
@@ -20,7 +21,8 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
                               max_attempts=5,
                               model="gpt-3.5-turbo",
                               frequency_penalty=1,
-                              presence_penalty=1) -> str: 
+                              presence_penalty=1,
+                              temperature=0.7) -> str: 
     """
     Send a message to OpenAI GPT-3.5-turbo for completion and get the response.
 
@@ -45,7 +47,8 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
             model=model,
             messages=messages_dict_gpt,
             presence_penalty=presence_penalty,
-            frequency_penalty=frequency_penalty
+            frequency_penalty=frequency_penalty,
+            temperature=temperature
             )
         gpt_response_text = generated_response.choices[0].message['content']
         gpt_response_text_len = len(gpt_response_text)
@@ -65,7 +68,8 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
                 model=model,
                 messages=messages_dict_gpt_updated,
                 presence_penalty=presence_penalty,
-                frequency_penalty=frequency_penalty
+                frequency_penalty=frequency_penalty,
+                temperature=temperature
                 )
             gpt_response_text = generated_response.choices[0].message['content']
             gpt_response_text_len = len(gpt_response_text)

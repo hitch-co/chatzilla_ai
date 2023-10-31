@@ -131,7 +131,7 @@ def write_msg_history_to_file(msg_history, variable_name_text, logger, dirname='
 
     logger.debug(f"Message history written to {filename}")
 
-def write_json_to_file(self, data, variable_name_text, dirname='log/get_chatters_data', include_datetime=False):
+def write_json_to_file(data, variable_name_text, dirname='log/get_chatters_data', include_datetime=False):
     if include_datetime:
         current_datetime = "_"+get_datetime_formats()['filename_format']
     else:

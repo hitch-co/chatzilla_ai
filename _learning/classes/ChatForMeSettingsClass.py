@@ -18,7 +18,7 @@ class ChatForMeSettings:
     formatted_gpt_automsg_prompt_suffix  = ''
     formatted_gpt_chatforme_prompt_prefix = ''
     formatted_gpt_chatforme_prompt_suffix = ''
-    chatgpt_automated_msg_prompts = ''
+    automsg_prompt_lists = ''
     
     #Load parameters from config.yaml
     def load_yaml_raw(self, yaml_filename='config.yaml', yaml_dirname='', is_testing=False):
@@ -79,5 +79,5 @@ class ChatForMeSettings:
         self.formatted_gpt_automsg_prompt_suffix = str(self.get_default_value(raw_yaml_data, 'formatted_gpt_automsg_prompt_suffix', ''))
         self.formatted_gpt_chatforme_prompt_prefix = str(self.get_default_value(raw_yaml_data, 'formatted_gpt_chatforme_prompt_prefix', ''))
         self.formatted_gpt_chatforme_prompt_suffix = str(self.get_default_value(raw_yaml_data, 'formatted_gpt_chatforme_prompt_suffix', ''))
-        self.chatgpt_automated_msg_prompts = self.get_default_value(raw_yaml_data, 'chatgpt_automated_msg_prompts', '')
+        self.automsg_prompt_lists = self.get_default_value(raw_yaml_data, 'automsg_prompt_lists', '')
     

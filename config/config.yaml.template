@@ -173,7 +173,7 @@ automsg_prompt_prefix: >
   patronizingly nice.  Everything that follows is your prompt as the chat bot in question:"
 
 #List of prompt libraries
-chatgpt_automated_msg_prompts:
+automsg_prompt_lists:
   standard:
     nextup3:
       - "share a fact about anythying"

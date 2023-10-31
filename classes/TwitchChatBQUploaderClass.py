@@ -8,7 +8,7 @@ from google.cloud import bigquery
 from google.api_core.exceptions import GoogleAPIError
 import pandas as pd
 
-from my_modules.utils import get_datetime_formats, format_record_timestamp
+from my_modules.utils import get_datetime_formats, format_record_timestamp, write_query_to_file
 from my_modules.config import load_env, load_yaml
 import json
 from my_modules import my_logging
@@ -24,9 +24,9 @@ class TwitchChatBQUploader:
 
         self.logger = my_logging.my_logger(dirname='log', 
                                            logger_name='logger_ChatUploader',
-                                           debug_level='DEBUG',
+                                           debug_level='INFO',
                                            mode='w',
-                                           stream_logs=False)
+                                           stream_logs=True)
         self.logger.debug('TwitchChatBQUploader Logger initialized.')
 
         self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
@@ -45,6 +45,9 @@ class TwitchChatBQUploader:
         self.channel_viewers_list_dict_temp = []
         self.channel_viewers_queue = []
 
+    def escape_sql_string(value):
+        return value.replace("'", "''").replace("\\", "\\\\")
+    
     def get_channel_viewers(self,
                             bearer_token=None) -> object:
         self.logger.debug(f'Getting channel viewers with bearer_token')
@@ -60,8 +63,13 @@ class TwitchChatBQUploader:
         response = requests.get(base_url, params=params, headers=headers)
         self.logger.debug(f'Received response: {response}')
 
-        utils.write_json_to_file(self, response.json(), variable_name_text='channel_viewers', dirname='log/get_chatters_data')
+        utils.write_json_to_file(
+            self, response.json(), 
+            variable_name_text='channel_viewers', 
+            dirname='log/get_chatters_data'
+            )
         self.logger.debug('Wrote response.json() to file...')
+        
         return response
 
     def process_channel_viewers(self, response) -> list[dict]:
@@ -90,8 +98,6 @@ class TwitchChatBQUploader:
         df = df.sort_values(['user_id', 'timestamp'])
         df = df.drop_duplicates(subset='user_id', keep='last')
         self.logger.info(f'channel_viewers_queue deduplicated has {len(df)} rows')
-        # self.logger.info("This is the deduplicated df")
-        # self.logger.info(df)
 
         self.channel_viewers_queue = df.to_dict('records')
 
@@ -127,8 +133,9 @@ class TwitchChatBQUploader:
                             dirname='log/queries',
                             queryname='channelviewers_query_final')
         
-        self.logger.info("This is the users table merge query:")
-        self.logger.info(merge_query)
+        self.logger.info("The users table query was generated")
+        self.logger.debug("This is the users table merge query:")
+        self.logger.debug(merge_query)
         return merge_query
   
     def get_process_queue_create_channel_viewers_query(self, bearer_token) -> str:
@@ -172,9 +179,9 @@ class TwitchChatBQUploader:
         utils.write_query_to_file(formatted_query=full_query, 
                             dirname='log/queries',
                             queryname='viewerinteractions_query_final')
-        
-        self.logger.info("This is the user_interactions insert query:")
-        self.logger.info(full_query)
+        self.logger.info("The user_interactions query was generated")
+        self.logger.debug("This is the user_interactions insert query:")
+        self.logger.debug(full_query)
         return full_query
 
     def send_to_bq(self, query):

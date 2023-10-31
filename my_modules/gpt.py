@@ -16,9 +16,11 @@ stream_logs=False
 # call to chat gpt for completion TODO: Could add  limits here?
 def openai_gpt_chatcompletion(messages_dict_gpt=None,
                               OPENAI_API_KEY=None, 
-                              max_characters=500,
+                              max_characters=250,
                               max_attempts=5,
-                              model="gpt-3.5-turbo"): 
+                              model="gpt-3.5-turbo",
+                              frequency_penalty=1,
+                              presence_penalty=1) -> str: 
     """
     Send a message to OpenAI GPT-3.5-turbo for completion and get the response.
 
@@ -41,7 +43,9 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
     for _ in range(max_attempts):
         generated_response = openai.ChatCompletion.create(
             model=model,
-            messages=messages_dict_gpt
+            messages=messages_dict_gpt,
+            presence_penalty=presence_penalty,
+            frequency_penalty=frequency_penalty
             )
         gpt_response_text = generated_response.choices[0].message['content']
         gpt_response_text_len = len(gpt_response_text)
@@ -56,10 +60,12 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
         else: # Did not get a msg < n chars, try again.
             logger_gptchatcompletion.warning(f'\The generated message was >{max_characters} characters, retrying call to openai_gpt_chatcompletion')
             
-            messages_dict_gpt_updated = {'role':'user', 'content':f"Shorten this message to less than 400 characters: {gpt_response_text}"}
+            messages_dict_gpt_updated = [{'role':'user', 'content':f"Shorten this message to less than {max_characters} characters: {gpt_response_text}"}]
             generated_response = openai.ChatCompletion.create(
                 model=model,
-                messages=[messages_dict_gpt_updated]
+                messages=messages_dict_gpt_updated,
+                presence_penalty=presence_penalty,
+                frequency_penalty=frequency_penalty
                 )
             gpt_response_text = generated_response.choices[0].message['content']
             gpt_response_text_len = len(gpt_response_text)
@@ -87,6 +93,18 @@ def prompt_text_replacement(gpt_prompt_text,
     prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
     logger_prompt_text_replacement.info(f"prompt_text_replaced: {prompt_text_replaced}")
     return prompt_text_replaced
+
+def ouat_gpt_response_cleanse(gpt_response: str) -> str:
+    gpt_response_formatted = re.sub(r'<<<.*?>>>\s*:', '', gpt_response)
+    return gpt_response_formatted
+
+def chatforme_gpt_response_cleanse(gpt_response: str) -> str:
+    gpt_response_formatted = re.sub(r'<<<.*?>>>\s*:', '', gpt_response)
+    return gpt_response_formatted
+
+def botthot_gpt_response_cleanse(gpt_response: str) -> str:
+    gpt_response_formatted = re.sub(r'<<<.*?>>>\s*:', '', gpt_response)
+    return gpt_response_formatted
 
 def combine_msghistory_and_prompttext(prompt_text,
                                       role='user',

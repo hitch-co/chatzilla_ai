@@ -17,7 +17,7 @@ class ArticleGenerator:
                                      logger_name='root_ArticleGenerator_logger',
                                      debug_level='DEBUG',
                                      mode='a',
-                                     stream_logs=False)
+                                     stream_logs=True)
 
 
     def fetch_articles(self):
@@ -38,7 +38,7 @@ class ArticleGenerator:
                 }
             self.articles.append(article_dict)
 
-        self.root_logger.debug(f"Successfully fetched --{len(self.articles)}-- article titles and links")
+        self.root_logger.info(f"Successfully fetched --{len(self.articles)}-- article titles and links")
         return self.articles
 
     def load_disallowed_terms(self,
@@ -65,17 +65,18 @@ class ArticleGenerator:
                                                               file_name='disallowed_terms.json')
         
         if not self.articles:
-            print("Missing URL or article data.")
+            self.root_logger.info("Missing URL or article data")
+            printc("Missing URL or article data.", bcolors.WARNING)
             return ['']
         
         while found_article == False:
-            self.root_logger.debug(f"type(self.articles): {type(self.articles)}")
             random_article_link = np.random.choice(self.articles)['link']
             
             try:
                 response = requests.get(random_article_link)
                 response.raise_for_status()  # This will raise if HTTP request returned an unsuccessful status code
             except requests.RequestException as e:
+                self.root_logger.error(f"Failed to fetch the article at {random_article_link}. Error: {e}")
                 printc(f"Failed to fetch the article at {random_article_link}. Error: {e}", bcolors.FAIL)
                 return ['']
 
@@ -83,6 +84,7 @@ class ArticleGenerator:
                 soup = BeautifulSoup(response.content, 'html.parser')
                 content_html_soup = soup.find('div', {'class': 'article__content'})
             except Exception as e:
+                self.root_logger.error(f"Error during parsing the article at {random_article_link}. Error: {e}")
                 printc(f"Error during parsing the article at {random_article_link}. Error: {e}", bcolors.FAIL)
                 return ['']
 
@@ -92,6 +94,7 @@ class ArticleGenerator:
                 found_article = False if self.check_for_disallowed_terms(article_content=random_article_content,
                                                                          list_of_disallowed_terms=list_of_disallowed_terms) else True
                 if found_article:
+                    self.root_logger.info(f"Successfully fetched article with content  (source:{random_article_link})")
                     printc(f"\nSuccessfully fetched article with content  (source:{random_article_link})", bcolors.OKBLUE)
                     printc(f'Preview of article: {random_article_content[:300]}...', bcolors.UNDERLINE)
                 else:

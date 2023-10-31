@@ -44,8 +44,8 @@ class MessageHandler:
         for key in self.yaml_data['twitch-bots']:
             self.known_bots.extend(self.yaml_data['twitch-bots'][key])
         self.known_bots = list(set(self.known_bots))
-        self.logger.debug("these are the self.known_bots")
-        self.logger.debug(self.known_bots)
+        self.logger.info("these are the self.known_bots")
+        self.logger.info(self.known_bots)
         
     def get_bot_message_metadata(self, message) -> None:
         message_metadata = {
@@ -84,47 +84,46 @@ class MessageHandler:
         start_index = message_rawdata.find(":") + 1
         end_index = message_rawdata.find("!")
 
-        if 'userstate' in message.raw_data.lower():
-            print("THE RAW DATA CONTAINS USERSTATE")
-
         if start_index == 0 or end_index == -1:
-            self.logger.info(message.raw_data)
+            self.logger.debug(f"No extracted_name found.  This is message.raw_data:")
+            self.logger.debug(message.raw_data)
             return 'unknown_name - see message.raw_data for details'
         else:
             extracted_name = message_rawdata[start_index:end_index]
-            self.logger.info(f"This is the extracted_name: {extracted_name} and raw_message_data:")
-            self.logger.info(message.raw_data)
+            self.logger.debug(f"This is the extracted_name: {extracted_name} and message.raw_data:")
+            self.logger.debug(message.raw_data)
             return extracted_name
 
     def add_to_appropriate_message_history(self, message):
+        self.logger.info(f"Message content: {message.content}")
 
         if message.author is not None:
-            #Message Metadata
             message_metadata = self.get_message_metadata(message)            
             name = message_metadata['name']
             self.add_user_to_users_list(message_metadata)
 
             # Add to message_history_raw
-            self.logger.info("Here is the USER message_data:")
+            self.logger.debug("Here is the USER message_data:")
             self.logger.debug(message_metadata)
             self.message_history_raw.append(message_metadata)
 
             # Create GPT-ready message dict
-            gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_metadata(self,
-                                                                                     message_metadata=message_metadata)
-            # self.logger.debug("This is the gpt_ready_msg_dict")
-            # log_dynamic_dict(self.logger, gpt_ready_msg_dict)
+            gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_metadata(self, message_metadata=message_metadata)
+
 
             if name in self.bots_automsg or name in self.bots_chatforme:
                 self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
                 self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
+                self.logger.info("Message dictionary added to automsg_temp_msg_history & chatforme_temp_msg_history")
 
             if name in self.bots_ouat:    
                 self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
+                self.logger.info("Message dictionary added to ouat_temp_msg_history")
 
             if name not in self.known_bots:
                 self.nonbot_temp_msg_history.append(gpt_ready_msg_dict)
                 self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
+                self.logger.info("Message dictionary added to nonbot_temp_msg_history & chatforme_temp_msg_history")
 
         elif message.author is None:
 
@@ -134,27 +133,33 @@ class MessageHandler:
             message_metadata = self.get_bot_message_metadata(message)   
             self.message_history_raw.append(message_metadata)
 
-            self.logger.info('Here is the BOT message_metadata:')
-            self.logger.info(message_metadata)
+            self.logger.debug('Here is the BOT message_metadata:')
+            self.logger.debug(message_metadata)
             
             extracted_name = self.extract_name_from_message(message)
             message_metadata = {'name':extracted_name}
 
-            gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_strings(self,
-                                                                                    role='user',
-                                                                                    name=extracted_name,
-                                                                                    content=message.content)
-            self.add_user_to_users_list(message_metadata)
+            gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_strings(
+                self, role='user',
+                name=extracted_name,
+                content=message.content)
 
-            # self.logger.debug(f"This is the bot name (extracted_name): {extracted_name}")
-            # log_dynamic_dict(self.logger, gpt_ready_msg_dict)
+            self.add_user_to_users_list(message_metadata)
 
             if extracted_name in self.bots_ouat:
                 self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
+                self.logger.info("Message dictionary added to ouat_temp_msg_history")
             if extracted_name in self.bots_automsg:
                 self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
+                self.logger.info("Message dictionary added to automsg_temp_msg_history")
             if extracted_name in self.bots_chatforme:
                 self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
-    
+                self.logger.info("Message dictionary added to chatforme_temp_msg_history")
+
+        self.logger.debug(f"message_history_raw:")
+        self.logger.debug(self.message_history_raw)
+        self.logger.debug("This is the gpt_ready_msg_dict")
+        log_dynamic_dict(self.logger, gpt_ready_msg_dict)
+
 if __name__ == '__main__':
     print("loaded MessageHandlerClass.py")

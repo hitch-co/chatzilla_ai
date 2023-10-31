@@ -10,6 +10,7 @@ import argparse
 
 from my_modules.gpt import openai_gpt_chatcompletion
 from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext
+from my_modules.gpt import ouat_gpt_response_cleanse, chatforme_gpt_response_cleanse, botthot_gpt_response_cleanse
 from my_modules.my_logging import my_logger, log_dynamic_dict
 from my_modules.twitchio_helpers import get_string_of_users
 from my_modules.config import load_yaml, load_env
@@ -79,19 +80,22 @@ class Bot(twitch_commands.Bot):
 
     #Load configurations
     def load_configuration(self):
+
         #load yaml/env
         self.yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="config")
         load_env(env_filename=self.yaml_data['env_filename'], env_dirname=self.yaml_data['env_dirname'])
 
         #capture yaml/env data from instantiated class
         self.env_vars = self.env_vars
+
+        #Twitch Bot Details
         self.twitch_bot_channel_name = self.yaml_data['twitch-app']['twitch_bot_channel_name']
-        self.OPENAI_API_KEY = self.env_vars['OPENAI_API_KEY']
         self.twitch_bot_username = self.yaml_data['twitch-app']['twitch_bot_username']
 
-        #Eleven Labs
+        #Eleven Labs / OpenAI
         self.ELEVENLABS_XI_API_KEY = self.env_vars['ELEVENLABS_XI_API_KEY']
         self.ELEVENLABS_XI_VOICE = self.env_vars['ELEVENLABS_XI_VOICE']
+        self.OPENAI_API_KEY = self.env_vars['OPENAI_API_KEY']
 
         #runtime arguments
         self.args_include_sound = str.lower(self.args_config.include_sound)
@@ -104,32 +108,28 @@ class Bot(twitch_commands.Bot):
         self.args_include_ouat = str.lower(self.args_config.include_ouat)        
         self.args_ouat_prompt_name = str.lower(self.args_config.prompt_list_ouat)
 
-        #List for OUAT/newsarticle
-        self.ouat_message_recurrence_seconds = self.yaml_data['ouat_message_recurrence_seconds']
-
-        self.ouat_prompts = self.yaml_data['ouat_prompts']
+        #News Article Feed/Prompts
         self.newsarticle_rss_feed = self.yaml_data['twitch-ouat']['newsarticle_rss_feed']
-        self.ouat_news_article_summary_prompt = self.yaml_data['ouat_news_article_summary_prompt'] 
+        self.ouat_news_article_summary_prompt = self.yaml_data['ouat_prompts']['ouat_news_article_summary_prompt'] 
 
-        self.gpt_ouat_prompt_begin = self.ouat_prompts[self.args_ouat_prompt_name]
-        self.ouat_prompt_startstory = self.yaml_data['ouat_prompt_startstory']
-        self.ouat_prompt_progression = self.yaml_data['ouat_prompt_progression']
-        self.ouat_prompt_endstory = self.yaml_data['ouat_prompt_endstory']
+        #OUAT base prompt and start/progress/end story prompts
+        self.gpt_ouat_prompt_begin = self.yaml_data['ouat_prompts'][self.args_ouat_prompt_name]
+        self.ouat_prompt_startstory = self.yaml_data['ouat_prompts']['ouat_prompt_startstory']
+        self.ouat_prompt_progression = self.yaml_data['ouat_prompts']['ouat_prompt_progression']
+        self.ouat_prompt_endstory = self.yaml_data['ouat_prompts']['ouat_prompt_endstory']
 
+        #OUAT Progression flow / Config
+        self.ouat_message_recurrence_seconds = self.yaml_data['ouat_message_recurrence_seconds']
         self.ouat_story_progression_number = self.yaml_data['ouat_story_progression_number']
         self.ouat_story_max_counter = self.yaml_data['ouat_story_max_counter']
-
-        #AUTOMSG
-        self.chatgpt_automated_msg_prompts = self.yaml_data['chatgpt_automated_msg_prompts']
-        self.automsg_prompt_list = self.chatgpt_automated_msg_prompts[self.args_automsg_prompt_list_name]
-        
-        #general config
-        self.num_bot_responses = self.yaml_data['num_bot_responses']
-
-        #ouat prompts
         self.ouat_wordcount = self.yaml_data['ouat_wordcount']
 
-        #automsg prompts
+        #Generic config itrems
+        self.num_bot_responses = self.yaml_data['num_bot_responses']
+        
+        #AUTOMSG
+        self.automsg_prompt_lists = self.yaml_data['automsg_prompt_lists']
+        self.automsg_prompt_list = self.automsg_prompt_lists[self.args_automsg_prompt_list_name]
         self.automsg_prompt_prefix = self.yaml_data['automsg_prompt_prefix']
 
         #GPT Prompt
@@ -144,7 +144,7 @@ class Bot(twitch_commands.Bot):
 
         return self.logger.info("Configuration attributes loaded/refreshed from YAML/env variables")  
 
-    #Set the listener(?) to start once the bot is ready
+    #Executes once the bot is ready
     async def event_ready(self):
         self.channel = self.get_channel(self.twitch_bot_channel_name)
         print(f'Ready | {self.twitch_bot_username} (nick:{self.nick})')
@@ -161,6 +161,7 @@ class Bot(twitch_commands.Bot):
         #start loop
         self.loop.create_task(self.ouat_storyteller())
 
+    #Excecutes everytime a message is received
     async def event_message(self, message):
         
         #This is the control flow function for creating message histories
@@ -171,7 +172,6 @@ class Bot(twitch_commands.Bot):
             bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
 
         #Send the data to BQ
-
         if len(self.message_handler.message_history_raw)==3:
             self.logger.info("channel_viewers_query")
             self.logger.info(channel_viewers_queue_query)
@@ -205,7 +205,6 @@ class Bot(twitch_commands.Bot):
         if self.ouat_counter == 0:
             user_requested_plotline = ' '.join(args)
 
-
             # Capture writing tone/style/theme and randomly select one item from each list
             writing_tone_values = list(yaml_data['ouat-writing-parameters']['writing_tone'].values())
             writing_style_values = list(yaml_data['ouat-writing-parameters']['writing_style'].values())
@@ -233,18 +232,13 @@ class Bot(twitch_commands.Bot):
                 OPENAI_API_KEY=self.OPENAI_API_KEY, 
                 max_characters=1200
                 )
-
+            
+            await self.start_ouat_storyteller_msg_loop()
+            
             printc(f"A story was started by {message.author.name} ({message.author.id})", bcolors.WARNING)
             printc(f"Theme: {self.selected_theme}", bcolors.OKBLUE)
             printc(f"Writing Tone: {self.selected_writing_tone}", bcolors.OKBLUE)
             printc(f"Writing Style: {self.selected_writing_style}", bcolors.OKBLUE)
-            self.logger.debug(f"A story was started by {message.author.id}")
-            self.logger.debug(f'This is the gpt_ready_list_dict:')
-            self.logger.debug(gpt_ready_list_dict)  
-            self.logger.debug(f'This is the self.random_article_content_prompt_summary:')
-            self.logger.debug(self.random_article_content_prompt_summary)
-
-            await self.start_ouat_storyteller_msg_loop()
 
     @twitch_commands.command(name='addtostory')
     async def add_to_story_ouat(self, ctx,  *args):
@@ -259,12 +253,11 @@ class Bot(twitch_commands.Bot):
         self.message_handler.ouat_temp_msg_history.append(gpt_ready_msg_dict)
         
         printc(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'", bcolors.WARNING)
-        self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'")
 
     @twitch_commands.command(name='extendstory')
     async def extend_story(self, ctx, *args) -> None:
         self.ouat_counter = 2
-        self.logger.debug(f"Story extension requested, self.ouat_counter has been set to {self.ouat_counter}")
+        printc(f"Story extension requested by {ctx.message.author.name} ({ctx.message.author.id}), self.ouat_counter has been set to {self.ouat_counter}", bcolors.WARNING)
 
     @twitch_commands.command(name='stopstory')
     async def stop_story(self, ctx):
@@ -274,7 +267,7 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='endstory')
     async def endstory(self, ctx):
         self.ouat_counter = self.ouat_story_max_counter
-        self.logger.debug(f"Story is being forced to end, counter is at {self.ouat_counter}")
+        printc(f"Story is being forced to end by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}", bcolors.WARNING)
 
     async def stop_loop(self) -> None:
         self.is_ouat_loop_active = False
@@ -350,20 +343,18 @@ class Bot(twitch_commands.Bot):
                                                                       role='system',
                                                                       msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
                                                                       combine_messages=True)
-                self.logger.debug("This is the messages_dict_gpt:")
-                self.logger.debug(messages_dict_gpt)
 
                 ##################################################################################
-                generated_message = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
+                gpt_response_text = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
                                                                 OPENAI_API_KEY=self.OPENAI_API_KEY,
                                                                 max_attempts=3)
-                generated_message = re.sub(r'<<<.*?>>>\s*:', '', generated_message)
+                gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
                 
                 if self.args_include_sound == 'yes':
                     v2s_message_object = generate_t2s_object(
                         ELEVENLABS_XI_API_KEY = self.ELEVENLABS_XI_API_KEY,
                         voice_id = self.ELEVENLABS_XI_VOICE,
-                        text_to_say=generated_message, 
+                        text_to_say=gpt_response_clean, 
                         is_testing = False)
                     play_t2s_object(v2s_message_object)
 
@@ -371,8 +362,11 @@ class Bot(twitch_commands.Bot):
                     print("self.ouat_counter == self.ouat_story_max_counter:  That was the last message")
                     self.logger.info(f"That was the final message (self.ouat_counter == {self.ouat_story_max_counter})")  
 
-                self.logger.info(f"FINAL generated_message (type: {type(generated_message)}): \n{generated_message}")  
-                await self.channel.send(generated_message)
+                self.logger.debug(f"This is the messages_dict_gpt (for ouat_counter = {self.ouat_counter}:")
+                self.logger.debug(messages_dict_gpt)
+                self.logger.info(f"FINAL gpt_response_clean (type: {type(gpt_response_clean)}): \n{gpt_response_clean}")  
+                await self.channel.send(gpt_response_clean)
+                
                 self.ouat_counter += 1   
 
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
@@ -412,10 +406,10 @@ class Bot(twitch_commands.Bot):
         # Execute the GPT API call to get the chatbot response
         gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
                                                  OPENAI_API_KEY=self.OPENAI_API_KEY)
-        gpt_response_formatted = re.sub(r'<<<.*?>>>\s*:', '', gpt_response)
+        gpt_response_clean = chatforme_gpt_response_cleanse(gpt_response)
 
-        await ctx.send(gpt_response_formatted)      
-        return print(f"Sent gpt_response to chat: {gpt_response_formatted}")
+        await ctx.send(gpt_response_clean)      
+        return print(f"Sent gpt_response to chat: {gpt_response_clean}")
 
     @twitch_commands.command(name='botthot')
     async def botthot(self, ctx):
@@ -454,7 +448,7 @@ class Bot(twitch_commands.Bot):
         
         # Execute the GPT API call to get the chatbot response
         gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
-        gpt_response_formatted = re.sub(r'<<<.*?>>>\s*:', '', gpt_response)
+        gpt_response_clean = botthot_gpt_response_cleanse(gpt_response)
 
-        await ctx.send(gpt_response_formatted)
-        return print(f"Sent gpt_response to chat: {gpt_response_formatted}")
+        await ctx.send(gpt_response_clean)
+        return print(f"Sent gpt_response to chat: {gpt_response_clean}")

@@ -116,26 +116,32 @@ def format_record_timestamp(record: dict) -> dict:
     record['timestamp'] = datetime.utcfromtimestamp(record['timestamp'] / 1000).strftime('%Y-%m-%d %H:%M:%S')
     return record
 
-def write_msg_history_to_file(msg_history, variable_name_text, logger, dirname='log/ouat_story_history'):
-    current_datetime = get_datetime_formats()['filename_format']
+def write_msg_history_to_file(msg_history, variable_name_text, logger, dirname='log/ouat_story_history', include_datetime=False):
+    if include_datetime:
+        current_datetime = "_"+get_datetime_formats()['filename_format']
+    else:
+        current_datetime = ''
 
     if not os.path.exists(dirname):
         os.makedirs(dirname)
-    filename = f"{dirname}/final_{variable_name_text}_{current_datetime}.json"
+    filename = f"{dirname}/final_{variable_name_text}{current_datetime}.json"
     
     with open(filename, 'w') as file:
         json.dump(msg_history, file, indent=4)
 
     logger.debug(f"Message history written to {filename}")
 
-def write_json_to_file(self, data, variable_name_text, dirname='log/get_chatters_data'):
-    current_datetime = get_datetime_formats()['filename_format']
+def write_json_to_file(self, data, variable_name_text, dirname='log/get_chatters_data', include_datetime=False):
+    if include_datetime:
+        current_datetime = "_"+get_datetime_formats()['filename_format']
+    else:
+        current_datetime = ''
 
     if not os.path.exists(dirname):
         os.makedirs(dirname)
         logger.debug(f"Directory {dirname} created.")
     
-    filename = f"{dirname}/final_{variable_name_text}_{current_datetime}.json"
+    filename = f"{dirname}/final_{variable_name_text}{current_datetime}.json"
 
     with open(filename, 'w') as file:
         json.dump(data, file, indent=4)
@@ -143,17 +149,19 @@ def write_json_to_file(self, data, variable_name_text, dirname='log/get_chatters
 
     logger.debug(f"JSON data written to {filename}")
 
-def write_query_to_file(formatted_query, dirname='log/queries', queryname='default'):
-    current_datetime = get_datetime_formats()['filename_format']
+def write_query_to_file(formatted_query, dirname='log/queries', queryname='default', include_datetime=False):
+    if include_datetime:
+        current_datetime = "_"+get_datetime_formats()['filename_format']
+    else:
+        current_datetime = ''
 
     if not os.path.exists(dirname):
         os.makedirs(dirname)
         logger.debug(f"Directory {dirname} created.")
 
-    filename = f"{dirname}/{queryname}_{current_datetime}.sql"
+    filename = f"{dirname}/{queryname}{current_datetime}.sql"
 
-    with open(filename, 'w') as file:
+    with open(filename, 'w', encoding='utf-8') as file:
         file.write(formatted_query)
-        # No need to close the file explicitly when using with statement
 
     logger.debug(f"Query written to {filename}")

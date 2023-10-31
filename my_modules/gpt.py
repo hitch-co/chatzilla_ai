@@ -146,24 +146,20 @@ def combine_msghistory_and_prompttext(prompt_text,
                 'content':msg_history_string
             }]            
             reformatted_msg_history_list_dict.append(prompt_dict)
-            logger_msghistory_and_prompt.debug(reformatted_msg_history_list_dict)
-            utils.write_json_to_file(
-                data=reformatted_msg_history_list_dict, 
-                variable_name_text='reformatted_msg_history_list_dict', 
-                dirname='log/get_combine_msghistory_and_prompttext_combined', 
-                include_datetime=False
-                )
-            return reformatted_msg_history_list_dict
+            msg_history_list_dict=reformatted_msg_history_list_dict
+
         else:
             msg_history_list_dict.append(prompt_dict) 
             logger_msghistory_and_prompt.debug(msg_history_list_dict)
-            utils.write_json_to_file(
-                data=msg_history_list_dict, 
-                variable_name_text='msg_history_list_dict', 
-                dirname='log/get_combine_msghistory_and_prompttext_notcombined', 
-                include_datetime=False
-                )
-            return msg_history_list_dict
+
+        logger_msghistory_and_prompt.debug(msg_history_list_dict)
+        utils.write_json_to_file(
+            data=msg_history_list_dict, 
+            variable_name_text='msg_history_list_dict', 
+            dirname='log/get_combine_msghistory_and_prompttext_combined', 
+            include_datetime=False
+            )
+        return msg_history_list_dict
 
 def get_models(api_key=None):
     """

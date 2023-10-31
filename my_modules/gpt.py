@@ -1,5 +1,6 @@
 from classes.ArticleGeneratorClass import ArticleGenerator
 from classes.ConsoleColoursClass import bcolors, printc
+from my_modules import utils
 from my_modules.my_logging import my_logger
 
 import os
@@ -20,7 +21,8 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
                               max_attempts=5,
                               model="gpt-3.5-turbo",
                               frequency_penalty=1,
-                              presence_penalty=1) -> str: 
+                              presence_penalty=1,
+                              temperature=0.7) -> str: 
     """
     Send a message to OpenAI GPT-3.5-turbo for completion and get the response.
 
@@ -45,7 +47,8 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
             model=model,
             messages=messages_dict_gpt,
             presence_penalty=presence_penalty,
-            frequency_penalty=frequency_penalty
+            frequency_penalty=frequency_penalty,
+            temperature=temperature
             )
         gpt_response_text = generated_response.choices[0].message['content']
         gpt_response_text_len = len(gpt_response_text)
@@ -65,7 +68,8 @@ def openai_gpt_chatcompletion(messages_dict_gpt=None,
                 model=model,
                 messages=messages_dict_gpt_updated,
                 presence_penalty=presence_penalty,
-                frequency_penalty=frequency_penalty
+                frequency_penalty=frequency_penalty,
+                temperature=temperature
                 )
             gpt_response_text = generated_response.choices[0].message['content']
             gpt_response_text_len = len(gpt_response_text)
@@ -107,8 +111,8 @@ def botthot_gpt_response_cleanse(gpt_response: str) -> str:
     return gpt_response_formatted
 
 def combine_msghistory_and_prompttext(prompt_text,
-                                      role='user',
-                                      name='unknown',
+                                      prompt_text_role='user',
+                                      prompt_text_name='unknown',
                                       msg_history_list_dict=None,
                                       combine_messages=False) -> [dict]:
     logger_msghistory_and_prompt = my_logger(
@@ -120,10 +124,10 @@ def combine_msghistory_and_prompttext(prompt_text,
         )
 
     #deal with prompt text
-    if role == 'system':
-        prompt_dict = {'role': role, 'content': f'{prompt_text}'}
-    if role in ['user', 'assistant']:
-        prompt_dict = {'role': role, 'content': f'<<<{name}>>>: {prompt_text}'}
+    if prompt_text_role == 'system':
+        prompt_dict = {'role': prompt_text_role, 'content': f'{prompt_text}'}
+    if prompt_text_role in ['user', 'assistant']:
+        prompt_dict = {'role': prompt_text_role, 'content': f'<<<{prompt_text_name}>>>: {prompt_text}'}
 
     if not msg_history_list_dict:
         msg_history_list_dict = [prompt_dict]
@@ -136,14 +140,29 @@ def combine_msghistory_and_prompttext(prompt_text,
     
     else:
         if combine_messages == True:
-            msg_history_list_dict = [{
-                'role':role, 
-                'content':" ".join(item["content"] for item in msg_history_list_dict if item['role'] != 'system')
+            msg_history_string = " ".join(item["content"] for item in msg_history_list_dict if item['role'] != 'system')
+            reformatted_msg_history_list_dict = [{
+                'role':prompt_text_role, 
+                'content':msg_history_string
             }]            
-            msg_history_list_dict.append(prompt_dict)
-            return msg_history_list_dict
+            reformatted_msg_history_list_dict.append(prompt_dict)
+            logger_msghistory_and_prompt.debug(reformatted_msg_history_list_dict)
+            utils.write_json_to_file(
+                data=reformatted_msg_history_list_dict, 
+                variable_name_text='reformatted_msg_history_list_dict', 
+                dirname='log/get_combine_msghistory_and_prompttext_combined', 
+                include_datetime=False
+                )
+            return reformatted_msg_history_list_dict
         else:
             msg_history_list_dict.append(prompt_dict) 
+            logger_msghistory_and_prompt.debug(msg_history_list_dict)
+            utils.write_json_to_file(
+                data=msg_history_list_dict, 
+                variable_name_text='msg_history_list_dict', 
+                dirname='log/get_combine_msghistory_and_prompttext_notcombined', 
+                include_datetime=False
+                )
             return msg_history_list_dict
 
 def get_models(api_key=None):

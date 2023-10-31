@@ -59,7 +59,7 @@ class ArticleGenerator:
                 return True
         return False
 
-    def fetch_random_article_content(self, article_char_trunc=300):
+    def fetch_random_article_content(self, article_char_trunc=500):
         found_article = False
         list_of_disallowed_terms = self.load_disallowed_terms(dir_path='config',
                                                               file_name='disallowed_terms.json')
@@ -150,11 +150,9 @@ class ArticleGenerator:
 
         return text
 
-
-
 def main(rss_link=None):
     article_generator = ArticleGenerator(rss_link=rss_link)
-    random_article_dictionary = article_generator.fetch_random_article(trunc_characters_at=500)
+    random_article_dictionary = article_generator.fetch_random_article_content()
     print(random_article_dictionary['content'])
 
 if __name__ == "__main__":

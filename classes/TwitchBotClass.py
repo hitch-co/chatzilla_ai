@@ -69,6 +69,10 @@ class Bot(twitch_commands.Bot):
         google_application_credentials_file = yaml_data['twitch-ouat']['google_service_account_credentials_file']
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_application_credentials_file
 
+        #BQ Table IDs
+        self.userdata_table_id=self.yaml_data['twitch-ouat']['talkzillaai_userdata_table_id']
+        self.usertransactions_table_id=self.yaml_data['twitch-ouat']['talkzillaai_usertransactions_table_id']
+
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
 
@@ -167,8 +171,9 @@ class Bot(twitch_commands.Bot):
         #This is the control flow function for creating message histories
         self.message_handler.add_to_appropriate_message_history(message)
         
-        #Get chatter data and store in queue
+        #Get chatter data, store in queue, generate query for sending to BQ
         channel_viewers_queue_query = self.twitch_chat_uploader.get_process_queue_create_channel_viewers_query(
+            table_id=self.userdata_table_id,
             bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
 
         #Send the data to BQ
@@ -177,12 +182,19 @@ class Bot(twitch_commands.Bot):
             self.logger.info(channel_viewers_queue_query)
             
             #execute channel viewers query
-            self.twitch_chat_uploader.send_to_bq(query=channel_viewers_queue_query)            
+            self.twitch_chat_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
 
             #generate and execute user interaction query
-            viewer_interactions_query = self.twitch_chat_uploader.generate_bq_user_interactions_query(
-                records = self.message_handler.message_history_raw)
-            self.twitch_chat_uploader.send_to_bq(query=viewer_interactions_query)
+            self.logger.info("These are the message_history_raw:")
+            self.logger.info(self.message_handler.message_history_raw)
+            viewer_interaction_records = self.twitch_chat_uploader.generate_bq_user_interactions_records(records=self.message_handler.message_history_raw)
+            self.logger.info("These are the viewer_interaction_records:")
+            self.logger.info(viewer_interaction_records)
+
+            self.twitch_chat_uploader.send_recordsjob_to_bq(
+                table_id=self.usertransactions_table_id,
+                records=viewer_interaction_records
+                )
 
             #clear the queues
             self.message_handler.message_history_raw.clear()
@@ -224,7 +236,7 @@ class Bot(twitch_commands.Bot):
                 )
             gpt_ready_list_dict = combine_msghistory_and_prompttext(
                 prompt_text=self.random_article_content,
-                name=self.twitch_bot_username,
+                prompt_text_name=self.twitch_bot_username,
                 msg_history_list_dict=None
                 )
             self.random_article_content_prompt_summary = openai_gpt_chatcompletion(
@@ -334,15 +346,16 @@ class Bot(twitch_commands.Bot):
                     elif self.ouat_counter > self.ouat_story_max_counter:
                         await self.stop_loop()
                         continue
-                    #self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')   
                 
                 else: self.logger.error("Neither automsg or ouat enabled with app startup argument")
 
                 self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter}")
+                self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')
+
                 messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
-                                                                      role='system',
+                                                                      prompt_text_role='system',
                                                                       msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
-                                                                      combine_messages=True)
+                                                                      combine_messages=False)
 
                 ##################################################################################
                 gpt_response_text = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
@@ -399,9 +412,9 @@ class Bot(twitch_commands.Bot):
             )
 
         messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text = chatgpt_chatforme_prompt,
-                                                                role='system',
-                                                                msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
-                                                                combine_messages=False)
+                                                              prompt_text_role='system',
+                                                              msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
+                                                              combine_messages=False)
         
         # Execute the GPT API call to get the chatbot response
         gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
@@ -441,8 +454,8 @@ class Bot(twitch_commands.Bot):
 
         # # Combine the chat history with the new system prompt to form a list of messages for GPT.
         messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=chatgpt_chatforme_prompt,
-                                                              role='system',
-                                                              name='unknown',
+                                                              prompt_text_role='system',
+                                                              prompt_text_name='unknown',
                                                               msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
                                                               combine_messages=False)
         

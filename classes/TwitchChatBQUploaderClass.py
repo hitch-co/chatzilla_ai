@@ -22,6 +22,16 @@ class TwitchChatBQUploader:
         load_env()
         self.yaml_data = load_yaml()
 
+        #env variables
+        self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
+        self.twitch_bot_moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
+        self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
+        self.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
+
+        #also set in twitch_bot.py
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'config/keys/eh-talkzilla-ai-1bcb1963d5b4.json'
+
+        #logger
         self.logger = my_logging.my_logger(dirname='log', 
                                            logger_name='logger_ChatUploader',
                                            debug_level='INFO',
@@ -29,18 +39,8 @@ class TwitchChatBQUploader:
                                            stream_logs=True)
         self.logger.debug('TwitchChatBQUploader Logger initialized.')
 
-        self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
-        self.twitch_bot_moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
-        self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
-        self.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
+        #Build the client
         self.bq_client = bigquery.Client()
-
-        #also set in twitch_bot.py
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'config/keys/eh-talkzilla-ai-1bcb1963d5b4.json'
-
-        #BQ Table IDs
-        self.userdata_table_id=self.yaml_data['twitch-ouat']['talkzillaai_userdata_table_id']
-        self.usertransactions_table_id=self.yaml_data['twitch-ouat']['talkzillaai_usertransactions_table_id']
 
         self.channel_viewers_list_dict_temp = []
         self.channel_viewers_queue = []
@@ -64,7 +64,7 @@ class TwitchChatBQUploader:
         self.logger.debug(f'Received response: {response}')
 
         utils.write_json_to_file(
-            self, response.json(), 
+            response.json(), 
             variable_name_text='channel_viewers', 
             dirname='log/get_chatters_data'
             )
@@ -101,7 +101,7 @@ class TwitchChatBQUploader:
 
         self.channel_viewers_queue = df.to_dict('records')
 
-    def generate_bq_users_query(self, records: list[dict]) -> str:
+    def generate_bq_users_query(self, table_id, records: list[dict]) -> str:
 
         # Build the UNION ALL part of the query
         union_all_query = " UNION ALL ".join([
@@ -115,7 +115,7 @@ class TwitchChatBQUploader:
         
         # Add the union all query to our final query to be sent to BQ jobs
         merge_query = f"""
-            MERGE {self.userdata_table_id} AS target
+            MERGE {table_id} AS target
             USING (
                 {union_all_query}
             ) AS source
@@ -138,7 +138,9 @@ class TwitchChatBQUploader:
         self.logger.debug(merge_query)
         return merge_query
   
-    def get_process_queue_create_channel_viewers_query(self, bearer_token) -> str:
+    def get_process_queue_create_channel_viewers_query(self, 
+                                                       bearer_token,
+                                                       table_id) -> str:
         
         #Response from twitch API
         response = self.get_channel_viewers(bearer_token=bearer_token)
@@ -150,13 +152,15 @@ class TwitchChatBQUploader:
         self.queue_channel_viewers(records=channel_viewers_records)
 
         #generates a query based on the queued viewers
-        channel_viewers_query = self.generate_bq_users_query(records=self.channel_viewers_queue)
+        channel_viewers_query = self.generate_bq_users_query(
+            table_id=table_id,
+            records=self.channel_viewers_queue
+            )
 
         return channel_viewers_query
-    
-    def generate_bq_user_interactions_query(self, records: list[dict]) -> str:
-        union_queries = []
 
+    def generate_bq_user_interactions_records(self, records: list[dict]) -> list[dict]:
+        rows_to_insert = []
         for record in records:
             user_id = record.get('user_id')
             channel = record.get('channel')
@@ -165,33 +169,30 @@ class TwitchChatBQUploader:
             user_badges = record.get('badges')
             color = record.get('tags').get('color', '') if record.get('tags') else ''
             
-            union_query = f"""
-                SELECT '{user_id}' as user_id, '{channel}' as channel, '{content}' as content, PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{timestamp}') as timestamp, '{user_badges}' as user_badges, '{color}' as color
-            """
+            row = {
+                "user_id": user_id,
+                "channel": channel,
+                "content": content,
+                "timestamp": timestamp,
+                "user_badges": user_badges,
+                "color": color                
+            }
+            rows_to_insert.append(row)
+        return rows_to_insert   
 
-            union_queries.append(union_query)
-
-        full_query = f"""
-            INSERT INTO {self.usertransactions_table_id} (user_id, channel, content, timestamp, user_badges, color)
-            { ' UNION ALL '.join(union_queries) }
-        """
-
-        utils.write_query_to_file(formatted_query=full_query, 
-                            dirname='log/queries',
-                            queryname='viewerinteractions_query_final')
-        self.logger.info("The user_interactions query was generated")
-        self.logger.debug("This is the user_interactions insert query:")
-        self.logger.debug(full_query)
-        return full_query
-
-    def send_to_bq(self, query):
-        # Initialize a BigQuery client
-        client = bigquery.Client()
-
+    def send_recordsjob_to_bq(self, table_id, records:list[dict]) -> None:
+        table = self.bq_client.get_table(table_id)
+        errors = self.bq_client.insert_rows_json(table, records)     
+        if errors:
+            self.logger.error(f"Encountered errors while inserting rows: {errors}")
+        else:
+            self.logger.info(f"Rows successfully inserted into table_id: {table_id}")
+            
+    def send_queryjob_to_bq(self, query):
         try:
             # Start the query job
             self.logger.info("Starting BigQuery job...")
-            query_job = client.query(query)
+            query_job = self.bq_client.query(query)
 
             # Wait for the job to complete (this will block until the job is done)
             self.logger.info(f"Executing query...")

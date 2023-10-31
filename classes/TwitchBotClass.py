@@ -3,10 +3,8 @@ runtime_logger_level = 'DEBUG'
 import asyncio
 from twitchio.ext import commands as twitch_commands
 
-import re
 import random
 import os
-import argparse
 
 from my_modules.gpt import openai_gpt_chatcompletion
 from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext
@@ -15,7 +13,7 @@ from my_modules.my_logging import my_logger, log_dynamic_dict
 from my_modules.twitchio_helpers import get_string_of_users
 from my_modules.config import load_yaml, load_env
 from my_modules.text_to_speech import generate_t2s_object, play_t2s_object
-from my_modules.utils import write_msg_history_to_file
+from my_modules import utils
 
 from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
@@ -284,7 +282,7 @@ class Bot(twitch_commands.Bot):
     async def stop_loop(self) -> None:
         self.is_ouat_loop_active = False
         
-        write_msg_history_to_file(
+        utils.write_msg_history_to_file(
             logger=self.logger,
             msg_history=self.message_handler.ouat_temp_msg_history, 
             variable_name_text='ouat_temp_msg_history',

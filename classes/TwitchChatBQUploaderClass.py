@@ -1,20 +1,12 @@
-
-
-
-
 import os
 import requests
 from google.cloud import bigquery
 from google.api_core.exceptions import GoogleAPIError
 import pandas as pd
 
-from my_modules.utils import get_datetime_formats, format_record_timestamp, write_query_to_file
 from my_modules.config import load_env, load_yaml
-import json
 from my_modules import my_logging
-from my_modules import utils #write_json_to_file, write_query_to_file
-
-from classes.MessageHandlerClass import MessageHandler
+from my_modules import utils
 
 class TwitchChatBQUploader:
     def __init__(self):
@@ -74,7 +66,7 @@ class TwitchChatBQUploader:
 
     def process_channel_viewers(self, response) -> list[dict]:
         self.logger.debug('Processing channel viewers response')
-        timestamp = get_datetime_formats()['sql_format']
+        timestamp = utils.get_datetime_formats()['sql_format']
         
         if response.status_code == 200:
             self.logger.debug("Response.json(): %s", response.json())

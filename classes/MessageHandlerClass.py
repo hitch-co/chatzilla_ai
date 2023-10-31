@@ -1,13 +1,7 @@
-import os
-from my_modules.utils import get_datetime_formats
-from my_modules.config import load_env, load_yaml
-import json
 
+from my_modules.config import load_env, load_yaml
 from my_modules import my_logging
 from my_modules.my_logging import log_dynamic_dict
-
-from my_modules.utils import write_json_to_file, write_query_to_file, format_record_timestamp, conv_datetime_formats
-
 from classes.PromptHandlerClass import PromptHandler
 
 class MessageHandler:

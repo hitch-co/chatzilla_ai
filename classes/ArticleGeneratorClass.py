@@ -55,7 +55,7 @@ class ArticleGenerator:
                                    article_content,
                                    list_of_disallowed_terms):
         for term in list_of_disallowed_terms:
-            if term in article_content:
+            if term.lower() in article_content.lower():
                 return True
         return False
 

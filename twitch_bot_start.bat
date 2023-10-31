@@ -21,14 +21,7 @@ set input_port_number=3000
 @REM set /p input_port_number=What PORT NUMBER would you like to run the app on? (default:"%input_port_number%"):
 
 :: Run Python command
-python "C:\_repos\chatforme_bots\twitch_bot.py" ^
-    --include_ouat=%include_ouat% ^ 
-    --ouat_prompt_name=%prompt_list_ouat% ^
-    --include_automsg=%include_automsg% ^ 
-    --automated_msg_prompt_name=%prompt_list_automsg% ^
-    --chatforme_prompt_name=%prompt_list_chatforme% ^
-    --include_sound=%include_sound% ^
-    --input_port_number=%input_port_number% 
+python "C:\_repos\chatforme_bots\twitch_bot.py" 
 
 :: Delay for 5 seconds
 timeout /t 3

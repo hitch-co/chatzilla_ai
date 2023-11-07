@@ -8,6 +8,8 @@ from my_modules.config import load_env, load_yaml
 from my_modules import my_logging
 from my_modules import utils
 
+from tenacity import retry, stop_after_attempt, wait_fixed
+
 class TwitchChatBQUploader:
     def __init__(self):
         
@@ -26,7 +28,7 @@ class TwitchChatBQUploader:
         #logger
         self.logger = my_logging.my_logger(dirname='log', 
                                            logger_name='logger_ChatUploader',
-                                           debug_level='INFO',
+                                           debug_level='DEBUG',
                                            mode='w',
                                            stream_logs=True)
         self.logger.debug('TwitchChatBQUploader Logger initialized.')
@@ -40,6 +42,7 @@ class TwitchChatBQUploader:
     def escape_sql_string(value):
         return value.replace("'", "''").replace("\\", "\\\\")
     
+    @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
     def get_channel_viewers(self,
                             bearer_token=None) -> object:
         self.logger.debug(f'Getting channel viewers with bearer_token')
@@ -61,7 +64,13 @@ class TwitchChatBQUploader:
             dirname='log/get_chatters_data'
             )
         self.logger.debug('Wrote response.json() to file...')
-        
+
+        if response.status_code == 200:
+            self.logger.debug("Response.json(): %s", response.json())
+        else:
+            self.logger.error("Failed: %s, %s", response.status_code, response.text)
+            response.raise_for_status()
+
         return response
 
     def process_channel_viewers(self, response) -> list[dict]:

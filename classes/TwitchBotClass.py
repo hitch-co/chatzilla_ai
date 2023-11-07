@@ -119,6 +119,7 @@ class Bot(twitch_commands.Bot):
         self.ouat_prompt_startstory = self.yaml_data['ouat_prompts']['ouat_prompt_startstory']
         self.ouat_prompt_progression = self.yaml_data['ouat_prompts']['ouat_prompt_progression']
         self.ouat_prompt_endstory = self.yaml_data['ouat_prompts']['ouat_prompt_endstory']
+        self.ouat_prompt_addtostory_prefix = self.yaml_data['ouat_prompts']['ouat_prompt_addtostory_prefix']
 
         #OUAT Progression flow / Config
         self.ouat_message_recurrence_seconds = self.yaml_data['ouat_message_recurrence_seconds']
@@ -165,6 +166,7 @@ class Bot(twitch_commands.Bot):
 
     #Excecutes everytime a message is received
     async def event_message(self, message):
+        self.logger.info("--------- Message received ---------")
         
         #This is the control flow function for creating message histories
         self.message_handler.add_to_appropriate_message_history(message)
@@ -175,19 +177,19 @@ class Bot(twitch_commands.Bot):
             bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
 
         #Send the data to BQ
-        if len(self.message_handler.message_history_raw)==3:
-            self.logger.info("channel_viewers_query")
-            self.logger.info(channel_viewers_queue_query)
+        if len(self.message_handler.message_history_raw)==5:
+            self.logger.debug("channel_viewers_query")
+            self.logger.debug(channel_viewers_queue_query)
             
             #execute channel viewers query
             self.twitch_chat_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
 
             #generate and execute user interaction query
-            self.logger.info("These are the message_history_raw:")
-            self.logger.info(self.message_handler.message_history_raw)
+            self.logger.debug("These are the message_history_raw:")
+            self.logger.debug(self.message_handler.message_history_raw)
             viewer_interaction_records = self.twitch_chat_uploader.generate_bq_user_interactions_records(records=self.message_handler.message_history_raw)
-            self.logger.info("These are the viewer_interaction_records:")
-            self.logger.info(viewer_interaction_records)
+            self.logger.debug("These are the viewer_interaction_records:")
+            self.logger.debug(viewer_interaction_records)
 
             self.twitch_chat_uploader.send_recordsjob_to_bq(
                 table_id=self.usertransactions_table_id,
@@ -197,6 +199,7 @@ class Bot(twitch_commands.Bot):
             #clear the queues
             self.message_handler.message_history_raw.clear()
             self.twitch_chat_uploader.channel_viewers_queue.clear()
+            self.logger.info("message history and users in viewers queue sent to BQ and cleared")
 
         # self.handle_commands runs through bot commands
         if message.author is not None:
@@ -254,9 +257,10 @@ class Bot(twitch_commands.Bot):
     async def add_to_story_ouat(self, ctx,  *args):
         author=ctx.message.author.name
         prompt_text = ' '.join(args)
+        prompt_text_prefix = f"{self.ouat_prompt_addtostory_prefix}:'{prompt_text}'"
         gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_strings(
             self,
-            content=prompt_text,
+            content=prompt_text_prefix,
             role='user',
             name=author
             )
@@ -373,9 +377,9 @@ class Bot(twitch_commands.Bot):
                     print("self.ouat_counter == self.ouat_story_max_counter:  That was the last message")
                     self.logger.info(f"That was the final message (self.ouat_counter == {self.ouat_story_max_counter})")  
 
-                self.logger.debug(f"This is the messages_dict_gpt (for ouat_counter = {self.ouat_counter}:")
+                self.logger.debug(f"This is the messages_dict_gpt (self.ouat_counter = {self.ouat_counter}:")
                 self.logger.debug(messages_dict_gpt)
-                self.logger.info(f"FINAL gpt_response_clean (type: {type(gpt_response_clean)}): \n{gpt_response_clean}")  
+                self.logger.debug(f"FINAL gpt_response_clean (type: {type(gpt_response_clean)}): \n{gpt_response_clean}")  
                 await self.channel.send(gpt_response_clean)
                 
                 self.ouat_counter += 1   

@@ -58,3 +58,11 @@ def load_env(env_filename='config.env', env_dirname='config', is_testing=False):
         logger.info('LOG: Environment file loaded successfully.')
     else:
         logger.error('LOG: Failed to load environment file.')
+
+def main():
+    load_env()
+    yaml_data = load_yaml()
+    return yaml_data
+
+if __name__ == "__main__":
+    main()

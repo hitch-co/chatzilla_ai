@@ -114,3 +114,6 @@ def get_voice_history():
 
     return formatted_json
     #EoF
+
+if __name__ == "__main__":
+    get_voice_ids()

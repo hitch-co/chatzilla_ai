@@ -119,6 +119,7 @@ class Bot(twitch_commands.Bot):
         self.ouat_prompt_startstory = self.yaml_data['ouat_prompts']['ouat_prompt_startstory']
         self.ouat_prompt_progression = self.yaml_data['ouat_prompts']['ouat_prompt_progression']
         self.ouat_prompt_endstory = self.yaml_data['ouat_prompts']['ouat_prompt_endstory']
+        self.ouat_prompt_addtostory_prefix = self.yaml_data['ouat_prompts']['ouat_prompt_addtostory_prefix']
 
         #OUAT Progression flow / Config
         self.ouat_message_recurrence_seconds = self.yaml_data['ouat_message_recurrence_seconds']
@@ -256,9 +257,10 @@ class Bot(twitch_commands.Bot):
     async def add_to_story_ouat(self, ctx,  *args):
         author=ctx.message.author.name
         prompt_text = ' '.join(args)
+        prompt_text_prefix = f"{self.ouat_prompt_addtostory_prefix}:'{prompt_text}'"
         gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_strings(
             self,
-            content=prompt_text,
+            content=prompt_text_prefix,
             role='user',
             name=author
             )

@@ -114,7 +114,7 @@ def run_bot(TWITCH_BOT_ACCESS_TOKEN):
     env_vars = {
         'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY'),
         'ELEVENLABS_XI_API_KEY': os.getenv('ELEVENLABS_XI_API_KEY'),
-        'ELEVENLABS_XI_VOICE': os.getenv('ELEVENLABS_XI_VOICE'),
+        'ELEVENLABS_XI_VOICE': os.getenv('ELEVENLABS_XI_VOICE_PERSONAL_CHARLOTTE'),
         'ELEVENLABS_XI_VOICE_BUSINESS': os.getenv('ELEVENLABS_XI_VOICE_BUSINESS')
     }
 
@@ -126,7 +126,7 @@ def run_bot(TWITCH_BOT_ACCESS_TOKEN):
     bot = Bot(TWITCH_BOT_ACCESS_TOKEN, yaml_data, env_vars)
     bot.run()
 
-#TODO/NOTE: Everytime /callback is hit, a new bot instance is being started.  This 
-# could cause problems
+#TODO/NOTE: Everytime /callback is hit, a new bot instance is being started.   
+# This could cause problems
 if __name__ == "__main__":
     app.run(port=args_config.input_port_number, debug=True, use_reloader=use_reloader_bool)

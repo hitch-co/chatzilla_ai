@@ -1,9 +1,5 @@
 #main.py
 
-
-# Import necessary libraries and modules
-from modules import load_env, load_yaml
-
 # Define the Discord bot function
 #def discord_bot_function(bot_api_key, chatgpt_api_key):
 import dotenv

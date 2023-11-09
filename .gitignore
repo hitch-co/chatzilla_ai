@@ -191,3 +191,7 @@ ffplay.exe
 log/
 /log
 config/keys/
+discord_bot.py
+discord_games_countdown_bot.py
+discord_games_countdown.bat
+voice_t2s.py

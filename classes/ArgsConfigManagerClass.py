@@ -13,7 +13,7 @@ class ArgsConfigManager:
         # Load parameters from argparse here, or directly from the environment variables
         self.include_ouat = os.getenv("include_ouat", "yes")
         self.include_automsg = os.getenv("include_automsg", "no")
-        self.include_sound = os.getenv("include_sound", "no")
+        self.include_sound = os.getenv("include_sound", "yes")
         self.prompt_list_ouat = os.getenv("prompt_list_ouat", "newsarticle_dynamic")
         self.prompt_list_automsg = os.getenv("prompt_list_automsg", "videogames")
         self.prompt_list_chatforme = os.getenv("prompt_list_chatforme", "standard")

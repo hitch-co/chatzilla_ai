@@ -11,10 +11,10 @@ root_logger = my_logger(dirname='log',
                         stream_logs=False
                         )
 
-class GPTAssistantManager:
+class GPTAssistantManagerClass:
     def __init__(self) -> None:
         """
-        Initializes the GPTAssistantManager instance.
+        Initializes the GPTAssistantManagerClass instance.
         
         The instance uses a dedicated logger and loads configuration from environment variables
         and a YAML file. It sets up the assistant type and model based on the YAML configuration 
@@ -64,8 +64,8 @@ class GPTAssistantManager:
         self.assistant = assistant
         return assistant
     
-    #A Thread represents a conversation. We recommend creating one Thread per user as soon as the user initiates the 
-    # conversation. Pass any user-specific context and files in this thread by creating Messages.
+    # A Thread represents a conversation. One Thread per user.  Pass context by 
+    #  creating Messages.
     def _create_gpt_thread(self):
         thread = self.gpt_client.beta.threads.create()
         self.thread = thread
@@ -82,8 +82,6 @@ class GPTAssistantManager:
         self.run = run
         return run
     
-    #This creates a Run in a queued status. You can periodically retrieve the Run to check on its status to see if it 
-    # has moved to completed.
     async def _get_gpt_assistant_response(self, polling_seconds=1):
         async with self.lock:
             while True:
@@ -164,7 +162,7 @@ class GPTAssistantManager:
 
 async def demo_workflow():
     """
-    A simple demonstration of the GPTAssistantManager class functionality.
+    A simple demonstration of the GPTAssistantManagerClass functionality.
     This async function initializes the assistant workflow, adds a message to the GPT thread, and processes the thread.
 
     Workflow:
@@ -172,7 +170,7 @@ async def demo_workflow():
     2. Add a user message to the GPT thread.
     3. Process the thread to get the assistant's response.
     """
-    assistant_manager = GPTAssistantManager()
+    assistant_manager = GPTAssistantManagerClass()
 
     # Initialize workflow
     assistant_manager.initialize_assistant_workflow(

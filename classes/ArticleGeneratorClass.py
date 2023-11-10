@@ -19,7 +19,6 @@ class ArticleGenerator:
                                      mode='w',
                                      stream_logs=True)
 
-
     def fetch_articles(self):
         response = requests.get(self.rss_link)
         if response.status_code != 200:
@@ -40,24 +39,6 @@ class ArticleGenerator:
 
         self.root_logger.info(f"Successfully fetched --{len(self.articles)}-- article titles and links")
         return self.articles
-
-    def load_disallowed_terms(self,
-                              dir_path='config',
-                              file_name='disallowed_terms.json'):
-        file_path = os.path.join(dir_path, file_name)
-        
-        with open(file_path, 'r') as f:
-            data = json.load(f)
-        
-        return data['disallowed_terms']
-
-    def check_for_disallowed_terms(self,
-                                   article_content,
-                                   list_of_disallowed_terms):
-        for term in list_of_disallowed_terms:
-            if term.lower() in article_content.lower():
-                return True
-        return False
 
     def fetch_random_article_content(self, article_char_trunc=500):
         found_article = False
@@ -104,6 +85,24 @@ class ArticleGenerator:
 
         trimmed_article = random_article_content[:article_char_trunc]
         return trimmed_article
+
+    def load_disallowed_terms(self,
+                              dir_path='config',
+                              file_name='disallowed_terms.json'):
+        file_path = os.path.join(dir_path, file_name)
+        
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        
+        return data['disallowed_terms']
+
+    def check_for_disallowed_terms(self,
+                                   article_content,
+                                   list_of_disallowed_terms):
+        for term in list_of_disallowed_terms:
+            if term.lower() in article_content.lower():
+                return True
+        return False
 
     def clean_html_text(self, text):
         import re

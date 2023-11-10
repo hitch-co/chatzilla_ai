@@ -23,7 +23,7 @@ class TwitchChatBQUploader:
         self.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
 
         #also set in twitch_bot.py
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'config/keys/eh-talkzilla-ai-1bcb1963d5b4.json'
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = self.yaml_data['twitch-ouat']['google_service_account_credentials_file']
 
         #logger
         self.logger = my_logging.my_logger(dirname='log', 
@@ -39,9 +39,6 @@ class TwitchChatBQUploader:
         self.channel_viewers_list_dict_temp = []
         self.channel_viewers_queue = []
 
-    def escape_sql_string(value):
-        return value.replace("'", "''").replace("\\", "\\\\")
-    
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
     def get_channel_viewers(self,
                             bearer_token=None) -> object:

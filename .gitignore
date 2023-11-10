@@ -199,3 +199,8 @@ readme/README_games-countdown.md
 readme/helper_prompts/directory tree.md
 readme/helper_prompts/helper_prompts.md
 readme/helper_prompts/prompt_building
+_prompts/
+_learning/
+_junk/
+data/tts/
+GPTTextToSpeech_main.py

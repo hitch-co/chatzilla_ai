@@ -13,20 +13,9 @@ class MessageHandler:
                                            stream_logs=True)
         self.logger.debug('MessageHandler initialized.')
 
+        #run config
         self.yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname='config')
         load_env(env_filename='config.env', env_dirname='config')
-
-        #Users in message history
-        self.users_in_messages_list = []
-
-        #message_history_raw
-        self.message_history_raw = []
-
-        #Message History Lists
-        self.ouat_temp_msg_history = []
-        self.automsg_temp_msg_history = []
-        self.chatforme_temp_msg_history = []
-        self.nonbot_temp_msg_history = []
 
         #Bots Lists
         self.bots_automsg = self.yaml_data['twitch-bots']['automsg']
@@ -40,7 +29,19 @@ class MessageHandler:
         self.known_bots = list(set(self.known_bots))
         self.logger.info("these are the self.known_bots")
         self.logger.info(self.known_bots)
-        
+
+        #Users in message history
+        self.users_in_messages_list = []
+
+        #message_history_raw
+        self.message_history_raw = []
+
+        #Message History Lists
+        self.ouat_temp_msg_history = []
+        self.automsg_temp_msg_history = []
+        self.chatforme_temp_msg_history = []
+        self.nonbot_temp_msg_history = []
+
     def get_bot_message_metadata(self, message) -> None:
         message_metadata = {
             'badges': 'unknown', #message.tags.get('badges', 'NULL'),

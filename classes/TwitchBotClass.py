@@ -221,33 +221,46 @@ class Bot(twitch_commands.Bot):
             user_requested_plotline = ' '.join(args)
 
             # Capture writing tone/style/theme and randomly select one item from each list
-            writing_tone_values = list(yaml_data['ouat-writing-parameters']['writing_tone'].values())
-            writing_style_values = list(yaml_data['ouat-writing-parameters']['writing_style'].values())
-            theme_values = list(yaml_data['ouat-writing-parameters']['theme'].values())
-            self.selected_writing_style = random.choice(writing_style_values)
+            writing_tone_values = list(self.yaml_data['ouat-writing-parameters']['writing_tone'].values())
             self.selected_writing_tone = random.choice(writing_tone_values)
+
+            writing_style_values = list(self.yaml_data['ouat-writing-parameters']['writing_style'].values())
+            self.selected_writing_style = random.choice(writing_style_values)
+
+            theme_values = list(self.yaml_data['ouat-writing-parameters']['theme'].values())
             self.selected_theme = random.choice(theme_values)
 
             # Fetch random article
             self.random_article_content = self.article_generator.fetch_random_article_content(article_char_trunc=300)                    
+            
+            # Populate text replacement
             replacements_dict = {"random_article_content":self.random_article_content,
                                  "user_requested_plotline":user_requested_plotline}
-
             self.random_article_content = prompt_text_replacement(
                 gpt_prompt_text=self.ouat_news_article_summary_prompt,
                 replacements_dict=replacements_dict
                 )
-            gpt_ready_list_dict = combine_msghistory_and_prompttext(
-                prompt_text=self.random_article_content,
-                prompt_text_name=self.twitch_bot_username,
-                msg_history_list_dict=None
-                )
+            
+            gpt_ready_dict = PromptHandler.create_gpt_message_dict_from_strings(
+                self,
+                content = self.random_article_content,
+                role = 'user',
+                name = self.twitch_bot_username
+            )
+            gpt_ready_list_dict = [gpt_ready_dict]
+
+            self.logger.debug("THIS IS GPT_READ_LIST_DICT:")
+            self.logger.debug(gpt_ready_list_dict)
+
             self.random_article_content_prompt_summary = openai_gpt_chatcompletion(
                 messages_dict_gpt=gpt_ready_list_dict, 
                 OPENAI_API_KEY=self.OPENAI_API_KEY, 
                 max_characters=1200
                 )
-            
+
+            self.logger.info("this is the random_article_content_prompt_summary:")
+            self.logger.info(self.random_article_content_prompt_summary)
+
             await self.start_ouat_storyteller_msg_loop()
             
             printc(f"A story was started by {message.author.name} ({message.author.id})", bcolors.WARNING)
@@ -369,24 +382,31 @@ class Bot(twitch_commands.Bot):
                                                                 OPENAI_API_KEY=self.OPENAI_API_KEY,
                                                                 max_attempts=3)
                 gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
-                
-                if self.args_include_sound == 'yes':
-                    v2s_message_object = generate_t2s_object(
-                        ELEVENLABS_XI_API_KEY = self.ELEVENLABS_XI_API_KEY,
-                        voice_id = self.ELEVENLABS_XI_VOICE,
-                        text_to_say=gpt_response_clean, 
-                        is_testing = False)
-                    play_t2s_object(v2s_message_object)
 
                 if self.ouat_counter == self.ouat_story_max_counter:
-                    print("self.ouat_counter == self.ouat_story_max_counter:  That was the last message")
                     self.logger.info(f"That was the final message (self.ouat_counter == {self.ouat_story_max_counter})")  
 
                 self.logger.debug(f"This is the messages_dict_gpt (self.ouat_counter = {self.ouat_counter}:")
                 self.logger.debug(messages_dict_gpt)
-                self.logger.debug(f"FINAL gpt_response_clean (type: {type(gpt_response_clean)}): \n{gpt_response_clean}")  
-                await self.channel.send(gpt_response_clean)
+                self.logger.info(f"FINAL gpt_response_clean (type: {type(gpt_response_clean)}): \n{gpt_response_clean}")  
+
+                if self.args_include_sound == 'yes':
+                    # Generate speech object and create .mp3:
+                    output_filename = 'ouat_'+self.tts_file_name+"_"+str(self.ouat_counter)
+                    self.tts_client.workflow_t2s(text_input=gpt_response_clean,
+                                                 voice_name='shimmer',
+                                                output_dirpath=self.tts_data_folder,
+                                                output_filename=output_filename)
                 
+                #send twitch message and generate/play local mp3 if applicable
+                await self.channel.send(gpt_response_clean)
+
+                if self.args_include_sound == 'yes':
+                    play_local_mp3(
+                        dirpath=self.tts_data_folder, 
+                        filename=output_filename
+                        )                
+
                 self.ouat_counter += 1   
 
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
@@ -397,7 +417,7 @@ class Bot(twitch_commands.Bot):
         A Twitch bot command that interacts with OpenAI's GPT API.
         It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
         """
-        self.load_configuration()
+        self.run_configuration()
         request_user_name = ctx.message.author.name
 
         # Extract usernames from previous chat messages stored in chatforme_temp_msg_history.
@@ -428,7 +448,23 @@ class Bot(twitch_commands.Bot):
                                                  OPENAI_API_KEY=self.OPENAI_API_KEY)
         gpt_response_clean = chatforme_gpt_response_cleanse(gpt_response)
 
-        await ctx.send(gpt_response_clean)      
+        if self.args_include_sound == 'yes':
+            # Generate speech object and create .mp3:
+            output_filename = 'chatforme_'+self.tts_file_name
+            self.tts_client.workflow_t2s(text_input=gpt_response_clean,
+                                            voice_name='onyx',
+                                        output_dirpath=self.tts_data_folder,
+                                        output_filename=output_filename)
+        
+        #send twitch message and generate/play local mp3 if applicable
+        await self.channel.send(gpt_response_clean)
+
+        if self.args_include_sound == 'yes':
+            play_local_mp3(
+                dirpath=self.tts_data_folder, 
+                filename=output_filename
+                )                 
+          
         return print(f"Sent gpt_response to chat: {gpt_response_clean}")
 
     @twitch_commands.command(name='botthot')
@@ -437,7 +473,7 @@ class Bot(twitch_commands.Bot):
         A Twitch bot command that interacts with OpenAI's GPT API.
         It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
         """
-        self.load_configuration()
+        self.run_configuration()
         request_user_name = ctx.message.author.name
 
         # Extract usernames from previous chat messages stored in chatforme_temp_msg_history.

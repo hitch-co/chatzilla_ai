@@ -108,22 +108,18 @@ def run_bot(TWITCH_BOT_ACCESS_TOKEN):
     #load yaml_data for init'ing Bot class
     yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname='config')
     
-    #TODO This could be moved to a ConfigManager() class as it only needs a handful
-    # of configuration parameters
+    #TODO could be moved to a ConfigManager(). Only needs a handful of configuration parameters
     load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
-    env_vars = {
-        'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY'),
-        'ELEVENLABS_XI_API_KEY': os.getenv('ELEVENLABS_XI_API_KEY'),
-        'ELEVENLABS_XI_VOICE': os.getenv('ELEVENLABS_XI_VOICE_PERSONAL_CHARLOTTE'),
-        'ELEVENLABS_XI_VOICE_BUSINESS': os.getenv('ELEVENLABS_XI_VOICE_BUSINESS')
-    }
 
     #asyncio event loop
     new_loop = asyncio.new_event_loop()
     asyncio.set_event_loop(new_loop)
     
     #instantiate the class
-    bot = Bot(TWITCH_BOT_ACCESS_TOKEN, yaml_data, env_vars)
+    bot = Bot(
+        TWITCH_BOT_ACCESS_TOKEN, 
+        yaml_data=yaml_data
+        )
     bot.run()
 
 #TODO/NOTE: Everytime /callback is hit, a new bot instance is being started.   

@@ -28,7 +28,7 @@ from classes import GPTTextToSpeechClass
 class Bot(twitch_commands.Bot):
     loop_sleep_time = 4
 
-    def __init__(self, TWITCH_BOT_ACCESS_TOKEN, yaml_data, env_vars):
+    def __init__(self, TWITCH_BOT_ACCESS_TOKEN, yaml_data):
         super().__init__(
             token=TWITCH_BOT_ACCESS_TOKEN,
             name=yaml_data['twitch-app']['twitch_bot_username'],
@@ -53,7 +53,6 @@ class Bot(twitch_commands.Bot):
 
         #load cofiguration
         self.yaml_data = self.run_configuration()
-        self.env_vars = env_vars
         
         #Google Service Account Credentials
         google_application_credentials_file = yaml_data['twitch-ouat']['google_service_account_credentials_file']
@@ -88,17 +87,14 @@ class Bot(twitch_commands.Bot):
         self.yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="config")
         load_env(env_filename=self.yaml_data['env_filename'], env_dirname=self.yaml_data['env_dirname'])
 
-        #capture yaml/env data from instantiated class
-        self.env_vars = self.env_vars
-
         #Twitch Bot Details
         self.twitch_bot_channel_name = self.yaml_data['twitch-app']['twitch_bot_channel_name']
         self.twitch_bot_username = self.yaml_data['twitch-app']['twitch_bot_username']
 
         #Eleven Labs / OpenAI
-        self.ELEVENLABS_XI_API_KEY = self.env_vars['ELEVENLABS_XI_API_KEY']
-        self.ELEVENLABS_XI_VOICE = self.env_vars['ELEVENLABS_XI_VOICE']
-        self.OPENAI_API_KEY = self.env_vars['OPENAI_API_KEY']
+        self.ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')
+        self.ELEVENLABS_XI_VOICE = os.getenv('ELEVENLABS_XI_VOICE')
+        self.OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
         #runtime arguments
         self.args_include_sound = str.lower(self.args_config.include_sound)
@@ -290,7 +286,7 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='stopstory')
     async def stop_story(self, ctx):
-        await self.channel.send("--ToBeCoNtInUeD--")
+        await self.channel.send("ToBeCoNtInUeD")
         await self.stop_loop()
 
     @twitch_commands.command(name='endstory')

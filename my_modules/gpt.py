@@ -46,35 +46,45 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
                                          mode='a',
                                          stream_logs=stream_logs)
     logger_gptchatcompletion.debug("This is the messages_dict_gpt submitted to GPT ChatCompletion")
+    logger_gptchatcompletion.debug(f"The number of tokens included is: {count_tokens_in_messages(messages=messages_dict_gpt)}")
     logger_gptchatcompletion.debug(messages_dict_gpt)
 
     #Error checking for token length, etc.
     counter=0
     while count_tokens_in_messages(messages=messages_dict_gpt) > 2000:
+        if counter > 3:
+            error_message = f"Too many tokens {token_count} even after 3 attempts to reduce count. Raising exception."
+            logger_gptchatcompletion.error(error_message)
+            raise ValueError(error_message)
+        logger_gptchatcompletion.debug("Entered count_tokens_in_messages() > 2000")
         token_count = count_tokens_in_messages(messages=messages_dict_gpt)
         logger_gptchatcompletion.warning(f"The messages_dict_gpt contained too many tokens {(token_count)}, .pop() first dict")
         messages_dict_gpt.pop(0)
         counter+=1
-        if counter>3:
-            logger_gptchatcompletion.error(f"Too many tokens {(token_count)} even after 5 attempts to reduce count. Exiting program.")
-            exit(1)
     
     #Call to OpenAI
-    for _ in range(max_attempts):
-        generated_response = client.chat.completions.create(
-            model=model,
-            messages=messages_dict_gpt,
-            presence_penalty=presence_penalty,
-            frequency_penalty=frequency_penalty,
-            temperature=temperature
+    for attempt in range(max_attempts):
+        try:
+            generated_response = client.chat.completions.create(
+                model=model,
+                messages=messages_dict_gpt,
+                presence_penalty=presence_penalty,
+                frequency_penalty=frequency_penalty,
+                temperature=temperature
             )
+        except Exception as e:
+            logger_gptchatcompletion.error(f"Exception occurred during API call: {e}")
+            logger_gptchatcompletion.error(f"Attempt {attempt + 1} of {max_attempts} failed.")
+            continue
+        
+        logger_gptchatcompletion.debug("This is the generated response:")
+        logger_gptchatcompletion.debug(generated_response)
 
         gpt_response_text = generated_response.choices[0].message.content
-        print(gpt_response_text)
-
         gpt_response_text_len = len(gpt_response_text)
+
         logger_gptchatcompletion.debug(f"The generated_response object is of type {type(generated_response)}")
-        logger_gptchatcompletion.debug(f'The --{_}-- call to gpt_chat_completion had a response of {gpt_response_text_len} characters')
+        logger_gptchatcompletion.debug(f'The --{attempt}-- call to gpt_chat_completion had a response of {gpt_response_text_len} characters')
         logger_gptchatcompletion.debug(f"The generated_response object is of type {type(gpt_response_text)}")        
         
         if gpt_response_text_len < max_characters:

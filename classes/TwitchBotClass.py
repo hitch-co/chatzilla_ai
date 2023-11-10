@@ -9,25 +9,22 @@ import os
 from my_modules.gpt import openai_gpt_chatcompletion
 from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext
 from my_modules.gpt import ouat_gpt_response_cleanse, chatforme_gpt_response_cleanse, botthot_gpt_response_cleanse
+
 from my_modules.my_logging import my_logger, log_dynamic_dict
 from my_modules.twitchio_helpers import get_string_of_users
 from my_modules.config import load_yaml, load_env
-from my_modules.text_to_speech import generate_t2s_object, play_t2s_object
+from my_modules.text_to_speech import generate_t2s_object, play_t2s_object, play_local_mp3
 from my_modules import utils
 
 from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
 from classes.CustomExceptions import BotFeatureNotEnabledException
 from classes.MessageHandlerClass import MessageHandler
-from classes.TwitchChatBQUploaderClass import TwitchChatBQUploader
+from classes.BQUploaderClass import TwitchChatBQUploader
 from classes.PromptHandlerClass import PromptHandler
 from classes.ArgsConfigManagerClass import ArgsConfigManager
+from classes import GPTTextToSpeechClass
 
-#TWITCH_BOT_REDIRECT_PATH = os.getenv('TWITCH_BOT_REDIRECT_PATH')
-yaml_data = load_yaml(yaml_dirname='config', yaml_filename='config.yaml')
-load_env(env_dirname=yaml_data['env_dirname'], env_filename=yaml_data['env_filename'])
-
-###############################
 class Bot(twitch_commands.Bot):
     loop_sleep_time = 4
 
@@ -54,15 +51,10 @@ class Bot(twitch_commands.Bot):
                                 stream_logs=True,
                                 encoding='UTF-8')
 
-        #May be redundant.  I think I should leave these here but then need to handle
-        # Configuration in the bot(run()) section of the script which is outside both classes
-        # and thus might need it's own class
-        self.yaml_data = yaml_data
-        self.env_vars = env_vars
-
         #load cofiguration
-        self.load_configuration()
-
+        self.yaml_data = self.run_configuration()
+        self.env_vars = env_vars
+        
         #Google Service Account Credentials
         google_application_credentials_file = yaml_data['twitch-ouat']['google_service_account_credentials_file']
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_application_credentials_file
@@ -70,6 +62,16 @@ class Bot(twitch_commands.Bot):
         #BQ Table IDs
         self.userdata_table_id=self.yaml_data['twitch-ouat']['talkzillaai_userdata_table_id']
         self.usertransactions_table_id=self.yaml_data['twitch-ouat']['talkzillaai_usertransactions_table_id']
+
+        #TTS Details
+        self.tts_data_folder = yaml_data['openai-api']['tts_data_folder']
+        self.tts_file_name = yaml_data['openai-api']['tts_file_name']
+        
+        #TTS Client
+        self.tts_client = GPTTextToSpeechClass.GPTTextToSpeech(
+            output_filename=self.tts_file_name,
+            output_dirpath=self.tts_data_folder
+            )
 
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
@@ -80,8 +82,7 @@ class Bot(twitch_commands.Bot):
         #counters
         self.ouat_counter = 0
 
-    #Load configurations
-    def load_configuration(self):
+    def run_configuration(self) -> dict:
 
         #load yaml/env
         self.yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname="config")
@@ -144,8 +145,9 @@ class Bot(twitch_commands.Bot):
         self.formatted_gpt_chatforme_prompt_prefix = str(self.yaml_data['formatted_gpt_chatforme_prompt_prefix'])
         self.formatted_gpt_chatforme_prompt_suffix = str(self.yaml_data['formatted_gpt_chatforme_prompt_suffix'])
         self.formatted_gpt_chatforme_prompts = self.yaml_data['formatted_gpt_chatforme_prompts']
-
-        return self.logger.info("Configuration attributes loaded/refreshed from YAML/env variables")  
+        self.logger.info("Configuration attributes loaded/refreshed from YAML/env variables")  
+        
+        return self.yaml_data 
 
     #Executes once the bot is ready
     async def event_ready(self):
@@ -208,7 +210,7 @@ class Bot(twitch_commands.Bot):
     #controls ouat_storyteller()
     async def start_ouat_storyteller_msg_loop(self):
         self.is_ouat_loop_active = True
-        self.load_configuration()
+        self.run_configuration()
         if not any([self.args_include_automsg == 'yes', self.args_include_ouat == 'yes']):
             self.logger.error("Neither automsg or ouat enabled with app argument")
             raise BotFeatureNotEnabledException("Neither automsg or ouat enabled with app argument")
@@ -301,12 +303,14 @@ class Bot(twitch_commands.Bot):
             self.logger.info(f"{arg}: {getattr(self, arg)}")
 
     async def ouat_storyteller(self):
-        self.load_configuration()
+        #self.yaml_data = self.run_configuration()
     
         #load article links (prepping for reading random article)
         if self.args_include_ouat == 'yes' and self.args_ouat_prompt_name.startswith('newsarticle'):
             self.article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.newsarticle_rss_feed)
             self.article_generator.fetch_articles()
+        else: 
+            self.logger.warning("Neither self.args_include_ouat or self.args_ouat_prompt_name conditions were met")
 
         #This is the while loop that generates the occurring GPT response
         while True:
@@ -349,7 +353,8 @@ class Bot(twitch_commands.Bot):
                         await self.stop_loop()
                         continue
                 
-                else: self.logger.error("Neither automsg or ouat enabled with app startup argument")
+                else: 
+                    self.logger.error("Neither automsg or ouat enabled with app startup argument")
 
                 self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter}")
                 self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')

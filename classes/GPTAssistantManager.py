@@ -3,13 +3,14 @@ import os
 import asyncio
 
 from my_modules import config
-from my_modules.my_logging import my_logger
+from my_modules.my_logging import create_logger
 
-root_logger = my_logger(dirname='log', 
-                        logger_level='INFO',
-                        logger_name='root_GPTAssistantManager',
-                        stream_logs=False
-                        )
+root_logger = create_logger(
+    dirname='log', 
+    logger_level='INFO',
+    logger_name='_logger_root_GPTAssistantManager',
+    stream_logs=False
+    )
 
 class GPTAssistantManager:
     def __init__(self) -> None:
@@ -20,7 +21,7 @@ class GPTAssistantManager:
         and a YAML file. It sets up the assistant type and model based on the YAML configuration 
         by default, but these can be overridden during the assistant workflow initialization.
         """
-        self.logger = my_logger(
+        self.logger = create_logger(
             debug_level='INFO', 
             logger_name='logger_GPTAssistantManager', 
             mode='w', 

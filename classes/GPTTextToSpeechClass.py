@@ -9,7 +9,7 @@ from my_modules import my_logging
 
 class GPTTextToSpeech:
     def __init__(self, output_filename='class_default_speech.mp3', output_dirpath=None):
-        self.logger = my_logging.my_logger(
+        self.logger = my_logging.create_logger(
             debug_level='INFO', 
             logger_name='logger_GPTTextToSpeechClass', 
             mode='a', 

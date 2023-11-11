@@ -6,11 +6,13 @@ from classes.PromptHandlerClass import PromptHandler
 
 class MessageHandler:
     def __init__(self):
-        self.logger = my_logging.my_logger(dirname='log', 
-                                           logger_name='logger_MessageHandler',
-                                           debug_level='INFO',
-                                           mode='w',
-                                           stream_logs=True)
+        self.logger = my_logging.create_logger(
+            dirname='log', 
+            logger_name='logger_MessageHandler',
+            debug_level='INFO',
+            mode='w',
+            stream_logs=True
+            )
         self.logger.debug('MessageHandler initialized.')
 
         #run config

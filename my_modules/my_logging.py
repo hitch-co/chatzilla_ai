@@ -1,13 +1,14 @@
 import logging
 import inspect
 
-def my_logger(dirname='log', 
-              logger_name=None, 
-              debug_level='DEBUG', 
-              mode='w',
-              stream_logs = True,
-              encoding='UTF-8'
-              ):
+def create_logger(
+        dirname='log', 
+        logger_name=None, 
+        debug_level='DEBUG', 
+        mode='w',
+        stream_logs = True,
+        encoding='UTF-8'
+        ):
     
     level_mapping = {
         'DEBUG': logging.DEBUG,

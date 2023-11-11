@@ -9,11 +9,13 @@ class PromptHandler:
         self.yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname='config')
         load_env(env_filename='config.env', env_dirname='config')
 
-        self.logger = my_logging.my_logger(dirname='log', 
-                                           logger_name='logger_PromptHandler',
-                                           debug_level='DEBUG',
-                                           mode='w',
-                                           stream_logs=False)
+        self.logger = my_logging.create_logger(
+            dirname='log', 
+            logger_name='logger_PromptHandler',
+            debug_level='DEBUG',
+            mode='w',
+            stream_logs=False
+            )
 
         #Users in message history
         self.users_in_messages_list = []

@@ -26,11 +26,13 @@ class TwitchChatBQUploader:
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = self.yaml_data['twitch-ouat']['google_service_account_credentials_file']
 
         #logger
-        self.logger = my_logging.my_logger(dirname='log', 
-                                           logger_name='logger_ChatUploader',
-                                           debug_level='DEBUG',
-                                           mode='w',
-                                           stream_logs=True)
+        self.logger = my_logging.create_logger(
+            dirname='log', 
+            logger_name='logger_ChatUploader',
+            debug_level='DEBUG',
+            mode='w',
+            stream_logs=True
+            )
         self.logger.debug('TwitchChatBQUploader Logger initialized.')
 
         #Build the client

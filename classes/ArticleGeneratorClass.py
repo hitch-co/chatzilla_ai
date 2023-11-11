@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 import os
 
 from classes.ConsoleColoursClass import bcolors, printc
-from my_modules.my_logging import my_logger
+from my_modules.my_logging import create_logger
 
 class ArticleGenerator:
     def __init__(self, rss_link="http://rss.cnn.com/rss/cnn_showbiz.rss"):
@@ -13,11 +13,13 @@ class ArticleGenerator:
         self.articles = []
         self.article_details = []
 
-        self.root_logger = my_logger(dirname='log', 
-                                     logger_name='root_ArticleGenerator_logger',
-                                     debug_level='INFO',
-                                     mode='w',
-                                     stream_logs=True)
+        self.logger = create_logger(
+            dirname='log', 
+            logger_name='_logger_ArticleGenerator',
+            debug_level='INFO',
+            mode='w',
+            stream_logs=True
+            )
 
     def fetch_articles(self):
         response = requests.get(self.rss_link)
@@ -37,7 +39,7 @@ class ArticleGenerator:
                 }
             self.articles.append(article_dict)
 
-        self.root_logger.info(f"Successfully fetched --{len(self.articles)}-- article titles and links")
+        self.logger.info(f"Successfully fetched --{len(self.articles)}-- article titles and links")
         return self.articles
 
     def fetch_random_article_content(self, article_char_trunc=500):
@@ -46,7 +48,7 @@ class ArticleGenerator:
                                                               file_name='disallowed_terms.json')
         
         if not self.articles:
-            self.root_logger.info("Missing URL or article data")
+            self.logger.info("Missing URL or article data")
             printc("Missing URL or article data.", bcolors.WARNING)
             return ['']
         
@@ -57,7 +59,7 @@ class ArticleGenerator:
                 response = requests.get(random_article_link)
                 response.raise_for_status()  # This will raise if HTTP request returned an unsuccessful status code
             except requests.RequestException as e:
-                self.root_logger.error(f"Failed to fetch the article at {random_article_link}. Error: {e}")
+                self.logger.error(f"Failed to fetch the article at {random_article_link}. Error: {e}")
                 printc(f"Failed to fetch the article at {random_article_link}. Error: {e}", bcolors.FAIL)
                 return ['']
 
@@ -65,7 +67,7 @@ class ArticleGenerator:
                 soup = BeautifulSoup(response.content, 'html.parser')
                 content_html_soup = soup.find('div', {'class': 'article__content'})
             except Exception as e:
-                self.root_logger.error(f"Error during parsing the article at {random_article_link}. Error: {e}")
+                self.logger.error(f"Error during parsing the article at {random_article_link}. Error: {e}")
                 printc(f"Error during parsing the article at {random_article_link}. Error: {e}", bcolors.FAIL)
                 return ['']
 
@@ -75,7 +77,7 @@ class ArticleGenerator:
                 found_article = False if self.check_for_disallowed_terms(article_content=random_article_content,
                                                                          list_of_disallowed_terms=list_of_disallowed_terms) else True
                 if found_article:
-                    self.root_logger.info(f"Successfully fetched article with content  (source:{random_article_link})")
+                    self.logger.info(f"Successfully fetched article with content  (source:{random_article_link})")
                     printc(f"\nSuccessfully fetched article with content  (source:{random_article_link})", bcolors.OKBLUE)
                     printc(f'Preview of article: {random_article_content[:300]}...', bcolors.UNDERLINE)
                 else:

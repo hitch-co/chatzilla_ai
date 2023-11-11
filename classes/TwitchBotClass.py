@@ -38,11 +38,22 @@ class Bot(twitch_commands.Bot):
             #NOTE/QUESTION:what other variables should be set here?
         )
 
-        #instantiate amessage handler class
+        #Taken from app authentication class()
+        self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
+
+        #create instances of required classes
         self.message_handler = MessageHandler()
         self.args_config = ArgsConfigManager()
         self.twitch_chat_uploader = TwitchChatBQUploader() #TODO should be instantiated with a access token
 
+        #TTS Details
+        self.tts_data_folder = yaml_data['openai-api']['tts_data_folder']
+        self.tts_file_name = yaml_data['openai-api']['tts_file_name']
+        self.tts_client = GPTTextToSpeechClass.GPTTextToSpeech(
+            output_filename=self.tts_file_name,
+            output_dirpath=self.tts_data_folder
+            )
+        
         #setup logger
         self.logger = my_logger(dirname='log', 
                                 logger_name='logger_BotClass', 
@@ -61,19 +72,6 @@ class Bot(twitch_commands.Bot):
         #BQ Table IDs
         self.userdata_table_id=self.yaml_data['twitch-ouat']['talkzillaai_userdata_table_id']
         self.usertransactions_table_id=self.yaml_data['twitch-ouat']['talkzillaai_usertransactions_table_id']
-
-        #TTS Details
-        self.tts_data_folder = yaml_data['openai-api']['tts_data_folder']
-        self.tts_file_name = yaml_data['openai-api']['tts_file_name']
-        
-        #TTS Client
-        self.tts_client = GPTTextToSpeechClass.GPTTextToSpeech(
-            output_filename=self.tts_file_name,
-            output_dirpath=self.tts_data_folder
-            )
-
-        #Taken from app authentication class()
-        self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
 
         #Set default loop state
         self.is_ouat_loop_active = False  # controls if the loop should runZ

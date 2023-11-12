@@ -5,7 +5,7 @@ from flask import Flask, request
 import uuid
 import requests
 import os
-from my_modules.my_logging import my_logger, log_dynamic_dict
+from my_modules.my_logging import create_logger, log_dynamic_dict
 from my_modules.config import load_yaml, load_env
 from classes.TwitchBotClass import Bot
 from classes.ArgsConfigManagerClass import ArgsConfigManager
@@ -15,9 +15,9 @@ use_reloader_bool = False
 runtime_logger_level = 'DEBUG'
 
 # Initialize the root logger
-root_logger = my_logger(
+root_logger = create_logger(
     dirname='log',
-    logger_name='root_logger',
+    logger_name='_logger_root_twitch_bot',
     debug_level=runtime_logger_level,
     mode='a'
 )
@@ -58,12 +58,15 @@ def auth():
 @app.route('/callback')
 def callback():
     global TWITCH_CHATFORME_BOT_THREAD  # declare the variable as global inside the function
+
+    # Runtime args
     input_port_number = str(args_config.input_port_number)
     redirect_uri = f'http://localhost:{input_port_number}/{twitch_bot_redirect_path}'
+    
+    # Args in response
     code = request.args.get('code')
     state = request.args.get('state')
     error = request.args.get('error')
-    # output = {}
     
     if error:
         return f"Error: {error}"
@@ -74,8 +77,7 @@ def callback():
         'code': code,
         'grant_type': 'authorization_code',
         'redirect_uri': redirect_uri
-    }
-    
+    }  
     response = requests.post('https://id.twitch.tv/oauth2/token', data=data)
     
     if response.status_code == 200:
@@ -96,7 +98,6 @@ def callback():
             twitch_bot_status = 'Twitch bot was active so the existing bot thread was left active.'
 
         return f'<a>{twitch_bot_status} Access Token and Refresh Token have been captured and set in the current environment</a>'
-
     else:
         # output = {}
         # output['response.text'] = response.json()

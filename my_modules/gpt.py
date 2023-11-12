@@ -1,7 +1,7 @@
 from classes.ArticleGeneratorClass import ArticleGenerator
 from classes.ConsoleColoursClass import bcolors, printc
 from my_modules import utils
-from my_modules.my_logging import my_logger
+from my_modules.my_logging import create_logger
 
 import os
 from my_modules.config import load_env, load_yaml
@@ -41,10 +41,12 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
     client = create_gpt_client()   
     client.api_key = OPENAI_API_KEY
 
-    logger_gptchatcompletion = my_logger(dirname='log',
-                                         logger_name='logger_openai_gpt_chatcompletion',
-                                         mode='a',
-                                         stream_logs=stream_logs)
+    logger_gptchatcompletion = create_logger(
+        dirname='log',
+        logger_name='logger_openai_gpt_chatcompletion',
+        mode='a',
+        stream_logs=stream_logs
+        )
     logger_gptchatcompletion.debug("This is the messages_dict_gpt submitted to GPT ChatCompletion")
     logger_gptchatcompletion.debug(f"The number of tokens included is: {count_tokens_in_messages(messages=messages_dict_gpt)}")
     logger_gptchatcompletion.debug(messages_dict_gpt)
@@ -125,10 +127,12 @@ def create_gpt_client():
 
 def prompt_text_replacement(gpt_prompt_text,
                             replacements_dict):
-    logger_prompt_text_replacement = my_logger(dirname='log',
-                                         logger_name='logger_prompt_text_replacement',
-                                         mode='a',
-                                         stream_logs=stream_logs)
+    logger_prompt_text_replacement = create_logger(
+        dirname='log',
+        logger_name='logger_prompt_text_replacement',
+        mode='a',
+        stream_logs=stream_logs
+        )
     prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
     logger_prompt_text_replacement.info(f"prompt_text_replaced: {prompt_text_replaced}")
     return prompt_text_replaced
@@ -150,7 +154,7 @@ def combine_msghistory_and_prompttext(prompt_text,
                                       prompt_text_name='unknown',
                                       msg_history_list_dict=None,
                                       combine_messages=False) -> [dict]:
-    logger_msghistory_and_prompt = my_logger(
+    logger_msghistory_and_prompt = create_logger(
         dirname='log',
         logger_name='logger_msghistory_and_prompt',
         debug_level='DEBUG',

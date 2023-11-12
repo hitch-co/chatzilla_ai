@@ -8,7 +8,7 @@ from my_modules.my_logging import create_logger
 root_logger = create_logger(
     dirname='log', 
     logger_level='INFO',
-    logger_name='root_GPTAssistantManager',
+    logger_name='_logger_root_GPTAssistantManager',
     stream_logs=False
     )
 

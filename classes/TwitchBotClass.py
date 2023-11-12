@@ -1,4 +1,4 @@
-runtime_logger_level = 'DEBUG'
+runtime_logger_level = 'INFO'
 
 import asyncio
 from twitchio.ext import commands as twitch_commands
@@ -10,7 +10,7 @@ from my_modules.gpt import openai_gpt_chatcompletion
 from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext
 from my_modules.gpt import ouat_gpt_response_cleanse, chatforme_gpt_response_cleanse, botthot_gpt_response_cleanse
 
-from my_modules.my_logging import my_logger, log_dynamic_dict
+from my_modules.my_logging import create_logger
 from my_modules.twitchio_helpers import get_string_of_users
 from my_modules.config import load_yaml, load_env
 from my_modules.text_to_speech import generate_t2s_object, play_t2s_object, play_local_mp3
@@ -44,12 +44,14 @@ class Bot(twitch_commands.Bot):
         self.twitch_chat_uploader = TwitchChatBQUploader() #TODO should be instantiated with a access token
 
         #setup logger
-        self.logger = my_logger(dirname='log', 
-                                logger_name='logger_BotClass', 
-                                debug_level=runtime_logger_level,
-                                mode='a',
-                                stream_logs=True,
-                                encoding='UTF-8')
+        self.logger = create_logger(
+            dirname='log', 
+            logger_name='logger_BotClass', 
+            debug_level=runtime_logger_level,
+            mode='a',
+            stream_logs=True,
+            encoding='UTF-8'
+            )
 
         #load cofiguration
         self.yaml_data = self.run_configuration()
@@ -388,11 +390,13 @@ class Bot(twitch_commands.Bot):
 
                 if self.args_include_sound == 'yes':
                     # Generate speech object and create .mp3:
-                    output_filename = 'ouat_'+self.tts_file_name+"_"+str(self.ouat_counter)
-                    self.tts_client.workflow_t2s(text_input=gpt_response_clean,
-                                                 voice_name='shimmer',
-                                                output_dirpath=self.tts_data_folder,
-                                                output_filename=output_filename)
+                    output_filename = 'ouat_'+self.tts_file_name
+                    self.tts_client.workflow_t2s(
+                        text_input=gpt_response_clean,
+                        voice_name='shimmer',
+                        output_dirpath=self.tts_data_folder,
+                        output_filename=output_filename
+                        )
                 
                 #send twitch message and generate/play local mp3 if applicable
                 await self.channel.send(gpt_response_clean)
@@ -459,9 +463,7 @@ class Bot(twitch_commands.Bot):
             play_local_mp3(
                 dirpath=self.tts_data_folder, 
                 filename=output_filename
-                )                 
-          
-        return print(f"Sent gpt_response to chat: {gpt_response_clean}")
+                )
 
     @twitch_commands.command(name='botthot')
     async def botthot(self, ctx):
@@ -502,5 +504,19 @@ class Bot(twitch_commands.Bot):
         gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
         gpt_response_clean = botthot_gpt_response_cleanse(gpt_response)
 
-        await ctx.send(gpt_response_clean)
-        return print(f"Sent gpt_response to chat: {gpt_response_clean}")
+        if self.args_include_sound == 'yes':
+            # Generate speech object and create .mp3:
+            output_filename = 'botthot_'+self.tts_file_name
+            self.tts_client.workflow_t2s(text_input=gpt_response_clean,
+                                            voice_name='onyx',
+                                        output_dirpath=self.tts_data_folder,
+                                        output_filename=output_filename)
+        
+        #send twitch message and generate/play local mp3 if applicable
+        await self.channel.send(gpt_response_clean)
+
+        if self.args_include_sound == 'yes':
+            play_local_mp3(
+                dirpath=self.tts_data_folder, 
+                filename=output_filename
+                )                 

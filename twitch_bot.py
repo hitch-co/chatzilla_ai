@@ -5,7 +5,7 @@ from flask import Flask, request
 import uuid
 import requests
 import os
-from my_modules.my_logging import my_logger, log_dynamic_dict
+from my_modules.my_logging import create_logger
 from my_modules.config import load_yaml, load_env
 from classes.TwitchBotClass import Bot
 from classes.ArgsConfigManagerClass import ArgsConfigManager
@@ -15,7 +15,7 @@ use_reloader_bool = False
 runtime_logger_level = 'DEBUG'
 
 # Initialize the root logger
-root_logger = my_logger(
+root_logger = create_logger(
     dirname='log',
     logger_name='root_logger',
     debug_level=runtime_logger_level,

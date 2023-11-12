@@ -2,9 +2,15 @@ import json
 import os
 from datetime import datetime
 
-from my_modules.my_logging import my_logger
+from my_modules.my_logging import create_logger
 
-logger = my_logger(dirname='log', logger_name='logger_utils',debug_level='DEBUG',mode='a',stream_logs=False)
+logger = create_logger(
+    dirname='log', 
+    logger_name='logger_utils',
+    debug_level='DEBUG',
+    mode='a',
+    stream_logs=False
+    )
 
 def format_previous_messages_to_string(message_list):
     # message_list=[

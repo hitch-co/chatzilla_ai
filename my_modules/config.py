@@ -1,14 +1,16 @@
 import os
 import logging
 
-from my_modules.my_logging import my_logger
+from my_modules.my_logging import create_logger
 
 # Set up logging
-logger = my_logger(dirname='log', 
-                   logger_name='logger_yaml_env', 
-                   debug_level='DEBUG', 
-                   mode='a',
-                   stream_logs=False)
+logger = create_logger(
+    dirname='log', 
+    logger_name='logger_yaml_env', 
+    debug_level='DEBUG', 
+    mode='a',
+    stream_logs=False
+    )
 
 #Load parameters from config.yaml
 def load_yaml(yaml_filename='config.yaml', yaml_dirname='config', is_testing=False):
@@ -59,10 +61,12 @@ def load_env(env_filename='config.env', env_dirname='config', is_testing=False):
     else:
         logger.error('LOG: Failed to load environment file.')
 
-def main():
+def run_config():
     load_env()
     yaml_data = load_yaml()
     return yaml_data
 
 if __name__ == "__main__":
-    main()
+    yaml_data = run_config()
+    print("env variables and yaml loaded, this is the yaml_data:")
+    print(yaml_data)

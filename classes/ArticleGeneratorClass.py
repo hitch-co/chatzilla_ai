@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 import os
 
 from classes.ConsoleColoursClass import bcolors, printc
-from my_modules.my_logging import my_logger
+from my_modules.my_logging import create_logger
 
 class ArticleGenerator:
     def __init__(self, rss_link="http://rss.cnn.com/rss/cnn_showbiz.rss"):
@@ -13,11 +13,13 @@ class ArticleGenerator:
         self.articles = []
         self.article_details = []
 
-        self.root_logger = my_logger(dirname='log', 
-                                     logger_name='root_ArticleGenerator_logger',
-                                     debug_level='INFO',
-                                     mode='w',
-                                     stream_logs=True)
+        self.root_logger = create_logger(
+            dirname='log', 
+            logger_name='root_ArticleGenerator_logger',
+            debug_level='INFO',
+            mode='w',
+            stream_logs=True
+            )
 
     def fetch_articles(self):
         response = requests.get(self.rss_link)

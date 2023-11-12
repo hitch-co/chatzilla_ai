@@ -1,4 +1,4 @@
-runtime_logger_level = 'DEBUG'
+runtime_logger_level = 'INFO'
 
 import asyncio
 from twitchio.ext import commands as twitch_commands
@@ -10,7 +10,7 @@ from my_modules.gpt import openai_gpt_chatcompletion
 from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext
 from my_modules.gpt import ouat_gpt_response_cleanse, chatforme_gpt_response_cleanse, botthot_gpt_response_cleanse
 
-from my_modules.my_logging import my_logger, log_dynamic_dict
+from my_modules.my_logging import create_logger
 from my_modules.twitchio_helpers import get_string_of_users
 from my_modules.config import load_yaml, load_env
 from my_modules.text_to_speech import generate_t2s_object, play_t2s_object, play_local_mp3
@@ -44,12 +44,14 @@ class Bot(twitch_commands.Bot):
         self.twitch_chat_uploader = TwitchChatBQUploader() #TODO should be instantiated with a access token
 
         #setup logger
-        self.logger = my_logger(dirname='log', 
-                                logger_name='logger_BotClass', 
-                                debug_level=runtime_logger_level,
-                                mode='a',
-                                stream_logs=True,
-                                encoding='UTF-8')
+        self.logger = create_logger(
+            dirname='log', 
+            logger_name='logger_BotClass', 
+            debug_level=runtime_logger_level,
+            mode='a',
+            stream_logs=True,
+            encoding='UTF-8'
+            )
 
         #load cofiguration
         self.yaml_data = self.run_configuration()

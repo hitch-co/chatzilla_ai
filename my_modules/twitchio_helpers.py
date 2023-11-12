@@ -1,10 +1,12 @@
 from my_modules import my_logging
 
-logger = my_logging.my_logger(dirname='log', 
-                              logger_name='logger_twitchio_helpers',
-                              debug_level='DEBUG',
-                              mode='w',
-                              stream_logs=False)
+logger = my_logging.create_logger(
+    dirname='log', 
+    logger_name='logger_twitchio_helpers',
+    debug_level='DEBUG',
+    mode='w',
+    stream_logs=False
+    )
 
 
 def get_string_of_users(usernames_list) -> str:

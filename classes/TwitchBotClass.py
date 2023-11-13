@@ -1,4 +1,4 @@
-runtime_logger_level = 'DEBUG'
+runtime_logger_level = 'INFO'
 
 import asyncio
 from twitchio.ext import commands as twitch_commands
@@ -10,7 +10,7 @@ from my_modules.gpt import openai_gpt_chatcompletion
 from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext
 from my_modules.gpt import ouat_gpt_response_cleanse, chatforme_gpt_response_cleanse, botthot_gpt_response_cleanse
 
-from my_modules.my_logging import create_logger, log_dynamic_dict
+from my_modules.my_logging import create_logger
 from my_modules.twitchio_helpers import get_string_of_users
 from my_modules.config import load_yaml, load_env
 from my_modules.text_to_speech import generate_t2s_object, play_t2s_object, play_local_mp3
@@ -236,7 +236,8 @@ class Bot(twitch_commands.Bot):
                 gpt_prompt_text=self.ouat_news_article_summary_prompt,
                 replacements_dict=replacements_dict
                 )
-            
+
+            #TODO: GPTAssistant Manager #######################################################################            
             gpt_ready_dict = PromptHandler.create_gpt_message_dict_from_strings(
                 self,
                 content = self.random_article_content,
@@ -368,12 +369,12 @@ class Bot(twitch_commands.Bot):
                 self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter}")
                 self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')
 
+                #TODO: GPTAssistant Manager #######################################################################
                 messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
                                                                       prompt_text_role='system',
                                                                       msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
                                                                       combine_messages=False)
 
-                ##################################################################################
                 gpt_response_text = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
                                                                 OPENAI_API_KEY=self.OPENAI_API_KEY,
                                                                 max_attempts=3)
@@ -388,11 +389,13 @@ class Bot(twitch_commands.Bot):
 
                 if self.args_include_sound == 'yes':
                     # Generate speech object and create .mp3:
-                    output_filename = 'ouat_'+self.tts_file_name+"_"+str(self.ouat_counter)
-                    self.tts_client.workflow_t2s(text_input=gpt_response_clean,
-                                                 voice_name='shimmer',
-                                                output_dirpath=self.tts_data_folder,
-                                                output_filename=output_filename)
+                    output_filename = 'ouat_'+self.tts_file_name
+                    self.tts_client.workflow_t2s(
+                        text_input=gpt_response_clean,
+                        voice_name='shimmer',
+                        output_dirpath=self.tts_data_folder,
+                        output_filename=output_filename
+                        )
                 
                 #send twitch message and generate/play local mp3 if applicable
                 await self.channel.send(gpt_response_clean)
@@ -434,12 +437,12 @@ class Bot(twitch_commands.Bot):
             replacements_dict = replacements_dict
             )
 
+        #TODO: GPTAssistant Manager #######################################################################
         messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text = chatgpt_chatforme_prompt,
                                                               prompt_text_role='system',
                                                               msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
                                                               combine_messages=False)
         
-        # Execute the GPT API call to get the chatbot response
         gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
                                                  OPENAI_API_KEY=self.OPENAI_API_KEY)
         gpt_response_clean = chatforme_gpt_response_cleanse(gpt_response)
@@ -459,9 +462,7 @@ class Bot(twitch_commands.Bot):
             play_local_mp3(
                 dirpath=self.tts_data_folder, 
                 filename=output_filename
-                )                 
-          
-        return print(f"Sent gpt_response to chat: {gpt_response_clean}")
+                )
 
     @twitch_commands.command(name='botthot')
     async def botthot(self, ctx):
@@ -491,6 +492,7 @@ class Bot(twitch_commands.Bot):
             replacements_dict=replacements_dict
             )
 
+        #TODO: GPTAssistant Manager #######################################################################
         # # Combine the chat history with the new system prompt to form a list of messages for GPT.
         messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=chatgpt_chatforme_prompt,
                                                               prompt_text_role='system',
@@ -498,9 +500,22 @@ class Bot(twitch_commands.Bot):
                                                               msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
                                                               combine_messages=False)
         
-        # Execute the GPT API call to get the chatbot response
         gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
         gpt_response_clean = botthot_gpt_response_cleanse(gpt_response)
 
-        await ctx.send(gpt_response_clean)
-        return print(f"Sent gpt_response to chat: {gpt_response_clean}")
+        if self.args_include_sound == 'yes':
+            # Generate speech object and create .mp3:
+            output_filename = 'botthot_'+self.tts_file_name
+            self.tts_client.workflow_t2s(text_input=gpt_response_clean,
+                                            voice_name='onyx',
+                                        output_dirpath=self.tts_data_folder,
+                                        output_filename=output_filename)
+        
+        #send twitch message and generate/play local mp3 if applicable
+        await self.channel.send(gpt_response_clean)
+
+        if self.args_include_sound == 'yes':
+            play_local_mp3(
+                dirpath=self.tts_data_folder, 
+                filename=output_filename
+                )                 

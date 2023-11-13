@@ -5,7 +5,7 @@ from flask import Flask, request
 import uuid
 import requests
 import os
-from my_modules.my_logging import create_logger, log_dynamic_dict
+from my_modules.my_logging import create_logger
 from my_modules.config import load_yaml, load_env
 from classes.TwitchBotClass import Bot
 from classes.ArgsConfigManagerClass import ArgsConfigManager

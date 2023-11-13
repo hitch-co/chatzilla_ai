@@ -260,10 +260,8 @@ class Bot(twitch_commands.Bot):
             theme_values = list(self.yaml_data['ouat-writing-parameters']['theme'].values())
             self.selected_theme = random.choice(theme_values)
 
-            # Fetch random article
+            # Fetch random article and populate text replacement
             self.random_article_content = self.article_generator.fetch_random_article_content(article_char_trunc=300)                    
-            
-            # Populate text replacement
             replacements_dict = {"random_article_content":self.random_article_content,
                                  "user_requested_plotline":user_requested_plotline}
             self.random_article_content = prompt_text_replacement(
@@ -272,22 +270,24 @@ class Bot(twitch_commands.Bot):
                 )
 
             #TODO: GPTAssistant Manager #######################################################################            
-            gpt_ready_dict = PromptHandler.create_gpt_message_dict_from_strings(
-                self,
-                content = self.random_article_content,
-                role = 'user',
-                name = self.twitch_bot_username
+            # Get assistant and thread IDs for 'chatforme'
+            assistant_id = self.gpt_clast_mgr.assistants['chatforme']['id']
+            thread_id = self.gpt_thrd_mgr.threads['chatforme']['id']
+            thread_instructions = 'Interrupt politely with a joke about avocados'
+
+            # Add message to thread
+            self.gpt_thrd_mgr.add_message_to_thread(
+                thread_id=thread_id,
+                role='user',
+                message_content=self.random_article_content
             )
-            gpt_ready_list_dict = [gpt_ready_dict]
 
-            self.logger.debug("THIS IS GPT_READ_LIST_DICT:")
-            self.logger.debug(gpt_ready_list_dict)
-
-            self.random_article_content_prompt_summary = openai_gpt_chatcompletion(
-                messages_dict_gpt=gpt_ready_list_dict, 
-                OPENAI_API_KEY=self.OPENAI_API_KEY, 
-                max_characters=1200
-                )
+            # Get response from assistant
+            self.random_article_content_prompt_summary = await self.gpt_resp_mgr.workflow(
+                assistant_id=assistant_id,
+                thread_id=thread_id,
+                thread_instructions=thread_instructions
+            )
 
             self.logger.info("this is the random_article_content_prompt_summary:")
             self.logger.info(self.random_article_content_prompt_summary)

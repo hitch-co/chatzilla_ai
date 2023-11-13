@@ -238,7 +238,8 @@ class Bot(twitch_commands.Bot):
                 gpt_prompt_text=self.ouat_news_article_summary_prompt,
                 replacements_dict=replacements_dict
                 )
-            
+
+            #TODO: GPTAssistant Manager #######################################################################            
             gpt_ready_dict = PromptHandler.create_gpt_message_dict_from_strings(
                 self,
                 content = self.random_article_content,
@@ -370,12 +371,12 @@ class Bot(twitch_commands.Bot):
                 self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter}")
                 self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')
 
+                #TODO: GPTAssistant Manager #######################################################################
                 messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
                                                                       prompt_text_role='system',
                                                                       msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
                                                                       combine_messages=False)
 
-                ##################################################################################
                 gpt_response_text = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
                                                                 OPENAI_API_KEY=self.OPENAI_API_KEY,
                                                                 max_attempts=3)
@@ -438,12 +439,12 @@ class Bot(twitch_commands.Bot):
             replacements_dict = replacements_dict
             )
 
+        #TODO: GPTAssistant Manager #######################################################################
         messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text = chatgpt_chatforme_prompt,
                                                               prompt_text_role='system',
                                                               msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
                                                               combine_messages=False)
         
-        # Execute the GPT API call to get the chatbot response
         gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
                                                  OPENAI_API_KEY=self.OPENAI_API_KEY)
         gpt_response_clean = chatforme_gpt_response_cleanse(gpt_response)
@@ -493,6 +494,7 @@ class Bot(twitch_commands.Bot):
             replacements_dict=replacements_dict
             )
 
+        #TODO: GPTAssistant Manager #######################################################################
         # # Combine the chat history with the new system prompt to form a list of messages for GPT.
         messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=chatgpt_chatforme_prompt,
                                                               prompt_text_role='system',
@@ -500,7 +502,6 @@ class Bot(twitch_commands.Bot):
                                                               msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
                                                               combine_messages=False)
         
-        # Execute the GPT API call to get the chatbot response
         gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
         gpt_response_clean = botthot_gpt_response_cleanse(gpt_response)
 

@@ -49,7 +49,13 @@ class GPTClientAssistantManager:
         openai.api_key = os.getenv('OPENAI_API_KEY')
         return openai.OpenAI()
 
-    def create_assistant(self, name, assistant_instructions, assistant_type=None, assistant_model=None):
+    def create_assistant(
+            self, 
+            name='default', 
+            assistant_instructions="you're a question answering machine", 
+            assistant_type=None, 
+            assistant_model=None
+            ):
         assistant_type = assistant_type or self.config_data['assistant_type']
         assistant_model = assistant_model or self.config_data['assistant_model']
 
@@ -129,7 +135,12 @@ class GPTAssistantResponseManager:
                 return response
             await asyncio.sleep(polling_seconds)
 
-    async def _get_assistant_response_thread_messages(self, thread_id, assistant_id, thread_instructions):
+    async def _get_assistant_response_thread_messages(
+            self, 
+            thread_id, 
+            assistant_id, 
+            thread_instructions='Answer the question using clear and concise language'
+            ):
         run = self.gpt_client.beta.threads.runs.create(
             thread_id=thread_id,
             assistant_id=assistant_id,

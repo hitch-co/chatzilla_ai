@@ -5,6 +5,7 @@ from twitchio.ext import commands as twitch_commands
 
 import random
 import os
+import openai
 
 from my_modules.gpt import openai_gpt_chatcompletion
 from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext
@@ -25,6 +26,10 @@ from classes.PromptHandlerClass import PromptHandler
 from classes.ArgsConfigManagerClass import ArgsConfigManager
 from classes import GPTTextToSpeechClass
 
+from classes.GPTAssistantManagerClass2 import GPTClientAssistantManager
+from classes.GPTAssistantManagerClass2 import GPTThreadManager
+from classes.GPTAssistantManagerClass2 import GPTAssistantResponseManager
+
 class Bot(twitch_commands.Bot):
     loop_sleep_time = 4
 
@@ -38,22 +43,6 @@ class Bot(twitch_commands.Bot):
             #NOTE/QUESTION:what other variables should be set here?
         )
 
-        #Taken from app authentication class()
-        self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
-
-        #create instances of required classes
-        self.message_handler = MessageHandler()
-        self.args_config = ArgsConfigManager()
-        self.twitch_chat_uploader = TwitchChatBQUploader() #TODO should be instantiated with a access token
-
-        #TTS Details
-        self.tts_data_folder = yaml_data['openai-api']['tts_data_folder']
-        self.tts_file_name = yaml_data['openai-api']['tts_file_name']
-        self.tts_client = GPTTextToSpeechClass.GPTTextToSpeech(
-            output_filename=self.tts_file_name,
-            output_dirpath=self.tts_data_folder
-            )
-        
         #setup logger
         self.logger = create_logger(
             dirname='log', 
@@ -64,8 +53,31 @@ class Bot(twitch_commands.Bot):
             encoding='UTF-8'
             )
 
-        #load cofiguration
+        # load args and config
+        self.args_config = ArgsConfigManager()
         self.yaml_data = self.run_configuration()
+        
+        #Taken from app authentication class()
+        self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
+
+        # instance of message handler and BQ uplaoder classeses
+        self.message_handler = MessageHandler()
+        self.twitch_chat_uploader = TwitchChatBQUploader() #TODO should be instantiated with a access token
+
+        # instance of client, thread, and manager
+        self.gpt_client = openai.OpenAI()
+        self.gpt_clast_mgr = GPTClientAssistantManager(config_data=yaml_data, gpt_client=self.gpt_client)
+        self.gpt_thrd_mgr = GPTThreadManager(gpt_client=self.gpt_client)
+        self.gpt_resp_mgr = GPTAssistantResponseManager(gpt_client=self.gpt_client)
+        self._setup_gpt_assistants_and_threads()
+
+        #TTS Details
+        self.tts_data_folder = yaml_data['openai-api']['tts_data_folder']
+        self.tts_file_name = yaml_data['openai-api']['tts_file_name']
+        self.tts_client = GPTTextToSpeechClass.GPTTextToSpeech(
+            output_filename=self.tts_file_name,
+            output_dirpath=self.tts_data_folder
+            )
         
         #Google Service Account Credentials
         google_application_credentials_file = yaml_data['twitch-ouat']['google_service_account_credentials_file']
@@ -80,6 +92,28 @@ class Bot(twitch_commands.Bot):
 
         #counters
         self.ouat_counter = 0
+
+    def _setup_gpt_assistants_and_threads(self):
+        # Create assistant and thread for 'chatforme'
+        self.gpt_clast_mgr.create_assistant(
+            assistant_name='startstory',
+            assistant_instructions='[Instructions for startstory]'
+        )
+        self.gpt_thrd_mgr.create_thread('startstory')
+
+        # Create assistant and thread for 'chatforme'
+        self.gpt_clast_mgr.create_assistant(
+            assistant_name='chatforme',
+            assistant_instructions='[Instructions for chatforme]'
+        )
+        self.gpt_thrd_mgr.create_thread('chatforme')
+
+        # Create assistant and thread for 'chatforme'
+        self.gpt_clast_mgr.create_assistant(
+            assistant_name='botthot',
+            assistant_instructions='[Instructions for botthot]'
+        )
+        self.gpt_thrd_mgr.create_thread('botthot')
 
     def run_configuration(self) -> dict:
 

@@ -12,6 +12,11 @@ logger = create_logger(
     stream_logs=False
     )
 
+def show_json(obj):
+    # Assuming obj.model_dump_json() returns a JSON string
+    json_data = json.loads(obj.model_dump_json())
+    return json.dumps(json_data, indent=4)
+
 def format_previous_messages_to_string(message_list):
     # message_list=[
     #     {'role':'bot','content':'hello there im eric'},

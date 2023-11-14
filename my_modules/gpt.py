@@ -54,11 +54,7 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
     #Error checking for token length, etc.
     counter=0
     while count_tokens_in_messages(messages=messages_dict_gpt) > 2000:
-        if counter > 3:
-            error_message = f"Too many tokens {token_count} even after 3 attempts to reduce count. Raising exception."
-            logger_gptchatcompletion.error(error_message)
-            raise ValueError(error_message)
-        logger_gptchatcompletion.debug("Entered count_tokens_in_messages() > 2000")
+        logger_gptchatcompletion.debug("Entered count_tokens_in_messages() > 2000, pop() last message")
         token_count = count_tokens_in_messages(messages=messages_dict_gpt)
         logger_gptchatcompletion.warning(f"The messages_dict_gpt contained too many tokens {(token_count)}, .pop() first dict")
         messages_dict_gpt.pop(0)

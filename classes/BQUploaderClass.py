@@ -45,7 +45,7 @@ class TwitchChatBQUploader:
     def get_channel_viewers(self,
                             bearer_token=None) -> object:
         self.logger.debug(f'Getting channel viewers with bearer_token')
-        base_url='https://api.twitch.tv/helix/chat/chatters'
+        base_url=self.yaml_data['twitch-ouat']['twitch-get-chatters-endpoint']
         params = {
             'broadcaster_id': self.twitch_broadcaster_author_id,
             'moderator_id': self.twitch_bot_moderator_id

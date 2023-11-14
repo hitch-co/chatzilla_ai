@@ -5,6 +5,7 @@ from twitchio.ext import commands as twitch_commands
 
 import random
 import os
+import json
 import openai
 
 from my_modules.gpt import openai_gpt_chatcompletion
@@ -60,16 +61,16 @@ class Bot(twitch_commands.Bot):
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
 
-        # instance of message handler and BQ uplaoder classeses
-        self.message_handler = MessageHandler()
-        self.twitch_chat_uploader = TwitchChatBQUploader() #TODO should be instantiated with a access token
-
         # instance of client, thread, and manager
         self.gpt_client = openai.OpenAI()
         self.gpt_clast_mgr = GPTClientAssistantManager(config_data=yaml_data, gpt_client=self.gpt_client)
         self.gpt_thrd_mgr = GPTThreadManager(gpt_client=self.gpt_client)
         self.gpt_resp_mgr = GPTAssistantResponseManager(gpt_client=self.gpt_client)
         self._setup_gpt_assistants_and_threads()
+
+        # instance of message handler and BQ uplaoder classeses
+        self.message_handler = MessageHandler(self.gpt_thrd_mgr)
+        self.twitch_chat_uploader = TwitchChatBQUploader() #TODO should be instantiated with a access token
 
         #TTS Details
         self.tts_data_folder = yaml_data['openai-api']['tts_data_folder']
@@ -96,22 +97,22 @@ class Bot(twitch_commands.Bot):
     def _setup_gpt_assistants_and_threads(self):
         # Create assistant and thread for 'chatforme'
         self.gpt_clast_mgr.create_assistant(
-            assistant_name='startstory',
-            assistant_instructions='[Instructions for startstory]'
+            assistant_name='ouat',
+            assistant_instructions=self.ouat_assistant_prompt
         )
-        self.gpt_thrd_mgr.create_thread('startstory')
+        self.gpt_thrd_mgr.create_thread('ouat')
 
         # Create assistant and thread for 'chatforme'
         self.gpt_clast_mgr.create_assistant(
             assistant_name='chatforme',
-            assistant_instructions='[Instructions for chatforme]'
+            assistant_instructions=self.chatforme_assistant_prompt
         )
         self.gpt_thrd_mgr.create_thread('chatforme')
 
         # Create assistant and thread for 'chatforme'
         self.gpt_clast_mgr.create_assistant(
             assistant_name='botthot',
-            assistant_instructions='[Instructions for botthot]'
+            assistant_instructions=self.botthot_assistant_prompt
         )
         self.gpt_thrd_mgr.create_thread('botthot')
 
@@ -144,6 +145,11 @@ class Bot(twitch_commands.Bot):
         #News Article Feed/Prompts
         self.newsarticle_rss_feed = self.yaml_data['twitch-ouat']['newsarticle_rss_feed']
         self.ouat_news_article_summary_prompt = self.yaml_data['ouat_prompts']['ouat_news_article_summary_prompt'] 
+
+        #GPT Assistant prompts:
+        self.ouat_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['ouat']
+        self.chatforme_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['chatforme']
+        self.botthot_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['botthot']
 
         #OUAT base prompt and start/progress/end story prompts
         self.gpt_ouat_prompt_begin = self.yaml_data['ouat_prompts'][self.args_ouat_prompt_name]
@@ -310,8 +316,18 @@ class Bot(twitch_commands.Bot):
             role='user',
             name=author
             )
+        
+        #Add message to message history
         self.message_handler.ouat_temp_msg_history.append(gpt_ready_msg_dict)
         
+        #Send message to GPT thread
+        self.gpt_thrd_mgr.add_message_to_thread(
+            thread_id=self.gpt_thrd_mgr.threads['ouat']['id'], 
+            role='user', 
+            message_content=gpt_ready_msg_dict['content']
+        )
+        self.logger.info("Message dictionary added to ouat_temp_msg_history and message added to ouat thread")
+
         printc(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'", bcolors.WARNING)
 
     @twitch_commands.command(name='extendstory')
@@ -396,30 +412,42 @@ class Bot(twitch_commands.Bot):
                     elif self.ouat_counter > self.ouat_story_max_counter:
                         await self.stop_loop()
                         continue
-                
+
                 else: 
                     self.logger.error("Neither automsg or ouat enabled with app startup argument")
 
                 self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter}")
                 self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')
 
-                #TODO: GPTAssistant Manager #######################################################################
-                messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
-                                                                      prompt_text_role='system',
-                                                                      msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
-                                                                      combine_messages=False)
-
-                gpt_response_text = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
-                                                                OPENAI_API_KEY=self.OPENAI_API_KEY,
-                                                                max_attempts=3)
+                # #TODO: GPTAssistant Manager #######################################################################
+                # messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
+                #                                                       prompt_text_role='system',
+                #                                                       msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
+                #                                                       combine_messages=False)
+                # gpt_response_text = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY, max_attempts=3)
+                # gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
+                # self.logger.debug(f"This is the messages_dict_gpt (self.ouat_counter = {self.ouat_counter}:")
+                # self.logger.debug(messages_dict_gpt)
+                
+                # GPTAssistantManager Chat Completion: Get assistant and thread IDs for 'chatforme'
+                assistant_id = self.gpt_clast_mgr.assistants['ouat']['id']
+                thread_id = self.gpt_thrd_mgr.threads['ouat']['id']
+                thread_instructions = self.yaml_data['gpt_assistant_prompts']['ouat']
+                self.logger.info(f"assistant_id: '{assistant_id}', thread_id: '{thread_id}', thread_instructions: '{thread_instructions}'")
+                
+                # Get response from assistant
+                gpt_response_text = await self.gpt_resp_mgr.workflow_gpt(
+                    assistant_id=assistant_id,
+                    thread_id=thread_id,
+                    thread_instructions=thread_instructions
+                )
                 gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
-
+                
                 if self.ouat_counter == self.ouat_story_max_counter:
                     self.logger.info(f"That was the final message (self.ouat_counter == {self.ouat_story_max_counter})")  
 
-                self.logger.debug(f"This is the messages_dict_gpt (self.ouat_counter = {self.ouat_counter}:")
-                self.logger.debug(messages_dict_gpt)
-                self.logger.info(f"FINAL gpt_response_clean (type: {type(gpt_response_clean)}): \n{gpt_response_clean}")  
+                self.logger.info(f"FINAL gpt_response_clean (type: {type(gpt_response_clean)}):")
+                self.logger.info(gpt_response_clean)  
 
                 if self.args_include_sound == 'yes':
                     # Generate speech object and create .mp3:

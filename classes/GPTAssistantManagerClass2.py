@@ -46,15 +46,15 @@ def get_thread_id(thread_name, gpt_client):
         raise ValueError(f"No ID found for thread '{thread_name}'")
     return thread_id
 
-class GPTClientAssistantManager:
-    def __init__(self, config_data, gpt_client):
+class GPTAssistantManager:
+    def __init__(self, yaml_data, gpt_client):
         self.logger = create_logger(
             dirname='log', 
             debug_level=debug_level,
-            logger_name='GPTClientAssistantManager',
+            logger_name='GPTAssistantManager',
             stream_logs=True
             )
-        self.config_data = config_data
+        self.config_data = yaml_data
         self.gpt_client = gpt_client
         self.assistants = {}
 
@@ -215,7 +215,7 @@ if __name__ == "__main__":
 
     # Create client and manager instances
     gpt_client = openai.OpenAI()
-    gpt_clast_mgr = GPTClientAssistantManager(config_data=yaml_data, gpt_client=gpt_client)
+    gpt_clast_mgr = GPTAssistantManager(yaml_data=yaml_data, gpt_client=gpt_client)
     gpt_thrd_mgr = GPTThreadManager(gpt_client=gpt_client)
     gpt_resp_mgr = GPTAssistantResponseManager(gpt_client=gpt_client)
 

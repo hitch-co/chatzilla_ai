@@ -18,6 +18,10 @@ import json
 stream_logs=False
 mode="gpt-3.5-turbo"
 
+def create_gpt_client():
+    client = openai.OpenAI()
+    return client
+
 # call to chat gpt for completion TODO: Could add  limits here?
 def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
                               OPENAI_API_KEY=None, 
@@ -48,18 +52,18 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
         stream_logs=stream_logs
         )
     logger_gptchatcompletion.debug("This is the messages_dict_gpt submitted to GPT ChatCompletion")
-    logger_gptchatcompletion.debug(f"The number of tokens included is: {count_tokens_in_messages(messages=messages_dict_gpt)}")
+    logger_gptchatcompletion.debug(f"The number of tokens included is: {_count_tokens_in_messages(messages=messages_dict_gpt)}")
     logger_gptchatcompletion.debug(messages_dict_gpt)
 
     #Error checking for token length, etc.
     counter=0
-    while count_tokens_in_messages(messages=messages_dict_gpt) > 2000:
+    while _count_tokens_in_messages(messages=messages_dict_gpt) > 2000:
         if counter > 3:
             error_message = f"Too many tokens {token_count} even after 3 attempts to reduce count. Raising exception."
             logger_gptchatcompletion.error(error_message)
             raise ValueError(error_message)
-        logger_gptchatcompletion.debug("Entered count_tokens_in_messages() > 2000")
-        token_count = count_tokens_in_messages(messages=messages_dict_gpt)
+        logger_gptchatcompletion.debug("Entered _count_tokens_in_messages() > 2000")
+        token_count = _count_tokens_in_messages(messages=messages_dict_gpt)
         logger_gptchatcompletion.warning(f"The messages_dict_gpt contained too many tokens {(token_count)}, .pop() first dict")
         messages_dict_gpt.pop(0)
         counter+=1
@@ -120,10 +124,6 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
     logger_gptchatcompletion.info(f'call to gpt_chat_completion ended with gpt_response_text of {gpt_response_text_len} characters')
 
     return gpt_response_text
-
-def create_gpt_client():
-    client = openai.OpenAI()
-    return client
 
 def prompt_text_replacement(gpt_prompt_text,
                             replacements_dict):
@@ -205,7 +205,7 @@ def _count_tokens(text:str, model="gpt-3.5-turbo") -> int:
     tokens_in_text = len(encoding.encode(text))
     return tokens_in_text
 
-def count_tokens_in_messages(messages: List[dict]) -> int:
+def _count_tokens_in_messages(messages: List[dict]) -> int:
     total_tokens = 0
     for message in messages:
         role = message['role']
@@ -243,7 +243,7 @@ if __name__ == '__main__':
     # print("GPT Models:")
     # print(json.dumps(gpt_models, indent=4))
 
-    #test3 -- call to chatgpt chatcompletion
+     # test3 -- call to chatgpt chatcompletion
     # openai_gpt_chatcompletion(messages_dict_gpt=[{'role':'user', 'content':'Whats a tall buildings name?'}],
     #                           OPENAI_API_KEY=os.getenv('OPENAI_API_KEY'), 
     #                           max_characters=250,

@@ -7,6 +7,7 @@ from openai import OpenAI
 from my_modules import config
 from my_modules import my_logging
 
+#TODO: SHould take a client as an argument
 class GPTTextToSpeech:
     def __init__(self, output_filename='class_default_speech.mp3', output_dirpath=None):
         self.logger = my_logging.create_logger(

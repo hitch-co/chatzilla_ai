@@ -27,7 +27,7 @@ from classes.PromptHandlerClass import PromptHandler
 from classes.ArgsConfigManagerClass import ArgsConfigManager
 from classes import GPTTextToSpeechClass
 
-from classes.GPTAssistantManagerClass2 import GPTClientAssistantManager
+from classes.GPTAssistantManagerClass2 import GPTAssistantManager
 from classes.GPTAssistantManagerClass2 import GPTThreadManager
 from classes.GPTAssistantManagerClass2 import GPTAssistantResponseManager
 
@@ -63,7 +63,7 @@ class Bot(twitch_commands.Bot):
 
         # instance of client, thread, and manager
         self.gpt_client = openai.OpenAI()
-        self.gpt_clast_mgr = GPTClientAssistantManager(config_data=yaml_data, gpt_client=self.gpt_client)
+        self.gpt_clast_mgr = GPTAssistantManager(yaml_data=yaml_data, gpt_client=self.gpt_client)
         self.gpt_thrd_mgr = GPTThreadManager(gpt_client=self.gpt_client)
         self.gpt_resp_mgr = GPTAssistantResponseManager(gpt_client=self.gpt_client)
         self._setup_gpt_assistants_and_threads()

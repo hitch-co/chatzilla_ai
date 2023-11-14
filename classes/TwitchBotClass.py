@@ -1,4 +1,4 @@
-runtime_logger_level = 'INFO'
+runtime_logger_level = 'DEBUG'
 
 import asyncio
 from twitchio.ext import commands as twitch_commands
@@ -214,7 +214,7 @@ class Bot(twitch_commands.Bot):
             table_id=self.userdata_table_id,
             bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
 
-        #Send the data to BQ
+        #Send the data to BQ when queue is full.  Clear queue when done
         if len(self.message_handler.message_history_raw)==5:
             self.logger.debug("channel_viewers_query")
             self.logger.debug(channel_viewers_queue_query)
@@ -246,7 +246,6 @@ class Bot(twitch_commands.Bot):
     #controls ouat_storyteller()
     async def start_ouat_storyteller_msg_loop(self):
         self.is_ouat_loop_active = True
-        self.run_configuration()
         if not any([self.args_include_automsg == 'yes', self.args_include_ouat == 'yes']):
             self.logger.error("Neither automsg or ouat enabled with app argument")
             raise BotFeatureNotEnabledException("Neither automsg or ouat enabled with app argument")
@@ -274,12 +273,12 @@ class Bot(twitch_commands.Bot):
                 gpt_prompt_text=self.ouat_news_article_summary_prompt,
                 replacements_dict=replacements_dict
                 )
-
-            #TODO: GPTAssistant Manager #######################################################################            
-            # Get assistant and thread IDs for 'chatforme'
-            assistant_id = self.gpt_clast_mgr.assistants['chatforme']['id']
-            thread_id = self.gpt_thrd_mgr.threads['chatforme']['id']
-            thread_instructions = 'Interrupt politely with a joke about avocados'
+        
+            # GPTAssistantManager Chat Completion: Get assistant and thread IDs for 'chatforme'
+            assistant_id = self.gpt_clast_mgr.assistants['ouat']['id']
+            thread_id = self.gpt_thrd_mgr.threads['ouat']['id']
+            thread_instructions = self.yaml_data['gpt_assistant_prompts']['ouat']
+            self.logger.info(f"assistant_id: '{assistant_id}', thread_id: '{thread_id}', thread_instructions: '{thread_instructions}'")
 
             # Add message to thread
             self.gpt_thrd_mgr.add_message_to_thread(
@@ -289,7 +288,8 @@ class Bot(twitch_commands.Bot):
             )
 
             # Get response from assistant
-            self.random_article_content_prompt_summary = await self.gpt_resp_mgr.workflow(
+            self.logger.debug("Starting excecution of workflow_gpt()")
+            self.random_article_content_prompt_summary = await self.gpt_resp_mgr.workflow_gpt(
                 assistant_id=assistant_id,
                 thread_id=thread_id,
                 thread_instructions=thread_instructions
@@ -363,8 +363,6 @@ class Bot(twitch_commands.Bot):
             self.logger.info(f"{arg}: {getattr(self, arg)}")
 
     async def ouat_storyteller(self):
-        #self.yaml_data = self.run_configuration()
-    
         #load article links (prepping for reading random article)
         if self.args_include_ouat == 'yes' and self.args_ouat_prompt_name.startswith('newsarticle'):
             self.article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.newsarticle_rss_feed)
@@ -478,7 +476,6 @@ class Bot(twitch_commands.Bot):
         A Twitch bot command that interacts with OpenAI's GPT API.
         It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
         """
-        self.run_configuration()
         request_user_name = ctx.message.author.name
 
         # Extract usernames from previous chat messages stored in chatforme_temp_msg_history.
@@ -505,8 +502,7 @@ class Bot(twitch_commands.Bot):
                                                               msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
                                                               combine_messages=False)
         
-        gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
-                                                 OPENAI_API_KEY=self.OPENAI_API_KEY)
+        gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
         gpt_response_clean = chatforme_gpt_response_cleanse(gpt_response)
 
         if self.args_include_sound == 'yes':
@@ -532,7 +528,6 @@ class Bot(twitch_commands.Bot):
         A Twitch bot command that interacts with OpenAI's GPT API.
         It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
         """
-        self.run_configuration()
         request_user_name = ctx.message.author.name
 
         # Extract usernames from previous chat messages stored in chatforme_temp_msg_history.

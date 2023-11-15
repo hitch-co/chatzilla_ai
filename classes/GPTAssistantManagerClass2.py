@@ -99,7 +99,7 @@ class GPTThreadManager:
         #store and link the thread
         self.threads[thread_name] = {'object':thread, 'id':thread.id}
 
-        self.logger.debug(f"This is the thread id/object for {thread_name}:")
+        self.logger.debug(f"returned self.threads id/object for {thread_name}:")
         self.logger.debug(thread.id)
         self.logger.debug(thread)
         return thread
@@ -149,7 +149,7 @@ class GPTAssistantResponseManager:
                 return response
             await asyncio.sleep(polling_seconds)
 
-    async def _get_assistant_response_thread_messages(
+    async def _run_and_get_assistant_response_thread_messages(
             self, 
             thread_id, 
             assistant_id, 
@@ -184,7 +184,7 @@ class GPTAssistantResponseManager:
 
     async def workflow_gpt(self, assistant_id, thread_id, thread_instructions):
         # Get the response messages from the assistant
-        response_thread_messages = await self._get_assistant_response_thread_messages(
+        response_thread_messages = await self._run_and_get_assistant_response_thread_messages(
             assistant_id=assistant_id,
             thread_id=thread_id,
             thread_instructions=thread_instructions
@@ -197,7 +197,7 @@ class GPTAssistantResponseManager:
 
         if len(extracted_message) > 400:
             self.logger.debug("Message exceeded character length, running ")
-            response_thread_messages = await self._get_assistant_response_thread_messages(
+            response_thread_messages = await self._run_and_get_assistant_response_thread_messages(
                assistant_id=assistant_id,
                 thread_id=thread_id,
                 thread_instructions=self.yaml_data['ouat_prompts']['shorten_response_length_prompt']

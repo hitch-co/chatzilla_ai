@@ -310,17 +310,17 @@ class Bot(twitch_commands.Bot):
         author=ctx.message.author.name
         prompt_text = ' '.join(args)
         prompt_text_prefix = f"{self.ouat_prompt_addtostory_prefix}:'{prompt_text}'"
+        
+        #workflow1: get gpt_ready_msg_dict and add message to message history        
         gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_strings(
             self,
             content=prompt_text_prefix,
             role='user',
             name=author
             )
-        
-        #Add message to message history
         self.message_handler.ouat_temp_msg_history.append(gpt_ready_msg_dict)
         
-        #Send message to GPT thread
+        #workflow2: Send message to GPT thread
         self.gpt_thrd_mgr.add_message_to_thread(
             thread_id=self.gpt_thrd_mgr.threads['ouat']['id'], 
             role='user', 
@@ -328,7 +328,7 @@ class Bot(twitch_commands.Bot):
         )
         self.logger.info("Message dictionary added to ouat_temp_msg_history and message added to ouat thread")
 
-        printc(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'", bcolors.WARNING)
+        self.logger.warning(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'")
 
     @twitch_commands.command(name='extendstory')
     async def extend_story(self, ctx, *args) -> None:
@@ -375,7 +375,6 @@ class Bot(twitch_commands.Bot):
             if self.is_ouat_loop_active is False:
                 await asyncio.sleep(self.loop_sleep_time)
                 continue
-                      
             else:
                 self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
                 replacements_dict = {"ouat_wordcount":self.ouat_wordcount,
@@ -430,14 +429,13 @@ class Bot(twitch_commands.Bot):
                 # GPTAssistantManager Chat Completion: Get assistant and thread IDs for 'chatforme'
                 assistant_id = self.gpt_clast_mgr.assistants['ouat']['id']
                 thread_id = self.gpt_thrd_mgr.threads['ouat']['id']
-                thread_instructions = self.yaml_data['gpt_assistant_prompts']['ouat']
-                self.logger.info(f"assistant_id: '{assistant_id}', thread_id: '{thread_id}', thread_instructions: '{thread_instructions}'")
+                self.logger.info(f"assistant_id: '{assistant_id}', thread_id: '{thread_id}'")
                 
                 # Get response from assistant
                 gpt_response_text = await self.gpt_resp_mgr.workflow_gpt(
                     assistant_id=assistant_id,
                     thread_id=thread_id,
-                    thread_instructions=thread_instructions
+                    thread_instructions=gpt_prompt_final
                 )
                 gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
                 

@@ -430,14 +430,13 @@ class Bot(twitch_commands.Bot):
                 # GPTAssistantManager Chat Completion: Get assistant and thread IDs for 'chatforme'
                 assistant_id = self.gpt_clast_mgr.assistants['ouat']['id']
                 thread_id = self.gpt_thrd_mgr.threads['ouat']['id']
-                thread_instructions = self.yaml_data['gpt_assistant_prompts']['ouat']
-                self.logger.info(f"assistant_id: '{assistant_id}', thread_id: '{thread_id}', thread_instructions: '{thread_instructions}'")
+                self.logger.info(f"assistant_id: '{assistant_id}', thread_id: '{thread_id}', thread_instructions: '{gpt_prompt_final}'")
                 
                 # Get response from assistant
                 gpt_response_text = await self.gpt_resp_mgr.workflow_gpt(
                     assistant_id=assistant_id,
                     thread_id=thread_id,
-                    thread_instructions=thread_instructions
+                    thread_instructions=gpt_prompt_final
                 )
                 gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
                 

@@ -139,14 +139,17 @@ class GPTAssistantResponseManager:
 
     async def _get_response(self, thread_id, run_id, polling_seconds=1):
         while True:
+            counter=1
             response = self.gpt_client.beta.threads.runs.retrieve(
                 thread_id=thread_id,
                 run_id=run_id
             )
             if response.status == 'completed':
-                self.logger.debug("This is the completed 'response' object")
+                self.logger.debug("This is the completed 'response' object:")
                 self.logger.debug(response)
                 return response
+            else:
+                self.logger.debug(f"The 'response' object is not completed yet. Polling time: {counter*polling_seconds} seconds...")
             await asyncio.sleep(polling_seconds)
 
     async def _run_and_get_assistant_response_thread_messages(

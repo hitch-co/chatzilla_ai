@@ -106,7 +106,6 @@ class MessageHandler:
 
             # Create GPT-ready message dict
             gpt_ready_msg_dict = self._create_gpt_message_dict_from_strings(
-                self, 
                 role='user',
                 name=message_metadata['name'],
                 content=message_metadata['content']

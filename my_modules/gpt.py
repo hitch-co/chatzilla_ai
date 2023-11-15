@@ -15,15 +15,17 @@ import re
 import json
 
 #LOGGING
-stream_logs=False
-mode="gpt-3.5-turbo"
+stream_logs = False
+yaml_data = load_yaml()
+gpt_model = yaml_data['openai-api']['assistant_model']
+shorten_message_prompt = yaml_data['ouat_prompts']['shorten_response_length_prompt']
 
 # call to chat gpt for completion TODO: Could add  limits here?
 def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
                               OPENAI_API_KEY=None, 
                               max_characters=250,
                               max_attempts=5,
-                              model=mode,
+                              model=gpt_model,
                               frequency_penalty=1,
                               presence_penalty=1,
                               temperature=0.7) -> str: 
@@ -47,20 +49,20 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
         mode='a',
         stream_logs=stream_logs
         )
-    logger_gptchatcompletion.debug("This is the messages_dict_gpt submitted to GPT ChatCompletion")
-    logger_gptchatcompletion.debug(f"The number of tokens included is: {count_tokens_in_messages(messages=messages_dict_gpt)}")
-    logger_gptchatcompletion.debug(messages_dict_gpt)
+    logger_gptchatcompletion.info(f"Starting openai_gpt_chatcompletion")
 
     #Error checking for token length, etc.
     counter=0
     while count_tokens_in_messages(messages=messages_dict_gpt) > 2000:
-        logger_gptchatcompletion.debug("Entered count_tokens_in_messages() > 2000, pop() last message")
         token_count = count_tokens_in_messages(messages=messages_dict_gpt)
-        logger_gptchatcompletion.warning(f"The messages_dict_gpt contained too many tokens {(token_count)}, .pop() first dict")
+        logger_gptchatcompletion.warning(f"messages_dict_gpt contained too many tokens {(token_count)}, .pop() first dict")
         messages_dict_gpt.pop(0)
         counter+=1
     
-    #Call to OpenAI
+    logger_gptchatcompletion.info(f"messages_dict_gpt submitted to GPT ChatCompletion (tokens: {count_tokens_in_messages(messages=messages_dict_gpt)})")
+    logger_gptchatcompletion.debug(messages_dict_gpt)
+
+    #Call to OpenAI #TODO: This loop is wonky.  Should probably divert to a 'while' statement
     for attempt in range(max_attempts):
         try:
             generated_response = client.chat.completions.create(
@@ -71,28 +73,22 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
                 temperature=temperature
             )
         except Exception as e:
-            logger_gptchatcompletion.error(f"Exception occurred during API call: {e}")
-            logger_gptchatcompletion.error(f"Attempt {attempt + 1} of {max_attempts} failed.")
+            logger_gptchatcompletion.error(f"Exception occurred during API call: {e}: Attempt {attempt + 1} of {max_attempts} failed.")
             continue
-        
-        logger_gptchatcompletion.debug("This is the generated response:")
-        logger_gptchatcompletion.debug(generated_response)
 
         gpt_response_text = generated_response.choices[0].message.content
         gpt_response_text_len = len(gpt_response_text)
+  
+        logger_gptchatcompletion.info(f"generated_response type: {type(generated_response)}, length: {gpt_response_text_len}:")
 
-        logger_gptchatcompletion.debug(f"The generated_response object is of type {type(generated_response)}")
-        logger_gptchatcompletion.debug(f'The --{attempt}-- call to gpt_chat_completion had a response of {gpt_response_text_len} characters')
-        logger_gptchatcompletion.debug(f"The generated_response object is of type {type(gpt_response_text)}")        
-        
         if gpt_response_text_len < max_characters:
-            logger_gptchatcompletion.info(f'OK: The generated message was <{max_characters} characters')
+            logger_gptchatcompletion.info(f"gpt_response_text: {gpt_response_text}")
             break  
 
         else: # Did not get a msg < n chars, try again.
-            logger_gptchatcompletion.warning(f'\The generated message was >{max_characters} characters, retrying call to openai_gpt_chatcompletion')
+            logger_gptchatcompletion.warning(f'\gpt_response_text_len: <{max_characters} characters, retrying call to openai_gpt_chatcompletion')
             
-            messages_dict_gpt_updated = [{'role':'user', 'content':f"Shorten this message to less than {max_characters} characters: {gpt_response_text}"}]
+            messages_dict_gpt_updated = [{'role':'user', 'content':shorten_message_prompt}]
             generated_response = client.chat.completions.create(
                 model=model,
                 messages=messages_dict_gpt_updated,
@@ -104,16 +100,14 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
             gpt_response_text_len = len(gpt_response_text)
 
             if gpt_response_text_len > max_characters:
-                logger_gptchatcompletion.warning(f'The generated message was gpt_response_text_len characters (>{max_characters}) on the second try, retrying call to openai_gpt_chatcompletion')
+                logger_gptchatcompletion.warning(f'gpt_response_text length was {gpt_response_text_len} characters (max: {max_characters}), trying again...')
             elif gpt_response_text_len < max_characters:
-                logger_gptchatcompletion.info(f'OK on second try: The generated message was {gpt_response_text_len} characters')
+                logger_gptchatcompletion.info(f"OK on attempt --{attempt}-- gpt_response_text: {gpt_response_text}")
                 break
     else:
         message = "Maxium GPT call retries exceeded"
         logger_gptchatcompletion.error(message)        
         raise Exception(message)
-
-    logger_gptchatcompletion.info(f'call to gpt_chat_completion ended with gpt_response_text of {gpt_response_text_len} characters')
 
     return gpt_response_text
 
@@ -244,7 +238,7 @@ if __name__ == '__main__':
     #                           OPENAI_API_KEY=os.getenv('OPENAI_API_KEY'), 
     #                           max_characters=250,
     #                           max_attempts=5,
-    #                           model=mode,
+    #                           model=gpt_model,
     #                           frequency_penalty=1,
     #                           presence_penalty=1,
     #                           temperature=0.7)

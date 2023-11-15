@@ -23,7 +23,6 @@ from classes import ArticleGeneratorClass
 from classes.CustomExceptions import BotFeatureNotEnabledException
 from classes.MessageHandlerClass import MessageHandler
 from classes.BQUploaderClass import TwitchChatBQUploader
-from classes.PromptHandlerClass import PromptHandler
 from classes.ArgsConfigManagerClass import ArgsConfigManager
 from classes import GPTTextToSpeechClass
 
@@ -312,7 +311,7 @@ class Bot(twitch_commands.Bot):
         prompt_text_prefix = f"{self.ouat_prompt_addtostory_prefix}:'{prompt_text}'"
         
         #workflow1: get gpt_ready_msg_dict and add message to message history        
-        gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_strings(
+        gpt_ready_msg_dict = MessageHandler._create_gpt_message_dict_from_strings(
             self,
             content=prompt_text_prefix,
             role='user',

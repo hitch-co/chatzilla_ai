@@ -2,7 +2,6 @@
 from my_modules.config import load_env, load_yaml
 from my_modules import my_logging
 from my_modules.my_logging import log_dynamic_dict
-from classes.PromptHandlerClass import PromptHandler
 
 class MessageHandler:
     def __init__(self, gpt_thrd_mgr):
@@ -81,6 +80,17 @@ class MessageHandler:
             self.logger.debug(message.raw_data)
             return extracted_name
 
+    def _create_gpt_message_dict_from_strings(self,
+                                             content,
+                                             role='user',
+                                             name='unknown'):
+        if role == 'system':
+            gpt_ready_msg_dict = {'role': role, 'content': f'{content}'}
+        if role in ['user','assistant']:
+            gpt_ready_msg_dict = {'role': role, 'content': f'<<<{name}>>>: {content}'}
+
+        return gpt_ready_msg_dict
+    
     def add_to_appropriate_message_history(self, message):
         self.logger.info(f"Message content: {message.content}")
 
@@ -94,15 +104,8 @@ class MessageHandler:
             self.logger.debug(message_metadata)
             self.message_history_raw.append(message_metadata)
 
-            # # Create GPT-ready message dict
-            # gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_metadata(
-            #     self, 
-            #     role='user',
-            #     message_metadata=message_metadata
-            #     )
-
             # Create GPT-ready message dict
-            gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_strings(
+            gpt_ready_msg_dict = self._create_gpt_message_dict_from_strings(
                 self, 
                 role='user',
                 name=message_metadata['name'],
@@ -145,7 +148,7 @@ class MessageHandler:
             extracted_name = self._extract_name_from_message(message)
             message_metadata = {'name':extracted_name}
 
-            gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_strings(
+            gpt_ready_msg_dict = self._create_gpt_message_dict_from_strings(
                 self, role='assistant',
                 name=extracted_name,
                 content=message.content

@@ -312,14 +312,8 @@ class Bot(twitch_commands.Bot):
             self.logger.info(f"{arg}: {getattr(self, arg)}")
 
     async def ouat_storyteller(self):
-        #self.yaml_data = self.run_configuration()
-    
-        #load article links (prepping for reading random article)
-        if self.args_include_ouat == 'yes' and self.args_ouat_prompt_name.startswith('newsarticle'):
-            self.article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.newsarticle_rss_feed)
-            self.article_generator.fetch_articles()
-        else: 
-            self.logger.warning("Neither self.args_include_ouat or self.args_ouat_prompt_name conditions were met")
+        self.article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.newsarticle_rss_feed)
+        self.article_generator.fetch_articles()
 
         #This is the while loop that generates the occurring GPT response
         while True:
@@ -338,10 +332,7 @@ class Bot(twitch_commands.Bot):
                                      'writing_theme': self.selected_theme,
                                      'param_in_text':'variable_from_scope'} #for future use}
 
-                #######################################
                 if self.args_include_ouat == 'yes':
-                    self.logger.debug(f"ouat_counter is: {self.ouat_counter}")
-
                     if self.ouat_counter == 0:
                         gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_startstory,
                                                                    replacements_dict=replacements_dict)         
@@ -361,11 +352,10 @@ class Bot(twitch_commands.Bot):
                     elif self.ouat_counter > self.ouat_story_max_counter:
                         await self.stop_loop()
                         continue
-                
                 else: 
-                    self.logger.error("Neither automsg or ouat enabled with app startup argument")
+                    self.logger.warning("ouat was not enabled with app startup argument")
 
-                self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter}")
+                self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (self.ouat_story_max_counter={self.ouat_story_max_counter})")
                 self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')
 
                 messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
@@ -373,16 +363,12 @@ class Bot(twitch_commands.Bot):
                                                                       msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
                                                                       combine_messages=False)
 
-                ##################################################################################
                 gpt_response_text = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
                                                                 OPENAI_API_KEY=self.OPENAI_API_KEY,
                                                                 max_attempts=3)
                 gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
 
-                if self.ouat_counter == self.ouat_story_max_counter:
-                    self.logger.info(f"That was the final message (self.ouat_counter == {self.ouat_story_max_counter})")  
-
-                self.logger.debug(f"This is the messages_dict_gpt (self.ouat_counter = {self.ouat_counter}:")
+                self.logger.debug(f"This is the messages_dict_gpt:")
                 self.logger.debug(messages_dict_gpt)
                 self.logger.info(f"FINAL gpt_response_clean (type: {type(gpt_response_clean)}): \n{gpt_response_clean}")  
 

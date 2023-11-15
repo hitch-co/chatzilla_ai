@@ -3,7 +3,7 @@
 :: Set default values
 set include_ouat=yes
 set include_automsg=no
-set include_sound=yes
+set include_sound=no
 set prompt_list_ouat=newsarticle_dynamic
 set prompt_list_automsg=videogames
 set prompt_list_chatforme=standard
@@ -21,7 +21,7 @@ set input_port_number=3000
 @REM set /p input_port_number=What PORT NUMBER would you like to run the app on? (default:"%input_port_number%"):
 
 :: Run Python command
-python "C:\_repos\chatforme_bots\twitch_bot.py" 
+python ".\twitch_bot.py" 
 
 :: Delay for 5 seconds
 timeout /t 3

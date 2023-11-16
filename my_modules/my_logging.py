@@ -1,5 +1,6 @@
 import logging
 import inspect
+import json
 
 def create_logger(
         dirname='log', 
@@ -87,26 +88,36 @@ def log_function_args(logger):
         return wrapper
     return decorator
 
-def log_list_or_dict(logger, obj:list|dict=None):
-    # Logging logic
-    if isinstance(obj, list):
-        for item in obj:
-            logger.debug("Role: %s, Content: %.50s%s", item['role'], item['content'], '...' if len(item['content']) > 50 else '')
-    elif isinstance(obj, dict):
-        logger.debug("Role: %s, Content: %.50s%s", obj['role'], obj['content'], '...' if len(item['content']) > 50 else '')
+def _truncate_long_strings(obj):
+    """
+    Truncates string values in the object to a maximum length of 50 characters.
+    This function is recursively applied to each value in the object.
+    """
+    if isinstance(obj, dict):
+        return {k: _truncate_long_strings(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_truncate_long_strings(v) for v in obj]
+    elif isinstance(obj, str):
+        return obj[:50] + '...' if len(obj) > 50 else obj
     else:
-        logger.warning("Unsupported data type")
+        return obj
 
-def log_dynamic_dict(logger, obj: dict = None):
-    # Logging logic for a generic dictionary
-    if obj is None:
-        logger.warning("Empty dictionary passed")
-        return
+def log_as_json(logger, obj, indent=2):
+    """
+    Log an object as a JSON-formatted string, with individual string values truncated.
 
-    if not isinstance(obj, dict):
-        logger.warning("Unsupported data type")
-        return
+    Args:
+        logger (logging.Logger): The logger object to use for logging the formatted string.
+        obj (object): The object to be logged.
+        indent (int, optional): The indentation level for the JSON string. Defaults to 2.
+    """
+    try:
+        # Serialize the object to a JSON string with custom serialization for long strings
+        json_string = json.dumps(obj, indent=indent, default=_truncate_long_strings)
 
-    for key, value in obj.items():
-        truncated_value = str(value)[:50]  # Truncate the value to 50 characters if needed
-        logger.debug("Key: %s, Value: %.50s%s", key, truncated_value, '...' if len(str(value)) > 50 else '')
+        logger.debug(json_string)
+
+    except TypeError as e:
+        # Fallback in case serialization fails
+        logger.warning(f"Failed to serialize object to JSON: {e}")
+        logger.debug(str(obj))

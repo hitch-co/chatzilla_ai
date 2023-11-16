@@ -1,7 +1,7 @@
 
 from my_modules.config import load_env, load_yaml
 from my_modules import my_logging
-from my_modules.my_logging import log_dynamic_dict
+from my_modules.my_logging import log_as_json
 
 class MessageHandler:
     def __init__(self, gpt_thrd_mgr):
@@ -123,7 +123,7 @@ class MessageHandler:
 
                 #Send message to GPT thread
                 self.gpt_thrd_mgr.add_message_to_thread(
-                    thread_id=self.gpt_thrd_mgr.threads['ouat']['id'], 
+                    thread_id=self.gpt_thrd_mgr.threads['storyteller']['id'], 
                     role='user', 
                     message_content=gpt_ready_msg_dict['content']
                 )
@@ -141,14 +141,14 @@ class MessageHandler:
             message_metadata = self._get_message_metadata(message)   
             self.message_history_raw.append(message_metadata)
 
-            self.logger.debug('Here is the BOT message_metadata:')
+            self.logger.debug('Here is the raw bot message_metadata:')
             self.logger.debug(message_metadata)
             
             extracted_name = self._extract_name_from_message(message)
             message_metadata = {'name':extracted_name}
 
             gpt_ready_msg_dict = self._create_gpt_message_dict_from_strings(
-                self, role='assistant',
+                role='assistant',
                 name=extracted_name,
                 content=message.content
                 )
@@ -161,7 +161,7 @@ class MessageHandler:
 
                 #Send message to GPT thread
                 self.gpt_thrd_mgr.add_message_to_thread(
-                    thread_id=self.gpt_thrd_mgr.threads['ouat']['id'], 
+                    thread_id=self.gpt_thrd_mgr.threads['storyteller']['id'], 
                     role='user', 
                     message_content=gpt_ready_msg_dict['content']
                 )
@@ -177,7 +177,8 @@ class MessageHandler:
         self.logger.debug(f"message_history_raw:")
         self.logger.debug(self.message_history_raw)
         self.logger.debug("This is the gpt_ready_msg_dict")
-        log_dynamic_dict(self.logger, gpt_ready_msg_dict)
+        self.logger.debug(gpt_ready_msg_dict)
+        #log_as_json(self.logger, gpt_ready_msg_dict)
 
 if __name__ == '__main__':
     print("loaded MessageHandlerClass.py")

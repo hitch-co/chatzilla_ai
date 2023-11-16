@@ -88,32 +88,39 @@ class Bot(twitch_commands.Bot):
         self.usertransactions_table_id=self.yaml_data['twitch-ouat']['talkzillaai_usertransactions_table_id']
 
         #Set default loop state
-        self.is_ouat_loop_active = False  # controls if the loop should runZ
+        self.is_ouat_loop_active = False
 
         #counters
-        self.ouat_counter = 0
+        self.ouat_counter = 1
 
     def _setup_gpt_assistants_and_threads(self):
-        # Create assistant and thread for 'chatforme'
+        # Create assistant and thread for 'article_summarizer'
         self.gpt_clast_mgr.create_assistant(
-            assistant_name='ouat',
-            assistant_instructions=self.ouat_assistant_prompt
+            assistant_name='article_summarizer',
+            assistant_instructions=self.article_summarizer_assistant_prompt
         )
-        self.gpt_thrd_mgr.create_thread('ouat')
+        self.gpt_thrd_mgr.create_thread('article_summarizer')
 
         # Create assistant and thread for 'chatforme'
         self.gpt_clast_mgr.create_assistant(
-            assistant_name='chatforme',
-            assistant_instructions=self.chatforme_assistant_prompt
+            assistant_name='storyteller',
+            assistant_instructions=self.storyteller_assistant_prompt
         )
-        self.gpt_thrd_mgr.create_thread('chatforme')
+        self.gpt_thrd_mgr.create_thread('storyteller')
 
-        # Create assistant and thread for 'chatforme'
-        self.gpt_clast_mgr.create_assistant(
-            assistant_name='botthot',
-            assistant_instructions=self.botthot_assistant_prompt
-        )
-        self.gpt_thrd_mgr.create_thread('botthot')
+        # # Create assistant and thread for 'chatforme'
+        # self.gpt_clast_mgr.create_assistant(
+        #     assistant_name='chatforme',
+        #     assistant_instructions=self.chatforme_assistant_prompt
+        # )
+        # self.gpt_thrd_mgr.create_thread('chatforme')
+
+        # # Create assistant and thread for 'chatforme'
+        # self.gpt_clast_mgr.create_assistant(
+        #     assistant_name='botthot',
+        #     assistant_instructions=self.botthot_assistant_prompt
+        # )
+        # self.gpt_thrd_mgr.create_thread('botthot')
 
     def run_configuration(self) -> dict:
 
@@ -146,9 +153,17 @@ class Bot(twitch_commands.Bot):
         self.ouat_news_article_summary_prompt = self.yaml_data['ouat_prompts']['ouat_news_article_summary_prompt'] 
 
         #GPT Assistant prompts:
-        self.ouat_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['ouat']
+        self.article_summarizer_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
+        self.storyteller_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['storyteller']
+        self.ouat_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
         self.chatforme_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['chatforme']
         self.botthot_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['botthot']
+
+        #GPT Thread Prompts
+        self.storyteller_storystarter_prompt = self.yaml_data['gpt_thread_prompts']['story_starter']
+        self.storyteller_storyprogressor_prompt = self.yaml_data['gpt_thread_prompts']['story_progressor']
+        self.storyteller_storyfinisher_prompt = self.yaml_data['gpt_thread_prompts']['story_finisher']
+        self.storyteller_storyender_prompt = self.yaml_data['gpt_thread_prompts']['story_ender']
 
         #OUAT base prompt and start/progress/end story prompts
         self.gpt_ouat_prompt_begin = self.yaml_data['ouat_prompts'][self.args_ouat_prompt_name]
@@ -242,16 +257,9 @@ class Bot(twitch_commands.Bot):
         if message.author is not None:
             await self.handle_commands(message)
 
-    #controls ouat_storyteller()
-    async def start_ouat_storyteller_msg_loop(self):
-        self.is_ouat_loop_active = True
-        if not any([self.args_include_automsg == 'yes', self.args_include_ouat == 'yes']):
-            self.logger.error("Neither automsg or ouat enabled with app argument")
-            raise BotFeatureNotEnabledException("Neither automsg or ouat enabled with app argument")
-
     @twitch_commands.command(name='startstory')
     async def startstory(self, message, *args):
-        if self.ouat_counter == 0:
+        if self.ouat_counter == 1:
             user_requested_plotline = ' '.join(args)
 
             # Capture writing tone/style/theme and randomly select one item from each list
@@ -273,13 +281,11 @@ class Bot(twitch_commands.Bot):
                 replacements_dict=replacements_dict
                 )
         
-            # GPTAssistantManager Chat Completion: Get assistant and thread IDs for 'chatforme'
-            assistant_id = self.gpt_clast_mgr.assistants['ouat']['id']
-            thread_id = self.gpt_thrd_mgr.threads['ouat']['id']
-            thread_instructions = self.yaml_data['gpt_assistant_prompts']['ouat']
-            self.logger.info(f"assistant_id: '{assistant_id}', thread_id: '{thread_id}', thread_instructions: '{thread_instructions}'")
-
-            # Add message to thread
+            # Add message to ARTICLE_SUMMARIZER thread. GPTAssistantManager Chat Completion: Get assistant and thread IDs for 'chatforme'
+            assistant_id = self.gpt_clast_mgr.assistants['article_summarizer']['id']
+            thread_id = self.gpt_thrd_mgr.threads['article_summarizer']['id']
+            article_summarizer_thread_prompt = self.article_summarizer_assistant_prompt
+            
             self.gpt_thrd_mgr.add_message_to_thread(
                 thread_id=thread_id,
                 role='user',
@@ -287,19 +293,31 @@ class Bot(twitch_commands.Bot):
             )
 
             # Get response from assistant
-            self.logger.debug("Starting excecution of workflow_gpt()")
+            self.logger.info("Starting excecution of workflow_gpt()")
+            
             self.random_article_content_plot_summary = await self.gpt_resp_mgr.workflow_gpt(
                 assistant_id=assistant_id,
                 thread_id=thread_id,
-                thread_instructions=thread_instructions
+                thread_instructions=article_summarizer_thread_prompt
             )
 
+            # Add message to STORYTELLER thread
+            assistant_id = self.gpt_clast_mgr.assistants['storyteller']['id']
+            thread_id = self.gpt_thrd_mgr.threads['storyteller']['id']
+            
+            self.gpt_thrd_mgr.add_message_to_thread(
+                thread_id=thread_id,
+                role='user',
+                message_content=self.random_article_content_plot_summary
+            )
             self.logger.info("this is the random_article_content_plot_summary:")
             self.logger.info(self.random_article_content_plot_summary)
 
-            await self.start_ouat_storyteller_msg_loop()
+            self.is_ouat_loop_active = True
+            # await self.start_ouat_storyteller_msg_loop()
             
             printc(f"A story was started by {message.author.name} ({message.author.id})", bcolors.WARNING)
+            printc(f"random_article_content_plot_summary: {self.random_article_content_plot_summary}")
             printc(f"Theme: {self.selected_theme}", bcolors.OKBLUE)
             printc(f"Writing Tone: {self.selected_writing_tone}", bcolors.OKBLUE)
             printc(f"Writing Style: {self.selected_writing_style}", bcolors.OKBLUE)
@@ -354,7 +372,7 @@ class Bot(twitch_commands.Bot):
             dirname='log/ouat_story_history'
             )
         self.message_handler.ouat_temp_msg_history.clear()
-        self.ouat_counter = 0
+        self.ouat_counter = 1
 
     async def print_runtime_params(self, args_list=None):        
         self.logger.info("These are the runtime params for this bot:")
@@ -372,8 +390,9 @@ class Bot(twitch_commands.Bot):
                 continue
                       
             else:
+                self.logger.warning(f"Starting cycle #{self.ouat_counter} of the OUAT Storyteller") 
+                
                 #TODO: Turn this into a function up to the 'continue'
-                self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
                 replacements_dict = {"ouat_wordcount":self.ouat_wordcount,
                                      'twitch_bot_username':self.twitch_bot_username,
                                      'num_bot_responses':self.num_bot_responses,
@@ -383,58 +402,48 @@ class Bot(twitch_commands.Bot):
                                      'writing_theme': self.selected_theme,
                                      'param_in_text':'variable_from_scope'} #for future use}
 
-                if self.args_include_ouat == 'yes':
-                    if self.ouat_counter == 0:
-                        gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_startstory,
-                                                                   replacements_dict=replacements_dict)         
+                #storystarter
+                if self.ouat_counter == 1:
+                    gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.storyteller_storystarter_prompt,
+                                                                replacements_dict=replacements_dict)         
+                #storyprogressor
+                if self.ouat_counter <= self.ouat_story_progression_number:
+                    gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.storyteller_storyprogressor_prompt,
+                                                                replacements_dict=replacements_dict)         
 
-                    if self.ouat_counter < self.ouat_story_progression_number:
-                        gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.gpt_ouat_prompt_begin,
-                                                                   replacements_dict=replacements_dict)         
-
-                    elif self.ouat_counter < self.ouat_story_max_counter:
-                        gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_progression,
-                                                                   replacements_dict=replacements_dict) 
-                        
-                    elif self.ouat_counter == self.ouat_story_max_counter:
-                        gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_endstory,
-                                                                   replacements_dict=replacements_dict)
-                                                        
-                    elif self.ouat_counter > self.ouat_story_max_counter:
-                        await self.stop_loop()
-                        continue
-                else: 
-                    self.logger.warning("ouat was not enabled with app startup argument")
-
-                self.logger.warning("-----------------------")
-                thread_object = self.gpt_thrd_mgr.threads['ouat']['object']
-                self.logger.warning("THIS IS THE THREAD OBJECT DETAILS")
-                self.logger.warning(f"Type: {type(thread_object)}")
-                self.logger.info(thread_object.id)
-                self.logger.info(thread_object.metadata)
-                self.logger.warning("-----------------------")
-
-                self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (self.ouat_story_max_counter={self.ouat_story_max_counter})")
-                self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')
+                #storyfinisher
+                elif self.ouat_counter < self.ouat_story_max_counter:
+                    gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.storyteller_storyfinisher_prompt,
+                                                                replacements_dict=replacements_dict) 
+                #storyender
+                elif self.ouat_counter == self.ouat_story_max_counter:
+                    gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.storyteller_storyender_prompt,
+                                                                replacements_dict=replacements_dict)
+                                                    
+                elif self.ouat_counter > self.ouat_story_max_counter:
+                    await self.stop_loop()
+                    continue
 
                 # GPTAssistantManager Chat Completion: Get assistant and thread IDs for 'chatforme'
-                assistant_id = self.gpt_clast_mgr.assistants['ouat']['id']
-                thread_id = self.gpt_thrd_mgr.threads['ouat']['id']
-                self.logger.info(f"assistant_id: '{assistant_id}', thread_id: '{thread_id}'")
-                
+                assistant_id = self.gpt_clast_mgr.assistants['storyteller']['id']
+                thread_id = self.gpt_thrd_mgr.threads['storyteller']['id']
+
+                self.logger.info("OUAT details:")
+                self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (self.ouat_story_max_counter={self.ouat_story_max_counter})")
+                self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
+                self.logger.info(f"These are the assistant and thread IDs - assistant_id: '{assistant_id}', thread_id: '{thread_id}'")
+                self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
+
                 # Get response from assistant
                 gpt_response_text = await self.gpt_resp_mgr.workflow_gpt(
                     assistant_id=assistant_id,
                     thread_id=thread_id,
                     thread_instructions=gpt_prompt_final
                 )
-                gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
-                
-                if self.ouat_counter == self.ouat_story_max_counter:
-                    self.logger.info(f"That was the final message (self.ouat_counter == {self.ouat_story_max_counter})")  
 
-                self.logger.info(f"FINAL gpt_response_clean (type: {type(gpt_response_clean)}):")
-                self.logger.info(gpt_response_clean)  
+                # Clean the response
+                gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
+                self.logger.info(f"OUAT gpt_response_clean: '{gpt_response_clean}'")  
 
                 if self.args_include_sound == 'yes':
                     # Generate speech object and create .mp3:
@@ -454,7 +463,6 @@ class Bot(twitch_commands.Bot):
                         dirpath=self.tts_data_folder, 
                         filename=output_filename
                         )                
-
                 self.ouat_counter += 1   
 
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))

@@ -91,6 +91,11 @@ class MessageHandler:
 
         return gpt_ready_msg_dict
     
+    def _pop_message_from_message_history(self, msg_history_list_dict, msg_history_limit):
+        if len(msg_history_list_dict) > msg_history_limit:
+            msg_history_list_dict.pop(0)
+        return msg_history_list_dict
+    
     def add_to_appropriate_message_history(self, message):
         self.logger.info(f"Message content: {message.content}")
 
@@ -173,6 +178,16 @@ class MessageHandler:
             if extracted_name in self.bots_chatforme:
                 self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
                 self.logger.info("Message dictionary added to chatforme_temp_msg_history")
+
+        #cleanup msg histories for GPT
+        message_histories = [
+            (self.ouat_temp_msg_history, 10),
+            (self.chatforme_temp_msg_history, 10),
+            (self.automsg_temp_msg_history, 10),
+            (self.nonbot_temp_msg_history, 10)
+        ]
+        for msg_history, limit in message_histories:
+            self._pop_message_from_message_history(msg_history_list_dict=msg_history, msg_history_limit=limit)
 
         self.logger.debug(f"message_history_raw:")
         self.logger.debug(self.message_history_raw)

@@ -214,7 +214,6 @@ class TwitchChatBQUploader:
             job_stats = query_job.query_plan
             self.logger.info(f"Query plan: {job_stats}")
 
-# if __name__ == '__main__':
-#     chatdataclass = TwitchChatBQUploader()
-#     chatdataclass.get_channel_viewers()
-#     self.logger.debug('Execution completed.')
+if __name__ == '__main__':
+    chatdataclass = TwitchChatBQUploader()
+    chatdataclass.get_channel_viewers()

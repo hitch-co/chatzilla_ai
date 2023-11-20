@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import datetime
 
 from my_modules.my_logging import create_logger
@@ -176,3 +177,4 @@ def write_query_to_file(formatted_query, dirname='log/queries', queryname='defau
         file.write(formatted_query)
 
     logger.debug(f"Query written to {filename}")
+

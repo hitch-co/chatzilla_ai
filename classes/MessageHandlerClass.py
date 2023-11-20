@@ -122,6 +122,7 @@ class MessageHandler:
 
                 self.logger.info("Message dictionary added to automsg_temp_msg_history & chatforme_temp_msg_history")
 
+            # Add Message history to GPT thread
             if name in self.bots_ouat:    
                 self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
                 self.gpt_thrd_mgr.add_message_to_thread(

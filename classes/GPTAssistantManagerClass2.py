@@ -2,7 +2,6 @@ import openai
 import os 
 import asyncio
 
-from my_modules import config
 from my_modules.my_logging import create_logger
 from my_modules.config import run_config
 

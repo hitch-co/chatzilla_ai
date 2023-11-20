@@ -33,6 +33,7 @@ from classes.GPTAssistantManagerClass2 import GPTAssistantResponseManager
 class Bot(twitch_commands.Bot):
     loop_sleep_time = 4
 
+    #init/config
     def __init__(self, TWITCH_BOT_ACCESS_TOKEN, yaml_data):
         super().__init__(
             token=TWITCH_BOT_ACCESS_TOKEN,
@@ -115,7 +116,7 @@ class Bot(twitch_commands.Bot):
         # )
         # self.gpt_thrd_mgr.create_thread('chatforme')
 
-        # # Create assistant and thread for 'chatforme'
+        # # Create assistant and thread for 'botthot'
         # self.gpt_clast_mgr.create_assistant(
         #     assistant_name='botthot',
         #     assistant_instructions=self.botthot_assistant_prompt
@@ -199,7 +200,7 @@ class Bot(twitch_commands.Bot):
         
         return self.yaml_data 
 
-    #Executes once the bot is ready
+    #twitch built-ins
     async def event_ready(self):
         self.channel = self.get_channel(self.twitch_bot_channel_name)
         print(f'TwitchBot ready | {self.twitch_bot_username} (nick:{self.nick})')
@@ -216,7 +217,6 @@ class Bot(twitch_commands.Bot):
         #start loop
         self.loop.create_task(self.ouat_storyteller())
 
-    #Excecutes everytime a message is received
     async def event_message(self, message):
         self.logger.info("--------- Message received ---------")
         
@@ -257,6 +257,7 @@ class Bot(twitch_commands.Bot):
         if message.author is not None:
             await self.handle_commands(message)
 
+    #commands - startstory
     @twitch_commands.command(name='startstory')
     async def startstory(self, message, *args):
         if self.ouat_counter == 1:
@@ -467,6 +468,7 @@ class Bot(twitch_commands.Bot):
 
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
 
+    #commands - chatforme
     @twitch_commands.command(name='chatforme')
     async def chatforme(self, ctx):
         """
@@ -519,6 +521,7 @@ class Bot(twitch_commands.Bot):
                 filename=output_filename
                 )
 
+    #commands - botthot
     @twitch_commands.command(name='botthot')
     async def botthot(self, ctx):
         """

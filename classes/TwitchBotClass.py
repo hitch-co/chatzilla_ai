@@ -5,15 +5,16 @@ from twitchio.ext import commands as twitch_commands
 
 import random
 import os
+from datetime import datetime
 
 from my_modules.gpt import openai_gpt_chatcompletion
 from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext
 from my_modules.gpt import ouat_gpt_response_cleanse, chatforme_gpt_response_cleanse, botthot_gpt_response_cleanse
 
-from my_modules.my_logging import create_logger, log_dynamic_dict
+from my_modules.my_logging import create_logger
 from my_modules.twitchio_helpers import get_string_of_users
 from my_modules.config import load_yaml, load_env
-from my_modules.text_to_speech import generate_t2s_object, play_t2s_object, play_local_mp3
+from my_modules.text_to_speech import play_local_mp3
 from my_modules import utils
 
 from classes.ConsoleColoursClass import bcolors, printc
@@ -286,7 +287,7 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='stopstory')
     async def stop_story(self, ctx):
-        await self.channel.send("ToBeCoNtInUeD")
+        await self.channel.send("to be continued...")
         await self.stop_loop()
 
     @twitch_commands.command(name='endstory')
@@ -374,7 +375,7 @@ class Bot(twitch_commands.Bot):
 
                 if self.args_include_sound == 'yes':
                     # Generate speech object and create .mp3:
-                    output_filename = 'ouat_'+self.tts_file_name+"_"+str(self.ouat_counter)
+                    output_filename = f"ouat_{str(self.ouat_counter)}_{self.tts_file_name}"
                     self.tts_client.workflow_t2s(text_input=gpt_response_clean,
                                                  voice_name='shimmer',
                                                 output_dirpath=self.tts_data_folder,
@@ -400,6 +401,7 @@ class Bot(twitch_commands.Bot):
         It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
         """
         self.run_configuration()
+        datetime_string = datetime.now().strftime("%Y%m%d_%H%M%S")
         request_user_name = ctx.message.author.name
 
         # Extract usernames from previous chat messages stored in chatforme_temp_msg_history.
@@ -432,7 +434,7 @@ class Bot(twitch_commands.Bot):
 
         if self.args_include_sound == 'yes':
             # Generate speech object and create .mp3:
-            output_filename = 'chatforme_'+self.tts_file_name
+            output_filename = "chatforme_"+"_"+datetime_string+"_"+self.tts_file_name
             self.tts_client.workflow_t2s(text_input=gpt_response_clean,
                                             voice_name='onyx',
                                         output_dirpath=self.tts_data_folder,

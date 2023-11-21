@@ -42,7 +42,7 @@ class ArticleGenerator:
         self.logger.info(f"Successfully fetched --{len(self.articles)}-- article titles and links")
         return self.articles
 
-    def fetch_random_article_content(self, article_char_trunc=500):
+    def fetch_random_article_content(self, article_char_trunc=1200):
         found_article = False
         list_of_disallowed_terms = self.load_disallowed_terms(dir_path='config',
                                                               file_name='disallowed_terms.json')

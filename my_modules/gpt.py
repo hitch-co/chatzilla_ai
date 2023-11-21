@@ -26,9 +26,9 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
                               max_characters=250,
                               max_attempts=5,
                               model=gpt_model,
-                              frequency_penalty=1,
-                              presence_penalty=1,
-                              temperature=0.7) -> str: 
+                              frequency_penalty=1.1,
+                              presence_penalty=1.1,
+                              temperature=0.6) -> str: 
     """
     Send a message to OpenAI GPT-3.5-turbo for completion and get the response.
 
@@ -86,9 +86,8 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
             break  
 
         else: # Did not get a msg < n chars, try again.
-            logger_gptchatcompletion.warning(f'\gpt_response_text_len: <{max_characters} characters, retrying call to openai_gpt_chatcompletion')
-            
-            messages_dict_gpt_updated = [{'role':'user', 'content':shorten_message_prompt}]
+            logger_gptchatcompletion.warning(f'\gpt_response_text_len: >{max_characters} characters, retrying call to openai_gpt_chatcompletion')
+            messages_dict_gpt_updated = [{'role':'user', 'content':f"{shorten_message_prompt}: '{gpt_response_text}'"}]
             generated_response = client.chat.completions.create(
                 model=model,
                 messages=messages_dict_gpt_updated,
@@ -176,12 +175,11 @@ def combine_msghistory_and_prompttext(prompt_text,
             }]            
             reformatted_msg_history_list_dict.append(prompt_dict)
             msg_history_list_dict=reformatted_msg_history_list_dict
-
+            logger_msghistory_and_prompt.debug(msg_history_list_dict)
         else:
             msg_history_list_dict.append(prompt_dict) 
             logger_msghistory_and_prompt.debug(msg_history_list_dict)
 
-        logger_msghistory_and_prompt.debug(msg_history_list_dict)
         utils.write_json_to_file(
             data=msg_history_list_dict, 
             variable_name_text='msg_history_list_dict', 

@@ -2,7 +2,7 @@ import openai
 import os 
 import asyncio
 
-from my_modules import config
+from my_modules.config import load_env, load_yaml
 from my_modules.my_logging import create_logger
 
 root_logger = create_logger(
@@ -30,10 +30,10 @@ class GPTAssistantManagerClass:
         
         self.lock = asyncio.Lock() # Lock for async operations
 
-        config.load_env() # Load environment variables
+        load_env() # Load environment variables
         openai.api_key = os.getenv('OPENAI_API_KEY')
         
-        self.yaml_data = config.load_yaml() # Load assistant configuration from a YAML file
+        self.yaml_data = load_yaml() # Load assistant configuration from a YAML file
         self.assistant_type=self.yaml_data['openai-api']['assistant_type']
         self.assistant_model=self.yaml_data['openai-api']['assistant_model']
            

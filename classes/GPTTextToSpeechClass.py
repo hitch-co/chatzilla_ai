@@ -4,7 +4,7 @@ import os
 import openai
 from openai import OpenAI
 
-from my_modules import config
+from my_modules.config import load_env, load_yaml
 from my_modules import my_logging
 
 #TODO: SHould take a client as an argument
@@ -17,10 +17,10 @@ class GPTTextToSpeech:
             stream_logs=True
             )
         
-        config.load_env() # Load environment variables
+        load_env() # Load environment variables
         openai.api_key = os.getenv('OPENAI_API_KEY')        
         
-        self.yaml_data = config.load_yaml() # Load assistant configuration from a YAML file
+        self.yaml_data = load_yaml() # Load assistant configuration from a YAML file
         self.tts_model=self.yaml_data['openai-api']['tts_model']
         self.tts_voice=self.yaml_data['openai-api']['tts_voice']
         self.tts_data_folder = self.yaml_data['openai-api']['tts_data_folder']

@@ -4,7 +4,7 @@ from my_modules import my_logging
 from my_modules.my_logging import log_as_json
 
 class MessageHandler:
-    def __init__(self):
+    def __init__(self, gpt_thrd_mgr):
         self.logger = my_logging.create_logger(
             dirname='log', 
             logger_name='logger_MessageHandler',
@@ -14,6 +14,9 @@ class MessageHandler:
             )
         self.logger.debug('MessageHandler initialized.')
 
+        #Instantiate the gpt_thrd_mgr class for adding messages to gpt thread
+        self.gpt_thrd_mgr = gpt_thrd_mgr
+         
         #run config
         self.yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname='config')
         load_env(env_filename='config.env', env_dirname='config')
@@ -122,7 +125,11 @@ class MessageHandler:
             # Add Message history to GPT thread
             if name in self.bots_ouat:    
                 self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
-                self.logger.info("Message dictionary added to ouat_temp_msg_history")
+                self.gpt_thrd_mgr.add_message_to_thread(
+                    thread_id=self.gpt_thrd_mgr.threads['storyteller']['id'], 
+                    role='user', 
+                    message_content=gpt_ready_msg_dict['content']
+                )
                 self.logger.info("Message dictionary added to ouat_temp_msg_history and message added to ouat thread")
 
             if name not in self.known_bots:
@@ -154,12 +161,32 @@ class MessageHandler:
 
             if extracted_name in self.bots_ouat:
                 self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
-                self.logger.info("Message dictionary added to ouat_temp_msg_history")
+                self.gpt_thrd_mgr.add_message_to_thread(
+                    thread_id=self.gpt_thrd_mgr.threads['storyteller']['id'], 
+                    role='user', 
+                    message_content=gpt_ready_msg_dict['content']
+                )
+                self.logger.info(f"'{extracted_name}' in self.bots_ouat")
+                self.logger.info("Message dictionary added to ouat_temp_msg_history and message added to ouat thread")
+
             if extracted_name in self.bots_automsg:
                 self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
+                # self.gpt_thrd_mgr.add_message_to_thread(
+                #     thread_id=self.gpt_thrd_mgr.threads['storyteller']['id'], 
+                #     role='user', 
+                #     message_content=gpt_ready_msg_dict['content']
+                # )
+                self.logger.info(f"'{extracted_name}' in self.bots_automsg")
                 self.logger.info("Message dictionary added to automsg_temp_msg_history")
+            
             if extracted_name in self.bots_chatforme:
                 self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
+                # self.gpt_thrd_mgr.add_message_to_thread(
+                #     thread_id=self.gpt_thrd_mgr.threads['storyteller']['id'], 
+                #     role='user', 
+                #     message_content=gpt_ready_msg_dict['content']
+                # )
+                self.logger.info(f"'{extracted_name}' in self.bots_chatforme")
                 self.logger.info("Message dictionary added to chatforme_temp_msg_history")
 
         #cleanup msg histories for GPT

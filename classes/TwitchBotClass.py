@@ -163,7 +163,7 @@ class Bot(twitch_commands.Bot):
         
         return self.yaml_data 
 
-    #twitch built-ins
+    #Executes once the bot is ready
     async def event_ready(self):
         self.channel = self.get_channel(self.twitch_bot_channel_name)
         print(f'TwitchBot ready | {self.twitch_bot_username} (nick:{self.nick})')
@@ -180,6 +180,7 @@ class Bot(twitch_commands.Bot):
         #start loop
         self.loop.create_task(self.ouat_storyteller())
 
+    #Excecutes everytime a message is received
     async def event_message(self, message):
         self.logger.info("--------- Message received ---------")
         
@@ -393,10 +394,12 @@ class Bot(twitch_commands.Bot):
                 if self.args_include_sound == 'yes':
                     # Generate speech object and create .mp3:
                     output_filename = f"ouat_{str(self.ouat_counter)}_{self.tts_file_name}"
-                    self.tts_client.workflow_t2s(text_input=gpt_response_clean,
-                                                 voice_name='shimmer',
-                                                output_dirpath=self.tts_data_folder,
-                                                output_filename=output_filename)
+                    self.tts_client.workflow_t2s(
+                        text_input=gpt_response_clean,
+                        voice_name='shimmer',
+                        output_dirpath=self.tts_data_folder,
+                        output_filename=output_filename
+                        )
                 
                 #send twitch message and generate/play local mp3 if applicable
                 await self.channel.send(gpt_response_clean)

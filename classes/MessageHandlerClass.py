@@ -169,16 +169,6 @@ class MessageHandler:
                 self.logger.info(f"'{extracted_name}' in self.bots_ouat")
                 self.logger.info("Message dictionary added to ouat_temp_msg_history and message added to ouat thread")
 
-            if extracted_name in self.bots_automsg:
-                self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
-                # self.gpt_thrd_mgr.add_message_to_thread(
-                #     thread_id=self.gpt_thrd_mgr.threads['storyteller']['id'], 
-                #     role='user', 
-                #     message_content=gpt_ready_msg_dict['content']
-                # )
-                self.logger.info(f"'{extracted_name}' in self.bots_automsg")
-                self.logger.info("Message dictionary added to automsg_temp_msg_history")
-            
             if extracted_name in self.bots_chatforme:
                 self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
                 # self.gpt_thrd_mgr.add_message_to_thread(

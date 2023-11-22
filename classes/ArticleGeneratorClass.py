@@ -160,8 +160,3 @@ if __name__ == "__main__":
     main(rss_link="http://rss.cnn.com/rss/cnn_showbiz.rss")
 
 
-# article_generator = ArticleGenerator(rss_link="http://rss.cnn.com/rss/cnn_showbiz.rss")
-
-# articles = article_generator.fetch_articles()
-# article_content = article_generator.fetch_content()
-

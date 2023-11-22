@@ -1,34 +1,33 @@
-# Import required modules
-import asyncio
-from threading import Thread
-from flask import Flask, request
 import uuid
 import requests
 import os
-from my_modules.my_logging import create_logger, log_dynamic_dict
-from my_modules.config import load_yaml, load_env
+import asyncio
+from threading import Thread
+
+from flask import Flask, request
+
 from classes.TwitchBotClass import Bot
 from classes.ArgsConfigManagerClass import ArgsConfigManager
 
-# Configuration
+from my_modules.my_logging import create_logger
+from my_modules.config import load_yaml, load_env
+
 use_reloader_bool = False
 runtime_logger_level = 'DEBUG'
-
-# Initialize the root logger
 root_logger = create_logger(
     dirname='log',
     logger_name='_logger_root_twitch_bot',
     debug_level=runtime_logger_level,
     mode='a'
 )
-root_logger.info("----- This is the start of an app start root log! -----")
 
-# Global Variables
+# Bot Thread
 TWITCH_CHATFORME_BOT_THREAD = None
 
 # Load configurations from YAML and environment variables
 yaml_data = load_yaml(yaml_dirname='config', yaml_filename='config.yaml')
 load_env(env_dirname=yaml_data['env_dirname'], env_filename=yaml_data['env_filename'])
+
 twitch_bot_redirect_path = yaml_data['twitch-app']['twitch_bot_redirect_path']
 TWITCH_BOT_CLIENT_ID = os.getenv('TWITCH_BOT_CLIENT_ID')
 TWITCH_BOT_CLIENT_SECRET = os.getenv('TWITCH_BOT_CLIENT_SECRET')
@@ -51,7 +50,7 @@ def auth():
     redirect_uri = f'http://localhost:{input_port_number}/{twitch_bot_redirect_path}'
     params_auth = f'?response_type=code&client_id={TWITCH_BOT_CLIENT_ID}&redirect_uri={redirect_uri}&scope={TWITCH_BOT_SCOPE}&state={uuid.uuid4().hex}'
     url = base_url_auth+params_auth
-    print(f"Generated redirect_uri: {redirect_uri}")
+    root_logger.info(f"Generated redirect_uri: {redirect_uri}")
     return f'<a href="{url}">Connect with Twitch</a>'
 
 #app route auth callback
@@ -99,11 +98,9 @@ def callback():
 
         return f'<a>{twitch_bot_status} Access Token and Refresh Token have been captured and set in the current environment</a>'
     else:
-        # output = {}
-        # output['response.text'] = response.json()
         return '<a>There was an issue retrieving and setting the access token.  If you would like to include more detail in this message, return "template.html" or equivalent using the render_template() method from flask and add it to this response...'
 
-#This is run immediately after the authentication process.
+#This is run after the auth process completes
 def run_bot(TWITCH_BOT_ACCESS_TOKEN):
 
     #load yaml_data for init'ing Bot class
@@ -123,7 +120,6 @@ def run_bot(TWITCH_BOT_ACCESS_TOKEN):
         )
     bot.run()
 
-#TODO/NOTE: Everytime /callback is hit, a new bot instance is being started.   
-# This could cause problems
+#NOTE: When /callback is hit, new bot instance is started.   
 if __name__ == "__main__":
     app.run(port=args_config.input_port_number, debug=True, use_reloader=use_reloader_bool)

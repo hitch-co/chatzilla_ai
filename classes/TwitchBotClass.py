@@ -26,9 +26,9 @@ from classes.BQUploaderClass import TwitchChatBQUploader
 from classes.ArgsConfigManagerClass import ArgsConfigManager
 from classes import GPTTextToSpeechClass
 
-from classes.GPTAssistantManagerClasses import GPTAssistantManagerClass
-from classes.GPTAssistantManagerClasses import GPTThreadManagerClass
-from classes.GPTAssistantManagerClasses import GPTAssistantResponseManagerClass
+from classes.GPTAssistantManagerClasses import GPTAssistantManager
+from classes.GPTAssistantManagerClasses import GPTThreadManager
+from classes.GPTAssistantManagerClasses import GPTAssistantResponseManager
 
 class Bot(twitch_commands.Bot):
     loop_sleep_time = 4
@@ -62,9 +62,9 @@ class Bot(twitch_commands.Bot):
 
         # instance of client, thread, and manager
         self.gpt_client = openai.OpenAI()
-        self.gpt_clast_mgr = GPTAssistantManagerClass(yaml_data=yaml_data, gpt_client=self.gpt_client)
-        self.gpt_thrd_mgr = GPTThreadManagerClass(gpt_client=self.gpt_client)
-        self.gpt_resp_mgr = GPTAssistantResponseManagerClass(gpt_client=self.gpt_client)
+        self.gpt_clast_mgr = GPTAssistantManager(yaml_data=yaml_data, gpt_client=self.gpt_client)
+        self.gpt_thrd_mgr = GPTThreadManager(gpt_client=self.gpt_client)
+        self.gpt_resp_mgr = GPTAssistantResponseManager(gpt_client=self.gpt_client)
         self._setup_gpt_assistants_and_threads()
 
         # instance of message handler and BQ uplaoder classeses
@@ -108,19 +108,12 @@ class Bot(twitch_commands.Bot):
         )
         self.gpt_thrd_mgr.create_thread('storyteller')
 
-        # # Create assistant and thread for 'chatforme'
-        # self.gpt_clast_mgr.create_assistant(
-        #     assistant_name='chatforme',
-        #     assistant_instructions=self.chatforme_assistant_prompt
-        # )
-        # self.gpt_thrd_mgr.create_thread('chatforme')
-
-        # # Create assistant and thread for 'chatforme'
-        # self.gpt_clast_mgr.create_assistant(
-        #     assistant_name='botthot',
-        #     assistant_instructions=self.botthot_assistant_prompt
-        # )
-        # self.gpt_thrd_mgr.create_thread('botthot')
+        # Create assistant and thread for 'chatforme'
+        self.gpt_clast_mgr.create_assistant(
+            assistant_name='chatforme',
+            assistant_instructions=self.chatforme_assistant_prompt
+        )
+        self.gpt_thrd_mgr.create_thread('chatforme')
 
     def run_configuration(self) -> dict:
 
@@ -497,14 +490,24 @@ class Bot(twitch_commands.Bot):
             replacements_dict = replacements_dict
             )
 
-        #TODO: GPTAssistant Manager #######################################################################
-        messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text = chatgpt_chatforme_prompt,
-                                                              prompt_text_role='system',
-                                                              msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
-                                                              combine_messages=False)
-        
-        gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
-        gpt_response_clean = chatforme_gpt_response_cleanse(gpt_response)
+        # GPTAssistantManager Chat Completion: Get assistant and thread IDs for 'chatforme'
+        assistant_id = self.gpt_clast_mgr.assistants['chatforme']['id']
+        thread_id = self.gpt_thrd_mgr.threads['chatforme']['id']
+
+        self.logger.info("CHATFORME details:")
+        self.logger.info(f"These are the assistant and thread IDs - assistant_id: '{assistant_id}', thread_id: '{thread_id}'")
+        self.logger.debug(f"CHATFORME chatgpt_chatforme_prompt: '{chatgpt_chatforme_prompt}'")
+
+        # Get response from assistant
+        gpt_response_text = await self.gpt_resp_mgr.workflow_gpt(
+            assistant_id=assistant_id,
+            thread_id=thread_id,
+            thread_instructions=chatgpt_chatforme_prompt
+        )
+
+        # Clean the response
+        gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
+        self.logger.info(f"OUAT gpt_response_clean: '{gpt_response_clean}'")  
 
         if self.args_include_sound == 'yes':
             # Generate speech object and create .mp3:

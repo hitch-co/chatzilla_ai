@@ -171,11 +171,11 @@ class MessageHandler:
 
             if extracted_name in self.bots_chatforme:
                 self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
-                # self.gpt_thrd_mgr.add_message_to_thread(
-                #     thread_id=self.gpt_thrd_mgr.threads['storyteller']['id'], 
-                #     role='user', 
-                #     message_content=gpt_ready_msg_dict['content']
-                # )
+                self.gpt_thrd_mgr.add_message_to_thread(
+                    thread_id=self.gpt_thrd_mgr.threads['chatforme']['id'], 
+                    role='user', 
+                    message_content=gpt_ready_msg_dict['content']
+                )
                 self.logger.info(f"'{extracted_name}' in self.bots_chatforme")
                 self.logger.info("Message dictionary added to chatforme_temp_msg_history")
 

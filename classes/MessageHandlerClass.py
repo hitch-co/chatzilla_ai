@@ -1,7 +1,6 @@
 
-from my_modules.config import load_env, load_yaml
 from my_modules import my_logging
-from my_modules.my_logging import log_as_json
+from classes.ConfigManagerClass import ConfigManager
 
 class MessageHandler:
     def __init__(self):
@@ -12,24 +11,9 @@ class MessageHandler:
             mode='w',
             stream_logs=True
             )
-        self.logger.debug('MessageHandler initialized.')
 
-        #run config
-        self.yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname='config')
-        load_env(env_filename='config.env', env_dirname='config')
-
-        #Bots Lists
-        self.bots_automsg = self.yaml_data['twitch-bots']['automsg']
-        self.bots_chatforme = self.yaml_data['twitch-bots']['chatforme']
-        self.bots_ouat = self.yaml_data['twitch-bots']['onceuponatime']        
-        
-        #Known Bots
-        self.known_bots = []
-        for key in self.yaml_data['twitch-bots']:
-            self.known_bots.extend(self.yaml_data['twitch-bots'][key])
-        self.known_bots = list(set(self.known_bots))
-        self.logger.info("these are the self.known_bots")
-        self.logger.info(self.known_bots)
+        # Create instance of configmanager
+        self.config = ConfigManager(yaml_filepath='.\config', yaml_filename='config.yaml')
 
         #Users in message history
         self.users_in_messages_list = []
@@ -113,19 +97,19 @@ class MessageHandler:
                 )
             
             # Append Message history to appropriate bot
-            if name in self.bots_automsg or name in self.bots_chatforme:
+            if name in self.config.bots_automsg or name in self.config.bots_chatforme:
                 self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
                 self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
 
                 self.logger.info("Message dictionary added to automsg_temp_msg_history & chatforme_temp_msg_history")
 
             # Add Message history to GPT thread
-            if name in self.bots_ouat:    
+            if name in self.config.bots_ouat:    
                 self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
                 self.logger.info("Message dictionary added to ouat_temp_msg_history")
                 self.logger.info("Message dictionary added to ouat_temp_msg_history and message added to ouat thread")
 
-            if name not in self.known_bots:
+            if name not in self.config.bots_all:
                 self.nonbot_temp_msg_history.append(gpt_ready_msg_dict)
                 self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
                 self.logger.info("Message dictionary added to nonbot_temp_msg_history & chatforme_temp_msg_history")
@@ -152,13 +136,12 @@ class MessageHandler:
             self.logger.debug(message_metadata)
             self.logger.info("Message dictionary added to ouat_temp_msg_history and message added to ouat thread")
 
-            if extracted_name in self.bots_ouat:
+            if extracted_name in self.config.bots_ouat:
                 self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
-                self.logger.info("Message dictionary added to ouat_temp_msg_history")
-            if extracted_name in self.bots_automsg:
+            if extracted_name in self.config.bots_automsg:
                 self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
-                self.logger.info("Message dictionary added to automsg_temp_msg_history")
-            if extracted_name in self.bots_chatforme:
+                self.logger.info("Message dictionary added to automsg_temp_msg_history and chatforme_temp_msg_history")
+            if extracted_name in self.config.bots_chatforme:
                 self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
                 self.logger.info("Message dictionary added to chatforme_temp_msg_history")
 

@@ -4,6 +4,7 @@
 set prompt_list_ouat=newsarticle_dynamic
 set prompt_list_automsg=videogames
 set prompt_list_chatforme=standard
+set prompt_list_botthot=standard
 
 set include_ouat=yes
 set include_automsg=no

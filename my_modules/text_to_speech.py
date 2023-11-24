@@ -2,16 +2,12 @@ import requests
 import os
 import json
 import pygame
+from elevenlabs import play, set_api_key, generate
 
-from my_modules.config import load_env, load_yaml
+from classes.ConfigManagerClass import ConfigManager
 
-from elevenlabs import play
-
-#config yaml
-yaml_data = load_yaml(yaml_dirname='config', yaml_filename='config.yaml')
-
-#config env
-load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
+# Create instance of configmanager
+config = ConfigManager(yaml_filepath='.\config', yaml_filename='config.yaml')
 
 #eleven labs
 ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')
@@ -48,7 +44,7 @@ def generate_t2s_object(ELEVENLABS_XI_API_KEY = None,
     Returns:
     obj: Audio object of the generated speech.
     """    
-    from elevenlabs import set_api_key, generate
+
 
     #Testing    
     is_testing = False

@@ -1,29 +1,22 @@
 import os
 import requests
+import pandas as pd
 from google.cloud import bigquery
 from google.api_core.exceptions import GoogleAPIError
-import pandas as pd
+from tenacity import retry, stop_after_attempt, wait_fixed
 
-from my_modules.config import load_env, load_yaml
+from classes.ConfigManagerClass import ConfigManager
 from my_modules import my_logging
 from my_modules import utils
 
-from tenacity import retry, stop_after_attempt, wait_fixed
-
 class TwitchChatBQUploader:
     def __init__(self):
-        
-        load_env()
-        self.yaml_data = load_yaml()
+
+        # Create instance of configmanager
+        self.config = ConfigManager(yaml_filepath='.\config', yaml_filename='config.yaml')
 
         #env variables
-        self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
-        self.twitch_bot_moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
-        self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
         self.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
-
-        #also set in twitch_bot.py
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = self.yaml_data['twitch-ouat']['google_service_account_credentials_file']
 
         #logger
         self.logger = my_logging.create_logger(
@@ -33,7 +26,6 @@ class TwitchChatBQUploader:
             mode='w',
             stream_logs=True
             )
-        self.logger.debug('TwitchChatBQUploader Logger initialized.')
 
         #Build the client
         self.bq_client = bigquery.Client()
@@ -43,18 +35,18 @@ class TwitchChatBQUploader:
 
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
     def get_channel_viewers(self,
-                            bearer_token=None) -> object:
+                            bearer_token=None,
+                            channel_viewers_endpoint='https://api.twitch.tv/helix/chat/chatters') -> object:
         self.logger.debug(f'Getting channel viewers with bearer_token')
-        base_url=self.yaml_data['twitch-ouat']['twitch-get-chatters-endpoint']
         params = {
-            'broadcaster_id': self.twitch_broadcaster_author_id,
-            'moderator_id': self.twitch_bot_moderator_id
+            'broadcaster_id': self.config.twitch_broadcaster_author_id,
+            'moderator_id': self.config.twitch_bot_moderator_id
         }
         headers = {
             'Authorization': f'Bearer {bearer_token}',
-            'Client-Id': self.twitch_bot_client_id
+            'Client-Id': self.config.twitch_bot_client_id
         }
-        response = requests.get(base_url, params=params, headers=headers)
+        response = requests.get(channel_viewers_endpoint, params=params, headers=headers)
         self.logger.debug(f'Received response: {response}')
 
         utils.write_json_to_file(

@@ -1,15 +1,12 @@
-from pathlib import Path
 import os
-
 import openai
-from openai import OpenAI
 
-from my_modules.config import load_env, load_yaml
+from classes.ConfigManagerClass import ConfigManager
 from my_modules import my_logging
 
 #TODO: SHould take a client as an argument
 class GPTTextToSpeech:
-    def __init__(self, output_filename='class_default_speech.mp3', output_dirpath=None):
+    def __init__(self, tts_file_name=None, tts_data_folder=None):
         self.logger = my_logging.create_logger(
             debug_level='INFO', 
             logger_name='logger_GPTTextToSpeechClass', 
@@ -17,30 +14,26 @@ class GPTTextToSpeech:
             stream_logs=True
             )
         
-        load_env() # Load environment variables
-        openai.api_key = os.getenv('OPENAI_API_KEY')        
-        
-        self.yaml_data = load_yaml() # Load assistant configuration from a YAML file
-        self.tts_model=self.yaml_data['openai-api']['tts_model']
-        self.tts_voice=self.yaml_data['openai-api']['tts_voice']
-        self.tts_data_folder = self.yaml_data['openai-api']['tts_data_folder']
+        # Create instance of configmanager
+        self.config = ConfigManager(yaml_filepath='.\config', yaml_filename='config.yaml')
+
+        # Initialize OpenAI client
+        self.tts_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))      
 
         ##folder/file details
-        self.output_filename = output_filename
-        self.output_dirpath = output_dirpath if output_dirpath is not None else self.tts_data_folder
-
-        self.tts_client = OpenAI()
+        self.config.tts_file_name = tts_file_name if tts_file_name is not None else self.config.tts_file_name 
+        self.config.tts_data_folder = tts_data_folder if tts_data_folder is not None else self.config.tts_data_folder
 
     def _get_speech_response(self, 
                             text_input:str,
                             voice_name=None
                             ) -> object:
         if voice_name==None:
-            voice_name = self.tts_voice
+            voice_name = self.config.tts_voice
 
-        self.logger.info(f"Starting speech create with params: input={text_input}, model={self.tts_model}, voice={self.tts_voice}")
+        self.logger.info(f"Starting speech create with params: input={text_input}, model={self.config.tts_model}, voice={self.config.tts_voice}")
         response = self.tts_client.audio.speech.create(
-            model=self.tts_model, #low latency
+            model=self.config.tts_model, #low latency
             voice=voice_name,
             input=text_input)
         self.logger.info("Got response:")
@@ -58,16 +51,16 @@ class GPTTextToSpeech:
     def workflow_t2s(self,
                      text_input,
                      voice_name,
-                     output_filename=None,
-                     output_dirpath=None):
-        if output_filename is None:
-            output_filename = self.output_filename
-        if output_dirpath is None:
-            output_dirpath = self.output_dirpath
+                     tts_file_name=None,
+                     tts_data_folder=None):
+        if tts_file_name is None:
+            tts_file_name = self.tts_file_name
+        if tts_data_folder is None:
+            tts_data_folder = self.tts_data_folder
         if voice_name is None:
-            voice_name = self.tts_voice
+            voice_name = self.config.tts_voice
             
-        speech_file_path = os.path.join(os.getcwd(),output_dirpath, output_filename)
+        speech_file_path = os.path.join(os.getcwd(),tts_data_folder, tts_file_name)
         
         response = self._get_speech_response(
             text_input=text_input,
@@ -80,22 +73,4 @@ class GPTTextToSpeech:
             )
 
 if __name__ == "__main__":
-    print(f"The use of __file__ for relative path traversal prevents this module from being run directly \
-          but an exmaple of how to use is provided in {__name__}")
-
-    # # Workflow
-    # from classes import GPTTextToSpeech
-
-    # output_filename = 'speech.mp3'
-    # output_dirpath = 'data/tts'
-    # #speech_file_path = Path(__file__).parent.parent / output_dirname / output_filename
-    # text_input="hello how are you?  My name is nova and I'm watching ehitch's stream"
-
-    # #Create client
-    # tts_client = GPTTextToSpeechClass.GPTTextToSpeech(
-    #     output_filename=output_filename,
-    #     output_dirpath=output_dirpath
-    #     )
-
-    # # #write_speech_to_file:
-    # tts_client.workflow_t2s(text_input=text_input)
+    print(f"The use of __file__ for relative path traversal prevents this module from being run directly but an exmaple of how to use is provided in tests/GPTTextToSpeech_main.py")

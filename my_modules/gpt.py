@@ -4,16 +4,21 @@ import openai
 import tiktoken
 from typing import List
 import re
+import json
 
+from classes.ConfigManagerClass import ConfigManager
 from my_modules import utils
 from my_modules.my_logging import create_logger
-from my_modules.config import load_env, load_yaml
 
 #LOGGING
 stream_logs = False
-yaml_data = load_yaml()
-gpt_model = yaml_data['openai-api']['assistant_model']
-shorten_message_prompt = yaml_data['ouat_prompts']['shorten_response_length_prompt']
+
+# Create instance of configmanager
+config = ConfigManager(yaml_filepath='.\config', yaml_filename='config.yaml')
+
+# init GPT config
+gpt_model = config.gpt_model
+shorten_message_prompt = config.gpt_shorten_message_prompt
 
 logger = create_logger(
     dirname='log',
@@ -24,24 +29,11 @@ logger = create_logger(
     )
 
 def create_gpt_client():
-    client = openai.OpenAI()
-    return client
-
-logger = create_logger(
-    dirname='log',
-    logger_name='logger_gpt',
-    debug_level='DEBUG',
-    mode='a',
-    stream_logs=stream_logs
-    )
-
-def create_gpt_client():
-    client = openai.OpenAI()
+    client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     return client
 
 # call to chat gpt for completion TODO: Could add  limits here?
 def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
-                              OPENAI_API_KEY=None, 
                               max_characters=200,
                               max_attempts=5,
                               model=gpt_model,
@@ -60,7 +52,6 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
     """  
     #Create Client
     client = create_gpt_client()   
-    client.api_key = OPENAI_API_KEY
 
     logger.debug("This is the messages_dict_gpt submitted to GPT ChatCompletion")
     logger.debug(f"The number of tokens included is: {_count_tokens_in_messages(messages=messages_dict_gpt)}")
@@ -222,18 +213,18 @@ def get_models(api_key=None):
     return response.json()
 
 if __name__ == '__main__':
-    yaml_data = load_yaml(yaml_dirname='config')
-    load_env(env_dirname='config')
+    from classes.ConfigManagerClass import ConfigManager
+
+    config = ConfigManager(yaml_filepath='.\config', yaml_filename='config.yaml')
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
-    # #test2 -- Get models
-    # gpt_models = get_models(OPENAI_API_KEY)
-    # print("GPT Models:")
-    # print(json.dumps(gpt_models, indent=4))
+    #test2 -- Get models
+    gpt_models = get_models(OPENAI_API_KEY)
+    print("GPT Models:")
+    print(json.dumps(gpt_models, indent=4))
 
      # test3 -- call to chatgpt chatcompletion
     # openai_gpt_chatcompletion(messages_dict_gpt=[{'role':'user', 'content':'Whats a tall buildings name?'}],
-    #                           OPENAI_API_KEY=os.getenv('OPENAI_API_KEY'), 
     #                           max_characters=250,
     #                           max_attempts=5,
     #                           model=gpt_model,

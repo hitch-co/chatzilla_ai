@@ -144,9 +144,44 @@ class ConfigManager:
         self.formatted_gpt_chatforme_prompts = yaml_config.get('formatted_gpt_chatforme_prompts')
         self.formatted_gpt_botthot_prompts = yaml_config.get('formatted_gpt_botthot_prompts')
 
+        # Prompts 
+        self.ouat_prompt_addtostory_prefix = yaml_config.get('ouat_prompts', {}).get('ouat_prompt_addtostory_prefix')
 
-        # ... similarly for other YAML configurations
+        # USED IN OPENAI GPT ASSISTANTS WORKFLOW
+        ########################################################################
+        # GPT Assistant prompts:
+        self.article_summarizer_assistant_prompt = yaml_config.get('gpt_assistant_prompts', {}).get('article_summarizer')
+        self.storyteller_assistant_prompt = yaml_config.get('gpt_assistant_prompts', {}).get('storyteller')
+        self.ouat_assistant_prompt = yaml_config.get('gpt_assistant_prompts', {}).get('article_summarizer')
+        self.chatforme_assistant_prompt = yaml_config.get('gpt_assistant_prompts', {}).get('chatforme')
+        self.botthot_assistant_prompt = yaml_config.get('gpt_assistant_prompts', {}).get('botthot')
 
-# Example usage
-config_manager = ConfigManager(yaml_filepath='.\config', yaml_filename='config.yaml')
-print(config_manager.bots_ouat)
+        # GPT Thread Prompts
+        self.storyteller_storystarter_prompt = yaml_config.get('gpt_thread_prompts', {}).get('story_starter')
+        self.storyteller_storyprogressor_prompt = yaml_config.get('gpt_thread_prompts', {}).get('story_progressor')
+        self.storyteller_storyfinisher_prompt = yaml_config.get('gpt_thread_prompts', {}).get('story_finisher')
+        self.storyteller_storyender_prompt = yaml_config.get('gpt_thread_prompts', {}).get('story_ender')
+
+        # GPT Writing Style/Theme/Tone Paramaters
+        self.writing_tone = yaml_config.get('ouat-writing-parameters', {}).get('writing_tone', 'no specified writing tone')
+        self.writing_style = yaml_config.get('ouat-writing-parameters', {}).get('writing_style', 'no specified writing tone')
+        self.writing_theme = yaml_config.get('ouat-writing-parameters', {}).get('theme', 'no specified writing tone')
+
+
+        ########################################################################
+
+        # USED IN OPENAI CHAT COMPLETION ENDPOINT
+        ########################################################################
+        # OUAT Progression flow / Config
+        self.ouat_message_recurrence_seconds = yaml_config.get('ouat_message_recurrence_seconds')
+        self.ouat_story_progression_number = yaml_config.get('ouat_story_progression_number')
+        self.ouat_story_max_counter = yaml_config.get('ouat_story_max_counter')
+        self.ouat_wordcount = yaml_config.get('ouat_wordcount')
+        ########################################################################
+
+def main():
+    config_manager = ConfigManager(yaml_filepath='.\config', yaml_filename='config.yaml')
+    print(config_manager.bots_ouat)
+    
+if __name__ == "__main__":
+    main()

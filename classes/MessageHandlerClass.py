@@ -106,6 +106,7 @@ class MessageHandler:
             # Add Message history to GPT thread
             if name in self.config.bots_ouat:    
                 self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
+                self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
                 self.logger.info("Message dictionary added to ouat_temp_msg_history")
                 self.logger.info("Message dictionary added to ouat_temp_msg_history and message added to ouat thread")
 
@@ -138,8 +139,11 @@ class MessageHandler:
 
             if extracted_name in self.config.bots_ouat:
                 self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
+                self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
+                self.logger.info("Message dictionary added to ouat_temp_msg_history and chatforme_temp_msg_history")
             if extracted_name in self.config.bots_automsg:
                 self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
+                self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
                 self.logger.info("Message dictionary added to automsg_temp_msg_history and chatforme_temp_msg_history")
             if extracted_name in self.config.bots_chatforme:
                 self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
@@ -155,7 +159,6 @@ class MessageHandler:
         for msg_history, limit in message_histories:
             self._pop_message_from_message_history(msg_history_list_dict=msg_history, msg_history_limit=limit)
 
-        #log 
         self.logger.debug(f"message_history_raw:")
         self.logger.debug(self.message_history_raw)
         self.logger.debug("This is the gpt_ready_msg_dict")
@@ -163,3 +166,10 @@ class MessageHandler:
 
 if __name__ == '__main__':
     print("loaded MessageHandlerClass.py")
+    message_handler = MessageHandler()
+    message_dict = message_handler._create_gpt_message_dict_from_strings(
+        content="hello i am eric", 
+        role='user',
+        name='eric'
+        )
+    print(message_dict)

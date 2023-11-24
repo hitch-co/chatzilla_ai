@@ -1,6 +1,5 @@
 import json
 import os
-import re
 from datetime import datetime
 
 from my_modules.my_logging import create_logger
@@ -12,11 +11,6 @@ logger = create_logger(
     mode='a',
     stream_logs=False
     )
-
-def show_json(obj):
-    # Assuming obj.model_dump_json() returns a JSON string
-    json_data = json.loads(obj.model_dump_json())
-    return json.dumps(json_data, indent=4)
 
 def format_previous_messages_to_string(message_list):
     # message_list=[

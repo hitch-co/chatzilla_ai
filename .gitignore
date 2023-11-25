@@ -1,6 +1,3 @@
-#workspace
-rainday-gameday-forecasts.code-workspace
-
 #my ignores
 config.env
 env.py
@@ -203,6 +200,5 @@ _prompts/
 _learning/
 _junk/
 data/tts/
-GPTTextToSpeech_main.py
 function_signatures.txt
 twitch-dev-chatforme.code-workspace

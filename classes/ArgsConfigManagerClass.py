@@ -3,6 +3,7 @@ import os
 class ArgsConfigManager:
     _instance = None
 
+    #singleton
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(ArgsConfigManager, cls).__new__(cls)
@@ -10,7 +11,6 @@ class ArgsConfigManager:
         return cls._instance
 
     def initialize_config(self):
-        # Load parameters from argparse here, or directly from the environment variables
         self.include_ouat = os.getenv("include_ouat", "yes")
         self.include_automsg = os.getenv("include_automsg", "no")
         self.include_sound = os.getenv("include_sound", "yes")

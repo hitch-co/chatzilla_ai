@@ -208,5 +208,4 @@ _junk/
 data/tts/
 GPTTextToSpeech_main.py
 function_signatures.txt
-.gitignore
-twitch_bot_start.bat
+twitch-dev-chatforme.code-workspace

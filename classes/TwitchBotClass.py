@@ -5,6 +5,7 @@ from twitchio.ext import commands as twitch_commands
 
 import random
 import os
+import openai
 from datetime import datetime
 
 from my_modules.gpt import openai_gpt_chatcompletion
@@ -22,13 +23,13 @@ from classes import ArticleGeneratorClass
 from classes.CustomExceptions import BotFeatureNotEnabledException
 from classes.MessageHandlerClass import MessageHandler
 from classes.BQUploaderClass import TwitchChatBQUploader
-from classes.PromptHandlerClass import PromptHandler
 from classes.ArgsConfigManagerClass import ArgsConfigManager
 from classes import GPTTextToSpeechClass
 
 class Bot(twitch_commands.Bot):
     loop_sleep_time = 4
 
+    #init/config
     def __init__(self, TWITCH_BOT_ACCESS_TOKEN, yaml_data):
         super().__init__(
             token=TWITCH_BOT_ACCESS_TOKEN,
@@ -39,22 +40,6 @@ class Bot(twitch_commands.Bot):
             #NOTE/QUESTION:what other variables should be set here?
         )
 
-        #Taken from app authentication class()
-        self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
-
-        #create instances of required classes
-        self.message_handler = MessageHandler()
-        self.args_config = ArgsConfigManager()
-        self.twitch_chat_uploader = TwitchChatBQUploader() #TODO should be instantiated with a access token
-
-        #TTS Details
-        self.tts_data_folder = yaml_data['openai-api']['tts_data_folder']
-        self.tts_file_name = yaml_data['openai-api']['tts_file_name']
-        self.tts_client = GPTTextToSpeechClass.GPTTextToSpeech(
-            output_filename=self.tts_file_name,
-            output_dirpath=self.tts_data_folder
-            )
-        
         #setup logger
         self.logger = create_logger(
             dirname='log', 
@@ -65,8 +50,27 @@ class Bot(twitch_commands.Bot):
             encoding='UTF-8'
             )
 
-        #load cofiguration
+        # load args and config
+        self.args_config = ArgsConfigManager()
         self.yaml_data = self.run_configuration()
+        
+        #Taken from app authentication class()
+        self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
+
+        # instance of client, thread, and manager
+        self.gpt_client = openai.OpenAI()
+
+        # instance of message handler and BQ uplaoder classeses
+        self.message_handler = MessageHandler()
+        self.twitch_chat_uploader = TwitchChatBQUploader() #TODO should be instantiated with a access token
+
+        #TTS Details
+        self.tts_data_folder = yaml_data['openai-api']['tts_data_folder']
+        self.tts_file_name = yaml_data['openai-api']['tts_file_name']
+        self.tts_client = GPTTextToSpeechClass.GPTTextToSpeech(
+            output_filename=self.tts_file_name,
+            output_dirpath=self.tts_data_folder
+            )
         
         #Google Service Account Credentials
         google_application_credentials_file = yaml_data['twitch-ouat']['google_service_account_credentials_file']
@@ -77,10 +81,10 @@ class Bot(twitch_commands.Bot):
         self.usertransactions_table_id=self.yaml_data['twitch-ouat']['talkzillaai_usertransactions_table_id']
 
         #Set default loop state
-        self.is_ouat_loop_active = False  # controls if the loop should runZ
+        self.is_ouat_loop_active = False
 
         #counters
-        self.ouat_counter = 0
+        self.ouat_counter = 1
 
     def run_configuration(self) -> dict:
 
@@ -111,6 +115,19 @@ class Bot(twitch_commands.Bot):
         #News Article Feed/Prompts
         self.newsarticle_rss_feed = self.yaml_data['twitch-ouat']['newsarticle_rss_feed']
         self.ouat_news_article_summary_prompt = self.yaml_data['ouat_prompts']['ouat_news_article_summary_prompt'] 
+
+        #GPT Assistant prompts:
+        self.article_summarizer_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
+        self.storyteller_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['storyteller']
+        self.ouat_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
+        self.chatforme_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['chatforme']
+        self.botthot_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['botthot']
+
+        #GPT Thread Prompts
+        self.storyteller_storystarter_prompt = self.yaml_data['gpt_thread_prompts']['story_starter']
+        self.storyteller_storyprogressor_prompt = self.yaml_data['gpt_thread_prompts']['story_progressor']
+        self.storyteller_storyfinisher_prompt = self.yaml_data['gpt_thread_prompts']['story_finisher']
+        self.storyteller_storyender_prompt = self.yaml_data['gpt_thread_prompts']['story_ender']
 
         #OUAT base prompt and start/progress/end story prompts
         self.gpt_ouat_prompt_begin = self.yaml_data['ouat_prompts'][self.args_ouat_prompt_name]
@@ -146,7 +163,7 @@ class Bot(twitch_commands.Bot):
         
         return self.yaml_data 
 
-    #Executes once the bot is ready
+    #twitch built-ins
     async def event_ready(self):
         self.channel = self.get_channel(self.twitch_bot_channel_name)
         print(f'TwitchBot ready | {self.twitch_bot_username} (nick:{self.nick})')
@@ -163,7 +180,6 @@ class Bot(twitch_commands.Bot):
         #start loop
         self.loop.create_task(self.ouat_storyteller())
 
-    #Excecutes everytime a message is received
     async def event_message(self, message):
         self.logger.info("--------- Message received ---------")
         
@@ -175,7 +191,7 @@ class Bot(twitch_commands.Bot):
             table_id=self.userdata_table_id,
             bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
 
-        #Send the data to BQ
+        #Send the data to BQ when queue is full.  Clear queue when done
         if len(self.message_handler.message_history_raw)==5:
             self.logger.debug("channel_viewers_query")
             self.logger.debug(channel_viewers_queue_query)
@@ -204,17 +220,10 @@ class Bot(twitch_commands.Bot):
         if message.author is not None:
             await self.handle_commands(message)
 
-    #controls ouat_storyteller()
-    async def start_ouat_storyteller_msg_loop(self):
-        self.is_ouat_loop_active = True
-        self.run_configuration()
-        if not any([self.args_include_automsg == 'yes', self.args_include_ouat == 'yes']):
-            self.logger.error("Neither automsg or ouat enabled with app argument")
-            raise BotFeatureNotEnabledException("Neither automsg or ouat enabled with app argument")
-
+    #commands - startstory
     @twitch_commands.command(name='startstory')
     async def startstory(self, message, *args):
-        if self.ouat_counter == 0:
+        if self.ouat_counter == 1:
             user_requested_plotline = ' '.join(args)
 
             # Capture writing tone/style/theme and randomly select one item from each list
@@ -227,18 +236,16 @@ class Bot(twitch_commands.Bot):
             theme_values = list(self.yaml_data['ouat-writing-parameters']['theme'].values())
             self.selected_theme = random.choice(theme_values)
 
-            # Fetch random article
+            # Fetch random article and populate text replacement
             self.random_article_content = self.article_generator.fetch_random_article_content(article_char_trunc=300)                    
-            
-            # Populate text replacement
             replacements_dict = {"random_article_content":self.random_article_content,
                                  "user_requested_plotline":user_requested_plotline}
             self.random_article_content = prompt_text_replacement(
                 gpt_prompt_text=self.ouat_news_article_summary_prompt,
                 replacements_dict=replacements_dict
                 )
-            
-            gpt_ready_dict = PromptHandler.create_gpt_message_dict_from_strings(
+
+            gpt_ready_dict = MessageHandler._create_gpt_message_dict_from_strings(
                 self,
                 content = self.random_article_content,
                 role = 'user',
@@ -246,21 +253,17 @@ class Bot(twitch_commands.Bot):
             )
             gpt_ready_list_dict = [gpt_ready_dict]
 
-            self.logger.debug("THIS IS GPT_READ_LIST_DICT:")
-            self.logger.debug(gpt_ready_list_dict)
-
-            self.random_article_content_prompt_summary = openai_gpt_chatcompletion(
+            self.random_article_content_plot_summary = openai_gpt_chatcompletion(
                 messages_dict_gpt=gpt_ready_list_dict, 
                 OPENAI_API_KEY=self.OPENAI_API_KEY, 
                 max_characters=1200
                 )
 
-            self.logger.info("this is the random_article_content_prompt_summary:")
-            self.logger.info(self.random_article_content_prompt_summary)
-
-            await self.start_ouat_storyteller_msg_loop()
+            self.is_ouat_loop_active = True
+            # await self.start_ouat_storyteller_msg_loop()
             
             printc(f"A story was started by {message.author.name} ({message.author.id})", bcolors.WARNING)
+            printc(f"random_article_content_plot_summary: {self.random_article_content_plot_summary}", bcolors.OKBLUE)
             printc(f"Theme: {self.selected_theme}", bcolors.OKBLUE)
             printc(f"Writing Tone: {self.selected_writing_tone}", bcolors.OKBLUE)
             printc(f"Writing Style: {self.selected_writing_style}", bcolors.OKBLUE)
@@ -270,15 +273,17 @@ class Bot(twitch_commands.Bot):
         author=ctx.message.author.name
         prompt_text = ' '.join(args)
         prompt_text_prefix = f"{self.ouat_prompt_addtostory_prefix}:'{prompt_text}'"
-        gpt_ready_msg_dict = PromptHandler.create_gpt_message_dict_from_strings(
+        
+        #workflow1: get gpt_ready_msg_dict and add message to message history        
+        gpt_ready_msg_dict = MessageHandler._create_gpt_message_dict_from_strings(
             self,
             content=prompt_text_prefix,
             role='user',
             name=author
             )
         self.message_handler.ouat_temp_msg_history.append(gpt_ready_msg_dict)
-        
-        printc(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'", bcolors.WARNING)
+
+        self.logger.warning(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'")
 
     @twitch_commands.command(name='extendstory')
     async def extend_story(self, ctx, *args) -> None:
@@ -305,7 +310,7 @@ class Bot(twitch_commands.Bot):
             dirname='log/ouat_story_history'
             )
         self.message_handler.ouat_temp_msg_history.clear()
-        self.ouat_counter = 0
+        self.ouat_counter = 1
 
     async def print_runtime_params(self, args_list=None):        
         self.logger.info("These are the runtime params for this bot:")
@@ -323,42 +328,54 @@ class Bot(twitch_commands.Bot):
                 continue
                       
             else:
-                self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
+                self.logger.warning(f"Starting cycle #{self.ouat_counter} of the OUAT Storyteller") 
+                
+                #TODO: Turn this into a function up to the 'continue'
                 replacements_dict = {"ouat_wordcount":self.ouat_wordcount,
                                      'twitch_bot_username':self.twitch_bot_username,
                                      'num_bot_responses':self.num_bot_responses,
-                                     'rss_feed_article_plot':self.random_article_content_prompt_summary,
+                                     'rss_feed_article_plot':self.random_article_content_plot_summary,
                                      'writing_style': self.selected_writing_style,
                                      'writing_tone': self.selected_writing_tone,
                                      'writing_theme': self.selected_theme,
                                      'param_in_text':'variable_from_scope'} #for future use}
 
-                if self.args_include_ouat == 'yes':
-                    if self.ouat_counter == 0:
-                        gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_startstory,
-                                                                   replacements_dict=replacements_dict)         
+                #storystarter
+                if self.ouat_counter == 1:
+                    gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.storyteller_storystarter_prompt,
+                                                                replacements_dict=replacements_dict)         
+                #storyprogressor
+                if self.ouat_counter <= self.ouat_story_progression_number:
+                    gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.storyteller_storyprogressor_prompt,
+                                                                replacements_dict=replacements_dict)         
 
-                    if self.ouat_counter < self.ouat_story_progression_number:
-                        gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.gpt_ouat_prompt_begin,
-                                                                   replacements_dict=replacements_dict)         
-
-                    elif self.ouat_counter < self.ouat_story_max_counter:
-                        gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_progression,
-                                                                   replacements_dict=replacements_dict) 
-                        
-                    elif self.ouat_counter == self.ouat_story_max_counter:
-                        gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.ouat_prompt_endstory,
-                                                                   replacements_dict=replacements_dict)
-                                                        
-                    elif self.ouat_counter > self.ouat_story_max_counter:
-                        await self.stop_loop()
-                        continue
-                else: 
-                    self.logger.warning("ouat was not enabled with app startup argument")
-
+                #storyfinisher
+                elif self.ouat_counter < self.ouat_story_max_counter:
+                    gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.storyteller_storyfinisher_prompt,
+                                                                replacements_dict=replacements_dict) 
+                #storyender
+                elif self.ouat_counter == self.ouat_story_max_counter:
+                    gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.storyteller_storyender_prompt,
+                                                                replacements_dict=replacements_dict)
+                                                    
+                elif self.ouat_counter > self.ouat_story_max_counter:
+                    await self.stop_loop()
+                    continue
+                
+                self.logger.info("OUAT details:")
                 self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (self.ouat_story_max_counter={self.ouat_story_max_counter})")
-                self.logger.debug(f'OUAT gpt_prompt_final: {gpt_prompt_final}')
+                self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
+                self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
+                
+                messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
+                                                                      prompt_text_role='system',
+                                                                      msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
+                                                                      combine_messages=False)
 
+                gpt_response_text = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
+                                                                OPENAI_API_KEY=self.OPENAI_API_KEY,
+                                                                max_attempts=3)
+                
                 messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
                                                                       prompt_text_role='system',
                                                                       msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
@@ -389,11 +406,11 @@ class Bot(twitch_commands.Bot):
                         dirpath=self.tts_data_folder, 
                         filename=output_filename
                         )                
-
                 self.ouat_counter += 1   
 
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
 
+    #commands - chatforme
     @twitch_commands.command(name='chatforme')
     async def chatforme(self, ctx):
         """
@@ -422,14 +439,13 @@ class Bot(twitch_commands.Bot):
             replacements_dict = replacements_dict
             )
 
+        #TODO: GPTAssistant Manager #######################################################################
         messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text = chatgpt_chatforme_prompt,
                                                               prompt_text_role='system',
                                                               msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
                                                               combine_messages=False)
         
-        # Execute the GPT API call to get the chatbot response
-        gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
-                                                 OPENAI_API_KEY=self.OPENAI_API_KEY)
+        gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
         gpt_response_clean = chatforme_gpt_response_cleanse(gpt_response)
 
         if self.args_include_sound == 'yes':
@@ -447,17 +463,15 @@ class Bot(twitch_commands.Bot):
             play_local_mp3(
                 dirpath=self.tts_data_folder, 
                 filename=output_filename
-                )                 
-          
-        return print(f"Sent gpt_response to chat: {gpt_response_clean}")
+                )
 
+    #commands - botthot
     @twitch_commands.command(name='botthot')
     async def botthot(self, ctx):
         """
         A Twitch bot command that interacts with OpenAI's GPT API.
         It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
         """
-        self.run_configuration()
         request_user_name = ctx.message.author.name
 
         # Extract usernames from previous chat messages stored in chatforme_temp_msg_history.
@@ -479,6 +493,7 @@ class Bot(twitch_commands.Bot):
             replacements_dict=replacements_dict
             )
 
+        #TODO: GPTAssistant Manager #######################################################################
         # # Combine the chat history with the new system prompt to form a list of messages for GPT.
         messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=chatgpt_chatforme_prompt,
                                                               prompt_text_role='system',
@@ -486,9 +501,22 @@ class Bot(twitch_commands.Bot):
                                                               msg_history_list_dict=self.message_handler.chatforme_temp_msg_history,
                                                               combine_messages=False)
         
-        # Execute the GPT API call to get the chatbot response
         gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, OPENAI_API_KEY=self.OPENAI_API_KEY)
         gpt_response_clean = botthot_gpt_response_cleanse(gpt_response)
 
-        await ctx.send(gpt_response_clean)
-        return print(f"Sent gpt_response to chat: {gpt_response_clean}")
+        if self.args_include_sound == 'yes':
+            # Generate speech object and create .mp3:
+            output_filename = 'botthot_'+self.tts_file_name
+            self.tts_client.workflow_t2s(text_input=gpt_response_clean,
+                                            voice_name='onyx',
+                                        output_dirpath=self.tts_data_folder,
+                                        output_filename=output_filename)
+        
+        #send twitch message and generate/play local mp3 if applicable
+        await self.channel.send(gpt_response_clean)
+
+        if self.args_include_sound == 'yes':
+            play_local_mp3(
+                dirpath=self.tts_data_folder, 
+                filename=output_filename
+                )                 

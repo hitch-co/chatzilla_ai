@@ -26,8 +26,11 @@ def play_local_mp3(filename, dirpath, volume=0.6):
     pygame.mixer.music.play()
 
     # Wait for the music to finish playing
-    while pygame.mixer.music.get_busy() == True:
+    while pygame.mixer.music.get_busy():
         continue
+    
+    pygame.mixer.music.stop()
+    pygame.mixer.quit()
 
 def generate_t2s_object(ELEVENLABS_XI_API_KEY = None,
                        voice_id = None,

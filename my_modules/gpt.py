@@ -1,18 +1,13 @@
-from classes.ArticleGeneratorClass import ArticleGenerator
-from classes.ConsoleColoursClass import bcolors, printc
-from my_modules import utils
-from my_modules.my_logging import create_logger
-
 import os
-from my_modules.config import load_env, load_yaml
-import random
 import requests
 import openai
 import tiktoken
 from typing import List
-
 import re
-import json
+
+from my_modules import utils
+from my_modules.my_logging import create_logger
+from my_modules.config import load_env, load_yaml
 
 #LOGGING
 stream_logs = False
@@ -20,10 +15,34 @@ yaml_data = load_yaml()
 gpt_model = yaml_data['openai-api']['assistant_model']
 shorten_message_prompt = yaml_data['ouat_prompts']['shorten_response_length_prompt']
 
+logger = create_logger(
+    dirname='log',
+    logger_name='logger_gpt',
+    debug_level='DEBUG',
+    mode='a',
+    stream_logs=stream_logs
+    )
+
+def create_gpt_client():
+    client = openai.OpenAI()
+    return client
+
+logger = create_logger(
+    dirname='log',
+    logger_name='logger_gpt',
+    debug_level='DEBUG',
+    mode='a',
+    stream_logs=stream_logs
+    )
+
+def create_gpt_client():
+    client = openai.OpenAI()
+    return client
+
 # call to chat gpt for completion TODO: Could add  limits here?
 def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
                               OPENAI_API_KEY=None, 
-                              max_characters=250,
+                              max_characters=200,
                               max_attempts=5,
                               model=gpt_model,
                               frequency_penalty=1.1,
@@ -43,24 +62,25 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
     client = create_gpt_client()   
     client.api_key = OPENAI_API_KEY
 
-    logger_gptchatcompletion = create_logger(
-        dirname='log',
-        logger_name='logger_openai_gpt_chatcompletion',
-        mode='a',
-        stream_logs=stream_logs
-        )
-    logger_gptchatcompletion.info(f"Starting openai_gpt_chatcompletion")
+    logger.debug("This is the messages_dict_gpt submitted to GPT ChatCompletion")
+    logger.debug(f"The number of tokens included is: {_count_tokens_in_messages(messages=messages_dict_gpt)}")
+    logger.debug(messages_dict_gpt)
 
     #Error checking for token length, etc.
     counter=0
-    while count_tokens_in_messages(messages=messages_dict_gpt) > 2000:
-        token_count = count_tokens_in_messages(messages=messages_dict_gpt)
-        logger_gptchatcompletion.warning(f"messages_dict_gpt contained too many tokens {(token_count)}, .pop() first dict")
+    while _count_tokens_in_messages(messages=messages_dict_gpt) > 2000:
+        if counter > 3:
+            error_message = f"Too many tokens {token_count} even after 3 attempts to reduce count. Raising exception."
+            logger.error(error_message)
+            raise ValueError(error_message)
+        logger.debug("Entered _count_tokens_in_messages() > ____")
+        token_count = _count_tokens_in_messages(messages=messages_dict_gpt)
+        logger.warning(f"The messages_dict_gpt contained too many tokens {(token_count)}, .pop(0) first dict")
         messages_dict_gpt.pop(0)
         counter+=1
     
-    logger_gptchatcompletion.info(f"messages_dict_gpt submitted to GPT ChatCompletion (tokens: {count_tokens_in_messages(messages=messages_dict_gpt)})")
-    logger_gptchatcompletion.debug(messages_dict_gpt)
+    logger.info(f"messages_dict_gpt submitted to GPT ChatCompletion (tokens: {_count_tokens_in_messages(messages=messages_dict_gpt)})")
+    logger.debug(messages_dict_gpt)
 
     #Call to OpenAI #TODO: This loop is wonky.  Should probably divert to a 'while' statement
     for attempt in range(max_attempts):
@@ -73,20 +93,20 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
                 temperature=temperature
             )
         except Exception as e:
-            logger_gptchatcompletion.error(f"Exception occurred during API call: {e}: Attempt {attempt + 1} of {max_attempts} failed.")
+            logger.error(f"Exception occurred during API call: {e}: Attempt {attempt + 1} of {max_attempts} failed.")
             continue
 
         gpt_response_text = generated_response.choices[0].message.content
         gpt_response_text_len = len(gpt_response_text)
   
-        logger_gptchatcompletion.info(f"generated_response type: {type(generated_response)}, length: {gpt_response_text_len}:")
+        logger.info(f"generated_response type: {type(generated_response)}, length: {gpt_response_text_len}:")
 
         if gpt_response_text_len < max_characters:
-            logger_gptchatcompletion.info(f"gpt_response_text: {gpt_response_text}")
+            logger.info(f'OK: The generated message was <{max_characters} characters')
             break  
 
         else: # Did not get a msg < n chars, try again.
-            logger_gptchatcompletion.warning(f'\gpt_response_text_len: >{max_characters} characters, retrying call to openai_gpt_chatcompletion')
+            logger.warning(f'\gpt_response_text_len: >{max_characters} characters, retrying call to openai_gpt_chatcompletion')
             messages_dict_gpt_updated = [{'role':'user', 'content':f"{shorten_message_prompt}: '{gpt_response_text}'"}]
             generated_response = client.chat.completions.create(
                 model=model,
@@ -99,31 +119,21 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
             gpt_response_text_len = len(gpt_response_text)
 
             if gpt_response_text_len > max_characters:
-                logger_gptchatcompletion.warning(f'gpt_response_text length was {gpt_response_text_len} characters (max: {max_characters}), trying again...')
+                logger.warning(f'gpt_response_text length was {gpt_response_text_len} characters (max: {max_characters}), trying again...')
             elif gpt_response_text_len < max_characters:
-                logger_gptchatcompletion.info(f"OK on attempt --{attempt}-- gpt_response_text: {gpt_response_text}")
+                logger.info(f"OK on attempt --{attempt}-- gpt_response_text: {gpt_response_text}")
                 break
     else:
         message = "Maxium GPT call retries exceeded"
-        logger_gptchatcompletion.error(message)        
+        logger.error(message)        
         raise Exception(message)
 
     return gpt_response_text
 
-def create_gpt_client():
-    client = openai.OpenAI()
-    return client
-
 def prompt_text_replacement(gpt_prompt_text,
                             replacements_dict):
-    logger_prompt_text_replacement = create_logger(
-        dirname='log',
-        logger_name='logger_prompt_text_replacement',
-        mode='a',
-        stream_logs=stream_logs
-        )
     prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
-    logger_prompt_text_replacement.info(f"prompt_text_replaced: {prompt_text_replaced}")
+    logger.debug(f"prompt_text_replaced: {prompt_text_replaced}")
     return prompt_text_replaced
 
 def ouat_gpt_response_cleanse(gpt_response: str) -> str:
@@ -143,27 +153,17 @@ def combine_msghistory_and_prompttext(prompt_text,
                                       prompt_text_name='unknown',
                                       msg_history_list_dict=None,
                                       combine_messages=False) -> [dict]:
-    logger_msghistory_and_prompt = create_logger(
-        dirname='log',
-        logger_name='logger_msghistory_and_prompt',
-        debug_level='DEBUG',
-        mode='a',
-        stream_logs=stream_logs
-        )
-
-    #deal with prompt text
     if prompt_text_role == 'system':
         prompt_dict = {'role': prompt_text_role, 'content': f'{prompt_text}'}
     if prompt_text_role in ['user', 'assistant']:
         prompt_dict = {'role': prompt_text_role, 'content': f'<<<{prompt_text_name}>>>: {prompt_text}'}
-
     if not msg_history_list_dict:
         msg_history_list_dict = [prompt_dict]
 
     # Check if msg_history_list_dict is the correct data type
     if (msg_history_list_dict is not None and not isinstance(msg_history_list_dict, list)) or \
     (msg_history_list_dict and not all(isinstance(item, dict) for item in msg_history_list_dict)):
-        logger_msghistory_and_prompt.debug("msg_history_list_dict is not a list of dictionaries or None")
+        logger.debug("msg_history_list_dict is not a list of dictionaries or None")
         raise ValueError("msg_history_list_dict should be a list of dictionaries or None")
     
     else:
@@ -175,10 +175,10 @@ def combine_msghistory_and_prompttext(prompt_text,
             }]            
             reformatted_msg_history_list_dict.append(prompt_dict)
             msg_history_list_dict=reformatted_msg_history_list_dict
-            logger_msghistory_and_prompt.debug(msg_history_list_dict)
+            logger.debug(msg_history_list_dict)
         else:
             msg_history_list_dict.append(prompt_dict) 
-            logger_msghistory_and_prompt.debug(msg_history_list_dict)
+            logger.debug(msg_history_list_dict)
 
         utils.write_json_to_file(
             data=msg_history_list_dict, 
@@ -193,7 +193,7 @@ def _count_tokens(text:str, model="gpt-3.5-turbo") -> int:
     tokens_in_text = len(encoding.encode(text))
     return tokens_in_text
 
-def count_tokens_in_messages(messages: List[dict]) -> int:
+def _count_tokens_in_messages(messages: List[dict]) -> int:
     total_tokens = 0
     for message in messages:
         role = message['role']
@@ -231,7 +231,7 @@ if __name__ == '__main__':
     # print("GPT Models:")
     # print(json.dumps(gpt_models, indent=4))
 
-    #test3 -- call to chatgpt chatcompletion
+     # test3 -- call to chatgpt chatcompletion
     # openai_gpt_chatcompletion(messages_dict_gpt=[{'role':'user', 'content':'Whats a tall buildings name?'}],
     #                           OPENAI_API_KEY=os.getenv('OPENAI_API_KEY'), 
     #                           max_characters=250,

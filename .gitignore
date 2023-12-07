@@ -1,3 +1,6 @@
+#GIT IGNORE IS A BIT SKETCHY...  try using python.gitignore 
+# https://github.com/github/gitignore/blob/main/Python.gitignore
+
 #workspace
 rainday-gameday-forecasts.code-workspace
 

@@ -11,3 +11,4 @@ Requests==2.31.0
 tenacity==8.2.3
 tiktoken==0.5.2
 twitchio==2.8.2
+google-cloud-bigquery==3.13.0

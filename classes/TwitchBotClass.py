@@ -223,8 +223,11 @@ class Bot(twitch_commands.Bot):
     #commands - startstory
     @twitch_commands.command(name='startstory')
     async def startstory(self, message, *args):
+        self.message_handler.ouat_temp_msg_history.clear()
+
         if self.ouat_counter == 1:
             user_requested_plotline = ' '.join(args)
+            #self.message_handler.add_to_appropriate_message_history(message = message)
 
             # Capture writing tone/style/theme and randomly select one item from each list
             writing_tone_values = list(self.yaml_data['ouat-writing-parameters']['writing_tone'].values())

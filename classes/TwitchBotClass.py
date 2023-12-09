@@ -95,6 +95,7 @@ class Bot(twitch_commands.Bot):
         #Twitch Bot Details
         self.twitch_bot_channel_name = self.yaml_data['twitch-app']['twitch_bot_channel_name']
         self.twitch_bot_username = self.yaml_data['twitch-app']['twitch_bot_username']
+        self.twitch_bot_display_name = self.yaml_data['twitch-app']['twitch_bot_display_name']
 
         #Eleven Labs / OpenAI
         self.ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')
@@ -115,6 +116,10 @@ class Bot(twitch_commands.Bot):
         #News Article Feed/Prompts
         self.newsarticle_rss_feed = self.yaml_data['twitch-ouat']['newsarticle_rss_feed']
         self.ouat_news_article_summary_prompt = self.yaml_data['ouat_prompts']['ouat_news_article_summary_prompt'] 
+
+        #GPT Hello World Prompts:
+        self.hello_assistant_prompt = self.yaml_data['formatted_gpt_helloworld_prompt']
+        self.helloworld_message_wordcount = self.yaml_data['helloworld_message_wordcount']
 
         #GPT Assistant prompts:
         self.article_summarizer_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
@@ -177,9 +182,34 @@ class Bot(twitch_commands.Bot):
             ]
         await self.print_runtime_params(args_list=args_list)
 
-        #start loop
+        # Say hello to the chat
+        replacements_dict = {"helloworld_message_wordcount":self.helloworld_message_wordcount,
+                                'twitch_bot_display_name':self.twitch_bot_display_name,
+                                'twitch_bot_channel_name':self.twitch_bot_channel_name,
+                                'param_in_text':'variable_from_scope'} #for future use}
+        gpt_prompt_final = prompt_text_replacement(
+            gpt_prompt_text=self.hello_assistant_prompt,
+            replacements_dict=replacements_dict
+            ) 
+        messages_dict_gpt = combine_msghistory_and_prompttext(
+            prompt_text=gpt_prompt_final,
+            prompt_text_role='system',
+            msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
+            combine_messages=False
+            )
+        gpt_response_text = openai_gpt_chatcompletion(
+            messages_dict_gpt=messages_dict_gpt, 
+            OPENAI_API_KEY=self.OPENAI_API_KEY,
+            max_attempts=3
+            )
+        gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
+
+        #start OUAT loop
         self.loop.create_task(self.ouat_storyteller())
 
+        #Send hello message
+        await self.channel.send(gpt_response_clean)
+        
     async def event_message(self, message):
         self.logger.info("--------- Message received ---------")
         
@@ -367,14 +397,14 @@ class Bot(twitch_commands.Bot):
                 self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
                 self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
                 
-                messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
-                                                                      prompt_text_role='system',
-                                                                      msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
-                                                                      combine_messages=False)
+                # messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
+                #                                                       prompt_text_role='system',
+                #                                                       msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
+                #                                                       combine_messages=False)
 
-                gpt_response_text = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
-                                                                OPENAI_API_KEY=self.OPENAI_API_KEY,
-                                                                max_attempts=3)
+                # gpt_response_text = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
+                #                                                 OPENAI_API_KEY=self.OPENAI_API_KEY,
+                #                                                 max_attempts=3)
                 
                 messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
                                                                       prompt_text_role='system',

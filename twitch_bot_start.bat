@@ -10,14 +10,14 @@ set prompt_list_chatforme=standard
 
 set include_ouat=yes
 set include_automsg=no
-set include_sound=no
+set include_sound=yes
 set input_port_number=3000
 
-:: user to input
-set /p include_ouat=Would you like to include the STORYTELLER? (default:"%include_ouat%")?
-set /p include_automsg=Would you like to run AUTOMSG? (default:"%include_automsg%")?
-set /p include_sound=Should the bot run with AUDIO? (default:"%include_sound%")?:
-set /p input_port_number=What PORT NUMBER would you like to run the app on? (default:"%input_port_number%"):
+:: :: user to input
+:: set /p include_ouat=Would you like to include the STORYTELLER? (default:"%include_ouat%")?
+:: set /p include_automsg=Would you like to run AUTOMSG? (default:"%include_automsg%")?
+:: set /p include_sound=Should the bot run with AUDIO? (default:"%include_sound%")?:
+:: set /p input_port_number=What PORT NUMBER would you like to run the app on? (default:"%input_port_number%"):
 
 :: Run Python command
 python ".\twitch_bot.py"

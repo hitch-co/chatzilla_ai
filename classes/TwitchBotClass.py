@@ -104,8 +104,8 @@ class Bot(twitch_commands.Bot):
 
         #runtime arguments
         self.args_include_sound = str.lower(self.args_config.include_sound)
-        self.args_include_automsg = str.lower(self.args_config.include_automsg)
-        self.args_automsg_prompt_list_name = str.lower(self.args_config.prompt_list_automsg)
+        # self.args_include_automsg = str.lower(self.args_config.include_automsg)
+        # self.args_automsg_prompt_list_name = str.lower(self.args_config.prompt_list_automsg)
 
         #TODO self.args_include_chatforme = str.lower(args.include_chatforme)
         self.args_chatforme_prompt_name = str.lower(self.args_config.prompt_list_chatforme)
@@ -151,9 +151,9 @@ class Bot(twitch_commands.Bot):
         self.num_bot_responses = self.yaml_data['num_bot_responses']
         
         #AUTOMSG
-        self.automsg_prompt_lists = self.yaml_data['automsg_prompt_lists']
-        self.automsg_prompt_list = self.automsg_prompt_lists[self.args_automsg_prompt_list_name]
-        self.automsg_prompt_prefix = self.yaml_data['automsg_prompt_prefix']
+        #self.automsg_prompt_lists = self.yaml_data['automsg_prompt_lists']
+        # self.automsg_prompt_list = self.automsg_prompt_lists[self.args_automsg_prompt_list_name]
+        #self.automsg_prompt_prefix = self.yaml_data['automsg_prompt_prefix']
 
         #GPT Prompt
         self.gpt_prompt = ''  
@@ -173,8 +173,8 @@ class Bot(twitch_commands.Bot):
         self.channel = self.get_channel(self.twitch_bot_channel_name)
         print(f'TwitchBot ready | {self.twitch_bot_username} (nick:{self.nick})')
         args_list = [
-            "args_include_automsg",
-            "args_automsg_prompt_list_name",
+            # "args_include_automsg",
+            # "args_automsg_prompt_list_name",
             "args_include_ouat",
             "args_ouat_prompt_name",
             "args_chatforme_prompt_name",
@@ -294,8 +294,9 @@ class Bot(twitch_commands.Bot):
 
             self.is_ouat_loop_active = True
             # await self.start_ouat_storyteller_msg_loop()
-            
+
             printc(f"A story was started by {message.author.name} ({message.author.id})", bcolors.WARNING)
+            printc(f"random_article_content including user plotline: {self.random_article_content}", bcolors.OKBLUE)
             printc(f"random_article_content_plot_summary: {self.random_article_content_plot_summary}", bcolors.OKBLUE)
             printc(f"Theme: {self.selected_theme}", bcolors.OKBLUE)
             printc(f"Writing Tone: {self.selected_writing_tone}", bcolors.OKBLUE)
@@ -399,16 +400,7 @@ class Bot(twitch_commands.Bot):
                 self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (self.ouat_story_max_counter={self.ouat_story_max_counter})")
                 self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
                 self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
-                
-                # messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
-                #                                                       prompt_text_role='system',
-                #                                                       msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
-                #                                                       combine_messages=False)
 
-                # gpt_response_text = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
-                #                                                 OPENAI_API_KEY=self.OPENAI_API_KEY,
-                #                                                 max_attempts=3)
-                
                 messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
                                                                       prompt_text_role='system',
                                                                       msg_history_list_dict=self.message_handler.ouat_temp_msg_history,

@@ -209,3 +209,4 @@ data/tts/
 GPTTextToSpeech_main.py
 function_signatures.txt
 twitch-dev-chatforme.code-workspace
+config/disallowed_terms_backup.json

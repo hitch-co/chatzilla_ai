@@ -1,25 +1,14 @@
 {
     "disallowed_terms": [
       "terrorism",
-      "bombing",
-      "assassination",
       "hatecrime",
       "massacre",
-      "kidnapping",
       "extremism",
-      "suicide",
-      "coup",
-      "militant",
       "homicide",
       "narcotics",
-      "hostage",
       "riot",
       "warcrime",
       "ukraine",
-      "trump",
-      "death",
-      "the donald",
-      "war",
       "hamas",
       "gaza"
     ]

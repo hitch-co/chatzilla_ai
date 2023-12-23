@@ -1,14 +1,9 @@
 {
     "disallowed_terms": [
       "terrorism",
-      "hatecrime",
-      "massacre",
-      "extremism",
-      "homicide",
-      "narcotics",
-      "riot",
-      "warcrime",
-      "ukraine",
+      "bombing",
+      "assassination",
+      "war",
       "hamas",
       "gaza"
     ]

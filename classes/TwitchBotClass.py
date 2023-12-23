@@ -83,15 +83,17 @@ class Bot(twitch_commands.Bot):
 
         #Set default loop state
         self.is_ouat_loop_active = False
+        self.is_vibecheck_loop_active = False
 
         #counters
         self.ouat_counter = 1
-        self.interactions_counter = 1
+        self.vibechecker_interactions_counter = 0
         
         #vibecheck params
-        self.vibecheck_max_interaction_count = self.yaml_data['vibecheck_max_interaction_count']
+        self.vibechecker_max_interaction_count = self.yaml_data['vibechecker_max_interaction_count']
         self.formatted_gpt_vibecheck_prompt = self.yaml_data['formatted_gpt_vibecheck_prompt']
         self.formatted_gpt_viberesult_prompt = self.yaml_data['formatted_gpt_viberesult_prompt']
+        self.vibecheck_max_interactions = self.yaml_data['vibechecker_max_interaction_count']
 
     def run_configuration(self) -> dict:
 
@@ -217,6 +219,7 @@ class Bot(twitch_commands.Bot):
 
         #start OUAT loop
         self.loop.create_task(self.ouat_storyteller())
+        self.loop.create_task(self.vibechecker_question_session())
 
     async def event_message(self, message):
         self.logger.info("--------- Message received ---------")
@@ -255,101 +258,40 @@ class Bot(twitch_commands.Bot):
         if message.author is not None:
             await self.handle_commands(message)
 
-
-
     #commands - vc - starts a convo with a potential bot.
     @twitch_commands.command(name='vc')
     async def vc(self, message, *args):
-        max_interactions = self.vibecheck_max_interaction_count
+        self.is_vibecheck_loop_active = True
 
+        #TODO: DO some more conditional checking to see if the 
+        # vibechecker_question_session() should be started or not
         try:
             if self.message_handler.vc_temp_msg_history is None:
                 self.message_handler.vc_temp_msg_history = []
         except NameError:
             self.message_handler.vc_temp_msg_history = []
-
+       
         # Extract the important players in the convo, namely the bot/checker/checkee 
-        most_recent_message = self.message_handler.vc_temp_msg_history[0]['content']
+        most_recent_message = self.message_handler.vc_temp_msg_history[1]['content']
         name_start_pos = most_recent_message.find('<<<') + 3
         name_end_pos = most_recent_message.find('>>>', name_start_pos)
-        vibecheckee_username = most_recent_message[name_start_pos:name_end_pos]
-        vibechecker_username = message.author.name
-        bot_username = self.twitch_bot_username
-        important_players = [vibecheckee_username, vibechecker_username, bot_username]
         
-        # Filter the list for items containing the name pattern of any important player
-        self.message_handler.vc_temp_msg_history = [
-            item for item in self.message_handler.vc_temp_msg_history 
-            if any(f'<<<{player_name}>>>' in item['content'] for player_name in important_players)
-        ]
-        
-        #Query openai
-        self.logger.info(f"------------------------------------------------------")
-        self.logger.info(f"------------------------------------------------------")
-        self.logger.info(f"------------------------------------------------------")
-        self.logger.info(f"Most recent name: {vibecheckee_username}")
-        self.logger.info(f"vibechecker_username: {vibechecker_username}")
-        self.logger.debug(f"self.message_handler.vc_temp_msg_history: {self.message_handler.vc_temp_msg_history}")
-        self.logger.info(f"self.formatted_gpt_vibecheck_prompt: {self.formatted_gpt_vibecheck_prompt}")
-
-        if self.interactions_counter <= max_interactions:
-
-            replacements_dict = {
-                "vibecheckee_username":vibecheckee_username,
-                "vibechecker_username":vibechecker_username,
-                "vibecheck_message_wordcount":self.vibecheck_message_wordcount
-            }
-            chatgpt_chatforme_prompt = prompt_text_replacement(
-                gpt_prompt_text=self.formatted_gpt_vibecheck_prompt,
-                replacements_dict = replacements_dict
-                )
-            self.logger.info(f"------------------------------------------------------")
-            self.logger.info(f"------------------------------------------------------")
-            self.logger.info(f"------------------------------------------------------")
-            self.logger.info(f"chatgpt_chatforme_prompt: {chatgpt_chatforme_prompt}")
+        self.vibecheckee_username = most_recent_message[name_start_pos:name_end_pos]
+        self.vibechecker_username = message.author.name
+        self.vibecheckbot_username = self.twitch_bot_username
+        self.vibechecker_players = [self.vibecheckee_username, self.vibechecker_username, self.vibecheckbot_username]
 
 
-            #Create message_dict from prompt and add the prompt to the message history
-            vibecheckee_message_dict = combine_msghistory_and_prompttext(
-                prompt_text=chatgpt_chatforme_prompt,
-                prompt_text_role='user',
-                prompt_text_name=vibechecker_username,
-                msg_history_list_dict=self.message_handler.vc_temp_msg_history
-                )
-            self.logger.debug(f"------------------------------------------------------")
-            self.logger.debug(f"------------------------------------------------------")
-            self.logger.debug(f"------------------------------------------------------")
-            self.logger.debug(f"vibecheckee_message_dict: {vibecheckee_message_dict}")
-            
-            gpt_response = openai_gpt_chatcompletion(
-                messages_dict_gpt=vibecheckee_message_dict, 
-                OPENAI_API_KEY=self.OPENAI_API_KEY
-                )
 
-        # elif self.interactions_counter > max_interactions:
-            # #Create message_dict from prompt and add the prompt to the message history
-            # vibecheckee_result_message_dict = combine_msghistory_and_prompttext(
-            #     prompt_text=self.formatted_gpt_viberesult_prompt,
-            #     prompt_text_role='user',
-            #     prompt_text_name=vibechecker_username,
-            #     msg_history_list_dict=self.message_handler.vc_temp_msg_history
-            #     )
-            
-            # gpt_response = openai_gpt_chatcompletion(
-            #     messages_dict_gpt=vibecheckee_result_message_dict, 
-            #     OPENAI_API_KEY=self.OPENAI_API_KEY
-            #     )
-        
-        await self.channel.send(gpt_response)
 
     #commands - startstory
     @twitch_commands.command(name='startstory')
     async def startstory(self, message, *args):
+        self.ouat_counter += 1
         self.message_handler.ouat_temp_msg_history.clear()
 
         if self.ouat_counter == 1:
             user_requested_plotline = ' '.join(args)
-            #self.message_handler.add_to_appropriate_message_history(message = message)
 
             # Capture writing tone/style/theme and randomly select one item from each list
             writing_tone_values = list(self.yaml_data['ouat-writing-parameters']['writing_tone'].values())
@@ -416,14 +358,17 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='stopstory')
     async def stop_story(self, ctx):
         await self.channel.send("to be continued...")
-        await self.stop_loop()
+        await self.stop_ouat_loop()
 
     @twitch_commands.command(name='endstory')
     async def endstory(self, ctx):
         self.ouat_counter = self.ouat_story_max_counter
         printc(f"Story is being forced to end by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}", bcolors.WARNING)
 
-    async def stop_loop(self) -> None:
+    async def stop_vibechecker_loop(self) -> None:
+        self.is_vibecheck_loop_active = False
+
+    async def stop_ouat_loop(self) -> None:
         self.is_ouat_loop_active = False
         
         utils.write_msg_history_to_file(
@@ -433,12 +378,150 @@ class Bot(twitch_commands.Bot):
             dirname='log/ouat_story_history'
             )
         self.message_handler.ouat_temp_msg_history.clear()
-        self.ouat_counter = 1
+        self.ouat_counter = 0
 
     async def print_runtime_params(self, args_list=None):        
         self.logger.info("These are the runtime params for this bot:")
         for arg in args_list:
             self.logger.info(f"{arg}: {getattr(self, arg)}")
+
+    async def vibechecker_question_session(self):
+        while True:
+            if self.is_vibecheck_loop_active is False:
+                await asyncio.sleep(self.loop_sleep_time)
+                continue
+
+            else:
+                self.vibechecker_interactions_counter += 1
+                self.logger.warning(f"Starting cycle #{self.vibechecker_interactions_counter} of the Vibechecker")
+
+                # Filter the list for items containing the name pattern of any important player
+                self.message_handler.vc_temp_msg_history = [
+                    item for item in self.message_handler.vc_temp_msg_history 
+                    if any(f'<<<{player_name}>>>' in item['content'] for player_name in self.vibechecker_players)
+                ]
+                
+                #Query openai
+                self.logger.info(f"------------------------------------------------------")
+                self.logger.info(f"------------------------------------------------------")
+                self.logger.info(f"------------------------------------------------------")
+                self.logger.info(f"vibecheckee_username: {self.vibecheckee_username}")
+                self.logger.info(f"vibechecker_username: {self.vibechecker_username}")
+                self.logger.debug(f"self.message_handler.vc_temp_msg_history: {self.message_handler.vc_temp_msg_history}")
+
+                replacements_dict = {
+                        "vibecheckee_username":self.vibecheckee_username,
+                        "vibechecker_username":self.vibechecker_username,
+                        "vibecheck_message_wordcount":self.vibecheck_message_wordcount
+                    }
+                
+                ##If < target number, generate prompt 1
+                if self.vibechecker_interactions_counter < self.vibechecker_max_interaction_count:
+                    chatgpt_chatforme_prompt = self.formatted_gpt_vibecheck_prompt
+
+                    chatgpt_chatforme_prompt = prompt_text_replacement(
+                        gpt_prompt_text=self.formatted_gpt_vibecheck_prompt,
+                        replacements_dict = replacements_dict
+                        )
+                    self.logger.info(f"------------------------------------------------------")
+                    self.logger.info(f"------------------------------------------------------")
+                    self.logger.info(f"------------------------------------------------------")
+                    self.logger.info(f"chatgpt_chatforme_prompt: {chatgpt_chatforme_prompt}")
+
+                    #Create message_dict from prompt and add the prompt to the message history
+                    vibecheckee_message_dict = combine_msghistory_and_prompttext(
+                        prompt_text=chatgpt_chatforme_prompt,
+                        prompt_text_role='user',
+                        prompt_text_name=self.vibechecker_username,
+                        msg_history_list_dict=self.message_handler.vc_temp_msg_history
+                        )
+                    self.logger.debug(f"------------------------------------------------------")
+                    self.logger.debug(f"------------------------------------------------------")
+                    self.logger.debug(f"------------------------------------------------------")
+                    self.logger.debug(f"vibecheckee_message_dict: {vibecheckee_message_dict}")
+                    
+                    gpt_response = openai_gpt_chatcompletion(
+                        messages_dict_gpt=vibecheckee_message_dict, 
+                        OPENAI_API_KEY=self.OPENAI_API_KEY
+                        )  
+                    self.logger.debug(f"------------------------------------------------------")
+                    self.logger.debug(f"------------------------------------------------------")
+                    self.logger.debug(f"------------------------------------------------------")
+                    self.logger.debug(f"gpt_response: {gpt_response}")
+
+                    await self.channel.send(gpt_response)
+                
+                # ##If = target number, gneerate prompt 2
+                # elif self.vibechecker_interactions_counter == self.vibechecker_max_interaction_count:
+                #     chatgpt_chatforme_prompt = self.formatted_gpt_viberesult_prompt
+                #     await self.channel.send(gpt_response)
+
+                ##If > target number, stop loop
+                elif self.vibechecker_interactions_counter > self.vibechecker_max_interaction_count:
+                    self.stop_vibechecker_loop()
+                    await self.channel.send(gpt_response)
+                    continue
+
+
+            
+            #await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
+
+                # self.logger.info(f"self.formatted_gpt_vibecheck_prompt: {self.formatted_gpt_vibecheck_prompt}")
+
+                # if self.vibechecker_interactions_counter < self.vibechecker_max_interaction_count:
+
+                #     replacements_dict = {
+                #         "vibecheckee_username":vibecheckee_username,
+                #         "vibechecker_username":vibechecker_username,
+                #         "vibecheck_message_wordcount":self.vibecheck_message_wordcount
+                #     }
+                #     chatgpt_chatforme_prompt = prompt_text_replacement(
+                #         gpt_prompt_text=self.formatted_gpt_vibecheck_prompt,
+                #         replacements_dict = replacements_dict
+                #         )
+                #     self.logger.info(f"------------------------------------------------------")
+                #     self.logger.info(f"------------------------------------------------------")
+                #     self.logger.info(f"------------------------------------------------------")
+                #     self.logger.info(f"chatgpt_chatforme_prompt: {chatgpt_chatforme_prompt}")
+
+
+                #     #Create message_dict from prompt and add the prompt to the message history
+                #     vibecheckee_message_dict = combine_msghistory_and_prompttext(
+                #         prompt_text=chatgpt_chatforme_prompt,
+                #         prompt_text_role='user',
+                #         prompt_text_name=vibechecker_username,
+                #         msg_history_list_dict=self.message_handler.vc_temp_msg_history
+                #         )
+                #     self.logger.debug(f"------------------------------------------------------")
+                #     self.logger.debug(f"------------------------------------------------------")
+                #     self.logger.debug(f"------------------------------------------------------")
+                #     self.logger.debug(f"vibecheckee_message_dict: {vibecheckee_message_dict}")
+                    
+                #     gpt_response = openai_gpt_chatcompletion(
+                #         messages_dict_gpt=vibecheckee_message_dict, 
+                #         OPENAI_API_KEY=self.OPENAI_API_KEY
+                #         )
+
+                # # elif self.vibechecker_interactions_counter > self.vibechecker_max_interaction_count:
+                #     # #Create message_dict from prompt and add the prompt to the message history
+                #     # vibecheckee_result_message_dict = combine_msghistory_and_prompttext(
+                #     #     prompt_text=self.formatted_gpt_viberesult_prompt,
+                #     #     prompt_text_role='user',
+                #     #     prompt_text_name=vibechecker_username,
+                #     #     msg_history_list_dict=self.message_handler.vc_temp_msg_history
+                #     #     )
+                    
+                #     # gpt_response = openai_gpt_chatcompletion(
+                #     #     messages_dict_gpt=vibecheckee_result_message_dict, 
+                #     #     OPENAI_API_KEY=self.OPENAI_API_KEY
+                #     #     )
+                
+
+                # await self.channel.send(gpt_response)
+
+
+
+
 
     async def ouat_storyteller(self):
         self.article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.newsarticle_rss_feed)
@@ -482,7 +565,7 @@ class Bot(twitch_commands.Bot):
                                                                 replacements_dict=replacements_dict)
                                                     
                 elif self.ouat_counter > self.ouat_story_max_counter:
-                    await self.stop_loop()
+                    await self.stop_ouat_loop()
                     continue
                 
                 self.logger.info("OUAT details:")
@@ -519,8 +602,7 @@ class Bot(twitch_commands.Bot):
                     play_local_mp3(
                         dirpath=self.tts_data_folder, 
                         filename=output_filename
-                        )                
-                self.ouat_counter += 1   
+                        )                  
 
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
 

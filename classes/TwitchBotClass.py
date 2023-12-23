@@ -6,6 +6,7 @@ from twitchio.ext import commands as twitch_commands
 import random
 import os
 import openai
+import re
 from datetime import datetime
 
 from my_modules.gpt import openai_gpt_chatcompletion
@@ -43,7 +44,7 @@ class Bot(twitch_commands.Bot):
         #setup logger
         self.logger = create_logger(
             dirname='log', 
-            logger_name='logger_BotClass', 
+            logger_name='logger_TwitchBotClass', 
             debug_level=runtime_logger_level,
             mode='a',
             stream_logs=True,
@@ -207,11 +208,10 @@ class Bot(twitch_commands.Bot):
         #start OUAT loop
         self.loop.create_task(self.ouat_storyteller())
 
-        #Send hello message
-        await self.channel.send(gpt_response_clean)
-        
     async def event_message(self, message):
         self.logger.info("--------- Message received ---------")
+        self.logger.debug(message)
+        self.logger.debug(f"message.content: {message.content}")
         
         #This is the control flow function for creating message histories
         self.message_handler.add_to_appropriate_message_history(message)
@@ -222,24 +222,16 @@ class Bot(twitch_commands.Bot):
             bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
 
         #Send the data to BQ when queue is full.  Clear queue when done
-        if len(self.message_handler.message_history_raw)==5:
-            self.logger.debug("channel_viewers_query")
-            self.logger.debug(channel_viewers_queue_query)
-            
-            #execute channel viewers query
+        if len(self.message_handler.message_history_raw)>=5:            
             self.twitch_chat_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
-
-            #generate and execute user interaction query
-            self.logger.debug("These are the message_history_raw:")
-            self.logger.debug(self.message_handler.message_history_raw)
-            viewer_interaction_records = self.twitch_chat_uploader.generate_bq_user_interactions_records(records=self.message_handler.message_history_raw)
-            self.logger.debug("These are the viewer_interaction_records:")
-            self.logger.debug(viewer_interaction_records)
+            viewer_interaction_records = self.twitch_chat_uploader.generate_bq_user_interactions_records(records=self.message_handler.message_history_raw)  
 
             self.twitch_chat_uploader.send_recordsjob_to_bq(
                 table_id=self.usertransactions_table_id,
                 records=viewer_interaction_records
                 )
+            self.logger.debug("These are the viewer_interaction_records:")
+            self.logger.debug(viewer_interaction_records[0:2])
 
             #clear the queues
             self.message_handler.message_history_raw.clear()
@@ -278,8 +270,7 @@ class Bot(twitch_commands.Bot):
                 replacements_dict=replacements_dict
                 )
 
-            gpt_ready_dict = MessageHandler._create_gpt_message_dict_from_strings(
-                self,
+            gpt_ready_dict = self.message_handler._create_gpt_message_dict_from_strings(
                 content = self.random_article_content,
                 role = 'user',
                 name = self.twitch_bot_username
@@ -308,8 +299,7 @@ class Bot(twitch_commands.Bot):
         prompt_text_prefix = f"{self.ouat_prompt_addtostory_prefix}:'{prompt_text}'"
         
         #workflow1: get gpt_ready_msg_dict and add message to message history        
-        gpt_ready_msg_dict = MessageHandler._create_gpt_message_dict_from_strings(
-            self,
+        gpt_ready_msg_dict = self.message_handler._create_gpt_message_dict_from_strings(
             content=prompt_text_prefix,
             role='user',
             name=author
@@ -399,16 +389,7 @@ class Bot(twitch_commands.Bot):
                 self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (self.ouat_story_max_counter={self.ouat_story_max_counter})")
                 self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
                 self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
-                
-                # messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
-                #                                                       prompt_text_role='system',
-                #                                                       msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
-                #                                                       combine_messages=False)
-
-                # gpt_response_text = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt, 
-                #                                                 OPENAI_API_KEY=self.OPENAI_API_KEY,
-                #                                                 max_attempts=3)
-                
+          
                 messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
                                                                       prompt_text_role='system',
                                                                       msg_history_list_dict=self.message_handler.ouat_temp_msg_history,

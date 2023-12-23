@@ -10,6 +10,8 @@ from my_modules import utils
 
 from tenacity import retry, stop_after_attempt, wait_fixed
 
+runtime_debug_level = 'WARNING'
+
 class TwitchChatBQUploader:
     def __init__(self):
         
@@ -29,7 +31,7 @@ class TwitchChatBQUploader:
         self.logger = my_logging.create_logger(
             dirname='log', 
             logger_name='logger_ChatUploader',
-            debug_level='DEBUG',
+            debug_level=runtime_debug_level,
             mode='w',
             stream_logs=True
             )

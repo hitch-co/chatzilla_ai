@@ -7,11 +7,13 @@ from openai import OpenAI
 from my_modules.config import load_env, load_yaml
 from my_modules import my_logging
 
+runtime_logger_level = 'WARNING'
+
 #TODO: SHould take a client as an argument
 class GPTTextToSpeech:
     def __init__(self, output_filename='class_default_speech.mp3', output_dirpath=None):
         self.logger = my_logging.create_logger(
-            debug_level='INFO', 
+            debug_level=runtime_logger_level, 
             logger_name='logger_GPTTextToSpeechClass', 
             mode='a', 
             stream_logs=True

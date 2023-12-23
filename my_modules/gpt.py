@@ -10,7 +10,8 @@ from my_modules.my_logging import create_logger
 from my_modules.config import load_env, load_yaml
 
 #LOGGING
-stream_logs = False
+stream_logs = True
+runtime_logger_level = 'WARNING'
 yaml_data = load_yaml()
 gpt_model = yaml_data['openai-api']['assistant_model']
 shorten_message_prompt = yaml_data['ouat_prompts']['shorten_response_length_prompt']
@@ -18,7 +19,7 @@ shorten_message_prompt = yaml_data['ouat_prompts']['shorten_response_length_prom
 logger = create_logger(
     dirname='log',
     logger_name='logger_gpt',
-    debug_level='DEBUG',
+    debug_level=runtime_logger_level,
     mode='a',
     stream_logs=stream_logs
     )
@@ -30,7 +31,7 @@ def create_gpt_client():
 logger = create_logger(
     dirname='log',
     logger_name='logger_gpt',
-    debug_level='DEBUG',
+    debug_level=runtime_logger_level,
     mode='a',
     stream_logs=stream_logs
     )
@@ -68,22 +69,26 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
 
     #Error checking for token length, etc.
     counter=0
-    while _count_tokens_in_messages(messages=messages_dict_gpt) > 2000:
-        if counter > 3:
-            error_message = f"Too many tokens {token_count} even after 3 attempts to reduce count. Raising exception."
-            logger.error(error_message)
-            raise ValueError(error_message)
-        logger.debug("Entered _count_tokens_in_messages() > ____")
-        token_count = _count_tokens_in_messages(messages=messages_dict_gpt)
-        logger.warning(f"The messages_dict_gpt contained too many tokens {(token_count)}, .pop(0) first dict")
-        messages_dict_gpt.pop(0)
-        counter+=1
+    try:
+        while _count_tokens_in_messages(messages=messages_dict_gpt) > 2000:
+            if counter > 5:
+                error_message = f"Error: Too many tokens {token_count} even after 3 attempts to reduce count"
+                logger.error(error_message)
+                raise ValueError(error_message)
+            logger.debug("Entered _count_tokens_in_messages() > ____")
+            token_count = _count_tokens_in_messages(messages=messages_dict_gpt)
+            logger.warning(f"The messages_dict_gpt contained too many tokens {(token_count)}, .pop(0) first dict")
+            messages_dict_gpt.pop(0)
+            counter+=1
+    except Exception as e:
+        logger.error(f"Exception ocurred in openai_gpt_chatcompletion() during _count_tokens_in_messages(): {e}")
     
     logger.info(f"messages_dict_gpt submitted to GPT ChatCompletion (tokens: {_count_tokens_in_messages(messages=messages_dict_gpt)})")
     logger.debug(messages_dict_gpt)
 
     #Call to OpenAI #TODO: This loop is wonky.  Should probably divert to a 'while' statement
     for attempt in range(max_attempts):
+        logger.debug(f"THIS IS ATTEMPT #{attempt + 1}")
         try:
             generated_response = client.chat.completions.create(
                 model=model,
@@ -96,10 +101,11 @@ def openai_gpt_chatcompletion(messages_dict_gpt:list[dict],
             logger.error(f"Exception occurred during API call: {e}: Attempt {attempt + 1} of {max_attempts} failed.")
             continue
 
+        logger.debug(f"Completed generated response using client.chat.completions.create")          
         gpt_response_text = generated_response.choices[0].message.content
         gpt_response_text_len = len(gpt_response_text)
   
-        logger.info(f"generated_response type: {type(generated_response)}, length: {gpt_response_text_len}:")
+        logger.debug(f"generated_response type: {type(generated_response)}, length: {gpt_response_text_len}:")
 
         if gpt_response_text_len < max_characters:
             logger.info(f'OK: The generated message was <{max_characters} characters')
@@ -189,18 +195,28 @@ def combine_msghistory_and_prompttext(prompt_text,
         return msg_history_list_dict
 
 def _count_tokens(text:str, model="gpt-3.5-turbo") -> int:
-    encoding = tiktoken.encoding_for_model(model_name=model)
-    tokens_in_text = len(encoding.encode(text))
+    try:
+        encoding = tiktoken.encoding_for_model(model_name=model)
+        tokens_in_text = len(encoding.encode(text))
+    except:
+        raise ValueError("tiktoken.encoding_for_model() failed")
+
     return tokens_in_text
 
 def _count_tokens_in_messages(messages: List[dict]) -> int:
-    total_tokens = 0
-    for message in messages:
-        role = message['role']
-        content = message['content']
-        total_tokens += _count_tokens(role) + _count_tokens(content)
-    return total_tokens
+    try:
+        total_tokens = 0
+        for message in messages:
+            # Using .get() with default value as an empty string
+            role = message.get('role', '')
+            content = message.get('content', '')
 
+            # Count tokens in role and content
+            total_tokens += _count_tokens(role) + _count_tokens(content)
+        logger.info(f"Total Tokens: {total_tokens}")
+        return total_tokens
+    except:
+        raise ValueError("_count_tokens_in_messages() failed")
 def get_models(api_key=None):
     """
     Function to fetch the available models from the OpenAI API.

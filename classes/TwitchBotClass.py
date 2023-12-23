@@ -86,6 +86,12 @@ class Bot(twitch_commands.Bot):
 
         #counters
         self.ouat_counter = 1
+        self.interactions_counter = 1
+        
+        #vibecheck params
+        self.vibecheck_max_interaction_count = self.yaml_data['vibecheck_max_interaction_count']
+        self.formatted_gpt_vibecheck_prompt = self.yaml_data['formatted_gpt_vibecheck_prompt']
+        self.formatted_gpt_viberesult_prompt = self.yaml_data['formatted_gpt_viberesult_prompt']
 
     def run_configuration(self) -> dict:
 
@@ -162,6 +168,7 @@ class Bot(twitch_commands.Bot):
         # Load settings and configurations from a YAML file
         # TODO: Can be moved into the load_configurations() function
         self.chatforme_message_wordcount = str(self.yaml_data['chatforme_message_wordcount'])
+        self.vibecheck_message_wordcount = str(self.yaml_data['chatforme_message_wordcount'])
         self.formatted_gpt_chatforme_prompt_prefix = str(self.yaml_data['formatted_gpt_chatforme_prompt_prefix'])
         self.formatted_gpt_chatforme_prompt_suffix = str(self.yaml_data['formatted_gpt_chatforme_prompt_suffix'])
         self.formatted_gpt_chatforme_prompts = self.yaml_data['formatted_gpt_chatforme_prompts']
@@ -183,27 +190,30 @@ class Bot(twitch_commands.Bot):
             ]
         await self.print_runtime_params(args_list=args_list)
 
-        # Say hello to the chat
-        replacements_dict = {"helloworld_message_wordcount":self.helloworld_message_wordcount,
-                                'twitch_bot_display_name':self.twitch_bot_display_name,
-                                'twitch_bot_channel_name':self.twitch_bot_channel_name,
-                                'param_in_text':'variable_from_scope'} #for future use}
-        gpt_prompt_final = prompt_text_replacement(
-            gpt_prompt_text=self.hello_assistant_prompt,
-            replacements_dict=replacements_dict
-            ) 
-        messages_dict_gpt = combine_msghistory_and_prompttext(
-            prompt_text=gpt_prompt_final,
-            prompt_text_role='system',
-            msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
-            combine_messages=False
-            )
-        gpt_response_text = openai_gpt_chatcompletion(
-            messages_dict_gpt=messages_dict_gpt, 
-            OPENAI_API_KEY=self.OPENAI_API_KEY,
-            max_attempts=3
-            )
-        gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
+        # # Say hello to the chat
+        # replacements_dict = {"helloworld_message_wordcount":self.helloworld_message_wordcount,
+        #                         'twitch_bot_display_name':self.twitch_bot_display_name,
+        #                         'twitch_bot_channel_name':self.twitch_bot_channel_name,
+        #                         'param_in_text':'variable_from_scope'} #for future use}
+        # gpt_prompt_final = prompt_text_replacement(
+        #     gpt_prompt_text=self.hello_assistant_prompt,
+        #     replacements_dict=replacements_dict
+        #     ) 
+        # messages_dict_gpt = combine_msghistory_and_prompttext(
+        #     prompt_text=gpt_prompt_final,
+        #     prompt_text_role='system',
+        #     msg_history_list_dict=self.message_handler.ouat_temp_msg_history,
+        #     combine_messages=False
+        #     )
+        # gpt_response_text = openai_gpt_chatcompletion(
+        #     messages_dict_gpt=messages_dict_gpt, 
+        #     OPENAI_API_KEY=self.OPENAI_API_KEY,
+        #     max_attempts=3
+        #     )
+        # gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
+
+        # #Send hello message
+        # await self.channel.send(gpt_response_clean)
 
         #start OUAT loop
         self.loop.create_task(self.ouat_storyteller())
@@ -236,11 +246,101 @@ class Bot(twitch_commands.Bot):
             #clear the queues
             self.message_handler.message_history_raw.clear()
             self.twitch_chat_uploader.channel_viewers_queue.clear()
-            self.logger.info("message history and users in viewers queue sent to BQ and cleared")
+
+            #clear longform queue
+            if len(self.message_handler.vc_temp_msg_history) >= 25:
+                self.message_handler.vc_temp_msg_history.pop()
 
         # self.handle_commands runs through bot commands
         if message.author is not None:
             await self.handle_commands(message)
+
+
+
+    #commands - vc - starts a convo with a potential bot.
+    @twitch_commands.command(name='vc')
+    async def vc(self, message, *args):
+        max_interactions = self.vibecheck_max_interaction_count
+
+        try:
+            if self.message_handler.vc_temp_msg_history is None:
+                self.message_handler.vc_temp_msg_history = []
+        except NameError:
+            self.message_handler.vc_temp_msg_history = []
+
+        # Extract the important players in the convo, namely the bot/checker/checkee 
+        most_recent_message = self.message_handler.vc_temp_msg_history[0]['content']
+        name_start_pos = most_recent_message.find('<<<') + 3
+        name_end_pos = most_recent_message.find('>>>', name_start_pos)
+        vibecheckee_username = most_recent_message[name_start_pos:name_end_pos]
+        vibechecker_username = message.author.name
+        bot_username = self.twitch_bot_username
+        important_players = [vibecheckee_username, vibechecker_username, bot_username]
+        
+        # Filter the list for items containing the name pattern of any important player
+        self.message_handler.vc_temp_msg_history = [
+            item for item in self.message_handler.vc_temp_msg_history 
+            if any(f'<<<{player_name}>>>' in item['content'] for player_name in important_players)
+        ]
+        
+        #Query openai
+        self.logger.info(f"------------------------------------------------------")
+        self.logger.info(f"------------------------------------------------------")
+        self.logger.info(f"------------------------------------------------------")
+        self.logger.info(f"Most recent name: {vibecheckee_username}")
+        self.logger.info(f"vibechecker_username: {vibechecker_username}")
+        self.logger.debug(f"self.message_handler.vc_temp_msg_history: {self.message_handler.vc_temp_msg_history}")
+        self.logger.info(f"self.formatted_gpt_vibecheck_prompt: {self.formatted_gpt_vibecheck_prompt}")
+
+        if self.interactions_counter <= max_interactions:
+
+            replacements_dict = {
+                "vibecheckee_username":vibecheckee_username,
+                "vibechecker_username":vibechecker_username,
+                "vibecheck_message_wordcount":self.vibecheck_message_wordcount
+            }
+            chatgpt_chatforme_prompt = prompt_text_replacement(
+                gpt_prompt_text=self.formatted_gpt_vibecheck_prompt,
+                replacements_dict = replacements_dict
+                )
+            self.logger.info(f"------------------------------------------------------")
+            self.logger.info(f"------------------------------------------------------")
+            self.logger.info(f"------------------------------------------------------")
+            self.logger.info(f"chatgpt_chatforme_prompt: {chatgpt_chatforme_prompt}")
+
+
+            #Create message_dict from prompt and add the prompt to the message history
+            vibecheckee_message_dict = combine_msghistory_and_prompttext(
+                prompt_text=chatgpt_chatforme_prompt,
+                prompt_text_role='user',
+                prompt_text_name=vibechecker_username,
+                msg_history_list_dict=self.message_handler.vc_temp_msg_history
+                )
+            self.logger.debug(f"------------------------------------------------------")
+            self.logger.debug(f"------------------------------------------------------")
+            self.logger.debug(f"------------------------------------------------------")
+            self.logger.debug(f"vibecheckee_message_dict: {vibecheckee_message_dict}")
+            
+            gpt_response = openai_gpt_chatcompletion(
+                messages_dict_gpt=vibecheckee_message_dict, 
+                OPENAI_API_KEY=self.OPENAI_API_KEY
+                )
+
+        # elif self.interactions_counter > max_interactions:
+            # #Create message_dict from prompt and add the prompt to the message history
+            # vibecheckee_result_message_dict = combine_msghistory_and_prompttext(
+            #     prompt_text=self.formatted_gpt_viberesult_prompt,
+            #     prompt_text_role='user',
+            #     prompt_text_name=vibechecker_username,
+            #     msg_history_list_dict=self.message_handler.vc_temp_msg_history
+            #     )
+            
+            # gpt_response = openai_gpt_chatcompletion(
+            #     messages_dict_gpt=vibecheckee_result_message_dict, 
+            #     OPENAI_API_KEY=self.OPENAI_API_KEY
+            #     )
+        
+        await self.channel.send(gpt_response)
 
     #commands - startstory
     @twitch_commands.command(name='startstory')

@@ -459,8 +459,7 @@ class Bot(twitch_commands.Bot):
                 ##If > target number, stop loop
                 elif self.vibechecker_interactions_counter > self.vibechecker_max_interaction_count:
                     self.stop_vibechecker_loop()
-                    await self.channel.send(gpt_response)
-                    continue
+                    break
 
 
             

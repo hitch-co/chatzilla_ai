@@ -17,8 +17,8 @@ class MessageHandler:
         self.logger.debug('MessageHandler initialized.')
 
         #run config
-        self.yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname='config')
-        load_env(env_filename='config.env', env_dirname='config')
+        self.yaml_data = load_yaml()
+        load_env(env_filename=self.yaml_data['env_filename'], env_dirname=self.yaml_data['env_dirname'])
 
         #Bots Lists
         self.bots_automsg = self.yaml_data['twitch-bots']['automsg']
@@ -128,7 +128,7 @@ class MessageHandler:
             if message_metadata_name in self.bots_automsg or message_metadata_name in self.bots_chatforme:
                 self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
                 self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
-                self.logger.info("Message dictionary added to vc_temp_msg_history & automsg_temp_msg_history & chatforme_temp_msg_history")
+                self.logger.info("Message dictionary added to automsg_temp_msg_history & chatforme_temp_msg_history")
 
             # Add Message history to GPT thread
             if message_metadata_name in self.bots_ouat:    

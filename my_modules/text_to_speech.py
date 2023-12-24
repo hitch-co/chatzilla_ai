@@ -8,7 +8,7 @@ from my_modules.config import load_env, load_yaml
 from elevenlabs import play
 
 #config yaml
-yaml_data = load_yaml(yaml_dirname='config', yaml_filename='config.yaml')
+yaml_data = load_yaml()
 
 #config env
 load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])

@@ -25,7 +25,7 @@ root_logger = create_logger(
 TWITCH_CHATFORME_BOT_THREAD = None
 
 # Load configurations from YAML and environment variables
-yaml_data = load_yaml(yaml_dirname='config', yaml_filename='config.yaml')
+yaml_data = load_yaml()
 load_env(env_dirname=yaml_data['env_dirname'], env_filename=yaml_data['env_filename'])
 
 twitch_bot_redirect_path = yaml_data['twitch-app']['twitch_bot_redirect_path']
@@ -104,7 +104,7 @@ def callback():
 def run_bot(TWITCH_BOT_ACCESS_TOKEN):
 
     #load yaml_data for init'ing Bot class
-    yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname='config')
+    yaml_data = load_yaml()
     
     #TODO could be moved to a ConfigManager(). Only needs a handful of configuration parameters
     load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])

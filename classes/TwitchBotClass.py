@@ -263,7 +263,7 @@ class Bot(twitch_commands.Bot):
             writing_style_values = list(self.yaml_data['ouat-writing-parameters']['writing_style'].values())
             self.selected_writing_style = random.choice(writing_style_values)
 
-            theme_values = list(self.yaml_data['ouat-writing-parameters']['theme'].values())
+            theme_values = list(self.yaml_data['ouat-writing-parameters']['writing_theme'].values())
             self.selected_theme = random.choice(theme_values)
 
             # Fetch random article and populate text replacement
@@ -311,7 +311,7 @@ class Bot(twitch_commands.Bot):
             # await self.start_ouat_storyteller_msg_loop()
             
             printc(f"A story was started by {message.author.name} ({message.author.id})", bcolors.WARNING)
-            printc(f"random_article_content_plot_summary: {self.random_article_content_plot_summary}")
+            printc(f"random_article_content_plot_summary: {self.random_article_content_plot_summary}", bcolors.WARNING)
             printc(f"Theme: {self.selected_theme}", bcolors.OKBLUE)
             printc(f"Writing Tone: {self.selected_writing_tone}", bcolors.OKBLUE)
             printc(f"Writing Style: {self.selected_writing_style}", bcolors.OKBLUE)

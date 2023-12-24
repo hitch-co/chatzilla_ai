@@ -1,5 +1,8 @@
 @echo off
 
+:: Activate venv
+call "C:\_repos\chatzilla_ai_prod\chatzilla_ai\venv\Scripts\activate"
+
 :: Set default values
 set prompt_list_ouat=newsarticle_dynamic
 set prompt_list_automsg=videogames
@@ -17,7 +20,7 @@ set /p include_sound=Should the bot run with AUDIO? (default:"%include_sound%")?
 set /p input_port_number=What PORT NUMBER would you like to run the app on? (default:"%input_port_number%"):
 
 :: Run Python command
-python ".\twitch_bot.py" 
+python ".\twitch_bot.py"
 
 :: Delay for 5 seconds
 timeout /t 3

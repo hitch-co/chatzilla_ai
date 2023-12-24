@@ -187,9 +187,12 @@ class TwitchChatBQUploader:
         errors = self.bq_client.insert_rows_json(table, records)     
         if errors:
             self.logger.error(f"Encountered errors while inserting rows: {errors}")
+            self.logger.error("These are the records:")
+            self.logger.error(records)
         else:
             self.logger.info(f"Rows successfully inserted into table_id: {table_id}")
-            
+            self.logger.debug("These are the records:")
+            self.logger.debug(records)
     def send_queryjob_to_bq(self, query):
         try:
             # Start the query job

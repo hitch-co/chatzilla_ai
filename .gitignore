@@ -206,3 +206,4 @@ data/tts/
 GPTTextToSpeech_main.py
 function_signatures.txt
 twitch-dev-chatforme.code-workspace
+twitch_bot_start_dev.bat

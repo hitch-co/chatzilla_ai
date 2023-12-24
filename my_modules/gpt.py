@@ -4,6 +4,7 @@ import openai
 import tiktoken
 from typing import List
 import re
+import copy
 
 from my_modules import utils
 from my_modules.my_logging import create_logger
@@ -158,41 +159,48 @@ def combine_msghistory_and_prompttext(prompt_text,
                                       prompt_text_role='user',
                                       prompt_text_name='unknown',
                                       msg_history_list_dict=None,
-                                      combine_messages=False) -> [dict]:
+                                      combine_messages=False,
+                                      output_new_list=False) -> [dict]:
+    
+    if output_new_list==True:
+        msg_history_list_dict_temp = copy.deepcopy(msg_history_list_dict)
+    else:
+        msg_history_list_dict_temp = msg_history_list_dict
+
     if prompt_text_role == 'system':
         prompt_dict = {'role': prompt_text_role, 'content': f'{prompt_text}'}
     if prompt_text_role in ['user', 'assistant']:
         prompt_dict = {'role': prompt_text_role, 'content': f'<<<{prompt_text_name}>>>: {prompt_text}'}
-    if not msg_history_list_dict:
-        msg_history_list_dict = [prompt_dict]
+    if not msg_history_list_dict_temp:
+        msg_history_list_dict_temp = [prompt_dict]
 
-    # Check if msg_history_list_dict is the correct data type
-    if (msg_history_list_dict is not None and not isinstance(msg_history_list_dict, list)) or \
-    (msg_history_list_dict and not all(isinstance(item, dict) for item in msg_history_list_dict)):
-        logger.debug("msg_history_list_dict is not a list of dictionaries or None")
-        raise ValueError("msg_history_list_dict should be a list of dictionaries or None")
+    # Check if msg_history_list_dict_temp is the correct data type
+    if (msg_history_list_dict_temp is not None and not isinstance(msg_history_list_dict_temp, list)) or \
+    (msg_history_list_dict_temp and not all(isinstance(item, dict) for item in msg_history_list_dict_temp)):
+        logger.debug("msg_history_list_dict_temp is not a list of dictionaries or None")
+        raise ValueError("msg_history_list_dict_temp should be a list of dictionaries or None")
     
     else:
         if combine_messages == True:
-            msg_history_string = " ".join(item["content"] for item in msg_history_list_dict if item['role'] != 'system')
+            msg_history_string = " ".join(item["content"] for item in msg_history_list_dict_temp if item['role'] != 'system')
             reformatted_msg_history_list_dict = [{
                 'role':prompt_text_role, 
                 'content':msg_history_string
             }]            
             reformatted_msg_history_list_dict.append(prompt_dict)
-            msg_history_list_dict=reformatted_msg_history_list_dict
-            logger.debug(msg_history_list_dict)
+            msg_history_list_dict_temp=reformatted_msg_history_list_dict
+            logger.debug(msg_history_list_dict_temp)
         else:
-            msg_history_list_dict.append(prompt_dict) 
-            logger.debug(msg_history_list_dict)
+            msg_history_list_dict_temp.append(prompt_dict) 
+            logger.debug(msg_history_list_dict_temp)
 
         utils.write_json_to_file(
-            data=msg_history_list_dict, 
-            variable_name_text='msg_history_list_dict', 
+            data=msg_history_list_dict_temp, 
+            variable_name_text='msg_history_list_dict_temp', 
             dirname='log/get_combine_msghistory_and_prompttext_combined', 
             include_datetime=False
             )
-        return msg_history_list_dict
+        return msg_history_list_dict_temp
 
 def _count_tokens(text:str, model="gpt-3.5-turbo") -> int:
     try:
@@ -238,7 +246,7 @@ def get_models(api_key=None):
     return response.json()
 
 if __name__ == '__main__':
-    yaml_data = load_yaml(yaml_dirname='config')
+    yaml_data = load_yaml()
     load_env(env_dirname='config')
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 

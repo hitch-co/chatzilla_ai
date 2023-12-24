@@ -30,7 +30,6 @@ from classes import GPTTextToSpeechClass
 class Bot(twitch_commands.Bot):
     loop_sleep_time = 4
 
-    #init/config
     def __init__(self, TWITCH_BOT_ACCESS_TOKEN, yaml_data):
         super().__init__(
             token=TWITCH_BOT_ACCESS_TOKEN,
@@ -178,7 +177,6 @@ class Bot(twitch_commands.Bot):
         
         return self.yaml_data 
 
-    #twitch built-ins
     async def event_ready(self):
         self.channel = self.get_channel(self.twitch_bot_channel_name)
         print(f'TwitchBot ready | {self.twitch_bot_username} (nick:{self.nick})')
@@ -219,12 +217,12 @@ class Bot(twitch_commands.Bot):
 
         #start OUAT loop
         self.loop.create_task(self.ouat_storyteller())
-        self.loop.create_task(self.vibechecker_question_session())
+
 
     async def event_message(self, message):
         self.logger.info("--------- Message received ---------")
         self.logger.debug(message)
-        self.logger.debug(f"message.content: {message.content}")
+        self.logger.info(f"message.content: {message.content}")
         
         #This is the control flow function for creating message histories
         self.message_handler.add_to_appropriate_message_history(message)
@@ -548,7 +546,6 @@ class Bot(twitch_commands.Bot):
 
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
 
-    #commands - chatforme
     @twitch_commands.command(name='chatforme')
     async def chatforme(self, ctx):
         """
@@ -603,7 +600,6 @@ class Bot(twitch_commands.Bot):
                 filename=output_filename
                 )
 
-    #commands - botthot
     @twitch_commands.command(name='botthot')
     async def botthot(self, ctx):
         """

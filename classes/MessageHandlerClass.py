@@ -6,7 +6,7 @@ from my_modules.my_logging import log_as_json
 runtime_logger_level = 'DEBUG'
 
 class MessageHandler:
-    def __init__(self):
+    def __init__(self, vibecheck_service):
         self.logger = my_logging.create_logger(
             dirname='log', 
             logger_name='logger_MessageHandler',
@@ -17,8 +17,9 @@ class MessageHandler:
         self.logger.debug('MessageHandler initialized.')
 
         #run config
-        self.yaml_data = load_yaml()
-        load_env(env_filename=self.yaml_data['env_filename'], env_dirname=self.yaml_data['env_dirname'])
+
+        #vibecheck service
+        self.vibecheck_service = vibecheck_service
 
         #Bots Lists
         self.bots_automsg = self.yaml_data['twitch-bots']['automsg']
@@ -149,11 +150,9 @@ class MessageHandler:
             self.logger.debug(f"message_extracted_name: {message_extracted_name}")
             self.logger.debug(f"message.content: {message.content}")
 
-            gpt_ready_msg_dict = self._create_gpt_message_dict_from_strings(
-                role='assistant',
-                name=message_extracted_name,
-                content=message.content
-                )
+        # Process the message throug hthe vibecheck service 
+        self.vibecheck_service.process_message(message_username)
+
 
             self.message_history_raw.append(message_metadata)
             self.vc_temp_msg_history.append(gpt_ready_msg_dict)

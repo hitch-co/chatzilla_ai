@@ -259,7 +259,7 @@ class Bot(twitch_commands.Bot):
     async def vc(self, message, *args):
         self.vibechecker_interactions_counter == 0
         self.is_vibecheck_loop_active = True
-
+        
         #TODO: DO some more conditional checking to see if the 
         # vibechecker_question_session() should be started or not
         try:
@@ -269,13 +269,20 @@ class Bot(twitch_commands.Bot):
             self.message_handler.vc_temp_msg_history = []
        
         # Extract the important players in the convo, namely the bot/checker/checkee 
-        most_recent_message = self.message_handler.vc_temp_msg_history[1]['content']
+        try:
+            most_recent_message = self.message_handler.vc_temp_msg_history[1]['content']
+        except:
+            await self.channel.send("No user to be vibechecked, try again after they send a message")
+            
         name_start_pos = most_recent_message.find('<<<') + 3
         name_end_pos = most_recent_message.find('>>>', name_start_pos)
         self.vibecheckee_username = most_recent_message[name_start_pos:name_end_pos]
         self.vibechecker_username = message.author.name
         self.vibecheckbot_username = self.twitch_bot_display_name
         self.vibechecker_players = [self.vibecheckee_username, self.vibechecker_username, self.vibecheckbot_username]
+
+        #Start the vibecheck session
+        self.vibecheck_service.start_vibecheck_session(self.vibecheckee_username)
 
         self.vibechecker_task = self.loop.create_task(self.vibechecker_question_session())
 
@@ -386,6 +393,7 @@ class Bot(twitch_commands.Bot):
 
     async def vibechecker_question_session(self):
         #Query openai
+        self.logger.info("-----------------------------------------------------------------------------")
         self.logger.info(f"------------ Vibe-check Quetsion/Answer Session static variables ------------")
         self.logger.info(f"vibecheckee_username: {self.vibecheckee_username}")
         self.logger.info(f"vibechecker_username: {self.vibechecker_username}")

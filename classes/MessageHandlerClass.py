@@ -1,5 +1,5 @@
 
-from my_modules.config import load_env, load_yaml
+from my_modules.config import run_config
 from my_modules import my_logging
 from my_modules.my_logging import log_as_json
 
@@ -17,6 +17,7 @@ class MessageHandler:
         self.logger.debug('MessageHandler initialized.')
 
         #run config
+        self.yaml_data = run_config()
 
         #vibecheck service
         self.vibecheck_service = vibecheck_service
@@ -58,7 +59,6 @@ class MessageHandler:
             'channel': getattr(message.channel, 'name', '_unknown'),
             'timestamp': getattr(message, 'timestamp', None).strftime('%Y-%m-%d %H:%M:%S') if getattr(message, 'timestamp', None) else '',
             'tags': message.tags if hasattr(message, 'tags') else {},
-            # 'content': f'<<<{getattr(message.author, "name", "")}>>>: {getattr(message, "content", "")}',
             'content': f'{getattr(message, "content", "")}',
         }
         return message_metadata
@@ -99,75 +99,54 @@ class MessageHandler:
             msg_history_list_dict.pop(0)
         return msg_history_list_dict
     
+    def update_message_metadata(self, message):
+        print("do something...")
+
     def add_to_appropriate_message_history(self, message):
         self.logger.info(f"----------------------------------")
-
-        #Grab metadata
+        
+        #Grab and write metadata, add users to users list
         message_metadata = self._get_message_metadata(message)
         self.logger.debug(message_metadata)
+        self._add_user_to_users_list(message_metadata)
+        self.message_history_raw.append(message_metadata)
 
         if message.author is not None:          
             message_metadata_name = message_metadata['name']
-            self._add_user_to_users_list(message_metadata)
-            self.logger.info("message.author is not 'None'")
-            self.logger.debug(f"message.author.name: {message.author.name}")
-            self.logger.debug(f"message_metadata_name: {message_metadata_name}")
-            self.logger.info(f"message.content: {message.content}")
-            self.logger.info(f"message_metadata['content']: {message_metadata['content']}")
-
-            gpt_ready_msg_dict = self._create_gpt_message_dict_from_strings(
-                role='user',
-                name=message_metadata_name,
-                content=message_metadata['content']
-                )
-
-            # Append every message to these message histories
-            self.message_history_raw.append(message_metadata)
-            self.vc_temp_msg_history.append(gpt_ready_msg_dict)
-
-            # TODO: Append Message history to appropriate bot. This control flow is redundant under the pretense there will only ever be one bot
-            if message_metadata_name in self.bots_automsg or message_metadata_name in self.bots_chatforme:
-                self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
-                self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
-                self.logger.info("Message dictionary added to automsg_temp_msg_history & chatforme_temp_msg_history")
-
-            # Add Message history to GPT thread
-            if message_metadata_name in self.bots_ouat:    
-                self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
-                self.logger.info("Message dictionary added to ouat_temp_msg_history and message added to ouat thread")
-
-            if message_metadata_name not in self.known_bots:
-                self.nonbot_temp_msg_history.append(gpt_ready_msg_dict)
-                self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
-                self.logger.info("Message dictionary added to nonbot_temp_msg_history & chatforme_temp_msg_history")
+            message_username = message_metadata_name
+            message_role = 'user'
+            message_content = message_metadata['content']
 
         elif message.author is None: 
             message_extracted_name = self._extract_name_from_message(message)
             message_metadata['name'] = message_extracted_name
-            self._add_user_to_users_list(message_metadata)
+            message_username = message_metadata['name']
+            message_role = 'assistant'
+            message_content = message.content
 
-            self.logger.info("message.author is 'None'")
-            self.logger.debug(f"message_extracted_name: {message_extracted_name}")
-            self.logger.debug(f"message.content: {message.content}")
+        # self._add_user_to_users_list(message_metadata)
+        self.logger.debug(f"message_username: {message_username}")
+        self.logger.debug(f"message content: {message_content}")
 
         # Process the message throug hthe vibecheck service 
         self.vibecheck_service.process_message(message_username)
 
+        #Create gpt message dict
+        gpt_ready_msg_dict = self._create_gpt_message_dict_from_strings(
+            role=message_role,
+            name=message_username,
+            content=message_content
+            )            
 
-            self.message_history_raw.append(message_metadata)
-            self.vc_temp_msg_history.append(gpt_ready_msg_dict)
+        #Apply message dict to msg histories
+        self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
+        self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
+        self.vc_temp_msg_history.append(gpt_ready_msg_dict)
 
-            # TODO: Append Message history to appropriate bot. This control flow is redundant under the pretense there will only ever be one bot
-            # NOTE: Be careful of how you capture these, bots from outside of this ecosystems responses won't be captured
-            # if message_extracted_name in self.bots_ouat:
+        if message.author is not None:
+            self.nonbot_temp_msg_history.append(gpt_ready_msg_dict)
+        elif message.author is None: 
             self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
-            self.logger.info("Message dictionary added to ouat_temp_msg_history")
-            # if message_extracted_name in self.bots_automsg:
-            self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
-            self.logger.info("Message dictionary added to automsg_temp_msg_history")
-            # if message_extracted_name in self.bots_chatforme:
-            self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
-            self.logger.info("Message dictionary added to chatforme_temp_msg_history")
 
         #cleanup msg histories for GPT
         message_histories = [
@@ -182,10 +161,10 @@ class MessageHandler:
         #log 
         # self.logger.debug(f"message_history_raw:")
         # self.logger.debug(self.message_history_raw)
-        self.logger.debug(f"self.vc_temp_msg_history:") 
-        self.logger.debug(self.vc_temp_msg_history)
-        self.logger.debug("This is the gpt_ready_msg_dict")
-        self.logger.debug(gpt_ready_msg_dict)
+        # self.logger.debug(f"self.vc_temp_msg_history:") 
+        # self.logger.debug(self.vc_temp_msg_history)
+        # self.logger.debug("This is the gpt_ready_msg_dict")
+        # self.logger.debug(gpt_ready_msg_dict)
 
 if __name__ == '__main__':
     print("loaded MessageHandlerClass.py")

@@ -26,11 +26,20 @@ from classes.MessageHandlerClass import MessageHandler
 from classes.BQUploaderClass import TwitchChatBQUploader
 from classes.ArgsConfigManagerClass import ArgsConfigManager
 from classes import GPTTextToSpeechClass
+from services.VibecheckService import VibeCheckService
 
 class Bot(twitch_commands.Bot):
     loop_sleep_time = 4
 
-    def __init__(self, TWITCH_BOT_ACCESS_TOKEN, yaml_data):
+    def __init__(
+            self, 
+            TWITCH_BOT_ACCESS_TOKEN, yaml_data, 
+            gpt_client, 
+            twitch_chat_uploader, 
+            tts_client, 
+            vibecheck_service, 
+            message_handler
+            ):
         super().__init__(
             token=TWITCH_BOT_ACCESS_TOKEN,
             name=yaml_data['twitch-app']['twitch_bot_username'],
@@ -57,21 +66,13 @@ class Bot(twitch_commands.Bot):
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
 
-        # instance of client, thread, and manager
-        self.gpt_client = openai.OpenAI()
+        # dependencies instances
+        self.gpt_client = gpt_client
+        self.twitch_chat_uploader = twitch_chat_uploader 
+        self.tts_client = tts_client
+        self.vibecheck_service = vibecheck_service 
+        self.message_handler = message_handler
 
-        # instance of message handler and BQ uplaoder classeses
-        self.message_handler = MessageHandler()
-        self.twitch_chat_uploader = TwitchChatBQUploader() #TODO should be instantiated with a access token
-
-        #TTS Details
-        self.tts_data_folder = yaml_data['openai-api']['tts_data_folder']
-        self.tts_file_name = yaml_data['openai-api']['tts_file_name']
-        self.tts_client = GPTTextToSpeechClass.GPTTextToSpeech(
-            output_filename=self.tts_file_name,
-            output_dirpath=self.tts_data_folder
-            )
-        
         #Google Service Account Credentials
         google_application_credentials_file = yaml_data['twitch-ouat']['google_service_account_credentials_file']
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_application_credentials_file
@@ -87,6 +88,7 @@ class Bot(twitch_commands.Bot):
         #counters
         self.ouat_counter = 1
         self.vibechecker_interactions_counter = 0
+        
         
         #vibecheck params
         self.vibechecker_max_interaction_count = self.yaml_data['vibechecker_max_interaction_count']

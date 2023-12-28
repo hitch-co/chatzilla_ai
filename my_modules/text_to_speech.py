@@ -3,15 +3,12 @@ import os
 import json
 import pygame
 
-from my_modules.config import load_env, load_yaml
+from my_modules.config import run_config
 
 from elevenlabs import play
 
 #config yaml
-yaml_data = load_yaml()
-
-#config env
-load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
+yaml_data = run_config()
 
 #eleven labs
 ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')

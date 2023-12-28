@@ -15,7 +15,7 @@ from my_modules.gpt import ouat_gpt_response_cleanse, chatforme_gpt_response_cle
 
 from my_modules.my_logging import create_logger
 from my_modules.twitchio_helpers import get_string_of_users
-from my_modules.config import load_yaml, load_env
+from my_modules.config import run_config
 from my_modules.text_to_speech import play_local_mp3
 from my_modules import utils
 
@@ -99,8 +99,7 @@ class Bot(twitch_commands.Bot):
     def run_configuration(self) -> dict:
 
         #load yaml/env
-        self.yaml_data = load_yaml()
-        load_env(env_filename=self.yaml_data['env_filename'], env_dirname=self.yaml_data['env_dirname'])
+        self.yaml_data = run_config()
 
         #Twitch Bot Details
         self.twitch_bot_channel_name = self.yaml_data['twitch-app']['twitch_bot_channel_name']

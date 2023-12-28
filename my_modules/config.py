@@ -12,7 +12,10 @@ logger = create_logger(
     )
 
 #Load parameters from config.yaml
-def load_yaml(yaml_filename='config.yaml', yaml_dirname="C:/Users/Admin/OneDrive/Desktop/_work/__repos (unpublished)/_____CONFIG/chatzilla_ai/config", is_testing=False):
+def load_yaml(
+        yaml_filename='config.yaml', 
+        yaml_dirname="C:/Users/Admin/OneDrive/Desktop/_work/__repos (unpublished)/_____CONFIG/chatzilla_ai/config", is_testing=False
+        ):
 
     """
     Load parameters from a YAML file.
@@ -38,7 +41,7 @@ def load_yaml(yaml_filename='config.yaml', yaml_dirname="C:/Users/Admin/OneDrive
 
 
 #Loads environment variables from config.env
-def load_env(env_filename='config.env', env_dirname='config'):
+def load_env(env_filename, env_dirname):
     """
     Load environment variables from a .env file.
 

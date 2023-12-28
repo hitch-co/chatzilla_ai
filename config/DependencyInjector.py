@@ -31,19 +31,21 @@ class DependencyInjector:
             )
         return tts_client
     
-    def create_message_handler(self, vibecheck_service):
-        return MessageHandler(vibecheck_service)
+    def create_message_handler(self):
+        return MessageHandler()
     
-    def create_vibecheck_service(self):
-        return VibeCheckService()
+    def create_vibecheck_service(self, message_handler):
+        return VibeCheckService(
+            yaml_config=self.config,
+            message_handler=message_handler
+            )
 
     def create_dependencies(self):
         self.gpt_client = self.create_gpt_client()
         self.twitch_chat_uploader = self.create_twitch_chat_uploader()
         self.tts_client = self.create_tts_client()
 
-        self.vibecheck_service = self.create_vibecheck_service()
-        self.message_handler = self.create_message_handler(self.vibecheck_service)
+        self.message_handler = self.create_message_handler()
 
 def main():
     yaml_data = run_config()

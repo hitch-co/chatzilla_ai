@@ -6,7 +6,7 @@ from my_modules.my_logging import log_as_json
 runtime_logger_level = 'DEBUG'
 
 class MessageHandler:
-    def __init__(self, vibecheck_service):
+    def __init__(self):
         self.logger = my_logging.create_logger(
             dirname='log', 
             logger_name='logger_MessageHandler',
@@ -18,9 +18,6 @@ class MessageHandler:
 
         #run config
         self.yaml_data = run_config()
-
-        #vibecheck service
-        self.vibecheck_service = vibecheck_service
 
         #Bots Lists
         self.bots_automsg = self.yaml_data['twitch-bots']['automsg']
@@ -41,16 +38,16 @@ class MessageHandler:
 
         #message_history_raw
         self.message_history_raw = []
-        self.vc_temp_msg_history = []
+        self.vc_msg_history = []
 
         #Message History Lists
-        self.ouat_temp_msg_history = []
-        self.automsg_temp_msg_history = []
-        self.chatforme_temp_msg_history = []
+        self.ouat_msg_history = []
+        self.automsg_msg_history = []
+        self.chatforme_msg_history = []
         self.nonbot_temp_msg_history = []
 
     def _get_message_metadata(self, message) -> None:
-        # Collect all metadata
+
         message_metadata = {
             'badges': getattr(message.tags, 'badges', '_none'),
             'name': getattr(message.author, 'name', '_unknown'),
@@ -60,8 +57,31 @@ class MessageHandler:
             'timestamp': getattr(message, 'timestamp', None).strftime('%Y-%m-%d %H:%M:%S') if getattr(message, 'timestamp', None) else '',
             'tags': message.tags if hasattr(message, 'tags') else {},
             'content': f'{getattr(message, "content", "")}',
+            'role': None #generated below
         }
+
+        if message.author is not None:          
+            message_metadata['role'] = 'user'
+            message_metadata['content'] = message_metadata['content']
+
+        elif message.author is None: 
+            message_metadata['name'] = self._extract_name_from_message(message)
+            message_metadata['role'] = 'assistant'
+            message_metadata['content'] = message.content
+
         return message_metadata
+
+    def _cleanup_message_history(self):
+        #cleanup msg histories for GPT
+        message_histories = [
+            (self.ouat_msg_history, 15),
+            (self.chatforme_msg_history, 15),
+            (self.automsg_msg_history, 15),
+            (self.nonbot_temp_msg_history, 15),
+            (self.vc_msg_history, 25)
+        ]
+        for msg_history, limit in message_histories:
+            self._pop_message_from_message_history(msg_history_list_dict=msg_history, msg_history_limit=limit)
 
     def _add_user_to_users_list(self, message_metadata: dict) -> None:
         self.users_in_messages_list.append(message_metadata['name'])
@@ -98,38 +118,24 @@ class MessageHandler:
         if len(msg_history_list_dict) > msg_history_limit:
             msg_history_list_dict.pop(0)
         return msg_history_list_dict
-    
-    def update_message_metadata(self, message):
-        print("do something...")
 
     def add_to_appropriate_message_history(self, message):
         self.logger.info(f"----------------------------------")
         
         #Grab and write metadata, add users to users list
         message_metadata = self._get_message_metadata(message)
-        self.logger.debug(message_metadata)
+
+        message_role = message_metadata['role']
+        message_username = message_metadata['name']
+        message_content = message_metadata['content']
+
         self._add_user_to_users_list(message_metadata)
         self.message_history_raw.append(message_metadata)
-
-        if message.author is not None:          
-            message_metadata_name = message_metadata['name']
-            message_username = message_metadata_name
-            message_role = 'user'
-            message_content = message_metadata['content']
-
-        elif message.author is None: 
-            message_extracted_name = self._extract_name_from_message(message)
-            message_metadata['name'] = message_extracted_name
-            message_username = message_metadata['name']
-            message_role = 'assistant'
-            message_content = message.content
-
-        # self._add_user_to_users_list(message_metadata)
-        self.logger.debug(f"message_username: {message_username}")
-        self.logger.debug(f"message content: {message_content}")
-
-        # Process the message throug hthe vibecheck service 
-        self.vibecheck_service.process_message(message_username)
+        
+        self.logger.debug("This is the message_metadata")
+        self.logger.debug(message_metadata)
+        self.logger.info(f"message_username: {message_username}")
+        self.logger.info(f"message content: {message_content}")
 
         #Create gpt message dict
         gpt_ready_msg_dict = self._create_gpt_message_dict_from_strings(
@@ -139,30 +145,23 @@ class MessageHandler:
             )            
 
         #Apply message dict to msg histories
-        self.chatforme_temp_msg_history.append(gpt_ready_msg_dict)
-        self.automsg_temp_msg_history.append(gpt_ready_msg_dict)
-        self.vc_temp_msg_history.append(gpt_ready_msg_dict)
+        self.chatforme_msg_history.append(gpt_ready_msg_dict)
+        self.automsg_msg_history.append(gpt_ready_msg_dict)
+        self.vc_msg_history.append(gpt_ready_msg_dict)
 
         if message.author is not None:
             self.nonbot_temp_msg_history.append(gpt_ready_msg_dict)
         elif message.author is None: 
-            self.ouat_temp_msg_history.append(gpt_ready_msg_dict)
+            self.ouat_msg_history.append(gpt_ready_msg_dict)
 
         #cleanup msg histories for GPT
-        message_histories = [
-            (self.ouat_temp_msg_history, 10),
-            (self.chatforme_temp_msg_history, 10),
-            (self.automsg_temp_msg_history, 10),
-            (self.nonbot_temp_msg_history, 10)
-        ]
-        for msg_history, limit in message_histories:
-            self._pop_message_from_message_history(msg_history_list_dict=msg_history, msg_history_limit=limit)
+        self._cleanup_message_history()
 
         #log 
         # self.logger.debug(f"message_history_raw:")
         # self.logger.debug(self.message_history_raw)
-        # self.logger.debug(f"self.vc_temp_msg_history:") 
-        # self.logger.debug(self.vc_temp_msg_history)
+        self.logger.debug(f"self.vc_msg_history:") 
+        self.logger.debug(self.vc_msg_history)
         # self.logger.debug("This is the gpt_ready_msg_dict")
         # self.logger.debug(gpt_ready_msg_dict)
 

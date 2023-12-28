@@ -38,7 +38,7 @@ class MessageHandler:
 
         #message_history_raw
         self.message_history_raw = []
-        self.vc_msg_history = []
+        self.all_msg_history_gptdict = []
 
         #Message History Lists
         self.ouat_msg_history = []
@@ -78,7 +78,7 @@ class MessageHandler:
             (self.chatforme_msg_history, 15),
             (self.automsg_msg_history, 15),
             (self.nonbot_temp_msg_history, 15),
-            (self.vc_msg_history, 25)
+            (self.all_msg_history_gptdict, 25)
         ]
         for msg_history, limit in message_histories:
             self._pop_message_from_message_history(msg_history_list_dict=msg_history, msg_history_limit=limit)
@@ -147,7 +147,7 @@ class MessageHandler:
         #Apply message dict to msg histories
         self.chatforme_msg_history.append(gpt_ready_msg_dict)
         self.automsg_msg_history.append(gpt_ready_msg_dict)
-        self.vc_msg_history.append(gpt_ready_msg_dict)
+        self.all_msg_history_gptdict.append(gpt_ready_msg_dict)
 
         if message.author is not None:
             self.nonbot_temp_msg_history.append(gpt_ready_msg_dict)
@@ -160,8 +160,8 @@ class MessageHandler:
         #log 
         # self.logger.debug(f"message_history_raw:")
         # self.logger.debug(self.message_history_raw)
-        self.logger.debug(f"self.vc_msg_history:") 
-        self.logger.debug(self.vc_msg_history)
+        self.logger.debug(f"self.all_msg_history_gptdict:") 
+        self.logger.debug(self.all_msg_history_gptdict)
         # self.logger.debug("This is the gpt_ready_msg_dict")
         # self.logger.debug(gpt_ready_msg_dict)
 

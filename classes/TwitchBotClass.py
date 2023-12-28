@@ -216,8 +216,9 @@ class Bot(twitch_commands.Bot):
         # 1. This is the control flow function for creating message histories
         self.message_handler.add_to_appropriate_message_history(message)
         
-        # # 2. Process the message through the vibecheck service         
-        # self.vibecheck_service.process_message(self.message_handler.message_history_raw[-1]['name'])
+        # 2. Process the message through the vibecheck service         
+        if hasattr(self, 'vibecheck_service') and self.vibecheck_service is not None:
+            self.vibecheck_service.process_vibecheck_message(self.message_handler.message_history_raw[-1]['name'])
         
         # 3. Get chatter data, store in queue, generate query for sending to BQ
         channel_viewers_queue_query = self.twitch_chat_uploader.get_process_queue_create_channel_viewers_query(
@@ -252,7 +253,7 @@ class Bot(twitch_commands.Bot):
         # Extract the bot/checker/checkee (important players) in the convo
         # TODO: vc_message_history is generally ALL chat, could use a copy of an
         #  existing message_history list (ie raw/all) instead. 
-        try: most_recent_message = self.message_handler.vc_msg_history[-1]['content']
+        try: most_recent_message = self.message_handler.all_msg_history_gptdict[-2]['content']
         except: await self.channel.send("No user to be vibechecked, try again after they send a message")
             
         name_start_pos = most_recent_message.find('<<<') + 3

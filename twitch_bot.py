@@ -121,7 +121,6 @@ def run_bot(TWITCH_BOT_ACCESS_TOKEN, yaml_data):
         gpt_client=dependencies.gpt_client,
         twitch_chat_uploader=dependencies.twitch_chat_uploader,
         tts_client=dependencies.tts_client,
-        vibecheck_service=dependencies.vibecheck_service,
         message_handler=dependencies.message_handler
         )
     bot.run()

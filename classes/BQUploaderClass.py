@@ -4,7 +4,7 @@ from google.cloud import bigquery
 from google.api_core.exceptions import GoogleAPIError
 import pandas as pd
 
-from my_modules.config import load_env, load_yaml
+from my_modules.config import run_config
 from my_modules import my_logging
 from my_modules import utils
 
@@ -15,8 +15,8 @@ runtime_debug_level = 'WARNING'
 class TwitchChatBQUploader:
     def __init__(self):
         
-        load_env()
-        self.yaml_data = load_yaml()
+        
+        self.yaml_data = run_config()
 
         #env variables
         self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
@@ -187,9 +187,12 @@ class TwitchChatBQUploader:
         errors = self.bq_client.insert_rows_json(table, records)     
         if errors:
             self.logger.error(f"Encountered errors while inserting rows: {errors}")
+            self.logger.error("These are the records:")
+            self.logger.error(records)
         else:
             self.logger.info(f"Rows successfully inserted into table_id: {table_id}")
-            
+            self.logger.debug("These are the records:")
+            self.logger.debug(records)
     def send_queryjob_to_bq(self, query):
         try:
             # Start the query job

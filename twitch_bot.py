@@ -8,9 +8,10 @@ from flask import Flask, request
 
 from classes.TwitchBotClass import Bot
 from classes.ArgsConfigManagerClass import ArgsConfigManager
+from config.DependencyInjector import DependencyInjector
 
 from my_modules.my_logging import create_logger
-from my_modules.config import load_yaml, load_env
+from my_modules.config import run_config
 
 use_reloader_bool = False
 runtime_logger_level = 'DEBUG'
@@ -25,8 +26,7 @@ root_logger = create_logger(
 TWITCH_CHATFORME_BOT_THREAD = None
 
 # Load configurations from YAML and environment variables
-yaml_data = load_yaml(yaml_dirname='config', yaml_filename='config.yaml')
-load_env(env_dirname=yaml_data['env_dirname'], env_filename=yaml_data['env_filename'])
+yaml_data = run_config()
 
 twitch_bot_redirect_path = yaml_data['twitch-app']['twitch_bot_redirect_path']
 TWITCH_BOT_CLIENT_ID = os.getenv('TWITCH_BOT_CLIENT_ID')
@@ -57,6 +57,9 @@ def auth():
 @app.route('/callback')
 def callback():
     global TWITCH_CHATFORME_BOT_THREAD  # declare the variable as global inside the function
+
+    # Load configurations from YAML and environment variables
+    yaml_data = run_config()
 
     # Runtime args
     input_port_number = str(args_config.input_port_number)
@@ -90,7 +93,7 @@ def callback():
 
         # Only start bot thread if it's not already running
         if TWITCH_CHATFORME_BOT_THREAD is None or not TWITCH_CHATFORME_BOT_THREAD.is_alive():
-            TWITCH_CHATFORME_BOT_THREAD = Thread(target=run_bot, args=(TWITCH_BOT_ACCESS_TOKEN,))
+            TWITCH_CHATFORME_BOT_THREAD = Thread(target=run_bot, args=(TWITCH_BOT_ACCESS_TOKEN, yaml_data))
             TWITCH_CHATFORME_BOT_THREAD.start()
             twitch_bot_status = 'Twitch bot was not active or did not exist and thread was started.'
         else: 
@@ -101,22 +104,24 @@ def callback():
         return '<a>There was an issue retrieving and setting the access token.  If you would like to include more detail in this message, return "template.html" or equivalent using the render_template() method from flask and add it to this response...'
 
 #This is run after the auth process completes
-def run_bot(TWITCH_BOT_ACCESS_TOKEN):
-
-    #load yaml_data for init'ing Bot class
-    yaml_data = load_yaml(yaml_filename='config.yaml', yaml_dirname='config')
-    
-    #TODO could be moved to a ConfigManager(). Only needs a handful of configuration parameters
-    load_env(env_filename=yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
+def run_bot(TWITCH_BOT_ACCESS_TOKEN, yaml_data):
 
     #asyncio event loop
     new_loop = asyncio.new_event_loop()
     asyncio.set_event_loop(new_loop)
     
+    #dependency injector
+    dependencies = DependencyInjector(yaml_data)
+    dependencies.create_dependencies()
+
     #instantiate the class
     bot = Bot(
         TWITCH_BOT_ACCESS_TOKEN, 
-        yaml_data=yaml_data
+        yaml_data=yaml_data,
+        gpt_client=dependencies.gpt_client,
+        twitch_chat_uploader=dependencies.twitch_chat_uploader,
+        tts_client=dependencies.tts_client,
+        message_handler=dependencies.message_handler
         )
     bot.run()
 

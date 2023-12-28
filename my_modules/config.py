@@ -1,6 +1,5 @@
 import os
-import logging
-
+import dotenv
 from my_modules.my_logging import create_logger
 
 # Set up logging
@@ -13,7 +12,10 @@ logger = create_logger(
     )
 
 #Load parameters from config.yaml
-def load_yaml(yaml_filename='config.yaml', yaml_dirname='config', is_testing=False):
+def load_yaml(
+        yaml_filename='config.yaml', 
+        yaml_dirname="C:/Users/Admin/OneDrive/Desktop/_work/__repos (unpublished)/_____CONFIG/chatzilla_ai/config", is_testing=False
+        ):
 
     """
     Load parameters from a YAML file.
@@ -39,8 +41,7 @@ def load_yaml(yaml_filename='config.yaml', yaml_dirname='config', is_testing=Fal
 
 
 #Loads environment variables from config.env
-def load_env(env_filename='config.env', env_dirname='config', is_testing=False):
-    import dotenv
+def load_env(env_filename, env_dirname):
     """
     Load environment variables from a .env file.
 
@@ -49,11 +50,6 @@ def load_env(env_filename='config.env', env_dirname='config', is_testing=False):
     - env_dirname (str): Directory path containing the .env file.
     - is_testing (bool): Flag to indicate if the function is being run for testing purposes.
     """
-    
-    #is_testing = True
-    if is_testing ==True:
-        env_filename='config.env' 
-        env_dirname='C:\_repos\chatforme_bots\config'
 
     env_filepath = os.path.join(os.getcwd(), env_dirname, env_filename)
     if dotenv.load_dotenv(env_filepath):
@@ -62,8 +58,8 @@ def load_env(env_filename='config.env', env_dirname='config', is_testing=False):
         logger.error('LOG: Failed to load environment file.')
 
 def run_config():
-    load_env()
     yaml_data = load_yaml()
+    load_env(env_filename = yaml_data['env_filename'], env_dirname=yaml_data['env_dirname'])
     return yaml_data
 
 if __name__ == "__main__":

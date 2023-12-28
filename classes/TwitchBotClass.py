@@ -92,6 +92,10 @@ class Bot(twitch_commands.Bot):
         #load yaml/env
         self.yaml_data = run_config()
 
+        # TTS folder/filenames
+        self.tts_file_name = self.yaml_data['openai-api']['tts_file_name']
+        self.tts_data_folder = self.yaml_data['openai-api']['tts_data_folder']
+
         #Twitch Bot Details
         self.twitch_bot_channel_name = self.yaml_data['twitch-app']['twitch_bot_channel_name']
         self.twitch_bot_username = self.yaml_data['twitch-app']['twitch_bot_username']

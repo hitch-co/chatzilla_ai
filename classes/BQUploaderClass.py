@@ -12,13 +12,13 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 
 runtime_debug_level = 'WARNING'
 
-class TwitchChatBQUploader:
+class BQUploader:
     def __init__(self):
-        
-        
         self.yaml_data = run_config()
 
-        #env variables
+        # env variables 
+        # TODO: Probably shouldn't need/use the twitch IDs in my bq uploader
+        # TODO: Probably should move these env variables to config.yaml
         self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
         self.twitch_bot_moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
         self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
@@ -30,22 +30,26 @@ class TwitchChatBQUploader:
         #logger
         self.logger = my_logging.create_logger(
             dirname='log', 
-            logger_name='logger_ChatUploader',
+            logger_name='logger_BQUploader',
             debug_level=runtime_debug_level,
             mode='w',
             stream_logs=True
             )
-        self.logger.debug('TwitchChatBQUploader Logger initialized.')
+        self.logger.debug('BQUploader Logger initialized.')
 
         #Build the client
         self.bq_client = bigquery.Client()
 
+        #Users lists
         self.channel_viewers_list_dict_temp = []
         self.channel_viewers_queue = []
 
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
-    def get_channel_viewers(self,
-                            bearer_token=None) -> object:
+    def get_channel_viewers(
+        self,
+        bearer_token=None
+        ) -> object:
+
         self.logger.debug(f'Getting channel viewers with bearer_token')
         base_url=self.yaml_data['twitch-ouat']['twitch-get-chatters-endpoint']
         params = {
@@ -139,14 +143,36 @@ class TwitchChatBQUploader:
         self.logger.debug("This is the users table merge query:")
         self.logger.debug(merge_query)
         return merge_query
-  
+
+    def fetch_users(self, table_id):
+        query = f"""
+        SELECT user_id, user_login, user_name
+        FROM `{table_id}`
+        """
+
+        # Execute the query
+        query_job = self.bq_client.query(query)
+
+        # Process the results
+        results = []
+        for row in query_job:
+            results.append({
+                "user_id": row.user_id,
+                "user_login": row.user_login,
+                "user_name": row.user_name
+            })
+
+        return results
+
     def get_process_queue_create_channel_viewers_query(self, 
                                                        bearer_token,
-                                                       table_id) -> str:
+                                                       table_id,
+                                                       response = None) -> str:
         
         #Response from twitch API
-        response = self.get_channel_viewers(bearer_token=bearer_token)
-
+        if response == None:
+            response = self.get_channel_viewers(bearer_token=bearer_token)
+        
         #retrieves list of dicts
         channel_viewers_records = self.process_channel_viewers(response=response)
         
@@ -193,6 +219,7 @@ class TwitchChatBQUploader:
             self.logger.info(f"Rows successfully inserted into table_id: {table_id}")
             self.logger.debug("These are the records:")
             self.logger.debug(records)
+            
     def send_queryjob_to_bq(self, query):
         try:
             # Start the query job
@@ -220,5 +247,5 @@ class TwitchChatBQUploader:
             self.logger.info(f"Query plan: {job_stats}")
 
 if __name__ == '__main__':
-    chatdataclass = TwitchChatBQUploader()
+    chatdataclass = BQUploader()
     chatdataclass.get_channel_viewers()

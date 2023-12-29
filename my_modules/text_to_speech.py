@@ -15,7 +15,7 @@ ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')
 ELEVENLABS_XI_VOICE_PERSONAL= os.getenv('ELEVENLABS_XI_VOICE_PERSONAL')
 ELEVENLABS_XI_VOICE = os.getenv('ELEVENLABS_XI_VOICE_PERSONAL_CHARLOTTE')
 
-def play_local_mp3(filename, dirpath, volume=0.6):
+def play_local_mp3(filename, dirpath, volume=yaml_data['openai-api']['tts_volume']):
     pathname_to_mp3 = os.path.join(dirpath, filename)
     pygame.mixer.init()
     pygame.mixer.music.load(pathname_to_mp3)

@@ -1,7 +1,7 @@
 # dependency_injector.py
 
 from classes.MessageHandlerClass import MessageHandler
-from classes.BQUploaderClass import TwitchChatBQUploader
+from classes.BQUploaderClass import BQUploader
 from classes.GPTTextToSpeechClass import GPTTextToSpeech
 from services.VibecheckService import VibeCheckService
 
@@ -21,8 +21,8 @@ class DependencyInjector:
     def create_gpt_client(self):
         return openai.OpenAI()
 
-    def create_twitch_chat_uploader(self):
-        return TwitchChatBQUploader()
+    def create_bq_uploader(self):
+        return BQUploader()
 
     def create_tts_client(self):
         tts_client = GPTTextToSpeech(
@@ -42,7 +42,7 @@ class DependencyInjector:
 
     def create_dependencies(self):
         self.gpt_client = self.create_gpt_client()
-        self.twitch_chat_uploader = self.create_twitch_chat_uploader()
+        self.bq_uploader = self.create_bq_uploader()
         self.tts_client = self.create_tts_client()
 
         self.message_handler = self.create_message_handler()
@@ -53,10 +53,9 @@ def main():
     dependencies = DependencyInjector(yaml_data)
     dependencies.create_dependencies()
 
-    print(dependencies.create_gpt_client)
+    print(dependencies.gpt_client)
     print(dependencies.message_handler)
-    print(dependencies.vibecheck_service)
-    print(dependencies.twitch_chat_uploader)
+    print(dependencies.bq_uploader)
     print(dependencies.tts_client)
 
 if __name__ == '__main__':

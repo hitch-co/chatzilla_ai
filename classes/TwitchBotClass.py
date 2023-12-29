@@ -10,7 +10,6 @@ from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_promp
 from my_modules.gpt import ouat_gpt_response_cleanse, chatforme_gpt_response_cleanse, botthot_gpt_response_cleanse
 
 from my_modules.my_logging import create_logger
-from my_modules.twitchio_helpers import get_string_of_users
 from my_modules.config import run_config
 from my_modules.text_to_speech import play_local_mp3
 from my_modules import utils
@@ -28,7 +27,7 @@ class Bot(twitch_commands.Bot):
             self, 
             TWITCH_BOT_ACCESS_TOKEN, yaml_data, 
             gpt_client, 
-            twitch_chat_uploader, 
+            bq_uploader, 
             tts_client,  
             message_handler
             ):
@@ -58,9 +57,14 @@ class Bot(twitch_commands.Bot):
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
 
+        # Twitch IDs
+        self.broadcaster_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
+        self.moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
+        self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
+
         # dependencies instances
         self.gpt_client = gpt_client
-        self.twitch_chat_uploader = twitch_chat_uploader 
+        self.bq_uploader = bq_uploader 
         self.tts_client = tts_client
         self.message_handler = message_handler
 
@@ -71,6 +75,9 @@ class Bot(twitch_commands.Bot):
         #BQ Table IDs
         self.userdata_table_id=self.yaml_data['twitch-ouat']['talkzillaai_userdata_table_id']
         self.usertransactions_table_id=self.yaml_data['twitch-ouat']['talkzillaai_usertransactions_table_id']
+        
+        #Get historic stream viewers
+        self.historic_users_at_start_of_session = self.bq_uploader.fetch_users(self.userdata_table_id)
 
         #Set default loop state
         self.is_ouat_loop_active = False
@@ -79,7 +86,6 @@ class Bot(twitch_commands.Bot):
         #counters
         self.ouat_counter = 0
         self.vibechecker_interactions_counter = 0
-        
         
         #vibecheck params
         self.vibechecker_max_interaction_count = self.yaml_data['vibechecker_max_interaction_count']
@@ -151,7 +157,7 @@ class Bot(twitch_commands.Bot):
         self.ouat_story_max_counter = self.yaml_data['ouat_story_max_counter']
         self.ouat_wordcount = self.yaml_data['ouat_wordcount']
 
-        #Generic config itrems
+        #Generic config items
         self.num_bot_responses = self.yaml_data['num_bot_responses']
         
         #AUTOMSG
@@ -160,7 +166,7 @@ class Bot(twitch_commands.Bot):
         self.automsg_prompt_prefix = self.yaml_data['automsg_prompt_prefix']
 
         #GPT Prompt
-        self.gpt_prompt = ''  
+        self.gpt_prompt = None
 
         # Load settings and configurations from a YAML file
         # TODO: Can be moved into the load_configurations() function
@@ -186,6 +192,10 @@ class Bot(twitch_commands.Bot):
             ]
         await self.print_runtime_params(args_list=args_list)
 
+        #start OUAT loop
+        self.loop = asyncio.get_event_loop()
+        self.loop.create_task(self.ouat_storyteller())
+
         # Say hello to the chat
         replacements_dict = {"helloworld_message_wordcount":self.helloworld_message_wordcount,
                                 'twitch_bot_display_name':self.twitch_bot_display_name,
@@ -208,10 +218,6 @@ class Bot(twitch_commands.Bot):
         gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
         await self.channel.send(gpt_response_clean)
 
-        #start OUAT loop
-        self.loop = asyncio.get_event_loop()
-        self.loop.create_task(self.ouat_storyteller())
-
     async def event_message(self, message):
         self.logger.info("--------- Message received ---------")
         self.logger.debug(message)
@@ -225,25 +231,26 @@ class Bot(twitch_commands.Bot):
             self.vibecheck_service.process_vibecheck_message(self.message_handler.message_history_raw[-1]['name'])
         
         # 3. Get chatter data, store in queue, generate query for sending to BQ
-        channel_viewers_queue_query = self.twitch_chat_uploader.get_process_queue_create_channel_viewers_query(
+        channel_viewers_queue_query = self.bq_uploader.get_process_queue_create_channel_viewers_query(
             table_id=self.userdata_table_id,
-            bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
+            bearer_token=self.TWITCH_BOT_ACCESS_TOKEN
+            )
 
         #Send the data to BQ when queue is full.  Clear queue when done
-        if len(self.message_handler.message_history_raw)>=5:            
-            self.twitch_chat_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
-            viewer_interaction_records = self.twitch_chat_uploader.generate_bq_user_interactions_records(records=self.message_handler.message_history_raw)  
-
-            self.twitch_chat_uploader.send_recordsjob_to_bq(
+        if len(self.message_handler.message_history_raw)>=5:
+            self.bq_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
+            
+            viewer_interaction_records = self.bq_uploader.generate_bq_user_interactions_records(records=self.message_handler.message_history_raw)
+            
+            self.bq_uploader.send_recordsjob_to_bq(
                 table_id=self.usertransactions_table_id,
                 records=viewer_interaction_records
                 )
             self.logger.debug("These are the viewer_interaction_records:")
             self.logger.debug(viewer_interaction_records[0:2])
 
-            #clear the queues
             self.message_handler.message_history_raw.clear()
-            self.twitch_chat_uploader.channel_viewers_queue.clear()
+            self.bq_uploader.channel_viewers_queue.clear()
 
         # self.handle_commands runs through bot commands
         if message.author is not None:
@@ -259,20 +266,20 @@ class Bot(twitch_commands.Bot):
         #  existing message_history list (ie raw/all) instead. 
         try: most_recent_message = self.message_handler.all_msg_history_gptdict[-2]['content']
         except: await self.channel.send("No user to be vibechecked, try again after they send a message")
-            
+
+        # Collect the vibechecker_players    
         name_start_pos = most_recent_message.find('<<<') + 3
         name_end_pos = most_recent_message.find('>>>', name_start_pos)
         self.vibecheckee_username = most_recent_message[name_start_pos:name_end_pos]
         self.vibechecker_username = message.author.name
         self.vibecheckbot_username = self.twitch_bot_display_name
-        
         self.vibechecker_players = {
             'vibecheckee_username': self.vibecheckee_username,
             'vibechecker_username': self.vibechecker_username,
             'vibecheckbot_username': self.vibecheckbot_username
         } 
 
-        #Start the vibecheck service and session
+        # Start the vibecheck service and then the session
         self.vibecheck_service = VibeCheckService(
             yaml_config=self.yaml_data,
             message_handler=self.message_handler,
@@ -491,7 +498,7 @@ class Bot(twitch_commands.Bot):
         request_user_name = ctx.message.author.name
 
         # Extract usernames from previous chat messages stored in chatforme_msg_history.
-        users_in_messages_list_text = get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
+        users_in_messages_list_text = self.message_handler._get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
 
         #Select prompt from argument, build the final prompt textand format replacements
         formatted_gpt_chatforme_prompt = self.formatted_gpt_chatforme_prompts[self.args_chatforme_prompt_name]
@@ -534,6 +541,56 @@ class Bot(twitch_commands.Bot):
                 filename=output_filename
                 )
 
+    @twitch_commands.command(name='newusers')
+    async def send_message_to_new_users(self, ctx):
+        new_users = await self._get_new_users_since_last_session()
+        # Extract 'user_login' from each dictionary and create a list
+        user_logins = [user['user_login'] for user in new_users]
+
+        # Join the list into a single string separated by ', '
+        user_logins_str = ', '.join(user_logins)
+        await self.channel.send(f"These are the new users in this stream: {user_logins_str}")
+
+    async def _get_new_users_since_last_session(self):
+
+        async def find_users_unique_to_second_list(source_list, new_list):
+            # Assuming the first dictionary in list2 represents the key structure
+            keys = new_list[0].keys()
+
+            # Convert list1 and list2 to sets of a primary key (assuming the first key is unique)
+            primary_key = next(iter(keys))
+            set1 = {user[primary_key] for user in source_list}
+            set2 = {user[primary_key] for user in new_list}
+
+            # Find the difference - users in list2 but not in list1
+            unique_user_ids = set2 - set1
+
+            # Convert the unique user_ids back to dictionary format
+            unique_users = [user for user in new_list if user[primary_key] in unique_user_ids]
+
+            # Check if unique_users is empty and create a placeholder if it is
+            if not unique_users:
+                placeholder = {key: "no unique users" for key in keys}
+                return [placeholder]
+
+            return unique_users
+        
+        self.current_users_in_session = await self.message_handler.get_current_users_in_session(
+            bearer_token = self.TWITCH_BOT_ACCESS_TOKEN,
+            broadcaster_id = self.broadcaster_id,
+            moderator_id = self.moderator_id,
+            twitch_bot_client_id = self.twitch_bot_client_id
+            )
+        self.new_users_since_last_sesion = await find_users_unique_to_second_list(self.historic_users_at_start_of_session, self.current_users_in_session)
+
+        self.logger.warning("This is the self.current_users_in_session:")
+        self.logger.warning(self.current_users_in_session)
+        self.logger.warning("This is the self.historic_users_at_start_of_session:")
+        self.logger.warning(self.historic_users_at_start_of_session)
+        self.logger.warning("THESE ARE THE new_users_since_last_sesion:")
+        self.logger.warning(self.new_users_since_last_sesion)
+        return self.new_users_since_last_sesion
+    
     # @twitch_commands.command(name='botthot')
     # async def botthot(self, ctx):
     #     """
@@ -543,7 +600,7 @@ class Bot(twitch_commands.Bot):
     #     request_user_name = ctx.message.author.name
 
     #     # Extract usernames from previous chat messages stored in chatforme_msg_history.
-    #     users_in_messages_list_text = get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
+    #     users_in_messages_list_text = self.message_handler._get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
 
     #     #Select the prompt, build the botthot_prompt to be added as role: system to the 
     #     # chatcompletions endpoint

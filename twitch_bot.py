@@ -119,7 +119,7 @@ def run_bot(TWITCH_BOT_ACCESS_TOKEN, yaml_data):
         TWITCH_BOT_ACCESS_TOKEN, 
         yaml_data=yaml_data,
         gpt_client=dependencies.gpt_client,
-        twitch_chat_uploader=dependencies.twitch_chat_uploader,
+        bq_uploader=dependencies.bq_uploader,
         tts_client=dependencies.tts_client,
         message_handler=dependencies.message_handler
         )

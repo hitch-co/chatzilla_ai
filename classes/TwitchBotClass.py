@@ -3,11 +3,12 @@ from twitchio.ext import commands as twitch_commands
 
 import random
 import os
+import re
 from datetime import datetime
 
 from my_modules.gpt import openai_gpt_chatcompletion
 from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext
-from my_modules.gpt import ouat_gpt_response_cleanse, chatforme_gpt_response_cleanse, botthot_gpt_response_cleanse
+from my_modules.gpt import ouat_gpt_response_cleanse, chatforme_gpt_response_cleanse
 
 from my_modules.my_logging import create_logger
 from my_modules.twitchio_helpers import get_string_of_users
@@ -64,6 +65,13 @@ class Bot(twitch_commands.Bot):
         self.tts_client = tts_client
         self.message_handler = message_handler
 
+        # required config/files
+        self.command_spellecheck_terms = utils.load_json(
+            self,
+            dir_path=self.yaml_data['yaml_dirpath'],
+            file_name='command_spellcheck_terms.json'
+            )
+        
         #Google Service Account Credentials
         google_application_credentials_file = yaml_data['twitch-ouat']['google_service_account_credentials_file']
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_application_credentials_file
@@ -243,6 +251,15 @@ class Bot(twitch_commands.Bot):
         await self.channel.send(gpt_response_clean)
 
     async def event_message(self, message):
+
+        def clean_message_content(content, command_spellings):
+            for correct_command, misspellings in command_spellings.items():
+                for misspelled in misspellings:
+                    # Using a regular expression to match whole commands only
+                    pattern = r'(^|\s)' + re.escape(misspelled) + r'(\s|$)'
+                    content = re.sub(pattern, r'\1' + correct_command + r'\2', content)
+            return content
+
         self.logger.info("--------- Message received ---------")
         self.logger.debug(message)
         self.logger.info(f"message.content: {message.content}")
@@ -259,20 +276,25 @@ class Bot(twitch_commands.Bot):
             table_id=self.userdata_table_id,
             bearer_token=self.TWITCH_BOT_ACCESS_TOKEN)
 
-        #Send the data to BQ when queue is full.  Clear queue when done
-        if len(self.message_handler.message_history_raw)>=5:            
-            self.twitch_chat_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
-            viewer_interaction_records = self.twitch_chat_uploader.generate_bq_user_interactions_records(records=self.message_handler.message_history_raw)  
-
-            self.twitch_chat_uploader.send_recordsjob_to_bq(
+        # 4. Send the data to BQ when queue is full.  Clear queue when done
+        if len(self.message_handler.message_history_raw)>=5:
+            self.bq_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
+            
+            viewer_interaction_records = self.bq_uploader.generate_bq_user_interactions_records(records=self.message_handler.message_history_raw)
+            
+            self.bq_uploader.send_recordsjob_to_bq(
                 table_id=self.usertransactions_table_id,
                 records=viewer_interaction_records
                 )
             self.message_handler.message_history_raw.clear()
             self.twitch_chat_uploader.channel_viewers_queue.clear()
 
-        # self.handle_commands runs through bot commands
+        # 5. self.handle_commands runs through bot commands
         if message.author is not None:
+            message.content = clean_message_content(
+                message.content,
+                self.command_spellecheck_terms
+                )
             await self.handle_commands(message)
 
     @twitch_commands.command(name='vc')

@@ -13,6 +13,18 @@ logger = create_logger(
     stream_logs=False
     )
 
+def load_json(
+        self,
+        dir_path,
+        file_name
+        ):
+    file_path = os.path.join(dir_path, file_name)
+    
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+    
+    return data
+
 def show_json(obj):
     # Assuming obj.model_dump_json() returns a JSON string
     json_data = json.loads(obj.model_dump_json())

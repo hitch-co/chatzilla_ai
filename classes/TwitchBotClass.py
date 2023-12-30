@@ -541,15 +541,22 @@ class Bot(twitch_commands.Bot):
                 filename=output_filename
                 )
 
+    #TODO: Should be loaded into a 'service'/'task' on event_ready(), whereby 
+    # it will run continuously in the background, with asyncio.wait() as a 
+    # controller
     @twitch_commands.command(name='newusers')
     async def send_message_to_new_users(self, ctx):
+
         new_users = await self._get_new_users_since_last_session()
         # Extract 'user_login' from each dictionary and create a list
         user_logins = [user['user_login'] for user in new_users]
 
         # Join the list into a single string separated by ', '
         user_logins_str = ', '.join(user_logins)
-        await self.channel.send(f"These are the new users in this stream: {user_logins_str}")
+        if user_logins_str == 'no unique users':
+            await self.channel.send("Still chillin with the same ol' fam and we're happy to have them :)")            
+        else:
+            await self.channel.send(f"These are the new users in this stream: {user_logins_str}")
 
     async def _get_new_users_since_last_session(self):
 
@@ -583,65 +590,4 @@ class Bot(twitch_commands.Bot):
             )
         self.new_users_since_last_sesion = await find_users_unique_to_second_list(self.historic_users_at_start_of_session, self.current_users_in_session)
 
-        self.logger.warning("This is the self.current_users_in_session:")
-        self.logger.warning(self.current_users_in_session)
-        self.logger.warning("This is the self.historic_users_at_start_of_session:")
-        self.logger.warning(self.historic_users_at_start_of_session)
-        self.logger.warning("THESE ARE THE new_users_since_last_sesion:")
-        self.logger.warning(self.new_users_since_last_sesion)
         return self.new_users_since_last_sesion
-    
-    # @twitch_commands.command(name='botthot')
-    # async def botthot(self, ctx):
-    #     """
-    #     A Twitch bot command that interacts with OpenAI's GPT API.
-    #     It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
-    #     """
-    #     request_user_name = ctx.message.author.name
-
-    #     # Extract usernames from previous chat messages stored in chatforme_msg_history.
-    #     users_in_messages_list_text = self.message_handler._get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
-
-    #     #Select the prompt, build the botthot_prompt to be added as role: system to the 
-    #     # chatcompletions endpoint
-    #     formatted_gpt_chatforme_prompt = self.formatted_gpt_chatforme_prompts[self.args_botthot_prompt_name]
-    #     botthot_prompt = self.formatted_gpt_chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.formatted_gpt_chatforme_prompt_suffix
-    #     replacements_dict = {
-    #         "twitch_bot_username":self.twitch_bot_username,
-    #         "num_bot_responses":self.num_bot_responses,
-    #         "request_user_name":request_user_name,
-    #         "users_in_messages_list_text":users_in_messages_list_text,
-    #         "chatforme_message_wordcount":self.chatforme_message_wordcount
-    #     }
-    #     botthot_prompt = prompt_text_replacement(
-    #         gpt_prompt_text=formatted_gpt_chatforme_prompt,
-    #         replacements_dict=replacements_dict
-    #         )
-
-    #     #TODO: GPTAssistant Manager #######################################################################
-    #     # # Combine the chat history with the new system prompt to form a list of messages for GPT.
-    #     messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=botthot_prompt,
-    #                                                           prompt_text_role='system',
-    #                                                           prompt_text_name='unknown',
-    #                                                           msg_history_list_dict=self.message_handler.chatforme_msg_history,
-    #                                                           combine_messages=False)
-        
-    #     gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt)
-    #     gpt_response_clean = botthot_gpt_response_cleanse(gpt_response)
-
-    #     if self.args_include_sound == 'yes':
-    #         # Generate speech object and create .mp3:
-    #         output_filename = 'botthot_'+self.tts_file_name
-    #         self.tts_client.workflow_t2s(text_input=gpt_response_clean,
-    #                                         voice_name='onyx',
-    #                                     output_dirpath=self.tts_data_folder,
-    #                                     output_filename=output_filename)
-        
-    #     #send twitch message and generate/play local mp3 if applicable
-    #     await self.channel.send(gpt_response_clean)
-
-    #     if self.args_include_sound == 'yes':
-    #         play_local_mp3(
-    #             dirpath=self.tts_data_folder, 
-    #             filename=output_filename
-    #             )                 

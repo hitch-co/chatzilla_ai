@@ -2,6 +2,7 @@ import asyncio
 
 from my_modules.my_logging import create_logger
 
+from services.ChatForMeService import ChatForMeService
 runtime_logger_level = 'DEBUG'
 
 class NewUsersService:
@@ -24,12 +25,15 @@ class NewUsersService:
 
         #Bot
         self.botclass = botclass
+        
+        #chatforme 
+        self.chatforme_service = ChatForMeService(self.botclass)
 
     async def send_message_to_new_users_task(self, interval_seconds):
         while True:
             await asyncio.sleep(interval_seconds)
             await self.send_message_to_new_users()
-
+            
     async def send_message_to_new_users(self):
         new_users = await self._get_new_users_since_last_session()
 
@@ -39,9 +43,15 @@ class NewUsersService:
         # Join the list into a single string separated by ', '
         user_logins_str = ', '.join(user_logins)
         if user_logins_str == 'no unique users':
-            await self.botclass.channel.send("Still chillin with the same ol' fam and we're happy to have them :)")            
+            # await self.botclass.channel.send("Still chillin with the same ol' fam and we're happy to have them :)")
+            self.logger.info("No users found, starting chat for me...")
+            try:
+                await self.chatforme_service.chatforme_logic(ctx=None)
+                self.logger.info("'chatforme' completed successfully.")
+            except Exception as e:
+                self.logger.error(f"Error occurred in 'chatforme': {e}")
         else:
-            await self.botclass.send(f"These are the new users in this stream: {user_logins_str}")
+            await self.botclass.channel.send(f"These are the new users in this stream: {user_logins_str}")
 
     async def _get_new_users_since_last_session(self):
 

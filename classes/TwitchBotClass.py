@@ -20,6 +20,7 @@ from classes.ArgsConfigManagerClass import ArgsConfigManager
 
 from services.VibecheckService import VibeCheckService
 from services.NewUsersService import NewUsersService
+from services.ChatForMeService import ChatForMeService
 
 runtime_logger_level = 'DEBUG'
 class Bot(twitch_commands.Bot):
@@ -58,6 +59,9 @@ class Bot(twitch_commands.Bot):
 
         # instantiate the NewUsersService
         self.newusers_service = NewUsersService(botclass=self)
+
+        # instantiate the NewUserService
+        self.chatforme_service = ChatForMeService(botclass=self)
 
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
@@ -268,7 +272,7 @@ class Bot(twitch_commands.Bot):
         if message.author is not None:
             await self.handle_commands(message)
 
-    @twitch_commands.command(name='vc')
+    @twitch_commands.command(name='vibecheck')
     async def vc(self, message, *args):
         self.vibechecker_interactions_counter == 0
         self.is_vibecheck_loop_active = True
@@ -501,118 +505,5 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='chatforme')
     async def chatforme(self, ctx):
-        """
-        A Twitch bot command that interacts with OpenAI's GPT API.
-        It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
-        """
-        self.run_configuration()
-        datetime_string = datetime.now().strftime("%Y%m%d_%H%M%S")
-        request_user_name = ctx.message.author.name
+        await self.chatforme_service.chatforme_logic(ctx)
 
-        # Extract usernames from previous chat messages stored in chatforme_msg_history.
-        users_in_messages_list_text = self.message_handler._get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
-
-        #Select prompt from argument, build the final prompt textand format replacements
-        formatted_gpt_chatforme_prompt = self.formatted_gpt_chatforme_prompts[self.args_chatforme_prompt_name]
-        chatforme_prompt = self.formatted_gpt_chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.formatted_gpt_chatforme_prompt_suffix
-        replacements_dict = {
-            "twitch_bot_username":self.twitch_bot_username,
-            "num_bot_responses":self.num_bot_responses,
-            "request_user_name":request_user_name,
-            "users_in_messages_list_text":users_in_messages_list_text,
-            "chatforme_message_wordcount":self.chatforme_message_wordcount
-        }
-        chatforme_prompt = prompt_text_replacement(
-            gpt_prompt_text=chatforme_prompt,
-            replacements_dict = replacements_dict
-            )
-
-        #TODO: GPTAssistant Manager #######################################################################
-        messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text = chatforme_prompt,
-                                                              prompt_text_role='system',
-                                                              msg_history_list_dict=self.message_handler.chatforme_msg_history,
-                                                              combine_messages=False)
-        
-        gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt)
-        gpt_response_clean = chatforme_gpt_response_cleanse(gpt_response)
-
-        if self.args_include_sound == 'yes':
-            # Generate speech object and create .mp3:
-            output_filename = "chatforme_"+"_"+datetime_string+"_"+self.tts_file_name
-            self.tts_client.workflow_t2s(text_input=gpt_response_clean,
-                                            voice_name='onyx',
-                                        output_dirpath=self.tts_data_folder,
-                                        output_filename=output_filename)
-        
-        #send twitch message and generate/play local mp3 if applicable
-        await self.channel.send(gpt_response_clean)
-
-        if self.args_include_sound == 'yes':
-            play_local_mp3(
-                dirpath=self.tts_data_folder, 
-                filename=output_filename
-                )
-
-    # #TODO: Should be loaded into a 'service'/'task' on event_ready(), whereby 
-    # # it will run continuously in the background, with asyncio.wait() as a 
-    # # controller
-    # @twitch_commands.command(name='newusers')
-    # async def send_message_to_new_users(self, ctx):
-    #     new_users = await self._get_new_users_since_last_session()
-
-    #     # Extract 'user_login' from each dictionary and create a list
-    #     user_logins = [user['user_login'] for user in new_users]
-
-    #     # Join the list into a single string separated by ', '
-    #     user_logins_str = ', '.join(user_logins)
-    #     if user_logins_str == 'no unique users':
-    #         await self.channel.send("Still chillin with the same ol' fam and we're happy to have them :)")            
-    #     else:
-    #         await self.channel.send(f"These are the new users in this stream: {user_logins_str}")
-
-    # async def send_message_to_new_users(self, ctx):
-    #     new_users = await self._get_new_users_since_last_session()
-
-    #     # Extract 'user_login' from each dictionary and create a list
-    #     user_logins = [user['user_login'] for user in new_users]
-
-    #     # Join the list into a single string separated by ', '
-    #     user_logins_str = ', '.join(user_logins)
-    #     if user_logins_str == 'no unique users':
-    #         await self.channel.send("Still chillin with the same ol' fam and we're happy to have them :)")            
-    #     else:
-    #         await self.channel.send(f"These are the new users in this stream: {user_logins_str}")
-
-    # async def _get_new_users_since_last_session(self):
-
-    #     async def find_users_unique_to_second_list(source_list, new_list):
-    #         # Assuming the first dictionary in list2 represents the key structure
-    #         keys = new_list[0].keys()
-
-    #         # Convert list1 and list2 to sets of a primary key (assuming the first key is unique)
-    #         primary_key = next(iter(keys))
-    #         set1 = {user[primary_key] for user in source_list}
-    #         set2 = {user[primary_key] for user in new_list}
-
-    #         # Find the difference - users in list2 but not in list1
-    #         unique_user_ids = set2 - set1
-
-    #         # Convert the unique user_ids back to dictionary format
-    #         unique_users = [user for user in new_list if user[primary_key] in unique_user_ids]
-
-    #         # Check if unique_users is empty and create a placeholder if it is
-    #         if not unique_users:
-    #             placeholder = {key: "no unique users" for key in keys}
-    #             return [placeholder]
-
-    #         return unique_users
-        
-    #     self.current_users_in_session = await self.message_handler.get_current_users_in_session(
-    #         bearer_token = self.TWITCH_BOT_ACCESS_TOKEN,
-    #         broadcaster_id = self.broadcaster_id,
-    #         moderator_id = self.moderator_id,
-    #         twitch_bot_client_id = self.twitch_bot_client_id
-    #         )
-    #     self.new_users_since_last_sesion = await find_users_unique_to_second_list(self.historic_users_at_start_of_session, self.current_users_in_session)
-
-    #     return self.new_users_since_last_sesion

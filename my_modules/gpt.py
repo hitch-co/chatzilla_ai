@@ -11,8 +11,8 @@ from my_modules.my_logging import create_logger
 from my_modules.config import run_config
 
 #LOGGING
-stream_logs = True
-runtime_logger_level = 'WARNING'
+stream_logs = False
+runtime_logger_level = 'DEBUG'
 yaml_data = run_config()
 gpt_model = yaml_data['openai-api']['assistant_model']
 shorten_message_prompt = yaml_data['ouat_prompts']['shorten_response_length_prompt']
@@ -53,7 +53,7 @@ def openai_gpt_chatcompletion(
     client = create_gpt_client()  
 
     logger.debug("This is the messages_dict_gpt submitted to GPT ChatCompletion")
-    logger.debug(f"The number of tokens included is: {_count_tokens_in_messages(messages=messages_dict_gpt)}")
+    logger.debug(f"The number of tokens included at start is: {_count_tokens_in_messages(messages=messages_dict_gpt)}")
     logger.debug(messages_dict_gpt)
 
     #Error checking for token length, etc.
@@ -98,6 +98,7 @@ def openai_gpt_chatcompletion(
 
         if gpt_response_text_len < max_characters:
             logger.info(f'OK: The generated message was <{max_characters} characters')
+            logger.info(f"gpt_response_text: {gpt_response_text}")
             break  
 
         else: # Did not get a msg < n chars, try again.

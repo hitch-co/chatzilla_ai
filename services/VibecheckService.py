@@ -24,7 +24,7 @@ class VibeCheckService:
             )
 
         #create vc event
-        self.message_ready_event = asyncio.Event()
+        self.vibecheck_ready_event = asyncio.Event()
         
         #Bot
         self.botclass = botclass
@@ -59,7 +59,7 @@ class VibeCheckService:
     def process_vibecheck_message(self, message_username):
         if self.is_vibecheck_loop_active and message_username == self.vibecheckee_username:
             # 1. Set the event if the criteria is met
-            self.message_ready_event.set()
+            self.vibecheck_ready_event.set()
             pass
 
     async def stop_vibecheck_session(self):
@@ -153,12 +153,12 @@ class VibeCheckService:
                     
                     # Wait for either the event to be set or the timer to run out
                     try:
-                        await asyncio.wait_for(self.message_ready_event.wait(), self.vibechecker_question_session_sleep_time)
+                        await asyncio.wait_for(self.vibecheck_ready_event.wait(), self.vibechecker_question_session_sleep_time)
                     except asyncio.TimeoutError:
                         pass  # Timeout occurred, continue as normal
 
-                    if self.message_ready_event.is_set():
-                        self.message_ready_event.clear()
+                    if self.vibecheck_ready_event.is_set():
+                        self.vibecheck_ready_event.clear()
 
         except asyncio.CancelledError:
             # Handle cancellation here

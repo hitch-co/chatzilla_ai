@@ -17,7 +17,9 @@ from my_modules import utils
 from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
 from classes.ArgsConfigManagerClass import ArgsConfigManager
+
 from services.VibecheckService import VibeCheckService
+from services.NewUsersService import NewUsersService
 
 runtime_logger_level = 'DEBUG'
 class Bot(twitch_commands.Bot):
@@ -53,6 +55,9 @@ class Bot(twitch_commands.Bot):
         # load args and config
         self.args_config = ArgsConfigManager()
         self.yaml_data = self.run_configuration()
+
+        # instantiate the NewUsersService
+        self.newusers_service = NewUsersService(botclass=self)
 
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
@@ -92,6 +97,9 @@ class Bot(twitch_commands.Bot):
         self.formatted_gpt_vibecheck_prompt = self.yaml_data['formatted_gpt_vibecheck_prompt']
         self.formatted_gpt_viberesult_prompt = self.yaml_data['formatted_gpt_viberesult_prompt']
         self.vibecheck_max_interactions = self.yaml_data['vibechecker_max_interaction_count']
+
+        #newusers params
+        self.newusers_sleep_time = self.yaml_data['newusers_sleep_time']
 
     def run_configuration(self) -> dict:
 
@@ -196,7 +204,11 @@ class Bot(twitch_commands.Bot):
         self.loop = asyncio.get_event_loop()
         self.loop.create_task(self.ouat_storyteller())
 
-        # Say hello to the chat
+        #start newusers loop
+        self.loop.create_task(self.newusers_service.send_message_to_new_users_task(self.newusers_sleep_time))
+
+        # Say hello to the chat 
+        # TODO: Put in a separate function
         replacements_dict = {"helloworld_message_wordcount":self.helloworld_message_wordcount,
                                 'twitch_bot_display_name':self.twitch_bot_display_name,
                                 'twitch_bot_channel_name':self.twitch_bot_channel_name,
@@ -541,53 +553,66 @@ class Bot(twitch_commands.Bot):
                 filename=output_filename
                 )
 
-    #TODO: Should be loaded into a 'service'/'task' on event_ready(), whereby 
-    # it will run continuously in the background, with asyncio.wait() as a 
-    # controller
-    @twitch_commands.command(name='newusers')
-    async def send_message_to_new_users(self, ctx):
+    # #TODO: Should be loaded into a 'service'/'task' on event_ready(), whereby 
+    # # it will run continuously in the background, with asyncio.wait() as a 
+    # # controller
+    # @twitch_commands.command(name='newusers')
+    # async def send_message_to_new_users(self, ctx):
+    #     new_users = await self._get_new_users_since_last_session()
 
-        new_users = await self._get_new_users_since_last_session()
-        # Extract 'user_login' from each dictionary and create a list
-        user_logins = [user['user_login'] for user in new_users]
+    #     # Extract 'user_login' from each dictionary and create a list
+    #     user_logins = [user['user_login'] for user in new_users]
 
-        # Join the list into a single string separated by ', '
-        user_logins_str = ', '.join(user_logins)
-        if user_logins_str == 'no unique users':
-            await self.channel.send("Still chillin with the same ol' fam and we're happy to have them :)")            
-        else:
-            await self.channel.send(f"These are the new users in this stream: {user_logins_str}")
+    #     # Join the list into a single string separated by ', '
+    #     user_logins_str = ', '.join(user_logins)
+    #     if user_logins_str == 'no unique users':
+    #         await self.channel.send("Still chillin with the same ol' fam and we're happy to have them :)")            
+    #     else:
+    #         await self.channel.send(f"These are the new users in this stream: {user_logins_str}")
 
-    async def _get_new_users_since_last_session(self):
+    # async def send_message_to_new_users(self, ctx):
+    #     new_users = await self._get_new_users_since_last_session()
 
-        async def find_users_unique_to_second_list(source_list, new_list):
-            # Assuming the first dictionary in list2 represents the key structure
-            keys = new_list[0].keys()
+    #     # Extract 'user_login' from each dictionary and create a list
+    #     user_logins = [user['user_login'] for user in new_users]
 
-            # Convert list1 and list2 to sets of a primary key (assuming the first key is unique)
-            primary_key = next(iter(keys))
-            set1 = {user[primary_key] for user in source_list}
-            set2 = {user[primary_key] for user in new_list}
+    #     # Join the list into a single string separated by ', '
+    #     user_logins_str = ', '.join(user_logins)
+    #     if user_logins_str == 'no unique users':
+    #         await self.channel.send("Still chillin with the same ol' fam and we're happy to have them :)")            
+    #     else:
+    #         await self.channel.send(f"These are the new users in this stream: {user_logins_str}")
 
-            # Find the difference - users in list2 but not in list1
-            unique_user_ids = set2 - set1
+    # async def _get_new_users_since_last_session(self):
 
-            # Convert the unique user_ids back to dictionary format
-            unique_users = [user for user in new_list if user[primary_key] in unique_user_ids]
+    #     async def find_users_unique_to_second_list(source_list, new_list):
+    #         # Assuming the first dictionary in list2 represents the key structure
+    #         keys = new_list[0].keys()
 
-            # Check if unique_users is empty and create a placeholder if it is
-            if not unique_users:
-                placeholder = {key: "no unique users" for key in keys}
-                return [placeholder]
+    #         # Convert list1 and list2 to sets of a primary key (assuming the first key is unique)
+    #         primary_key = next(iter(keys))
+    #         set1 = {user[primary_key] for user in source_list}
+    #         set2 = {user[primary_key] for user in new_list}
 
-            return unique_users
+    #         # Find the difference - users in list2 but not in list1
+    #         unique_user_ids = set2 - set1
+
+    #         # Convert the unique user_ids back to dictionary format
+    #         unique_users = [user for user in new_list if user[primary_key] in unique_user_ids]
+
+    #         # Check if unique_users is empty and create a placeholder if it is
+    #         if not unique_users:
+    #             placeholder = {key: "no unique users" for key in keys}
+    #             return [placeholder]
+
+    #         return unique_users
         
-        self.current_users_in_session = await self.message_handler.get_current_users_in_session(
-            bearer_token = self.TWITCH_BOT_ACCESS_TOKEN,
-            broadcaster_id = self.broadcaster_id,
-            moderator_id = self.moderator_id,
-            twitch_bot_client_id = self.twitch_bot_client_id
-            )
-        self.new_users_since_last_sesion = await find_users_unique_to_second_list(self.historic_users_at_start_of_session, self.current_users_in_session)
+    #     self.current_users_in_session = await self.message_handler.get_current_users_in_session(
+    #         bearer_token = self.TWITCH_BOT_ACCESS_TOKEN,
+    #         broadcaster_id = self.broadcaster_id,
+    #         moderator_id = self.moderator_id,
+    #         twitch_bot_client_id = self.twitch_bot_client_id
+    #         )
+    #     self.new_users_since_last_sesion = await find_users_unique_to_second_list(self.historic_users_at_start_of_session, self.current_users_in_session)
 
-        return self.new_users_since_last_sesion
+    #     return self.new_users_since_last_sesion

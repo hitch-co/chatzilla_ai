@@ -23,6 +23,23 @@ class ChatForMeService:
         # bot class
         self.botclass = botclass
 
+    async def make_singleprompt_gpt_response(
+            self,
+            prompt_text, 
+            replacements_dict=None
+            ) -> str:
+        prompt_text = gpt.prompt_text_replacement(
+            gpt_prompt_text=prompt_text,
+            replacements_dict = replacements_dict
+            )
+        
+        prompt_listdict = gpt.make_string_gptlistdict(
+            prompt_text=prompt_text,
+            prompt_text_role='user'
+            )
+        gpt_response = gpt.openai_gpt_chatcompletion(messages_dict_gpt=prompt_listdict)
+        return gpt_response
+    
     async def chatforme_logic(self, ctx):
         """
         A Twitch bot command that interacts with OpenAI's GPT API.

@@ -127,8 +127,12 @@ def openai_gpt_chatcompletion(
     return gpt_response_text
 
 def prompt_text_replacement(gpt_prompt_text,
-                            replacements_dict):
-    prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
+                            replacements_dict=None):
+    if replacements_dict:
+        prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
+    else:
+        prompt_text_replaced = gpt_prompt_text
+
     logger.debug(f"prompt_text_replaced: {prompt_text_replaced}")
     return prompt_text_replaced
 
@@ -191,6 +195,14 @@ def combine_msghistory_and_prompttext(prompt_text,
             )
         return msg_history_list_dict_temp
 
+def make_string_gptlistdict(
+        prompt_text, 
+        prompt_text_role='user'
+        ) -> list[dict]:
+    
+    prompt_listdict = [{'role': prompt_text_role, 'content': f'{prompt_text}'}]
+    return prompt_listdict
+
 def _count_tokens(text:str, model="gpt-3.5-turbo") -> int:
     try:
         encoding = tiktoken.encoding_for_model(model_name=model)
@@ -214,6 +226,7 @@ def _count_tokens_in_messages(messages: List[dict]) -> int:
         return total_tokens
     except:
         raise ValueError("_count_tokens_in_messages() failed")
+    
 def get_models(api_key=None):
     """
     Function to fetch the available models from the OpenAI API.

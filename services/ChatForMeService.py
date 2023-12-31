@@ -1,10 +1,10 @@
 from datetime import datetime 
+import asyncio
 
-from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext, openai_gpt_chatcompletion, chatforme_gpt_response_cleanse
 from my_modules.my_logging import create_logger
+from my_modules import gpt
 
 runtime_logger_level = 'DEBUG'
-
 class ChatForMeService:
     def __init__(
             self,
@@ -48,7 +48,7 @@ class ChatForMeService:
         self.botclass.run_configuration()
         datetime_string = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        # Use ctx only if it's provided
+        # Allows to call via twitch command or a direct call
         if ctx:
             self.logger.info("Conditions were met")
             request_user_name = ctx.message.author.name
@@ -69,19 +69,19 @@ class ChatForMeService:
             "users_in_messages_list_text":users_in_messages_list_text,
             "chatforme_message_wordcount":self.botclass.chatforme_message_wordcount
         }
-        chatforme_prompt = prompt_text_replacement(
+        chatforme_prompt = gpt.prompt_text_replacement(
             gpt_prompt_text=chatforme_prompt,
             replacements_dict = replacements_dict
             )
 
         #TODO: GPTAssistant Manager #######################################################################
-        messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text = chatforme_prompt,
+        messages_dict_gpt = gpt.combine_msghistory_and_prompttext(prompt_text = chatforme_prompt,
                                                               prompt_text_role='system',
                                                               msg_history_list_dict=self.botclass.message_handler.chatforme_msg_history,
                                                               combine_messages=False)
         
-        gpt_response = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt)
-        gpt_response_clean = chatforme_gpt_response_cleanse(gpt_response)
+        gpt_response = gpt.openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt)
+        gpt_response_clean = gpt.chatforme_gpt_response_cleanse(gpt_response)
 
         if self.botclass.args_include_sound == 'yes':
             # Generate speech object and create .mp3:
@@ -99,3 +99,16 @@ class ChatForMeService:
                 dirpath=self.botclass.tts_data_folder, 
                 filename=output_filename
                 )
+            
+async def main():
+    botclass=None
+    chatforme_service = ChatForMeService(botclass)
+    gpt_response = await chatforme_service.make_singleprompt_gpt_response(
+        prompt_text="hello how are you", 
+        replacements_dict=None
+        )
+    return gpt_response
+
+if __name__ == "__main__":
+    gpt_response = asyncio.run(main())
+    print(gpt_response)

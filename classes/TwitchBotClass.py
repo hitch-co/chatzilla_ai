@@ -66,6 +66,11 @@ class Bot(twitch_commands.Bot):
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
 
+        # Response wordcounts
+        self.wordcount_short = str(yaml_data['wordcounts']['short'])
+        self.wordcount_medium = str(yaml_data['wordcounts']['medium'])
+        self.wordcount_long = str(yaml_data['wordcounts']['long'])
+
         # Twitch IDs
         self.broadcaster_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
         self.moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')

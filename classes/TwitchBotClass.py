@@ -326,24 +326,13 @@ class Bot(twitch_commands.Bot):
             self.random_article_content = self.article_generator.fetch_random_article_content(article_char_trunc=300)                    
             replacements_dict = {"random_article_content":self.random_article_content,
                                  "user_requested_plotline":user_requested_plotline}
-            self.random_article_content = prompt_text_replacement(
-                gpt_prompt_text=self.ouat_news_article_summary_prompt,
-                replacements_dict=replacements_dict
-                )
 
-            gpt_ready_dict = self.message_handler._create_gpt_message_dict_from_strings(
-                content = self.random_article_content,
-                role = 'user',
-                name = message.author.name
-            )
-            gpt_ready_list_dict = [gpt_ready_dict]
-            self.logger.debug(f"gpt_ready_list_dict: {gpt_ready_list_dict}")
-
-            self.random_article_content_plot_summary = openai_gpt_chatcompletion(
-                messages_dict_gpt=gpt_ready_list_dict,
-                max_characters=1200
-                )
-            self.logger.debug(f"random_article_content_plot_summary: {self.random_article_content_plot_summary}")
+            self.random_article_content_plot_summary = await self.chatforme_service.make_singleprompt_gpt_response(
+                prompt_text=self.random_article_content,
+                replacements_dict=replacements_dict,
+                incl_voice='yes',
+                voice_name='onyx'
+            )      
 
             self.is_ouat_loop_active = True
             
@@ -465,35 +454,16 @@ class Bot(twitch_commands.Bot):
                 self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
                 self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
           
-                messages_dict_gpt = combine_msghistory_and_prompttext(prompt_text=gpt_prompt_final,
-                                                                      prompt_text_role='system',
-                                                                      msg_history_list_dict=self.message_handler.ouat_msg_history,
-                                                                      combine_messages=False)
+                #Chatforme service for message send/voice
+                selected_voice = 'onyx'
+                gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
+                    prompt_text = gpt_prompt_final, 
+                    replacements_dict=replacements_dict,
+                    msg_history=self.message_handler.ouat_msg_history,
+                    incl_voice='yes',
+                    voice_name=selected_voice
+                    )
 
-                gpt_response_text = openai_gpt_chatcompletion(messages_dict_gpt=messages_dict_gpt,
-                                                                max_attempts=3)
-                gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
-
-                self.logger.debug(f"This is the messages_dict_gpt:")
-                self.logger.debug(messages_dict_gpt)
-                self.logger.info(f"FINAL gpt_response_clean (type: {type(gpt_response_clean)}): \n{gpt_response_clean}")  
-
-                if self.args_include_sound == 'yes':
-                    # Generate speech object and create .mp3:
-                    output_filename = f"ouat_{str(self.ouat_counter)}_{self.tts_file_name}"
-                    self.tts_client.workflow_t2s(text_input=gpt_response_clean,
-                                                 voice_name='shimmer',
-                                                output_dirpath=self.tts_data_folder,
-                                                output_filename=output_filename)
-                
-                #send twitch message and generate/play local mp3 if applicable
-                await self.channel.send(gpt_response_clean)
-
-                if self.args_include_sound == 'yes':
-                    play_local_mp3(
-                        dirpath=self.tts_data_folder, 
-                        filename=output_filename
-                        )                  
                 self.ouat_counter += 1
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
 
@@ -521,6 +491,4 @@ class Bot(twitch_commands.Bot):
             replacements_dict=replacements_dict,
             msg_history=self.message_handler.chatforme_msg_history
         )
-
-        await self.channel.send(gpt_response)
 

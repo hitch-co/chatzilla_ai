@@ -3,7 +3,6 @@ from twitchio.ext import commands as twitch_commands
 
 import random
 import os
-from datetime import datetime
 
 from my_modules.gpt import openai_gpt_chatcompletion
 from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext
@@ -216,29 +215,19 @@ class Bot(twitch_commands.Bot):
         self.loop.create_task(self.newusers_service.send_message_to_new_users_task(self.newusers_sleep_time))
 
         # Say hello to the chat 
-        # TODO: Put in a separate function
         replacements_dict = {
             "helloworld_message_wordcount":self.helloworld_message_wordcount,
             'twitch_bot_display_name':self.twitch_bot_display_name,
             'twitch_bot_channel_name':self.twitch_bot_channel_name,
             'param_in_text':'variable_from_scope'
             }
-        gpt_prompt_final = prompt_text_replacement(
-            gpt_prompt_text=self.hello_assistant_prompt,
-            replacements_dict=replacements_dict
-            ) 
-        messages_dict_gpt = combine_msghistory_and_prompttext(
-            prompt_text=gpt_prompt_final,
-            prompt_text_role='system',
-            msg_history_list_dict=self.message_handler.ouat_msg_history,
-            combine_messages=False
+        prompt_text = self.hello_assistant_prompt
+
+        await self.chatforme_service.make_singleprompt_gpt_response(
+            prompt_text=prompt_text, 
+            replacements_dict=replacements_dict,
+            incl_voice='yes'
             )
-        gpt_response_text = openai_gpt_chatcompletion(
-            messages_dict_gpt=messages_dict_gpt,
-            max_attempts=3
-            )
-        gpt_response_clean = ouat_gpt_response_cleanse(gpt_response_text)
-        await self.channel.send(gpt_response_clean)
 
     async def event_message(self, message):
         self.logger.info("--------- Message received ---------")
@@ -534,3 +523,4 @@ class Bot(twitch_commands.Bot):
         )
 
         await self.channel.send(gpt_response)
+

@@ -1,9 +1,9 @@
 import asyncio
 
+from classes.GPTTextToSpeechClass import GPTTextToSpeech
+
 from my_modules.my_logging import create_logger
 from my_modules import gpt
-from my_modules.text_to_speech import play_local_mp3
-
 from my_modules import utils
 
 runtime_logger_level = 'DEBUG'
@@ -22,13 +22,24 @@ class ChatForMeService:
             encoding='UTF-8'
             )
 
+        # TODO: configuration
+        #
+        #
+
         # bot class
         self.botclass = botclass
+
+        # gpt text to speech class
+        self.tts_service = GPTTextToSpeech(
+            output_filename=self.botclass.tts_file_name,
+            output_dirpath=self.botclass.tts_data_folder
+        )
 
     async def _send_output_message_and_voice(
             self,
             text,
-            incl_voice='yes'
+            incl_voice,
+            voice_name
             ):
         datetime_string = utils.get_datetime_formats()['filename_format']
         if incl_voice == 'yes':
@@ -36,7 +47,7 @@ class ChatForMeService:
             output_filename = "chatforme_"+"_"+datetime_string+"_"+self.botclass.tts_file_name
             self.botclass.tts_client.workflow_t2s(
                 text_input=text,
-                voice_name='onyx',
+                voice_name=voice_name,
                 output_dirpath=self.botclass.tts_data_folder,
                 output_filename=output_filename
                 )
@@ -44,7 +55,7 @@ class ChatForMeService:
         await self.botclass.channel.send(text)
 
         if incl_voice == 'yes':
-            play_local_mp3(
+            self.tts_service.play_local_mp3(
                 dirpath=self.botclass.tts_data_folder, 
                 filename=output_filename
                 )
@@ -53,7 +64,8 @@ class ChatForMeService:
             self,
             prompt_text, 
             replacements_dict=None,
-            incl_voice='yes'
+            incl_voice='yes',
+            voice_name='onyx'
             ) -> str:
         try:
             prompt_text = gpt.prompt_text_replacement(
@@ -72,15 +84,18 @@ class ChatForMeService:
 
         await self._send_output_message_and_voice(
             text=gpt_response,
-            incl_voice=incl_voice
+            incl_voice=incl_voice,
+            voice_name=voice_name
         )
+        return gpt_response
 
     async def make_msghistory_gpt_response(
             self,
             prompt_text, 
             replacements_dict=None,
             msg_history=None,
-            incl_voice='yes'
+            incl_voice='yes',
+            voice_name='onyx'
             ) -> str:
         try:
             prompt_text = gpt.prompt_text_replacement(
@@ -100,8 +115,10 @@ class ChatForMeService:
 
         await self._send_output_message_and_voice(
             text=gpt_response,
-            incl_voice=incl_voice
+            incl_voice=incl_voice,
+            voice_name=voice_name
         )
+        return gpt_response
 
 async def main():
     class botclass:

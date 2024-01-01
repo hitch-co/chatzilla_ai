@@ -1,8 +1,7 @@
-from pathlib import Path
 import os
-
 import openai
 from openai import OpenAI
+import pygame
 
 from my_modules.config import run_config
 from my_modules import my_logging
@@ -24,6 +23,7 @@ class GPTTextToSpeech:
         self.tts_model=self.yaml_data['openai-api']['tts_model']
         self.tts_voice=self.yaml_data['openai-api']['tts_voice']
         self.tts_data_folder = self.yaml_data['openai-api']['tts_data_folder']
+        self.tts_volume = self.yaml_data['openai-api']['tts_volume']
 
         ##folder/file details
         self.output_filename = output_filename
@@ -78,6 +78,25 @@ class GPTTextToSpeech:
             response=response, 
             speech_file_path=speech_file_path
             )
+
+    def play_local_mp3(
+            self,
+            filename,
+            dirpath
+            ):
+        pathname_to_mp3 = os.path.join(dirpath, filename)
+        
+        pygame.mixer.init()
+        pygame.mixer.music.load(pathname_to_mp3)
+        pygame.mixer.music.set_volume(self.tts_volume)
+        pygame.mixer.music.play()
+
+        # Wait for the music to finish playing
+        while pygame.mixer.music.get_busy():
+            continue
+        
+        pygame.mixer.music.stop()
+        pygame.mixer.quit()
 
 if __name__ == "__main__":
     print(f"The use of __file__ for relative path traversal prevents this module from being run directly \

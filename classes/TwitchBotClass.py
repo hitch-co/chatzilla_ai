@@ -187,14 +187,13 @@ class Bot(twitch_commands.Bot):
 
         # Load settings and configurations from a YAML file
         # TODO: Can be moved into the load_configurations() function
-        self.chatforme_message_wordcount = str(self.yaml_data['chatforme_message_wordcount'])
         self.vibecheck_message_wordcount = str(self.yaml_data['vibechecker_max_wordcount'])
         self.formatted_gpt_chatforme_prompt_prefix = str(self.yaml_data['formatted_gpt_chatforme_prompt_prefix'])
         self.formatted_gpt_chatforme_prompt_suffix = str(self.yaml_data['formatted_gpt_chatforme_prompt_suffix'])
         self.formatted_gpt_chatforme_prompts = self.yaml_data['formatted_gpt_chatforme_prompts']
         self.logger.info("Configuration attributes loaded/refreshed from YAML/env variables")  
         
-        return self.yaml_data 
+        return self.yaml_data
 
     async def event_ready(self):
         self.channel = self.get_channel(self.twitch_bot_channel_name)
@@ -218,10 +217,12 @@ class Bot(twitch_commands.Bot):
 
         # Say hello to the chat 
         # TODO: Put in a separate function
-        replacements_dict = {"helloworld_message_wordcount":self.helloworld_message_wordcount,
-                                'twitch_bot_display_name':self.twitch_bot_display_name,
-                                'twitch_bot_channel_name':self.twitch_bot_channel_name,
-                                'param_in_text':'variable_from_scope'} #for future use}
+        replacements_dict = {
+            "helloworld_message_wordcount":self.helloworld_message_wordcount,
+            'twitch_bot_display_name':self.twitch_bot_display_name,
+            'twitch_bot_channel_name':self.twitch_bot_channel_name,
+            'param_in_text':'variable_from_scope'
+            }
         gpt_prompt_final = prompt_text_replacement(
             gpt_prompt_text=self.hello_assistant_prompt,
             replacements_dict=replacements_dict
@@ -344,7 +345,7 @@ class Bot(twitch_commands.Bot):
             gpt_ready_dict = self.message_handler._create_gpt_message_dict_from_strings(
                 content = self.random_article_content,
                 role = 'user',
-                name = self.twitch_bot_username
+                name = message.author.name
             )
             gpt_ready_list_dict = [gpt_ready_dict]
             self.logger.debug(f"gpt_ready_list_dict: {gpt_ready_list_dict}")
@@ -438,7 +439,7 @@ class Bot(twitch_commands.Bot):
 
                 #TODO: Turn this into a function up to the 'continue'
                 replacements_dict = {"ouat_wordcount":self.ouat_wordcount,
-                                     'twitch_bot_username':self.twitch_bot_username,
+                                     'twitch_bot_display_name':self.twitch_bot_display_name,
                                      'num_bot_responses':self.num_bot_responses,
                                      'rss_feed_article_plot':self.random_article_content_plot_summary,
                                      'writing_style': self.selected_writing_style,
@@ -504,11 +505,32 @@ class Bot(twitch_commands.Bot):
                         dirpath=self.tts_data_folder, 
                         filename=output_filename
                         )                  
-
                 self.ouat_counter += 1
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
 
     @twitch_commands.command(name='chatforme')
     async def chatforme(self, ctx):
-        await self.chatforme_service.chatforme_logic(ctx)
+        """
+        A Twitch bot command that interacts with OpenAI's GPT API.
+        It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
+        """
+        # Extract usernames from previous chat messages stored in chatforme_msg_history.
+        users_in_messages_list_text = self.message_handler._get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
 
+        #Select prompt from argument, build the final prompt textand format replacements
+        formatted_gpt_chatforme_prompt = self.formatted_gpt_chatforme_prompts[self.args_chatforme_prompt_name]
+        chatforme_prompt = self.formatted_gpt_chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.formatted_gpt_chatforme_prompt_suffix
+        replacements_dict = {
+            "twitch_bot_display_name":self.twitch_bot_display_name,
+            "num_bot_responses":self.num_bot_responses,
+            "users_in_messages_list_text":users_in_messages_list_text,
+            "wordcount_medium":self.wordcount_medium
+        }
+
+        gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
+            prompt_text=chatforme_prompt,
+            replacements_dict=replacements_dict,
+            msg_history=self.message_handler.chatforme_msg_history
+        )
+
+        await self.channel.send(gpt_response)

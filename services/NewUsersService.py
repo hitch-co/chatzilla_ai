@@ -60,7 +60,7 @@ class NewUsersService:
                 "wordcount_medium": self.botclass.wordcount_medium
                 }
             try:
-                await self.chatforme_service.make_msghistory_gpt_response(
+                gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
                     prompt_text=prompt_text,
                     replacements_dict=replacements_dict,
                     msg_history=msg_history
@@ -88,7 +88,7 @@ class NewUsersService:
                 "wordcount_medium":self.botclass.wordcount_medium
             }
             try:
-                await self.chatforme_service.make_singleprompt_gpt_response(
+                gpt_response = await self.chatforme_service.make_singleprompt_gpt_response(
                     prompt_text=newuser_prompt,
                     replacements_dict=replacements_dict)
                 self.logger.info("'make_singleprompt_gpt_response' completed successfully.")

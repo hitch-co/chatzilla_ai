@@ -41,20 +41,36 @@ class NewUsersService:
         user_logins = [user['user_login'] for user in new_users]
         user_logins_str = ', '.join(user_logins)
 
-        # New user messages
-        self.users_sent_messages_list = []        
+        # New user message vars
+        self.users_sent_messages_list = []      
         newuser_prompt = self.botclass.yaml_data['newusers_msg_prompt']
         
+        # No new user message vars
+        newusers_nonewusers_prompt = self.botclass.yaml_data['newusers_nonewusers_prompt']
+        msg_history = self.botclass.message_handler.chatforme_msg_history  
+
+        #########################
         #if no unique users found
         if user_logins_str == 'no unique users':
             self.logger.info("No users found, starting chat for me...")
+
+            #Select prompt from argument and format replacements
+            prompt_text = newusers_nonewusers_prompt
+            replacements_dict = {
+                "wordcount_medium": self.botclass.wordcount_medium
+                }
             try:
-                await self.chatforme_service.chatforme_logic(ctx=None)
+                await self.chatforme_service.make_msghistory_gpt_response(
+                    prompt_text=prompt_text,
+                    replacements_dict=replacements_dict,
+                    msg_history=msg_history
+                )
                 self.logger.info("'chatforme' completed successfully.")
             
             except Exception as e:
                 self.logger.error(f"Error occurred in 'chatforme': {e}")
 
+        ######################
         #if unique users found
         else:
             self.logger.info("New users found, starting new users message...")

@@ -10,7 +10,6 @@ from my_modules.gpt import ouat_gpt_response_cleanse, chatforme_gpt_response_cle
 
 from my_modules.my_logging import create_logger
 from my_modules.config import run_config
-from my_modules.text_to_speech import play_local_mp3
 from my_modules import utils
 
 from classes.ConsoleColoursClass import bcolors, printc
@@ -362,7 +361,7 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='extendstory')
     async def extend_story(self, ctx, *args) -> None:
-        self.ouat_counter = 2
+        self.ouat_counter = self.ouat_story_progression_number
         printc(f"Story extension requested by {ctx.message.author.name} ({ctx.message.author.id}), self.ouat_counter has been set to {self.ouat_counter}", bcolors.WARNING)
 
     @twitch_commands.command(name='stopstory')
@@ -385,7 +384,8 @@ class Bot(twitch_commands.Bot):
 
     async def stop_ouat_loop(self) -> None:
         self.is_ouat_loop_active = False
-        
+        self.ouat_counter = 0
+
         utils.write_msg_history_to_file(
             logger=self.logger,
             msg_history=self.message_handler.ouat_msg_history, 
@@ -393,7 +393,6 @@ class Bot(twitch_commands.Bot):
             dirname='log/ouat_story_history'
             )
         self.message_handler.ouat_msg_history.clear()
-        # self.ouat_counter = 0
 
     async def print_runtime_params(self, args_list=None):        
         self.logger.info("These are the runtime params for this bot:")
@@ -427,21 +426,19 @@ class Bot(twitch_commands.Bot):
 
                 #storystarter
                 if self.ouat_counter == 1:
-                    gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.storyteller_storystarter_prompt,
-                                                                replacements_dict=replacements_dict)         
+                    gpt_prompt_final = self.storyteller_storystarter_prompt
+
                 #storyprogressor
                 if self.ouat_counter <= self.ouat_story_progression_number:
-                    gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.storyteller_storyprogressor_prompt,
-                                                                replacements_dict=replacements_dict)         
+                    gpt_prompt_final = self.storyteller_storyprogressor_prompt
 
                 #storyfinisher
                 elif self.ouat_counter < self.ouat_story_max_counter:
-                    gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.storyteller_storyfinisher_prompt,
-                                                                replacements_dict=replacements_dict) 
+                    gpt_prompt_final = self.storyteller_storyfinisher_prompt
+
                 #storyender
                 elif self.ouat_counter == self.ouat_story_max_counter:
-                    gpt_prompt_final = prompt_text_replacement(gpt_prompt_text=self.storyteller_storyender_prompt,
-                                                                replacements_dict=replacements_dict)
+                    gpt_prompt_final = self.storyteller_storyender_prompt
                                                     
                 elif self.ouat_counter > self.ouat_story_max_counter:
                     await self.stop_ouat_loop()

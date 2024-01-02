@@ -4,10 +4,6 @@ from twitchio.ext import commands as twitch_commands
 import random
 import os
 
-from my_modules.gpt import openai_gpt_chatcompletion
-from my_modules.gpt import prompt_text_replacement, combine_msghistory_and_prompttext
-from my_modules.gpt import ouat_gpt_response_cleanse, chatforme_gpt_response_cleanse, botthot_gpt_response_cleanse
-
 from my_modules.my_logging import create_logger
 from my_modules.config import run_config
 from my_modules import utils

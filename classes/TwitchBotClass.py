@@ -318,6 +318,7 @@ class Bot(twitch_commands.Bot):
             replacements_dict = {"random_article_content":self.random_article_content,
                                  "user_requested_plotline":user_requested_plotline}
 
+            #TODO: Probably shouldn't be sending an output and maybe just generating a GPT message dictionary
             self.random_article_content_plot_summary = await self.chatforme_service.make_singleprompt_gpt_response(
                 prompt_text=self.random_article_content,
                 replacements_dict=replacements_dict,

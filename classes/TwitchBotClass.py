@@ -465,8 +465,8 @@ class Bot(twitch_commands.Bot):
         users_in_messages_list_text = self.message_handler._get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
 
         #Select prompt from argument, build the final prompt textand format replacements
-        formatted_gpt_chatforme_prompt = self.formatted_gpt_chatforme_prompts[self.args_chatforme_prompt_name]
-        chatforme_prompt = self.formatted_gpt_chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.formatted_gpt_chatforme_prompt_suffix
+        formatted_gpt_chatforme_prompt = self.chatforme_prompt
+        chatforme_prompt = self.chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.chatforme_prompt_suffix
         replacements_dict = {
             "twitch_bot_display_name":self.twitch_bot_display_name,
             "num_bot_responses":self.num_bot_responses,
@@ -474,9 +474,12 @@ class Bot(twitch_commands.Bot):
             "wordcount_medium":self.wordcount_medium
         }
 
-        gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
-            prompt_text=chatforme_prompt,
-            replacements_dict=replacements_dict,
-            msg_history=self.message_handler.chatforme_msg_history
-        )
-
+        try:
+            gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
+                prompt_text=chatforme_prompt,
+                replacements_dict=replacements_dict,
+                msg_history=self.message_handler.chatforme_msg_history
+            )
+            return self.logger.info("chatforme has run successfully.")
+        except:
+            return self.logger.error("error with chatforme in twitchbotclass")

@@ -14,7 +14,7 @@ logger = create_logger(
 #Load parameters from config.yaml
 def load_yaml(
         yaml_filename='config.yaml', 
-        yaml_dirname="C:/Users/Admin/OneDrive/Desktop/_work/__repos (unpublished)/_____CONFIG/chatzilla_ai/config", is_testing=False
+        yaml_dirname="C:/Users/Admin/OneDrive/Desktop/_work/__repos (unpublished)/_____CONFIG/chatzilla_ai/config"
         ):
 
     """
@@ -36,6 +36,10 @@ def load_yaml(
     with open(yaml_filepath, 'r') as file:
         yaml_config = yaml.safe_load(file)
         logger.info('LOG: YAML contents loaded successfully.')
+
+    # Add default yaml filename/dirname back to the yaml file
+    yaml_config['yaml_dirpath'] = yaml_dirname
+    yaml_config['yaml_filename'] = yaml_filename
         
     return yaml_config
 

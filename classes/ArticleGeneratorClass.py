@@ -3,6 +3,7 @@ import numpy as np
 import json
 from bs4 import BeautifulSoup
 import os
+from my_modules import utils
 
 from classes.ConsoleColoursClass import bcolors, printc
 from my_modules.my_logging import create_logger
@@ -44,8 +45,12 @@ class ArticleGenerator:
 
     def fetch_random_article_content(self, article_char_trunc=1200):
         found_article = False
-        list_of_disallowed_terms = self.load_disallowed_terms(dir_path='config',
-                                                              file_name='disallowed_terms.json')
+        list_of_disallowed_terms = utils.load_json(
+            self,
+            dir_path='config',
+            file_name='disallowed_terms.json'
+            )
+        list_of_disallowed_terms = list_of_disallowed_terms['disallowed_terms']
         
         if not self.articles:
             self.logger.info("Missing URL or article data")
@@ -88,19 +93,21 @@ class ArticleGenerator:
         trimmed_article = random_article_content[:article_char_trunc]
         return trimmed_article
 
-    def load_disallowed_terms(self,
-                              dir_path='config',
-                              file_name='disallowed_terms.json'):
-        file_path = os.path.join(dir_path, file_name)
+    # def load_disallowed_terms(self,
+    #                           dir_path='config',
+    #                           file_name='disallowed_terms.json'):
+    #     file_path = os.path.join(dir_path, file_name)
         
-        with open(file_path, 'r') as f:
-            data = json.load(f)
+    #     with open(file_path, 'r') as f:
+    #         data = json.load(f)
         
-        return data['disallowed_terms']
+    #     return data['disallowed_terms']
 
-    def check_for_disallowed_terms(self,
-                                   article_content,
-                                   list_of_disallowed_terms):
+    def check_for_disallowed_terms(
+            self,
+            article_content,
+            list_of_disallowed_terms
+            ):
         for term in list_of_disallowed_terms:
             if term.lower() in article_content.lower():
                 return True

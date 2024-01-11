@@ -2,6 +2,7 @@ import asyncio
 from twitchio.ext import commands as twitch_commands
 
 import random
+import re
 import os
 
 from my_modules.my_logging import create_logger
@@ -76,6 +77,13 @@ class Bot(twitch_commands.Bot):
         self.tts_client = tts_client
         self.message_handler = message_handler
 
+        # required config/files
+        self.command_spellecheck_terms = utils.load_json(
+            self,
+            dir_path=self.yaml_data['yaml_dirpath'],
+            file_name='command_spellcheck_terms.json'
+            )
+        
         #Google Service Account Credentials
         google_application_credentials_file = yaml_data['twitch-ouat']['google_service_account_credentials_file']
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_application_credentials_file
@@ -142,12 +150,12 @@ class Bot(twitch_commands.Bot):
         self.hello_assistant_prompt = self.yaml_data['formatted_gpt_helloworld_prompt']
         self.helloworld_message_wordcount = self.yaml_data['helloworld_message_wordcount']
 
-        #GPT Assistant prompts:
-        self.article_summarizer_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
-        self.storyteller_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['storyteller']
-        self.ouat_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
-        self.chatforme_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['chatforme']
-        self.botthot_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['botthot']
+        # #GPT Assistant prompts:
+        # self.article_summarizer_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
+        # self.storyteller_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['storyteller']
+        # self.ouat_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
+        # self.chatforme_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['chatforme']
+        # self.botthot_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['botthot']
 
         #GPT Thread Prompts
         self.storyteller_storystarter_prompt = self.yaml_data['gpt_thread_prompts']['story_starter']
@@ -155,11 +163,11 @@ class Bot(twitch_commands.Bot):
         self.storyteller_storyfinisher_prompt = self.yaml_data['gpt_thread_prompts']['story_finisher']
         self.storyteller_storyender_prompt = self.yaml_data['gpt_thread_prompts']['story_ender']
 
-        #OUAT base prompt and start/progress/end story prompts
-        self.gpt_ouat_prompt_begin = self.yaml_data['ouat_prompts'][self.args_ouat_prompt_name]
-        self.ouat_prompt_startstory = self.yaml_data['ouat_prompts']['ouat_prompt_startstory']
-        self.ouat_prompt_progression = self.yaml_data['ouat_prompts']['ouat_prompt_progression']
-        self.ouat_prompt_endstory = self.yaml_data['ouat_prompts']['ouat_prompt_endstory']
+        # #OUAT base prompt and start/progress/end story prompts
+        # self.gpt_ouat_prompt_begin = self.yaml_data['ouat_prompts'][self.args_ouat_prompt_name]
+        # self.ouat_prompt_startstory = self.yaml_data['ouat_prompts']['ouat_prompt_startstory']
+        # self.ouat_prompt_progression = self.yaml_data['ouat_prompts']['ouat_prompt_progression']
+        # self.ouat_prompt_endstory = self.yaml_data['ouat_prompts']['ouat_prompt_endstory']
         self.ouat_prompt_addtostory_prefix = self.yaml_data['ouat_prompts']['ouat_prompt_addtostory_prefix']
 
         #OUAT Progression flow / Config
@@ -225,6 +233,15 @@ class Bot(twitch_commands.Bot):
             )
 
     async def event_message(self, message):
+
+        def clean_message_content(content, command_spellings):
+            for correct_command, misspellings in command_spellings.items():
+                for misspelled in misspellings:
+                    # Using a regular expression to match whole commands only
+                    pattern = r'(^|\s)' + re.escape(misspelled) + r'(\s|$)'
+                    content = re.sub(pattern, r'\1' + correct_command + r'\2', content)
+            return content
+
         self.logger.info("--------- Message received ---------")
         self.logger.debug(message)
         self.logger.info(f"message.content: {message.content}")
@@ -258,8 +275,12 @@ class Bot(twitch_commands.Bot):
             self.message_handler.message_history_raw.clear()
             self.bq_uploader.channel_viewers_queue.clear()
 
-        # self.handle_commands runs through bot commands
+        # 5. self.handle_commands runs through bot commands
         if message.author is not None:
+            message.content = clean_message_content(
+                message.content,
+                self.command_spellecheck_terms
+                )
             await self.handle_commands(message)
 
     @twitch_commands.command(name='vibecheck')
@@ -336,8 +357,6 @@ class Bot(twitch_commands.Bot):
             # printc(f"Theme: {self.selected_theme}", bcolors.OKBLUE)
             # printc(f"Writing Tone: {self.selected_writing_tone}", bcolors.OKBLUE)
             # printc(f"Writing Style: {self.selected_writing_style}", bcolors.OKBLUE)
-        
-        else: self.ouat_counter == 0
 
     @twitch_commands.command(name='addtostory')
     async def add_to_story_ouat(self, ctx,  *args):
@@ -370,6 +389,38 @@ class Bot(twitch_commands.Bot):
         self.ouat_counter = self.ouat_story_max_counter
         printc(f"Story is being forced to end by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}", bcolors.WARNING)
 
+    @twitch_commands.command(name='vibecheck')
+    async def vc(self, message, *args):
+        self.vibechecker_interactions_counter == 0
+        self.is_vibecheck_loop_active = True
+    
+        # Extract the bot/checker/checkee (important players) in the convo
+        # TODO: vc_message_history is generally ALL chat, could use a copy of an
+        #  existing message_history list (ie raw/all) instead. 
+        try: most_recent_message = self.message_handler.all_msg_history_gptdict[-2]['content']
+        except: await self.channel.send("No user to be vibechecked, try again after they send a message")
+
+        # Collect the vibechecker_players    
+        name_start_pos = most_recent_message.find('<<<') + 3
+        name_end_pos = most_recent_message.find('>>>', name_start_pos)
+        self.vibecheckee_username = most_recent_message[name_start_pos:name_end_pos]
+        self.vibechecker_username = message.author.name
+        self.vibecheckbot_username = self.twitch_bot_display_name
+        self.vibechecker_players = {
+            'vibecheckee_username': self.vibecheckee_username,
+            'vibechecker_username': self.vibechecker_username,
+            'vibecheckbot_username': self.vibecheckbot_username
+        } 
+
+        # Start the vibecheck service and then the session
+        self.vibecheck_service = VibeCheckService(
+            yaml_config=self.yaml_data,
+            message_handler=self.message_handler,
+            botclass=self,
+            vibechecker_players=self.vibechecker_players
+            )
+        self.vibecheck_service.start_vibecheck_session()
+
     async def stop_vibechecker_loop(self) -> None:
         self.is_vibecheck_loop_active = False
         self.vibechecker_task.cancel()
@@ -390,7 +441,7 @@ class Bot(twitch_commands.Bot):
             )
         self.message_handler.ouat_msg_history.clear()
 
-    async def print_runtime_params(self, args_list=None):        
+    async def print_runtime_params(self, args_list):        
         self.logger.info("These are the runtime params for this bot:")
         for arg in args_list:
             self.logger.info(f"{arg}: {getattr(self, arg)}")

@@ -206,6 +206,9 @@ class BQUploader:
                 "color": color                
             }
             rows_to_insert.append(row)
+
+        self.logger.debug("These are the user interactions records (rows_to_insert):")
+        self.logger.debug(rows_to_insert[0:2])
         return rows_to_insert   
 
     def send_recordsjob_to_bq(self, table_id, records:list[dict]) -> None:

@@ -48,8 +48,7 @@ class Bot(twitch_commands.Bot):
             encoding='UTF-8'
             )
 
-        # load args and config
-        self.args_config = ArgsConfigManager()
+        # load config
         self.yaml_data = self.run_configuration()
 
         # instantiate the NewUsersService
@@ -114,88 +113,73 @@ class Bot(twitch_commands.Bot):
 
     def run_configuration(self) -> dict:
 
-        #load yaml/env
+        # load yaml/env
         self.yaml_data = run_config()
 
         # TTS folder/filenames
         self.tts_file_name = self.yaml_data['openai-api']['tts_file_name']
         self.tts_data_folder = self.yaml_data['openai-api']['tts_data_folder']
 
-        #Twitch Bot Details
+        # Twitch Bot Details
         self.twitch_bot_channel_name = self.yaml_data['twitch-app']['twitch_bot_channel_name']
         self.twitch_bot_username = self.yaml_data['twitch-app']['twitch_bot_username']
         self.twitch_bot_display_name = self.yaml_data['twitch-app']['twitch_bot_display_name']
 
-        #Eleven Labs / OpenAI
+        # Eleven Labs / OpenAI
         self.ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')
         self.ELEVENLABS_XI_VOICE = os.getenv('ELEVENLABS_XI_VOICE')
         self.OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
-        #runtime arguments
-        self.args_include_sound = str.lower(self.args_config.include_sound)
-
-        #TODO self.args_include_chatforme = str.lower(args.include_chatforme)
-        self.args_chatforme_prompt_name = str.lower(self.args_config.prompt_list_chatforme)
-        self.args_botthot_prompt_name = 'botthot'
-        self.args_include_ouat = str.lower(self.args_config.include_ouat)        
-        self.args_ouat_prompt_name = str.lower(self.args_config.prompt_list_ouat)
-
-        #News Article Feed/Prompts
+        # News Article Feed/Prompts
         self.newsarticle_rss_feed = self.yaml_data['twitch-ouat']['newsarticle_rss_feed']
         # self.ouat_news_article_summary_prompt = self.yaml_data['gpt_thread_prompts']['story_article_summary_prompt'] 
 
-        #GPT Hello World Prompts:
+        # GPT Hello World Prompts:
         self.hello_assistant_prompt = self.yaml_data['formatted_gpt_helloworld_prompt']
         self.helloworld_message_wordcount = self.yaml_data['helloworld_message_wordcount']
 
-        # #GPT Assistant prompts:
+        # # GPT Assistant prompts:
         # self.article_summarizer_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
         # self.storyteller_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['storyteller']
         # self.ouat_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
         # self.chatforme_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['chatforme']
         # self.botthot_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['botthot']
-
-        #GPT Thread Prompts
+ 
+        # GPT Thread Prompts
         self.storyteller_storystarter_prompt = self.yaml_data['gpt_thread_prompts']['story_starter']
         self.storyteller_storyprogressor_prompt = self.yaml_data['gpt_thread_prompts']['story_progressor']
         self.storyteller_storyfinisher_prompt = self.yaml_data['gpt_thread_prompts']['story_finisher']
         self.storyteller_storyender_prompt = self.yaml_data['gpt_thread_prompts']['story_ender']
         self.ouat_prompt_addtostory_prefix = self.yaml_data['gpt_thread_prompts']['story_addtostory_prefix']
 
-        #OUAT Progression flow / Config
+        # OUAT Progression flow / Config
         self.ouat_message_recurrence_seconds = self.yaml_data['ouat_message_recurrence_seconds']
         self.ouat_story_progression_number = self.yaml_data['ouat_story_progression_number']
         self.ouat_story_max_counter = self.yaml_data['ouat_story_max_counter']
         self.ouat_wordcount = self.yaml_data['ouat_wordcount']
 
-        #Generic config items
+        # Generic config items
         self.num_bot_responses = self.yaml_data['num_bot_responses']
    
-        #GPT Prompt
+        # GPT Prompt
         self.gpt_prompt = None
 
-        # Load settings and configurations from a YAML file
+        # CHATFORME
+        # TODO: Can be moved into the load_configurations() function
+        self.chatforme_prompt = self.yaml_data['chatforme_prompts']['standard']
+        self.chatforme_prompt_prefix = str(self.yaml_data['chatforme_prompts']['chatforme_prompt_prefix'])
+        self.chatforme_prompt_suffix = str(self.yaml_data['chatforme_prompts']['chatforme_prompt_suffix'])
+
+        # VIBECHECK
         # TODO: Can be moved into the load_configurations() function
         self.vibecheck_message_wordcount = str(self.yaml_data['vibechecker_max_wordcount'])
-        self.formatted_gpt_chatforme_prompt_prefix = str(self.yaml_data['formatted_gpt_chatforme_prompt_prefix'])
-        self.formatted_gpt_chatforme_prompt_suffix = str(self.yaml_data['formatted_gpt_chatforme_prompt_suffix'])
-        self.formatted_gpt_chatforme_prompts = self.yaml_data['formatted_gpt_chatforme_prompts']
-        self.logger.info("Configuration attributes loaded/refreshed from YAML/env variables")  
-        
+
+        self.logger.info("Configuration attributes loaded/refreshed from YAML/env variables")          
         return self.yaml_data
 
     async def event_ready(self):
         self.channel = self.get_channel(self.twitch_bot_channel_name)
         print(f'TwitchBot ready | {self.twitch_bot_username} (nick:{self.nick})')
-        args_list = [
-            # "args_include_automsg",
-            # "args_automsg_prompt_list_name",
-            "args_include_ouat",
-            "args_ouat_prompt_name",
-            "args_chatforme_prompt_name",
-            "args_include_sound"
-            ]
-        await self.print_runtime_params(args_list=args_list)
 
         #start OUAT loop
         self.loop = asyncio.get_event_loop()
@@ -405,11 +389,6 @@ class Bot(twitch_commands.Bot):
             dirname='log/ouat_story_history'
             )
         self.message_handler.ouat_msg_history.clear()
-
-    async def print_runtime_params(self, args_list):        
-        self.logger.info("These are the runtime params for this bot:")
-        for arg in args_list:
-            self.logger.info(f"{arg}: {getattr(self, arg)}")
 
     async def ouat_storyteller(self):
         self.article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.newsarticle_rss_feed)

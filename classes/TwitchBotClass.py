@@ -50,6 +50,8 @@ class Bot(twitch_commands.Bot):
 
         # load args and config
         self.args_config = ArgsConfigManager()
+
+        #TODO: Replace the run_configuration() command with ConfigManagerClass.py workflow
         self.yaml_data = self.run_configuration()
 
         # instantiate the NewUsersService
@@ -61,11 +63,13 @@ class Bot(twitch_commands.Bot):
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
 
+        #TODO: Replace with ConfigManagerClass.py workflow
         # Response wordcounts
         self.wordcount_short = str(yaml_data['wordcounts']['short'])
         self.wordcount_medium = str(yaml_data['wordcounts']['medium'])
         self.wordcount_long = str(yaml_data['wordcounts']['long'])
 
+        #TODO: Replace with ConfigManagerClass.py workflow
         # Twitch IDs
         self.broadcaster_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
         self.moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
@@ -77,6 +81,7 @@ class Bot(twitch_commands.Bot):
         self.tts_client = tts_client
         self.message_handler = message_handler
 
+        #TODO: Replace with ConfigManagerClass.py workflow
         # required config/files
         self.command_spellecheck_terms = utils.load_json(
             self,
@@ -84,10 +89,12 @@ class Bot(twitch_commands.Bot):
             file_name='command_spellcheck_terms.json'
             )
         
+        #TODO: Replace with ConfigManagerClass.py workflow
         #Google Service Account Credentials
         google_application_credentials_file = yaml_data['twitch-ouat']['google_service_account_credentials_file']
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_application_credentials_file
 
+        #TODO: Replace with ConfigManagerClass.py workflow
         #BQ Table IDs
         self.userdata_table_id=self.yaml_data['twitch-ouat']['talkzillaai_userdata_table_id']
         self.usertransactions_table_id=self.yaml_data['twitch-ouat']['talkzillaai_usertransactions_table_id']
@@ -102,17 +109,24 @@ class Bot(twitch_commands.Bot):
         #counters
         self.ouat_counter = 0
         self.vibechecker_interactions_counter = 0
-        
+
+        #TODO: Replace with ConfigManagerClass.py workflow        
         #vibecheck params
         self.vibechecker_max_interaction_count = self.yaml_data['vibechecker_max_interaction_count']
         self.formatted_gpt_vibecheck_prompt = self.yaml_data['formatted_gpt_vibecheck_prompt']
         self.formatted_gpt_viberesult_prompt = self.yaml_data['formatted_gpt_viberesult_prompt']
         self.vibecheck_max_interactions = self.yaml_data['vibechecker_max_interaction_count']
 
+        #TODO: Replace with ConfigManagerClass.py workflow
         #newusers params
         self.newusers_sleep_time = self.yaml_data['newusers_sleep_time']
 
     def run_configuration(self) -> dict:
+
+        #TODO: Replace the run_configuration() command with ConfigManagerClass.py workflow
+        #TODO: Replace the run_configuration() command with ConfigManagerClass.py workflow
+        #TODO: Replace the run_configuration() command with ConfigManagerClass.py workflow
+        #TODO: Replace the run_configuration() command with ConfigManagerClass.py workflow
 
         #load yaml/env
         self.yaml_data = run_config()
@@ -187,6 +201,8 @@ class Bot(twitch_commands.Bot):
     async def event_ready(self):
         self.channel = self.get_channel(self.twitch_bot_channel_name)
         print(f'TwitchBot ready | {self.twitch_bot_username} (nick:{self.nick})')
+
+        #TODO: Investigate the need/use of args_list which are ado with app startup (.bat)
         args_list = [
             # "args_include_automsg",
             # "args_automsg_prompt_list_name",

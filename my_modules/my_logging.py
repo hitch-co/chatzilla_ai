@@ -46,7 +46,7 @@ def create_logger(
     
     return logger
 
-def log_runtime_params(logger, context_object, args_list=None):
+def ___log_runtime_params(logger, context_object, args_list=None):
     if args_list is None:
         logger.warning("No arguments provided to print_runtime_params.")
         return
@@ -59,7 +59,7 @@ def log_runtime_params(logger, context_object, args_list=None):
         except AttributeError:
             logger.error(f"Attribute {arg} not found in the provided object.")
 
-def log_function_args(logger):
+def ___log_function_args(logger):
     """
     Decorator for logging the arguments of a function as a dictionary.
 
@@ -88,21 +88,21 @@ def log_function_args(logger):
         return wrapper
     return decorator
 
-def _truncate_long_strings(obj):
+def ___truncate_obj_strings(obj):
     """
     Truncates string values in the object to a maximum length of 50 characters.
     This function is recursively applied to each value in the object.
     """
     if isinstance(obj, dict):
-        return {k: _truncate_long_strings(v) for k, v in obj.items()}
+        return {k: ___truncate_obj_strings(v) for k, v in obj.items()}
     elif isinstance(obj, list):
-        return [_truncate_long_strings(v) for v in obj]
+        return [___truncate_obj_strings(v) for v in obj]
     elif isinstance(obj, str):
         return obj[:50] + '...' if len(obj) > 50 else obj
     else:
         return obj
 
-def log_as_json(logger, obj, indent=2):
+def ___log_as_json(logger, obj, indent=2):
     """
     Log an object as a JSON-formatted string, with individual string values truncated.
 

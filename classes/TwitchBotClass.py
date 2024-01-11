@@ -133,8 +133,6 @@ class Bot(twitch_commands.Bot):
 
         #runtime arguments
         self.args_include_sound = str.lower(self.args_config.include_sound)
-        # self.args_include_automsg = str.lower(self.args_config.include_automsg)
-        # self.args_automsg_prompt_list_name = str.lower(self.args_config.prompt_list_automsg)
 
         #TODO self.args_include_chatforme = str.lower(args.include_chatforme)
         self.args_chatforme_prompt_name = str.lower(self.args_config.prompt_list_chatforme)
@@ -144,7 +142,7 @@ class Bot(twitch_commands.Bot):
 
         #News Article Feed/Prompts
         self.newsarticle_rss_feed = self.yaml_data['twitch-ouat']['newsarticle_rss_feed']
-        self.ouat_news_article_summary_prompt = self.yaml_data['ouat_prompts']['ouat_news_article_summary_prompt'] 
+        # self.ouat_news_article_summary_prompt = self.yaml_data['gpt_thread_prompts']['story_article_summary_prompt'] 
 
         #GPT Hello World Prompts:
         self.hello_assistant_prompt = self.yaml_data['formatted_gpt_helloworld_prompt']
@@ -162,13 +160,7 @@ class Bot(twitch_commands.Bot):
         self.storyteller_storyprogressor_prompt = self.yaml_data['gpt_thread_prompts']['story_progressor']
         self.storyteller_storyfinisher_prompt = self.yaml_data['gpt_thread_prompts']['story_finisher']
         self.storyteller_storyender_prompt = self.yaml_data['gpt_thread_prompts']['story_ender']
-
-        # #OUAT base prompt and start/progress/end story prompts
-        # self.gpt_ouat_prompt_begin = self.yaml_data['ouat_prompts'][self.args_ouat_prompt_name]
-        # self.ouat_prompt_startstory = self.yaml_data['ouat_prompts']['ouat_prompt_startstory']
-        # self.ouat_prompt_progression = self.yaml_data['ouat_prompts']['ouat_prompt_progression']
-        # self.ouat_prompt_endstory = self.yaml_data['ouat_prompts']['ouat_prompt_endstory']
-        self.ouat_prompt_addtostory_prefix = self.yaml_data['ouat_prompts']['ouat_prompt_addtostory_prefix']
+        self.ouat_prompt_addtostory_prefix = self.yaml_data['gpt_thread_prompts']['story_addtostory_prefix']
 
         #OUAT Progression flow / Config
         self.ouat_message_recurrence_seconds = self.yaml_data['ouat_message_recurrence_seconds']
@@ -178,12 +170,7 @@ class Bot(twitch_commands.Bot):
 
         #Generic config items
         self.num_bot_responses = self.yaml_data['num_bot_responses']
-        
-        #AUTOMSG
-        #self.automsg_prompt_lists = self.yaml_data['automsg_prompt_lists']
-        # self.automsg_prompt_list = self.automsg_prompt_lists[self.args_automsg_prompt_list_name]
-        #self.automsg_prompt_prefix = self.yaml_data['automsg_prompt_prefix']
-
+   
         #GPT Prompt
         self.gpt_prompt = None
 
@@ -259,7 +246,7 @@ class Bot(twitch_commands.Bot):
             bearer_token=self.TWITCH_BOT_ACCESS_TOKEN
             )
 
-        #Send the data to BQ when queue is full.  Clear queue when done
+        # 4. Send the data to BQ when queue is full.  Clear queue when done
         if len(self.message_handler.message_history_raw)>=5:
             self.bq_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
             

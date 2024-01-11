@@ -15,7 +15,7 @@ stream_logs = False
 runtime_logger_level = 'DEBUG'
 yaml_data = run_config()
 gpt_model = yaml_data['openai-api']['assistant_model']
-shorten_message_prompt = yaml_data['ouat_prompts']['shorten_response_length_prompt']
+shorten_message_prompt = yaml_data['gpt_thread_options']['shorten_response_length']
 
 logger = create_logger(
     dirname='log',

@@ -229,7 +229,8 @@ class Bot(twitch_commands.Bot):
                     content = re.sub(pattern, r'\1' + correct_command + r'\2', content)
             return content
 
-        self.logger.info("--------- Message received ---------")
+        self.logger.info("-------------------------------------")
+        self.logger.info("--- Message received: Processing ---")
         self.logger.debug(message)
         self.logger.info(f"message.content: {message.content}")
         
@@ -270,14 +271,16 @@ class Bot(twitch_commands.Bot):
                 )
             await self.handle_commands(message)
 
-    @twitch_commands.command(name='vibecheck')
+        self.logger.info("-------------------------------------") 
+        self.logger.info("---------END OF MESSAGE LOG----------")
+        self.logger.info("-------------------------------------")        
+
+    @twitch_commands.command(name='vc')
     async def vc(self, message, *args):
         self.vibechecker_interactions_counter == 0
         self.is_vibecheck_loop_active = True
     
         # Extract the bot/checker/checkee (important players) in the convo
-        # TODO: vc_message_history is generally ALL chat, could use a copy of an
-        #  existing message_history list (ie raw/all) instead. 
         try: most_recent_message = self.message_handler.all_msg_history_gptdict[-2]['content']
         except: await self.channel.send("No user to be vibechecked, try again after they send a message")
 
@@ -287,6 +290,7 @@ class Bot(twitch_commands.Bot):
         self.vibecheckee_username = most_recent_message[name_start_pos:name_end_pos]
         self.vibechecker_username = message.author.name
         self.vibecheckbot_username = self.twitch_bot_display_name
+
         self.vibechecker_players = {
             'vibecheckee_username': self.vibecheckee_username,
             'vibechecker_username': self.vibechecker_username,
@@ -338,7 +342,13 @@ class Bot(twitch_commands.Bot):
             )      
 
             self.is_ouat_loop_active = True
-            
+
+            self.logger.info(f"A story was started by {message.author.name} ({message.author.id})")  
+            self.logger.info(f"random_article_content_plot_summary: {self.random_article_content_plot_summary}")  
+            self.logger.info(f"Theme: {self.selected_theme}")  
+            self.logger.info(f"Writing Tone: {self.selected_writing_tone}")  
+            self.logger.info(f"Writing Style: {self.selected_writing_style}")  
+
             # printc(f"A story was started by {message.author.name} ({message.author.id})", bcolors.WARNING)
             # printc(f"random_article_content_plot_summary: {self.random_article_content_plot_summary}", bcolors.OKBLUE)
             # printc(f"Theme: {self.selected_theme}", bcolors.OKBLUE)
@@ -375,38 +385,6 @@ class Bot(twitch_commands.Bot):
     async def endstory(self, ctx):
         self.ouat_counter = self.ouat_story_max_counter
         printc(f"Story is being forced to end by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}", bcolors.WARNING)
-
-    @twitch_commands.command(name='vibecheck')
-    async def vc(self, message, *args):
-        self.vibechecker_interactions_counter == 0
-        self.is_vibecheck_loop_active = True
-    
-        # Extract the bot/checker/checkee (important players) in the convo
-        # TODO: vc_message_history is generally ALL chat, could use a copy of an
-        #  existing message_history list (ie raw/all) instead. 
-        try: most_recent_message = self.message_handler.all_msg_history_gptdict[-2]['content']
-        except: await self.channel.send("No user to be vibechecked, try again after they send a message")
-
-        # Collect the vibechecker_players    
-        name_start_pos = most_recent_message.find('<<<') + 3
-        name_end_pos = most_recent_message.find('>>>', name_start_pos)
-        self.vibecheckee_username = most_recent_message[name_start_pos:name_end_pos]
-        self.vibechecker_username = message.author.name
-        self.vibecheckbot_username = self.twitch_bot_display_name
-        self.vibechecker_players = {
-            'vibecheckee_username': self.vibecheckee_username,
-            'vibechecker_username': self.vibechecker_username,
-            'vibecheckbot_username': self.vibecheckbot_username
-        } 
-
-        # Start the vibecheck service and then the session
-        self.vibecheck_service = VibeCheckService(
-            yaml_config=self.yaml_data,
-            message_handler=self.message_handler,
-            botclass=self,
-            vibechecker_players=self.vibechecker_players
-            )
-        self.vibecheck_service.start_vibecheck_session()
 
     async def stop_vibechecker_loop(self) -> None:
         self.is_vibecheck_loop_active = False

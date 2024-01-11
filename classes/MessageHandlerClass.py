@@ -23,7 +23,6 @@ class MessageHandler:
         self.yaml_data = run_config()
 
         #Bots Lists
-        self.bots_automsg = self.yaml_data['twitch-bots']['automsg']
         self.bots_chatforme = self.yaml_data['twitch-bots']['chatforme']
         self.bots_ouat = self.yaml_data['twitch-bots']['onceuponatime']    
         self.bots_vibecheck = self.yaml_data['twitch-bots']['vibecheck']    
@@ -46,7 +45,6 @@ class MessageHandler:
 
         #Message History Lists
         self.ouat_msg_history = []
-        self.automsg_msg_history = []
         self.chatforme_msg_history = []
         self.nonbot_temp_msg_history = []
 
@@ -80,7 +78,6 @@ class MessageHandler:
         message_histories = [
             (self.ouat_msg_history, 15),
             (self.chatforme_msg_history, 15),
-            (self.automsg_msg_history, 15),
             (self.nonbot_temp_msg_history, 15),
             (self.all_msg_history_gptdict, 25)
         ]
@@ -219,7 +216,6 @@ class MessageHandler:
 
         #Apply message dict to msg histories
         self.chatforme_msg_history.append(gpt_ready_msg_dict)
-        self.automsg_msg_history.append(gpt_ready_msg_dict)
         self.all_msg_history_gptdict.append(gpt_ready_msg_dict)
 
         if message.author is not None:

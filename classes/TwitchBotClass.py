@@ -48,10 +48,7 @@ class Bot(twitch_commands.Bot):
             encoding='UTF-8'
             )
 
-        # load args and config
-        self.args_config = ArgsConfigManager()
-
-        #TODO: Replace the run_configuration() command with ConfigManagerClass.py workflow
+        # load config
         self.yaml_data = self.run_configuration()
 
         # instantiate the NewUsersService
@@ -128,90 +125,73 @@ class Bot(twitch_commands.Bot):
         #TODO: Replace the run_configuration() command with ConfigManagerClass.py workflow
         #TODO: Replace the run_configuration() command with ConfigManagerClass.py workflow
 
-        #load yaml/env
+        # load yaml/env
         self.yaml_data = run_config()
 
         # TTS folder/filenames
         self.tts_file_name = self.yaml_data['openai-api']['tts_file_name']
         self.tts_data_folder = self.yaml_data['openai-api']['tts_data_folder']
 
-        #Twitch Bot Details
+        # Twitch Bot Details
         self.twitch_bot_channel_name = self.yaml_data['twitch-app']['twitch_bot_channel_name']
         self.twitch_bot_username = self.yaml_data['twitch-app']['twitch_bot_username']
         self.twitch_bot_display_name = self.yaml_data['twitch-app']['twitch_bot_display_name']
 
-        #Eleven Labs / OpenAI
+        # Eleven Labs / OpenAI
         self.ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')
         self.ELEVENLABS_XI_VOICE = os.getenv('ELEVENLABS_XI_VOICE')
         self.OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
-        #runtime arguments
-        self.args_include_sound = str.lower(self.args_config.include_sound)
-
-        #TODO self.args_include_chatforme = str.lower(args.include_chatforme)
-        self.args_chatforme_prompt_name = str.lower(self.args_config.prompt_list_chatforme)
-        self.args_botthot_prompt_name = 'botthot'
-        self.args_include_ouat = str.lower(self.args_config.include_ouat)        
-        self.args_ouat_prompt_name = str.lower(self.args_config.prompt_list_ouat)
-
-        #News Article Feed/Prompts
+        # News Article Feed/Prompts
         self.newsarticle_rss_feed = self.yaml_data['twitch-ouat']['newsarticle_rss_feed']
         # self.ouat_news_article_summary_prompt = self.yaml_data['gpt_thread_prompts']['story_article_summary_prompt'] 
 
-        #GPT Hello World Prompts:
+        # GPT Hello World Prompts:
         self.hello_assistant_prompt = self.yaml_data['formatted_gpt_helloworld_prompt']
         self.helloworld_message_wordcount = self.yaml_data['helloworld_message_wordcount']
 
-        # #GPT Assistant prompts:
+        # # GPT Assistant prompts:
         # self.article_summarizer_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
         # self.storyteller_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['storyteller']
         # self.ouat_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
         # self.chatforme_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['chatforme']
         # self.botthot_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['botthot']
-
-        #GPT Thread Prompts
+ 
+        # GPT Thread Prompts
         self.storyteller_storystarter_prompt = self.yaml_data['gpt_thread_prompts']['story_starter']
         self.storyteller_storyprogressor_prompt = self.yaml_data['gpt_thread_prompts']['story_progressor']
         self.storyteller_storyfinisher_prompt = self.yaml_data['gpt_thread_prompts']['story_finisher']
         self.storyteller_storyender_prompt = self.yaml_data['gpt_thread_prompts']['story_ender']
         self.ouat_prompt_addtostory_prefix = self.yaml_data['gpt_thread_prompts']['story_addtostory_prefix']
 
-        #OUAT Progression flow / Config
+        # OUAT Progression flow / Config
         self.ouat_message_recurrence_seconds = self.yaml_data['ouat_message_recurrence_seconds']
         self.ouat_story_progression_number = self.yaml_data['ouat_story_progression_number']
         self.ouat_story_max_counter = self.yaml_data['ouat_story_max_counter']
         self.ouat_wordcount = self.yaml_data['ouat_wordcount']
 
-        #Generic config items
+        # Generic config items
         self.num_bot_responses = self.yaml_data['num_bot_responses']
    
-        #GPT Prompt
+        # GPT Prompt
         self.gpt_prompt = None
 
-        # Load settings and configurations from a YAML file
+        # CHATFORME
+        # TODO: Can be moved into the load_configurations() function
+        self.chatforme_prompt = self.yaml_data['chatforme_prompts']['standard']
+        self.chatforme_prompt_prefix = str(self.yaml_data['chatforme_prompts']['chatforme_prompt_prefix'])
+        self.chatforme_prompt_suffix = str(self.yaml_data['chatforme_prompts']['chatforme_prompt_suffix'])
+
+        # VIBECHECK
         # TODO: Can be moved into the load_configurations() function
         self.vibecheck_message_wordcount = str(self.yaml_data['vibechecker_max_wordcount'])
-        self.formatted_gpt_chatforme_prompt_prefix = str(self.yaml_data['formatted_gpt_chatforme_prompt_prefix'])
-        self.formatted_gpt_chatforme_prompt_suffix = str(self.yaml_data['formatted_gpt_chatforme_prompt_suffix'])
-        self.formatted_gpt_chatforme_prompts = self.yaml_data['formatted_gpt_chatforme_prompts']
-        self.logger.info("Configuration attributes loaded/refreshed from YAML/env variables")  
-        
+
+        self.logger.info("Configuration attributes loaded/refreshed from YAML/env variables")          
         return self.yaml_data
 
     async def event_ready(self):
         self.channel = self.get_channel(self.twitch_bot_channel_name)
         print(f'TwitchBot ready | {self.twitch_bot_username} (nick:{self.nick})')
-
-        #TODO: Investigate the need/use of args_list which are ado with app startup (.bat)
-        args_list = [
-            # "args_include_automsg",
-            # "args_automsg_prompt_list_name",
-            "args_include_ouat",
-            "args_ouat_prompt_name",
-            "args_chatforme_prompt_name",
-            "args_include_sound"
-            ]
-        await self.print_runtime_params(args_list=args_list)
 
         #start OUAT loop
         self.loop = asyncio.get_event_loop()
@@ -245,7 +225,8 @@ class Bot(twitch_commands.Bot):
                     content = re.sub(pattern, r'\1' + correct_command + r'\2', content)
             return content
 
-        self.logger.info("--------- Message received ---------")
+        self.logger.info("-------------------------------------")
+        self.logger.info("--- Message received: Processing ---")
         self.logger.debug(message)
         self.logger.info(f"message.content: {message.content}")
         
@@ -286,14 +267,16 @@ class Bot(twitch_commands.Bot):
                 )
             await self.handle_commands(message)
 
-    @twitch_commands.command(name='vibecheck')
+        self.logger.info("-------------------------------------") 
+        self.logger.info("---------END OF MESSAGE LOG----------")
+        self.logger.info("-------------------------------------")        
+
+    @twitch_commands.command(name='vc')
     async def vc(self, message, *args):
         self.vibechecker_interactions_counter == 0
         self.is_vibecheck_loop_active = True
     
         # Extract the bot/checker/checkee (important players) in the convo
-        # TODO: vc_message_history is generally ALL chat, could use a copy of an
-        #  existing message_history list (ie raw/all) instead. 
         try: most_recent_message = self.message_handler.all_msg_history_gptdict[-2]['content']
         except: await self.channel.send("No user to be vibechecked, try again after they send a message")
 
@@ -303,6 +286,7 @@ class Bot(twitch_commands.Bot):
         self.vibecheckee_username = most_recent_message[name_start_pos:name_end_pos]
         self.vibechecker_username = message.author.name
         self.vibecheckbot_username = self.twitch_bot_display_name
+
         self.vibechecker_players = {
             'vibecheckee_username': self.vibecheckee_username,
             'vibechecker_username': self.vibechecker_username,
@@ -346,6 +330,7 @@ class Bot(twitch_commands.Bot):
             replacements_dict = {"random_article_content":self.random_article_content,
                                  "user_requested_plotline":user_requested_plotline}
 
+            #TODO: Probably shouldn't be sending an output and maybe just generating a GPT message dictionary
             self.random_article_content_plot_summary = await self.chatforme_service.make_singleprompt_gpt_response(
                 prompt_text=self.random_article_content,
                 replacements_dict=replacements_dict,
@@ -354,7 +339,13 @@ class Bot(twitch_commands.Bot):
             )      
 
             self.is_ouat_loop_active = True
-            
+
+            self.logger.info(f"A story was started by {message.author.name} ({message.author.id})")  
+            self.logger.info(f"random_article_content_plot_summary: {self.random_article_content_plot_summary}")  
+            self.logger.info(f"Theme: {self.selected_theme}")  
+            self.logger.info(f"Writing Tone: {self.selected_writing_tone}")  
+            self.logger.info(f"Writing Style: {self.selected_writing_style}")  
+
             # printc(f"A story was started by {message.author.name} ({message.author.id})", bcolors.WARNING)
             # printc(f"random_article_content_plot_summary: {self.random_article_content_plot_summary}", bcolors.OKBLUE)
             # printc(f"Theme: {self.selected_theme}", bcolors.OKBLUE)
@@ -392,38 +383,6 @@ class Bot(twitch_commands.Bot):
         self.ouat_counter = self.ouat_story_max_counter
         printc(f"Story is being forced to end by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}", bcolors.WARNING)
 
-    @twitch_commands.command(name='vibecheck')
-    async def vc(self, message, *args):
-        self.vibechecker_interactions_counter == 0
-        self.is_vibecheck_loop_active = True
-    
-        # Extract the bot/checker/checkee (important players) in the convo
-        # TODO: vc_message_history is generally ALL chat, could use a copy of an
-        #  existing message_history list (ie raw/all) instead. 
-        try: most_recent_message = self.message_handler.all_msg_history_gptdict[-2]['content']
-        except: await self.channel.send("No user to be vibechecked, try again after they send a message")
-
-        # Collect the vibechecker_players    
-        name_start_pos = most_recent_message.find('<<<') + 3
-        name_end_pos = most_recent_message.find('>>>', name_start_pos)
-        self.vibecheckee_username = most_recent_message[name_start_pos:name_end_pos]
-        self.vibechecker_username = message.author.name
-        self.vibecheckbot_username = self.twitch_bot_display_name
-        self.vibechecker_players = {
-            'vibecheckee_username': self.vibecheckee_username,
-            'vibechecker_username': self.vibechecker_username,
-            'vibecheckbot_username': self.vibecheckbot_username
-        } 
-
-        # Start the vibecheck service and then the session
-        self.vibecheck_service = VibeCheckService(
-            yaml_config=self.yaml_data,
-            message_handler=self.message_handler,
-            botclass=self,
-            vibechecker_players=self.vibechecker_players
-            )
-        self.vibecheck_service.start_vibecheck_session()
-
     async def stop_vibechecker_loop(self) -> None:
         self.is_vibecheck_loop_active = False
         self.vibechecker_task.cancel()
@@ -443,11 +402,6 @@ class Bot(twitch_commands.Bot):
             dirname='log/ouat_story_history'
             )
         self.message_handler.ouat_msg_history.clear()
-
-    async def print_runtime_params(self, args_list):        
-        self.logger.info("These are the runtime params for this bot:")
-        for arg in args_list:
-            self.logger.info(f"{arg}: {getattr(self, arg)}")
 
     async def ouat_storyteller(self):
         self.article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.newsarticle_rss_feed)
@@ -524,8 +478,8 @@ class Bot(twitch_commands.Bot):
         users_in_messages_list_text = self.message_handler._get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
 
         #Select prompt from argument, build the final prompt textand format replacements
-        formatted_gpt_chatforme_prompt = self.formatted_gpt_chatforme_prompts[self.args_chatforme_prompt_name]
-        chatforme_prompt = self.formatted_gpt_chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.formatted_gpt_chatforme_prompt_suffix
+        formatted_gpt_chatforme_prompt = self.chatforme_prompt
+        chatforme_prompt = self.chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.chatforme_prompt_suffix
         replacements_dict = {
             "twitch_bot_display_name":self.twitch_bot_display_name,
             "num_bot_responses":self.num_bot_responses,
@@ -533,9 +487,12 @@ class Bot(twitch_commands.Bot):
             "wordcount_medium":self.wordcount_medium
         }
 
-        gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
-            prompt_text=chatforme_prompt,
-            replacements_dict=replacements_dict,
-            msg_history=self.message_handler.chatforme_msg_history
-        )
-
+        try:
+            gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
+                prompt_text=chatforme_prompt,
+                replacements_dict=replacements_dict,
+                msg_history=self.message_handler.chatforme_msg_history
+            )
+            return self.logger.info("chatforme has run successfully.")
+        except:
+            return self.logger.error("error with chatforme in twitchbotclass")

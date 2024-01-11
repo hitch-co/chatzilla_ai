@@ -12,9 +12,9 @@ class ArgsConfigManager:
 
     def initialize_config(self):
         self.include_ouat = os.getenv("include_ouat", "yes")
-        self.include_automsg = os.getenv("include_automsg", "no")
+        #self.include_automsg = os.getenv("include_automsg", "no")
         self.include_sound = os.getenv("include_sound", "yes")
         self.prompt_list_ouat = os.getenv("prompt_list_ouat", "newsarticle_dynamic")
-        self.prompt_list_automsg = os.getenv("prompt_list_automsg", "videogames")
+        #self.prompt_list_automsg = os.getenv("prompt_list_automsg", "videogames")
         self.prompt_list_chatforme = os.getenv("prompt_list_chatforme", "standard")
         self.input_port_number = int(os.getenv("input_port_number", 3000))

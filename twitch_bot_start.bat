@@ -10,7 +10,7 @@ set prompt_list_chatforme=standard
 
 set include_ouat=yes
 set include_automsg=no
-set include_sound=no
+set include_sound=yes
 set input_port_number=3000
 
 @REM :: user to input

@@ -133,8 +133,8 @@ class Bot(twitch_commands.Bot):
 
         #runtime arguments
         self.args_include_sound = str.lower(self.args_config.include_sound)
-        self.args_include_automsg = str.lower(self.args_config.include_automsg)
-        self.args_automsg_prompt_list_name = str.lower(self.args_config.prompt_list_automsg)
+        # self.args_include_automsg = str.lower(self.args_config.include_automsg)
+        # self.args_automsg_prompt_list_name = str.lower(self.args_config.prompt_list_automsg)
 
         #TODO self.args_include_chatforme = str.lower(args.include_chatforme)
         self.args_chatforme_prompt_name = str.lower(self.args_config.prompt_list_chatforme)
@@ -180,9 +180,9 @@ class Bot(twitch_commands.Bot):
         self.num_bot_responses = self.yaml_data['num_bot_responses']
         
         #AUTOMSG
-        self.automsg_prompt_lists = self.yaml_data['automsg_prompt_lists']
-        self.automsg_prompt_list = self.automsg_prompt_lists[self.args_automsg_prompt_list_name]
-        self.automsg_prompt_prefix = self.yaml_data['automsg_prompt_prefix']
+        #self.automsg_prompt_lists = self.yaml_data['automsg_prompt_lists']
+        # self.automsg_prompt_list = self.automsg_prompt_lists[self.args_automsg_prompt_list_name]
+        #self.automsg_prompt_prefix = self.yaml_data['automsg_prompt_prefix']
 
         #GPT Prompt
         self.gpt_prompt = None
@@ -201,8 +201,8 @@ class Bot(twitch_commands.Bot):
         self.channel = self.get_channel(self.twitch_bot_channel_name)
         print(f'TwitchBot ready | {self.twitch_bot_username} (nick:{self.nick})')
         args_list = [
-            "args_include_automsg",
-            "args_automsg_prompt_list_name",
+            # "args_include_automsg",
+            # "args_automsg_prompt_list_name",
             "args_include_ouat",
             "args_ouat_prompt_name",
             "args_chatforme_prompt_name",

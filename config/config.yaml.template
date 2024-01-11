@@ -1,243 +1,225 @@
 #CONFIG
-env_filename: 'config.env'
-env_dirname: ''
+env_filename: 'env-filename-w-extension'
+env_dirname: 'path-to-your-env'
+is_gpt_testing: True
 
+#########################
+#########################
+#Flask App
 twitch-app:
-  twitch_bot_username: ''
-  twitch_bot_channel_name: ''
+  twitch_bot_username: 'chatzilla_ai'
+  twitch_bot_display_name: 'chatzilla_ai'
+  twitch_bot_channel_name: 'ehitch'
   twitch_bot_redirect_path: 'callback'
   twitch_bot_redirect_auth: ''
+  tiwtch_bot_input_port: 3210
 twitch-bots:
-  automsg: ['', '']
-  chatforme: ['', '', ''] 
-  onceuponatime: ['', '']
+  chatforme: ['chatzilla_ai'] 
+  onceuponatime: ['chatzilla_ai']
+  vibecheck: ['chatzilla_ai']
 
-twitch-chatforme:
+#########################
+#########################
+#OpenAI
+openai-api:
+  assistant_type: "code_interpreter"
+  assistant_model: "gpt-4-1106-preview" #"gpt-3.5-turbo" 
+  tts_include_voice: "yes"
+  tts_model: "tts-1" #tts-2 has higher latency
+  tts_voice: "nova"
+  tts_volume: .75
+  tts_data_folder: "data\\tts"
+  tts_file_name: "speech.mp3"
+  include_ouat: "yes"
+wordcounts:
+  short: 20
+  medium: 30
+  long: 45
 
+#########################
+#########################
+#ArticleGenerator/TwitchAPI/BiQuery details
 twitch-ouat:
-  #newsarticle_rss_feed: 'http://rss.cnn.com/rss/cnn_showbiz.rss'
-  newsarticle_rss_feed: 'http://rss.cnn.com/rss/cnn_topstories.rss'
+  newsarticle_rss_feed: 'http://rss.cnn.com/rss/cnn_latest.rss'
+  google_service_account_credentials_file: 'path-to-your-service-account-credentials-json'
+  talkzillaai_userdata_table_id: 'project.dataset.table'
+  talkzillaai_usertransactions_table_id: 'project.dataset.table'
+  twitch-get-chatters-endpoint: 'https://api.twitch.tv/helix/chat/chatters'
 
+#########################
+#########################
+# HelloWorld BOT Prompts
+helloworld_message_wordcount: 35
+formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for {twitch_bot_channel_name} scenario and your name is {twitch_bot_display_name} 
+    and you are a generation X'er. Your mission is to send a concise 'hello stream' message that welcomes viewers and describes the {twitch_bot_display_name} bot's 2 primary commands, !chatforme, and !startstory.
+    startstory + [text] starts ashort story, and !chatforme + [text] answers users questions or provides an opinion to the conversastion at hand
+    
+    Key Points
+    - Your only message should be a 10-{helloworld_message_wordcount} word long message, with maximum 400 chars
+    - Minimize repetition
+    - You are from generation x
+    - Aim for responses that defy typical bot behavior.
+    - leave your name out of the message, this should be a simple text response."
 
-#################################################################
-#OUAT
-
-#ONCEUPONATIME PARAMS
-ouat_wordcount: 27
-ouat_message_recurrence_seconds: 21
-ouat_story_progression_number: 4
-ouat_story_max_counter: 12
-
-#style: "Poetic, Dark"
-ouat_news_article_summary_prompt: >
-  "Based on the article content, remove any mention of news outlets and create a 
-  short list of bullet points outlining a science fiction movie/sitcom episode, 
-  adding complexity and character dillemma as you see fit: 
-  [[[{random_article_content}]]]"
-
-ouat_prompt_startstory: >
-  "You are a chatbot whose job is to start story based on the [plot] line 
-  summarized below.  Add one short paragraph 
-  ({ouat_wordcount} words and less than 300 characters) to the story. Most 
-  importantly, the message you send should be less than 300 characters long. 
-
-  [plot]: 
-  {rss_feed_article_plot}"
-
-ouat_prompt_progression: >
-  "You're a chatbot whose job is to contribute a single short paragraph to this  
-  screenplay based on the plot and the last messages received.  This should develop
-  the issues at hand based on the [plot].  
-
-  Add one short paragraph ({ouat_wordcount} words) to the story. Aim for a 
-  coherent and smooth flow, without repeating what's already been said
-  
-  With that in mind, start to wrap up any loose ends introduced in the story 
-  thus far, and don't use hashtags.  Most importantly, the message you send 
-  should be less than 300 characters long. 
-
-  The plot is below but take more consideration into the message history.
-
-  plot: 
-  {rss_feed_article_plot}
+#########################
+#########################
+# NewUsersService vars
+newusers_sleep_time: 900
+newusers_msg_prompt: "Say hi to @{selected_new_user}, and welcome them to the chat from ehitch.  Keep the message to {wordcount_medium}"
+newusers_nonewusers_prompt: >
+  "Share a fun fact based on the chat in {wordcount_medium} words.  
+   Dont' make reference to the amount or quality of the chatter, just a one-off 
+   off the cuff response please.
+   Conditions:
+    - Do not respond as if you're answering a quetsion, simply state your question.
+    - Don't use a name in your response
+    - don't confirm that you're going to make an off the cuff remark, send the remark.
   "
 
-ouat_prompt_endstory: >
-  "You're a chatbot whose job is add the last single paragraph ending the 
-  screenplay based on the conversation history and the plot.  Add one short 
-  paragraph {ouat_wordcount} words long to finish the story. Most importantly, the message you
-  send should be less than 300 characters long.  Dont use hashtags.  Dont repeat
-  what's already been said.
+#########################
+#########################
+#Vibechecker prompts
+vibechecker_max_interaction_count: 5
+vibechecker_max_wordcount: 25
+vibechecker_listener_sleep_time: 4
+vibechecker_question_session_sleep_time: 45
+formatted_gpt_vibecheck_alert: "let {vibecheckee_username} know that they have
+  been selected for vibecheck.  They should know that:
+  - They'll be asked a few short questions to see whether or not they are a bot.  
+  - THey should try to give some clean/short answers to show they aren't a bots
+  " 
+formatted_gpt_vibecheck_prompt: "You are to decide wheether the messages from 
+  {vibecheckee_username} appear to be from a bot.  This is a pretend game, so 
+  play along.  First, @ {vibecheckee_username} and create your own question to 
+  see how they respond to help determine if they are a bot.
+  Conditions for your question:
+  - Be brief and use less than {vibecheck_message_wordcount} words in your 
+    question/response to the user
+  - You shouldn't repeat questions around the same theme/subject that are 
+    already asked in this thread
+  "
+formatted_gpt_viberesult_prompt: "You have been put in a decision makers role.  
+  You are to guess whether the user {vibechecker_username} is a bot and to reply
+  to the group with a shrot sentence with your guess to the question 'is 
+  {vibecheckee_username} a bot?'  Your response will look something like 'yo, 
+  appears to me that {vibechecker_username} might be a bot' if they appear to be 
+  a bot.  If htey don't seem like a bot based ont he conversation, you will say 
+  something like 'yo, {vibechecker_username}, {vibecheckee_username} passes the 
+  vibecheck if you ask me me.' if they seem more human-like.  This game is just
+  for fun, so play along and do your best to guess accurately, as the group may
+  try to fool you so don't be fooled by attempts like the person sayiung 'i am 
+  not a bot', or something like that.
+  Conditions:
+  - If {vibecheckee_username} hasn't answered any of your questions, they are a 
+    bot!
+  - Be brief and use less than {vibecheck_message_wordcount} words in your 
+    question/response to the use
+  "
 
-  Conditions
-    - No sequels.  Finish the story.
+#########################
+#########################
+#OUAT Params
+ouat_wordcount: 20
+ouat_message_recurrence_seconds: 9
+ouat_story_progression_number: 2
+ouat_story_wrapup_number: 5
+ouat_story_max_counter: 10
 
-  This is the plot:
-  {rss_feed_article_plot}"
+### GPT Assistant Manager Prompts
+# gpt_assistant_prompts:
+#   article_summarizer: "The user is going to share with you an article.  Create 5 short bullet points based on the artile summary shared with you.  Two of those bullet points should be designed to make the story more exciting, for example Introducing intriguing characters or compelling dilemmas, ensuring each point is unique. In the new bullet pointed list, make sure to erase mentions of news outlets, and replace person/country/location/religion names with made up names."
+#   storyteller: "You are a bot designed to tell stories one line at a time.  Be succinct and clear, develop plotlines where possible.  Continue a previous thought if relevant.  Responses shouldn't exceed 15 words"  
+#   chatforme: "You are a bot designed to provide a response to the users last question or comment. Respond briefly, your responses shouldn't exceed 20 words. Be clear and succinct, always aim to answer the question"
+#   botthot: "You are a bot designed to provide a response to the users last question or comment. Respond briefly, your responses shouldn't exceed 20 words. Be confrontational"
 
-ouat_prompts:
+gpt_thread_options:
+  shorten_response_length: "shorten this message to 25 words.  Make no 
+    mention that you have shortened the message, just output the shortened message by itself"
 
-  newsarticle_og: >
-    "You're a chatbot designed to contribute a single thought to extend the short story based on the plot below. 
-    Keep your response under {ouat_wordcount} words and aim for a coherent flow with previous messages. 
+gpt_thread_prompts:
+  story_starter: "As a quirky storyteller, take the plot received and weave a  
+    unique beginning. Be succinct: less than {ouat_wordcount} words.  For context,
+    this is the original plotline: {rss_feed_article_plot}"
+  story_progressor: "Your job is to start to progress the story without 
+    repeating or reiterating known facts.  Develop the story. Be succinct: less 
+    than {ouat_wordcount} words.  For context, this is the original plotline: 
+    {rss_feed_article_plot}"  
+  story_finisher: "Your job is to start to wrap up the story without repeating 
+    or reiterating known facts.  Create some closure on existing plotlines. Be 
+    succinct: less than {ouat_wordcount} words.  For context, this is the 
+    original plotline: {rss_feed_article_plot}"
+  story_ender: "This is the last line of the story, close out any plotlines.  No 
+    sequels, this is the end of the story. Be succinct: less than {ouat_wordcount} words. 
+    Include your story response and then after it the sentence 'The end.'"
+  story_addtostory_prefix: >
+    "Ensure to include this new addition to the plot as a main part of the story:"
+  story_article_summary_prompt: >
+    "Create a new bullet-pointed summary based on primarily the the 
+    [user_requested_plotline] and spice it up with [Article] content including 
+    some additional points to make the story more exciting, for example 
+    Introducing intriguing characters or compelling dilemmas, ensuring each 
+    point is unique.  
 
-    Conditions:
-    - Keep your response under {ouat_wordcount} words
-    - Avoid repetition from previous messages.
-    - don't repeat what's already been said
-    - One response per turn
-
-    Key Points:
-    - Blend archetypal and gonzo style journalism storytelling styles
-
-    Themes:
-    - Characters' dilemma
-    - Dialogue
-    - Imagery
+    In the new bullet pointed list, make sure to erase mentions of news outlets, 
+    and replace person/country/location names with made up names and places. 
     
-    This is the plot:
-    {rss_feed_article_plot}"
+    Keep your newly created bullet-point summary less than 300 characters in 
+    length.
 
-  nonstandard:
-    -"_____NOT SET____"
+    [user_requested_plotline] -- Leave this mostly as is in the updated bullet 
+    list:
+    '{user_requested_plotline}'
 
+    [Article] -- Make replacements in the article when you summarize it into 
+    bullets. Be sure to erase mentions of news outlets, and replace person, 
+    country, location names with made up names and places in the bullet-list: 
+    '{random_article_content}'"
+
+ouat-writing-parameters:
+  writing_tone:
+    humor: "Incorporate humor through wit, irony, and clever punchlines."
+    dark: "Maintain a dark, ominous atmosphere."
+    adventurous: "Inject a sense of excitement and adventure."
+    
+  writing_style:
+    gonzo: "Utilize a gonzo journalism style, blending fact and fiction."
+    poetic: "Employ poetic devices like metaphor, simile, and vivid imagery."
+    archetypal: "Use archetypal storytelling elements for immediate understanding."
+    #journalistic: "Stick to a factual tone, focusing on clarity and information."
+    
+  theme:
+    love: "The central theme revolves around love or relationships."
+    existential: "The story should explore existential questions."
+    mystery: "Maintain an air of mystery or suspense."
+    technology: "Focus on the impact or role of technology."
 
 #################################################################
-#CHATFORME
-
+#################################################################
 #CHATFORME PARAMS
-msg_history_limit: 25
+msg_history_limit: 15
 num_bot_responses: 1 
-chatforme_message_wordcount: 22
 
-#CHATFORME PROMPTS
-formatted_gpt_chatforme_prompt_prefix: '--NOTSET1--'
-formatted_gpt_chatforme_prompt_suffix: '--NOTSET2--'
-
-formatted_gpt_chatforme_prompts:
-#'You are currently being used as a chat bot and your name is...'
+#'CHATFORME PROMPTS
+chatforme_prompts:
+  chatforme_prompt_prefix: "--NOTSET1--"
+  chatforme_prompt_suffix: "--NOTSET2--"
   standard: >
-    'You are in a virtual chat scenario and your name is {twitch_bot_username} and you are a millenial. Your mission is
-    to send {num_bot_responses} concise replies (~10-{chatforme_message_wordcount} words, max 400 chars) to
-    an audience on a stream. Engage in the conversation; ask questions or 
-    make insightful remarks.
-    
-    While minimizing repetition, aim to foster ongoing dialogue rather than
-    suggesting a topic switch. Key points:
-    
-    - Each message is framed with "<<<" and ">>>" around usernames.  Do not include this frame in your response
+    "You are in a virtual chat scenario and your name is {twitch_bot_display_name} 
+    and you are a generation x'er. Your mission is to send {num_bot_responses} concise 
+    replies (~10-{wordcount_medium} words, max 300 chars) to an 
+    audience on a stream. You can either engage in the conversation or make 
+    insightful remarks based on the conversation.
+
+    While minimizing repetition, aim to foster ongoing dialogue rather than 
+    suggesting a topic switch.
+
+    Key points:
+    - Give {num_bot_responses} response.
+    - Each message is prefixed with with '<<<'+[username]+'>>>' around usernames.  Do not 
+    include this frame or the users or your name in your response
+    - The chat platform we're on will indicate that you have sent the message, 
+    leave your name out of the response, and don't prefix the response with 
+    anything
     - Current chat roster: {users_in_messages_list_text}
-    - Aim for responses that defy typical bot behavior.
-    
-    Give {num_bot_responses} response; leave your name out.
-    
-    Adopt a relaxed yet intellectually stimulating tone while talking like a millenial.
-    
-    If confrontation is required, stand your ground.
-    
-    When uncertain, opt for a positive outlook but talk like a millenial.'
-
-  botthot: >
-    'You are in a virtual chat scenario and your name is {twitch_bot_username} and you are a millenial with genz vibes. Your mission is
-    to send {num_bot_responses} concise replies (~10-{chatforme_message_wordcount} words) to
-    an audience on a stream. Engage in the conversation; ask questions or 
-    make insightful remarks.
-    
-    While minimizing repetition, aim to resolve a question or a problem that anybody in the most recent chat has mentioned:
-    
-    - Do not use other users names in your responses
-    - Current chat roster: {users_in_messages_list_text}
-    - Aim for responses that defy typical bot behavior.
-    - Make sure you answer the question or state an opinion depending on the messages sent 
-    - try not to excessively mention character names unelss its unclear
-    
-    Give {num_bot_responses} response; leave your name out of it.
-    
-    Talk heavily like someone from the millenial or genz generations.
-    
-    If confrontation or a harsh answer is required, go for it.'
-
-#################################################################
-#AUTOMSG
-
-#AUTOMSG PARAMS
-automated_message_wordcount: 22
-
-#prompt prefix
-automsg_prompt_prefix: >
-  'You are currently being used as a chat bot.  The goal of this chat bot is to 
-  send ONE AND ONLY ONE short message (~10-15 words long and always less than 400 characters) to a group of people 
-  watching a stream.  The prompt below specifies what kind of message you should 
-  send.  Be informal in your language and try to say things that a chat bot wouldnt.  
-  Whenever uncertain, be positive and kind hearted but not overly or 
-  patronizingly nice.  Everything that follows is your prompt as the chat bot in question:"
-
-#List of prompt libraries
-automsg_prompt_lists:
-  standard:
-    nextup3:
-      - "share a fact about anythying"
-      - 5
-    something_random_offtopic: 
-      - "say something random and off topic"
-      - 8
-    ask_about_everyone:
-      - "ask an overly personal life question to everyone in the stream"
-      - 2
-    say_something_positive:
-      - "say something positive or motivational, but not too cheesy cliche"
-      - 1
-    jokes_dad:
-      - "tell a short but kind of mean dad joke"
-      - 1
-    jokes_yomotherboard: 
-      - "tell a yo-motherboard joke. Be clever, but make sure it's punny or witty"
-      - 1
-    nano:
-      - "share an interesting fact about the country chille to the user nano in the stream.  Make it a pun with the food when you can"
-      - 1
-    pragith:
-      - "Share a interesting fact about family life in texas to a user named 'prag' in the stream"
-      - 1
-    architecture:
-      - "share an interesting architectural fact"
-      - 2
-    architecture2:
-      - "share an interesting fact about a random known building"
-      - 2
-    romanempire:
-      - "share an interesting fact about the roman empire"
-      - 1
-    oath:
-      - "Share an interesting fact to a user named 'oath' in the chat about the history of the sport cricket"
-      - 1
-    crube:
-      - "share something lesser known about the history of video game development"
-      - 1
-
-  #this is the second list of prompt dictionaries
-  videogames:
-    two_sentence_story:
-      - "Tell me a two-sentence story."
-      - 1
-    favorite_book_line:
-      - "Summarize your favorite book in one line."
-      - 1
-    travel_destination:
-      - "If you could travel anywhere, where would you go?"
-      - 1
-    historical_figure:
-      - "Name your favorite historical figure and say one thing about them."
-      - 1
-    tongue_twister:
-      - "Share a tongue twister."
-      - 1
-    jokes_yomotherboard: 
-      - "tell a yo-motherboard joke. Be clever, risky, and witty"
-      - 1
-
-#################################################################
-#games_countdown params
-#TODO
-discord_games_countdown_username: ''
-discord_games_countdown_number_of_minutes: 15 #not in use, to be implemented
+    - Be confrontational but not mean
+    - Avoid repetition"  

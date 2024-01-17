@@ -132,7 +132,7 @@ class Bot(twitch_commands.Bot):
 
         # News Article Feed/Prompts
         self.newsarticle_rss_feed = self.yaml_data['twitch-ouat']['newsarticle_rss_feed']
-        # self.ouat_news_article_summary_prompt = self.yaml_data['gpt_thread_prompts']['story_article_summary_prompt'] 
+        self.ouat_news_article_summary_prompt = self.yaml_data['gpt_thread_prompts']['story_article_summary_prompt'] 
 
         # GPT Hello World Prompts:
         self.hello_assistant_prompt = self.yaml_data['formatted_gpt_helloworld_prompt']
@@ -169,6 +169,7 @@ class Bot(twitch_commands.Bot):
         self.chatforme_prompt = self.yaml_data['chatforme_prompts']['standard']
         self.chatforme_prompt_prefix = str(self.yaml_data['chatforme_prompts']['chatforme_prompt_prefix'])
         self.chatforme_prompt_suffix = str(self.yaml_data['chatforme_prompts']['chatforme_prompt_suffix'])
+        self.story_user_summary_prompt = self.yaml_data['gpt_thread_prompts']['story_user_summary_prompt']
 
         # VIBECHECK
         # TODO: Can be moved into the load_configurations() function
@@ -293,11 +294,20 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='startstory')
     async def startstory(self, message, *args):
         self.ouat_counter += 1
-        self.message_handler.ouat_msg_history.clear()
 
         if self.ouat_counter == 1:
+            self.message_handler.ouat_msg_history.clear()
             user_requested_plotline = ' '.join(args)
-            self.logger.debug(f"This is the user_requested_plotline: {user_requested_plotline}")
+            self.logger.info(f"A story was started by {message.author.name} ({message.author.id})")
+
+            if user_requested_plotline:
+                self.logger.debug(f"This is the user_requested_plotline: {user_requested_plotline}")
+                self.logger.debug(f"This is the self.story_user_summary_prompt: {self.story_user_summary_prompt}")
+                prompt_text = self.story_user_summary_prompt
+            if not user_requested_plotline:
+                prompt_text = self.ouat_news_article_summary_prompt
+                self.logger.debug(f"This is the user_requested_plotline: {user_requested_plotline}")
+                self.logger.debug(f"There was no user_requested_plotline, so the prompt_text is: {prompt_text}")
 
             # Capture writing tone/style/theme and randomly select one item from each list
             writing_tone_values = list(self.yaml_data['ouat-writing-parameters']['writing_tone'].values())
@@ -309,30 +319,49 @@ class Bot(twitch_commands.Bot):
             theme_values = list(self.yaml_data['ouat-writing-parameters']['theme'].values())
             self.selected_theme = random.choice(theme_values)
 
-            self.logger.debug(f"selected_writing_tone: {self.selected_writing_tone}")
-            self.logger.debug(f"selected_writing_style: {self.selected_writing_style}")
-            self.logger.debug(f"selected_theme: {self.selected_theme}")
-                                  
-            # Fetch random article and populate text replacement
+            # Fetch random article
             self.random_article_content = self.article_generator.fetch_random_article_content(article_char_trunc=300)                    
-            replacements_dict = {"random_article_content":self.random_article_content,
-                                 "user_requested_plotline":user_requested_plotline}
+
+            # Make GPT ready list[dict] from random_article_content
+            self.random_article_content_gptlistdict =  self.chatforme_service.make_string_gptlistdict(
+                prompt_text=self.random_article_content,
+                prompt_text_role='user'
+            )
+
+            # combine the random_article_content_gptlistdict with the prompt 
+            #  text into a new list[dict]
+            self.story_bulleted_plotline = self.chatforme_service.combine_msghistory_and_prompttext(
+                prompt_text = prompt_text,
+                prompt_text_role = 'user',
+                prompt_text_name = message.author.name,
+                msg_history_list_dict = self.random_article_content_gptlistdict,
+                output_new_list = True
+                )
+
+            replacements_dict = {
+                "rss_feed_article_plot":self.random_article_content,
+                "ouat_wordcount":self.ouat_wordcount,
+                "random_article_content":self.random_article_content,
+                "user_requested_plotline":user_requested_plotline
+                }
 
             #TODO: Probably shouldn't be sending an output and maybe just generating a GPT message dictionary
-            self.random_article_content_plot_summary = await self.chatforme_service.make_singleprompt_gpt_response(
-                prompt_text=self.random_article_content,
+            self.random_article_content_plot_summary = await self.chatforme_service.make_msghistory_gpt_response(
+                prompt_text=self.storyteller_storystarter_prompt,
                 replacements_dict=replacements_dict,
+                msg_history = self.story_bulleted_plotline,
                 incl_voice='yes',
                 voice_name='onyx'
             )      
+            self.logger.debug(f"This is the self.random_article_content_plot_summary: {self.random_article_content_plot_summary}")
 
             self.is_ouat_loop_active = True
-
-            self.logger.info(f"A story was started by {message.author.name} ({message.author.id})")  
-            self.logger.info(f"random_article_content_plot_summary: {self.random_article_content_plot_summary}")  
-            self.logger.info(f"Theme: {self.selected_theme}")  
-            self.logger.info(f"Writing Tone: {self.selected_writing_tone}")  
-            self.logger.info(f"Writing Style: {self.selected_writing_style}")  
+  
+            self.logger.debug(f"self.story_bulleted_plotline: {self.story_bulleted_plotline}")
+            self.logger.debug(f"random_article_content_plot_summary: {self.random_article_content_plot_summary}")  
+            self.logger.info(f"selected_writing_tone: {self.selected_writing_tone}")
+            self.logger.info(f"selected_writing_style: {self.selected_writing_style}")
+            self.logger.info(f"selected_theme: {self.selected_theme}")
 
             # printc(f"A story was started by {message.author.name} ({message.author.id})", bcolors.WARNING)
             # printc(f"random_article_content_plot_summary: {self.random_article_content_plot_summary}", bcolors.OKBLUE)

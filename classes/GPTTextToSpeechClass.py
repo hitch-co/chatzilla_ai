@@ -14,7 +14,7 @@ class GPTTextToSpeech:
         self.logger = my_logging.create_logger(
             debug_level=runtime_logger_level, 
             logger_name='logger_GPTTextToSpeechClass', 
-            mode='a', 
+            mode='w', 
             stream_logs=True
             )
 

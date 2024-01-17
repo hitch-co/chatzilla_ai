@@ -11,8 +11,8 @@ from my_modules.my_logging import create_logger
 from my_modules.config import run_config
 
 #LOGGING
-stream_logs = False
-runtime_logger_level = 'DEBUG'
+stream_logs = True
+runtime_logger_level = 'INFO'
 yaml_data = run_config()
 gpt_model = yaml_data['openai-api']['assistant_model']
 shorten_message_prompt = yaml_data['gpt_thread_options']['shorten_response_length']
@@ -72,7 +72,7 @@ def openai_gpt_chatcompletion(
     except Exception as e:
         logger.error(f"Exception ocurred in openai_gpt_chatcompletion() during _count_tokens_in_messages(): {e}")
     
-    logger.info(f"messages_dict_gpt submitted to GPT ChatCompletion (tokens: {_count_tokens_in_messages(messages=messages_dict_gpt)})")
+    logger.debug(f"messages_dict_gpt submitted to GPT ChatCompletion (tokens: {_count_tokens_in_messages(messages=messages_dict_gpt)})")
     logger.debug(messages_dict_gpt)
 
     #Call to OpenAI #TODO: This loop is wonky.  Should probably divert to a 'while' statement
@@ -97,8 +97,8 @@ def openai_gpt_chatcompletion(
         logger.debug(f"generated_response type: {type(generated_response)}, length: {gpt_response_text_len}:")
 
         if gpt_response_text_len < max_characters:
-            logger.info(f'OK: The generated message was <{max_characters} characters')
-            logger.info(f"gpt_response_text: {gpt_response_text}")
+            logger.debug(f'OK: The generated message was <{max_characters} characters')
+            logger.debug(f"gpt_response_text: {gpt_response_text}")
             break  
 
         else: # Did not get a msg < n chars, try again.
@@ -117,7 +117,7 @@ def openai_gpt_chatcompletion(
             if gpt_response_text_len > max_characters:
                 logger.warning(f'gpt_response_text length was {gpt_response_text_len} characters (max: {max_characters}), trying again...')
             elif gpt_response_text_len < max_characters:
-                logger.info(f"OK on attempt --{attempt}-- gpt_response_text: {gpt_response_text}")
+                logger.debug(f"OK on attempt --{attempt}-- gpt_response_text: {gpt_response_text}")
                 break
     else:
         message = "Maxium GPT call retries exceeded"
@@ -148,12 +148,14 @@ def botthot_gpt_response_cleanse(gpt_response: str) -> str:
     gpt_response_formatted = re.sub(r'<<<.*?>>>\s*:', '', gpt_response)
     return gpt_response_formatted
 
-def combine_msghistory_and_prompttext(prompt_text,
-                                      prompt_text_role='user',
-                                      prompt_text_name='unknown',
-                                      msg_history_list_dict=None,
-                                      combine_messages=False,
-                                      output_new_list=False) -> [dict]:
+def combine_msghistory_and_prompttext(
+        prompt_text,
+        prompt_text_role='user',
+        prompt_text_name='unknown',
+        msg_history_list_dict=None,
+        combine_messages=False,
+        output_new_list=False
+        ) -> list[dict]:
     
     if output_new_list == True:
         msg_history_list_dict_temp = copy.deepcopy(msg_history_list_dict)
@@ -213,7 +215,7 @@ def _count_tokens_in_messages(messages: List[dict]) -> int:
 
             # Count tokens in role and content
             total_tokens += _count_tokens(role) + _count_tokens(content)
-        logger.info(f"Total Tokens: {total_tokens}")
+        logger.debug(f"Total Tokens: {total_tokens}")
         return total_tokens
     except:
         raise ValueError("_count_tokens_in_messages() failed")

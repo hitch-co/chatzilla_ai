@@ -19,7 +19,7 @@ root_logger = create_logger(
     dirname='log',
     logger_name='_logger_root_twitch_bot',
     debug_level=runtime_logger_level,
-    mode='a'
+    mode='w'
 )
 
 # Bot Thread

@@ -78,10 +78,13 @@ class ChatForMeService:
                 prompt_text=prompt_text,
                 prompt_text_role='user'
                 )
-            gpt_response = gpt.openai_gpt_chatcompletion(messages_dict_gpt=prompt_listdict)
-        
+            try:
+                gpt_response = gpt.openai_gpt_chatcompletion(messages_dict_gpt=prompt_listdict)
+            except Exception as e:
+                self.logger.error(f"Error occurred in 'openai_gpt_chatcompletion': {e}")        
+
         except Exception as e:
-            self.logger.error(f"Error occurred in 'chatforme': {e}")
+            self.logger.error(f"Error occurred in 'make_singleprompt_gpt_response': {e}")
 
         await self._send_output_message_and_voice(
             text=gpt_response,

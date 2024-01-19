@@ -12,7 +12,6 @@ from my_modules import gpt
 
 from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
-from classes.ArgsConfigManagerClass import ArgsConfigManager
 
 from services.VibecheckService import VibeCheckService
 from services.NewUsersService import NewUsersService

@@ -261,6 +261,35 @@ class Bot(twitch_commands.Bot):
         self.logger.info("---------END OF MESSAGE LOG----------")
         self.logger.info("-------------------------------------")        
 
+    @twitch_commands.command(name='chatforme')
+    async def chatforme(self, ctx):
+        """
+        A Twitch bot command that interacts with OpenAI's GPT API.
+        It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
+        """
+        # Extract usernames from previous chat messages stored in chatforme_msg_history.
+        users_in_messages_list_text = self.message_handler._get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
+
+        #Select prompt from argument, build the final prompt textand format replacements
+        formatted_gpt_chatforme_prompt = self.chatforme_prompt
+        chatforme_prompt = self.chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.chatforme_prompt_suffix
+        replacements_dict = {
+            "twitch_bot_display_name":self.twitch_bot_display_name,
+            "num_bot_responses":self.num_bot_responses,
+            "users_in_messages_list_text":users_in_messages_list_text,
+            "wordcount_medium":self.wordcount_medium
+        }
+
+        try:
+            gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
+                prompt_text=chatforme_prompt,
+                replacements_dict=replacements_dict,
+                msg_history=self.message_handler.chatforme_msg_history
+            )
+            return self.logger.info("chatforme has run successfully.")
+        except:
+            return self.logger.error("error with chatforme in twitchbotclass")
+
     @twitch_commands.command(name='vc')
     async def vc(self, message, *args):
         self.vibechecker_interactions_counter == 0
@@ -299,6 +328,7 @@ class Bot(twitch_commands.Bot):
         if self.ouat_counter == 1:
             self.message_handler.ouat_msg_history.clear()
             user_requested_plotline_str = ' '.join(args)
+            self.current_story_voice = 'nova'
             
             # Randomly select tone/style/theme from list, set replacements dictionary
             writing_tone_values = list(self.yaml_data['ouat-writing-parameters']['writing_tone'].values())
@@ -357,7 +387,7 @@ class Bot(twitch_commands.Bot):
                     replacements_dict=replacements_dict,
                     msg_history=new_plotline_gptlistdict,
                     incl_voice='yes',
-                    voice_name='nova'
+                    voice_name=self.current_story_voice
                     )  
 
                 self.logger.debug(f"This is the user_requested_plotline_str: {user_requested_plotline_str}")
@@ -400,7 +430,7 @@ class Bot(twitch_commands.Bot):
                     replacements_dict=replacements_dict,
                     msg_history = self.story_bulleted_plotline,
                     incl_voice='yes',
-                    voice_name='onyx'
+                    voice_name=self.current_story_voice
                 )      
                 self.logger.debug(f"This is the article_content_plotline_gptlistdict: {article_content_plotline_gptlistdict}")
                 self.logger.debug(f"There was no user_requested_plotline_str, so the prompt_text is: {self.storyteller_storystarter_prompt}")
@@ -520,45 +550,15 @@ class Bot(twitch_commands.Bot):
                                      'param_in_text':'variable_from_scope'} #for future use}
   
                 #Chatforme service for message send/voice
-                selected_voice = 'onyx'
                 gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
                     prompt_text = gpt_prompt_final, 
                     replacements_dict=replacements_dict,
                     msg_history=self.message_handler.ouat_msg_history,
                     incl_voice='yes',
-                    voice_name=selected_voice
+                    voice_name=self.current_story_voice
                     )
                 self.logger.info(f"gpt_response for iteration #{self.ouat_counter} of the OUAT Storyteller has been generated successfully")
                 self.logger.debug(f"gpt_response: {gpt_response}")
                 self.ouat_counter += 1
-                
+
             await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
-
-    @twitch_commands.command(name='chatforme')
-    async def chatforme(self, ctx):
-        """
-        A Twitch bot command that interacts with OpenAI's GPT API.
-        It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
-        """
-        # Extract usernames from previous chat messages stored in chatforme_msg_history.
-        users_in_messages_list_text = self.message_handler._get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
-
-        #Select prompt from argument, build the final prompt textand format replacements
-        formatted_gpt_chatforme_prompt = self.chatforme_prompt
-        chatforme_prompt = self.chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.chatforme_prompt_suffix
-        replacements_dict = {
-            "twitch_bot_display_name":self.twitch_bot_display_name,
-            "num_bot_responses":self.num_bot_responses,
-            "users_in_messages_list_text":users_in_messages_list_text,
-            "wordcount_medium":self.wordcount_medium
-        }
-
-        try:
-            gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
-                prompt_text=chatforme_prompt,
-                replacements_dict=replacements_dict,
-                msg_history=self.message_handler.chatforme_msg_history
-            )
-            return self.logger.info("chatforme has run successfully.")
-        except:
-            return self.logger.error("error with chatforme in twitchbotclass")

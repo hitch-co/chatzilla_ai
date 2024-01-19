@@ -153,7 +153,7 @@ gpt_thread_prompts:
     Include your story response and then after it the sentence 'The end.'"
   story_addtostory_prefix: >
     "Ensure to include this new addition to the plot as a main part of the story:"
-  story_article_summary_prompt: >
+  story_article_bullet_list_summary_prompt: >
     "Create a new bullet-pointed summary based on primarily the the 
     [user_requested_plotline] and spice it up with [Article] content including 
     some additional points to make the story more exciting, for example 

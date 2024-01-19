@@ -30,33 +30,41 @@ class ChatForMeService:
         # bot class
         self.botclass = botclass
 
-        # gpt text to speech class
-        self.tts_service = GPTTextToSpeech(
-            output_filename=self.botclass.tts_file_name,
-            output_dirpath=self.botclass.tts_data_folder
-        )
-
     async def _send_output_message_and_voice(
             self,
             text,
             incl_voice,
             voice_name
             ):
+        """
+        Asynchronously sends a text message and optionally plays a voice message.
+
+        This internal method sends a text message to the specified channel and, if requested, generates and plays a voice message using the text-to-speech service.
+
+        Parameters:
+        - text (str): The text message to be sent.
+        - incl_voice (str): Specifies whether to include voice output ('yes' or 'no').
+        - voice_name (str): The name of the voice to be used in the text-to-speech service.
+        
+        """
         datetime_string = utils.get_datetime_formats()['filename_format']
         if incl_voice == 'yes':
             # Generate speech object and create .mp3:
             output_filename = "chatforme_"+"_"+datetime_string+"_"+self.botclass.tts_file_name
+            
+            # TODO: Does this class need botclass injected simply to get a tts_client??
             self.botclass.tts_client.workflow_t2s(
                 text_input=text,
                 voice_name=voice_name,
                 output_dirpath=self.botclass.tts_data_folder,
                 output_filename=output_filename
                 )
-            
+
+        # TODO: Does this class need botclass injected simply to send messages? 
         await self.botclass.channel.send(text)
 
         if incl_voice == 'yes':
-            self.tts_service.play_local_mp3(
+            self.botclass.tts_client.play_local_mp3(
                 dirpath=self.botclass.tts_data_folder, 
                 filename=output_filename
                 )
@@ -66,8 +74,23 @@ class ChatForMeService:
             prompt_text, 
             replacements_dict=None,
             incl_voice='yes',
-            voice_name='onyx'
+            voice_name='nova'
             ) -> str:
+        """
+        Asynchronously generates a GPT response for a single prompt.
+
+        This method takes a single prompt, optionally applies replacements, and generates a response using the GPT model. It also handles sending the response and optionally playing the corresponding voice message.
+
+        Parameters:
+        - prompt_text (str): The text prompt to generate a response for.
+        - replacements_dict (dict, optional): A dictionary of replacements to apply to the prompt text.
+        - incl_voice (str): Specifies whether to include voice output ('yes' or 'no'). Default is 'yes'.
+        - voice_name (str): The name of the voice to be used in the text-to-speech service. Default is 'nova'.
+
+        Returns:
+        - str: The generated GPT response.
+
+        """
         try:
             prompt_text = gpt.prompt_text_replacement(
                 gpt_prompt_text=prompt_text,
@@ -99,8 +122,24 @@ class ChatForMeService:
             replacements_dict=None,
             msg_history=None,
             incl_voice='yes',
-            voice_name='onyx'
-            ) -> str:
+            voice_name='nova'
+            ) -> str: 
+        """
+        Asynchronously generates a GPT response considering message history.
+
+        This method processes a prompt and an existing message history to generate a GPT response. It handles replacements in the prompt, merges the prompt with the message history, and manages the response and voice message output.
+
+        Parameters:
+        - prompt_text (str): The text prompt to generate a response for.
+        - replacements_dict (dict, optional): A dictionary of replacements to apply to the prompt text.
+        - msg_history (list[dict], optional): The existing message history to consider in response generation.
+        - incl_voice (str): Specifies whether to include voice output ('yes' or 'no'). Default is 'yes'.
+        - voice_name (str): The name of the voice to be used in the text-to-speech service. Default is 'nova'.
+
+        Returns:
+        - str: The generated GPT response.
+        
+        """
         self.logger.info(f"incl_voice: {incl_voice}")
         self.logger.info(f"prompt_text: {prompt_text}")
         self.logger.info(f"msg_history: {msg_history}")
@@ -141,7 +180,23 @@ class ChatForMeService:
             combine_messages=False,
             output_new_list=False
             ) -> list[dict]:
-        
+        """
+        Combines message history with a new prompt text.
+
+        This method merges a given prompt text with an existing message history. It supports customization of the prompt's role and can combine all messages into a single entry or keep them separate.
+
+        Parameters:
+        - prompt_text (str): The text of the new prompt to be merged.
+        - prompt_text_role (str): The role associated with the prompt text ('user', 'assistant', or 'system'). Default is 'user'.
+        - prompt_text_name (str): The name associated with the prompt text. Default is 'unknown'.
+        - msg_history_list_dict (list[dict], optional): The existing message history list to merge with. Default is None.
+        - combine_messages (bool): If True, combines all messages into a single entry. Default is False.
+        - output_new_list (bool): If True, outputs a new list instead of modifying the existing one. Default is False.
+
+        Returns:
+        - list[dict]: A list of dictionaries representing the merged message history and prompt.
+
+        """
         if output_new_list == True:
             msg_history_list_dict_temp = copy.deepcopy(msg_history_list_dict)
         else:

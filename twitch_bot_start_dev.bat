@@ -1,7 +1,7 @@
 @echo off
 
 :: Activate venv
-call "C:\_repos\chatzilla_ai_prod\chatzilla_ai\venv\Scripts\activate"
+call "C:\_repos\chatzilla_ai\venv\Scripts\activate"
 
 set input_port_number=3001
 

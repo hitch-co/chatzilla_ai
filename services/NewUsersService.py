@@ -1,5 +1,6 @@
 import asyncio
 import numpy as np
+import random
 
 from my_modules.my_logging import create_logger
 
@@ -44,18 +45,19 @@ class NewUsersService:
 
         #if no new/unique users found
         if new_user_names_str == 'no unique users':
+            self.logger.info("No users found, starting chat for me...")
             newusers_nonewusers_prompt = self.botclass.yaml_data['newusers_nonewusers_prompt']
             msg_history = self.botclass.message_handler.chatforme_msg_history 
-            self.logger.info("No users found, starting chat for me...")
 
             #Select prompt from argument and format replacements
-            prompt_text = newusers_nonewusers_prompt
+            random_letter = random.choice('abcdefghijklmnopqrstuvwxyz')
             replacements_dict = {
-                "wordcount_medium": self.botclass.wordcount_medium
+                "wordcount_medium": self.botclass.wordcount_medium,
+                "random_letter": random_letter
                 }
             try:
                 gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
-                    prompt_text=prompt_text,
+                    prompt_text=newusers_nonewusers_prompt,
                     replacements_dict=replacements_dict,
                     msg_history=msg_history
                 )

@@ -17,6 +17,7 @@ from services.VibecheckService import VibeCheckService
 from services.NewUsersService import NewUsersService
 from services.ChatForMeService import ChatForMeService
 
+say_hello = True
 runtime_logger_level = 'DEBUG'
 class Bot(twitch_commands.Bot):
     loop_sleep_time = 4
@@ -190,19 +191,20 @@ class Bot(twitch_commands.Bot):
         self.loop.create_task(self.newusers_service.send_message_to_new_users_task(self.newusers_sleep_time))
 
         # Say hello to the chat 
-        replacements_dict = {
-            "helloworld_message_wordcount":self.helloworld_message_wordcount,
-            'twitch_bot_display_name':self.twitch_bot_display_name,
-            'twitch_bot_channel_name':self.twitch_bot_channel_name,
-            'param_in_text':'variable_from_scope'
-            }
-        prompt_text = self.hello_assistant_prompt
+        if say_hello == True:
+            replacements_dict = {
+                "helloworld_message_wordcount":self.helloworld_message_wordcount,
+                'twitch_bot_display_name':self.twitch_bot_display_name,
+                'twitch_bot_channel_name':self.twitch_bot_channel_name,
+                'param_in_text':'variable_from_scope'
+                }
+            prompt_text = self.hello_assistant_prompt
 
-        await self.chatforme_service.make_singleprompt_gpt_response(
-            prompt_text=prompt_text, 
-            replacements_dict=replacements_dict,
-            incl_voice='yes'
-            )
+            await self.chatforme_service.make_singleprompt_gpt_response(
+                prompt_text=prompt_text, 
+                replacements_dict=replacements_dict,
+                incl_voice='yes'
+                )
 
     async def event_message(self, message):
 

@@ -17,7 +17,6 @@ from services.VibecheckService import VibeCheckService
 from services.NewUsersService import NewUsersService
 from services.ChatForMeService import ChatForMeService
 
-say_hello = True
 runtime_logger_level = 'DEBUG'
 class Bot(twitch_commands.Bot):
     loop_sleep_time = 4
@@ -137,11 +136,12 @@ class Bot(twitch_commands.Bot):
         self.story_user_bullet_list_summary_prompt = self.yaml_data['gpt_thread_prompts']['story_user_bullet_list_summary_prompt']
 
         # GPT todo command prompts:
-        self.gpt_todo_prompt = self.yaml_data['gpt_todo_prompt']
-        self.todo_prompt_prefix = self.yaml_data['gpt_todo_prompt_prefix']
+        self.gpt_todo_prompt = os.getenv('gpt_todo_prompt')
+        self.gpt_todo_prompt_prefix = self.yaml_data['gpt_todo_prompt_prefix']
         self.gpt_todo_prompt_suffix = self.yaml_data['gpt_todo_prompt_suffix']
         
-        # GPT Hello World Prompts:
+        # GPT Hello World Vars:
+        self.gpt_hello_world = os.getenv('gpt_hello_world')
         self.hello_assistant_prompt = self.yaml_data['formatted_gpt_helloworld_prompt']
         self.helloworld_message_wordcount = self.yaml_data['helloworld_message_wordcount']
 
@@ -196,7 +196,7 @@ class Bot(twitch_commands.Bot):
         self.loop.create_task(self.newusers_service.send_message_to_new_users_task(self.newusers_sleep_time))
 
         # Say hello to the chat 
-        if say_hello == True:
+        if self.gpt_hello_world == True:
             replacements_dict = {
                 "helloworld_message_wordcount":self.helloworld_message_wordcount,
                 'twitch_bot_display_name':self.twitch_bot_display_name,
@@ -267,9 +267,8 @@ class Bot(twitch_commands.Bot):
         self.logger.info("---------END OF MESSAGE LOG----------")
         self.logger.info("-------------------------------------")        
 
-
     @twitch_commands.command(name='todo')
-    async def chatforme(self, ctx):
+    async def todo(self, ctx):
         replacements_dict = {
             "wordcount_short": self.wordcount_short,
             'param_in_text':'variable_from_scope'

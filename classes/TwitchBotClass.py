@@ -135,6 +135,11 @@ class Bot(twitch_commands.Bot):
         self.story_article_bullet_list_summary_prompt = self.yaml_data['gpt_thread_prompts']['story_article_bullet_list_summary_prompt'] 
         self.story_user_bullet_list_summary_prompt = self.yaml_data['gpt_thread_prompts']['story_user_bullet_list_summary_prompt']
 
+        # GPT todo command prompts:
+        self.gpt_todo_prompt = self.yaml_data['gpt_todo_prompt']
+        self.todo_prompt_prefix = self.yaml_data['gpt_todo_prompt_prefix']
+        self.gpt_todo_prompt_suffix = self.yaml_data['gpt_todo_prompt_suffix']
+        
         # GPT Hello World Prompts:
         self.hello_assistant_prompt = self.yaml_data['formatted_gpt_helloworld_prompt']
         self.helloworld_message_wordcount = self.yaml_data['helloworld_message_wordcount']
@@ -259,6 +264,21 @@ class Bot(twitch_commands.Bot):
         self.logger.info("-------------------------------------") 
         self.logger.info("---------END OF MESSAGE LOG----------")
         self.logger.info("-------------------------------------")        
+
+
+    @twitch_commands.command(name='todo')
+    async def chatforme(self, ctx):
+        replacements_dict = {
+            "wordcount_short": self.wordcount_short,
+            'param_in_text':'variable_from_scope'
+            }
+        prompt_text = self.gpt_todo_prompt_prefix + self.gpt_todo_prompt + self.gpt_todo_prompt_suffix
+
+        await self.chatforme_service.make_singleprompt_gpt_response(
+            prompt_text=prompt_text, 
+            replacements_dict=replacements_dict,
+            incl_voice='yes'
+            )
 
     @twitch_commands.command(name='chatforme')
     async def chatforme(self, ctx):

@@ -41,7 +41,8 @@ class NewUsersService:
         new_users = await self._get_new_users_since_last_session()
         new_user_names = [user['user_login'] for user in new_users]
         new_user_names_str = ', '.join(new_user_names)
-        self.new_users_sent_messages_list = []
+
+        new_users_sent_messages_list = []
 
         #if no new/unique users found
         if new_user_names_str == 'no unique users':
@@ -74,13 +75,14 @@ class NewUsersService:
             #set diff from new_user_names and new_users_sent_messages_list
             users_not_yet_sent_message = await self._find_unique_to_second_list(
                 source_list=new_user_names,
-                new_list=self.new_users_sent_messages_list
+                new_list=new_users_sent_messages_list
                 )            
-            random_new_user = self._select_random_user(users_not_yet_sent_message)
-            self.new_users_sent_messages_list.append(random_new_user)
 
+            random_new_user = self._select_random_user(users_not_yet_sent_message)
+            new_users_sent_messages_list.append(random_new_user)
+            
             replacements_dict = {
-                "selected_new_user":random_new_user,
+                "random_new_user":random_new_user,
                 "wordcount_medium":self.botclass.wordcount_medium
             }
             try:
@@ -88,10 +90,13 @@ class NewUsersService:
                     prompt_text=new_users_prompt,
                     replacements_dict=replacements_dict)
                 
-                self.logger.info(f"New users: {new_user_names_str}")
-                self.logger.info(f"Users sent message: {self.new_users_sent_messages_list}")
-                self.logger.info(f"Sent message to: {random_new_user}")
-                self.logger.info(f"Message: {gpt_response}")
+                self.logger.debug(f"new_users: {new_users}")
+                self.logger.debug(f"new_user_names: {new_user_names}")
+                self.logger.debug(f"new_user_names_str: {new_user_names_str}")
+                self.logger.debug(f"users_not_yet_sent_message: {users_not_yet_sent_message}")
+                self.logger.debug(f"new_users_sent_messages_list: {new_users_sent_messages_list}")
+                self.logger.info(f"random_new_user: {random_new_user}")
+                self.logger.info(f"gpt_response: {gpt_response}")
 
             except Exception as e:
                 self.logger.error(f"Error occurred in 'make_singleprompt_gpt_response': {e}")            

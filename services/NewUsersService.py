@@ -93,8 +93,8 @@ class NewUsersService:
                 self.logger.debug(f"new_users: {new_users}")
                 self.logger.debug(f"new_user_names: {new_user_names}")
                 self.logger.debug(f"new_user_names_str: {new_user_names_str}")
-                self.logger.debug(f"users_not_yet_sent_message: {users_not_yet_sent_message}")
                 self.logger.debug(f"new_users_sent_messages_list: {new_users_sent_messages_list}")
+                self.logger.debug(f"users_not_yet_sent_message: {users_not_yet_sent_message}")
                 self.logger.info(f"random_new_user: {random_new_user}")
                 self.logger.info(f"gpt_response: {gpt_response}")
 

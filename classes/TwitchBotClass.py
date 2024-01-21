@@ -4,6 +4,7 @@ from twitchio.ext import commands as twitch_commands
 import random
 import re
 import os
+import inspect
 
 from my_modules.my_logging import create_logger
 from my_modules.config import run_config
@@ -266,6 +267,24 @@ class Bot(twitch_commands.Bot):
         self.logger.info("-------------------------------------") 
         self.logger.info("---------END OF MESSAGE LOG----------")
         self.logger.info("-------------------------------------")        
+
+    async def check_mod(self, ctx, command) -> bool:
+        is_sender_mod = False
+        command_name = inspect.currentframe().f_back.f_code.co_name
+        if not ctx.author.is_mod:
+            await ctx.send(f"Oops, the {command_name} is for mods...")
+        else:
+            is_sender_mod = True
+        return is_sender_mod
+
+    @twitch_commands.command(name='updatetodo')
+    async def updatetodo(self, ctx, *args):
+            is_sender_mod = self.check_mod(ctx)
+
+            if is_sender_mod == True:
+                updated_string = ' '.join(args)
+                self.gpt_todo_prompt = updated_string
+                self.logger.info(f"updated todo list: {updated_string}")
 
     @twitch_commands.command(name='todo')
     async def todo(self, ctx):

@@ -65,7 +65,7 @@ class NewUsersService:
                     replacements_dict=replacements_dict,
                     msg_history=msg_history
                 )
-                self.logger.info("'chatforme' completed successfully.")
+                self.logger.debug(f"'chatforme' completed successfully with response: {gpt_response}.")
             
             except Exception as e:
                 self.logger.error(f"Error occurred in 'chatforme': {e}")
@@ -74,9 +74,11 @@ class NewUsersService:
         #if unique users found
         else:
             self.logger.info("New users found, starting new users message...")
+            self.logger.info(f"New users: {user_logins_str}")
+            self.logger.info(f"Users sent message: {self.users_sent_messages_list}")
 
             #set diff from user_logins and users_sent_messages_list
-            users_not_yet_sent_message = self.find_unique_to_second_list(
+            users_not_yet_sent_message = await self._find_unique_to_second_list(
                 source_list=user_logins,
                 new_list=self.users_sent_messages_list
                 )            
@@ -91,16 +93,17 @@ class NewUsersService:
                 gpt_response = await self.chatforme_service.make_singleprompt_gpt_response(
                     prompt_text=newuser_prompt,
                     replacements_dict=replacements_dict)
-                self.logger.info("'make_singleprompt_gpt_response' completed successfully.")
-            
+                self.logger.info(f"Sent message to: {random_new_user}")
+                self.logger.info(f"Message: {gpt_response}")
+                
             except Exception as e:
                 self.logger.error(f"Error occurred in 'make_singleprompt_gpt_response': {e}")            
 
-    async def _select_random_user(user_list):
+    async def _select_random_user(self, user_list):
         random_user = np.random.rand(user_list)
         return random_user
 
-    async def find_unique_to_second_list(self, source_list, new_list):
+    async def _find_unique_to_second_list(self, source_list, new_list):
         set1 = set(source_list)
         set2 = set(new_list)
         unique_strings = set2 - set1
@@ -129,7 +132,7 @@ class NewUsersService:
         return unique_users
 
     async def _get_new_users_since_last_session(self):
-        
+        #TODO: Should BQ Uploader be injected instead of the entire botclass?
         self.botclass.current_users_in_session = await self.botclass.message_handler.get_current_users_in_session(
             bearer_token = self.botclass.TWITCH_BOT_ACCESS_TOKEN,
             broadcaster_id = self.botclass.broadcaster_id,

@@ -38,20 +38,14 @@ class NewUsersService:
     async def send_message_to_new_users(self):
         # Extract newusers list, each 'user_login' from list and then string of users
         new_users = await self._get_new_users_since_last_session()
-        user_logins = [user['user_login'] for user in new_users]
-        user_logins_str = ', '.join(user_logins)
+        new_user_names = [user['user_login'] for user in new_users]
+        new_user_names_str = ', '.join(new_user_names)
+        self.new_users_sent_messages_list = []
 
-        # New user message vars
-        self.users_sent_messages_list = []      
-        newuser_prompt = self.botclass.yaml_data['newusers_msg_prompt']
-        
-        # No new user message vars
-        newusers_nonewusers_prompt = self.botclass.yaml_data['newusers_nonewusers_prompt']
-        msg_history = self.botclass.message_handler.chatforme_msg_history  
-
-        #########################
-        #if no unique users found
-        if user_logins_str == 'no unique users':
+        #if no new/unique users found
+        if new_user_names_str == 'no unique users':
+            newusers_nonewusers_prompt = self.botclass.yaml_data['newusers_nonewusers_prompt']
+            msg_history = self.botclass.message_handler.chatforme_msg_history 
             self.logger.info("No users found, starting chat for me...")
 
             #Select prompt from argument and format replacements
@@ -70,20 +64,18 @@ class NewUsersService:
             except Exception as e:
                 self.logger.error(f"Error occurred in 'chatforme': {e}")
 
-        ######################
-        #if unique users found
-        else:
+        #if no new/unique users found
+        else:      
+            new_users_prompt = self.botclass.yaml_data['newusers_msg_prompt']
             self.logger.info("New users found, starting new users message...")
-            self.logger.info(f"New users: {user_logins_str}")
-            self.logger.info(f"Users sent message: {self.users_sent_messages_list}")
 
-            #set diff from user_logins and users_sent_messages_list
+            #set diff from new_user_names and new_users_sent_messages_list
             users_not_yet_sent_message = await self._find_unique_to_second_list(
-                source_list=user_logins,
-                new_list=self.users_sent_messages_list
+                source_list=new_user_names,
+                new_list=self.new_users_sent_messages_list
                 )            
             random_new_user = self._select_random_user(users_not_yet_sent_message)
-            self.users_sent_messages_list.append(random_new_user)
+            self.new_users_sent_messages_list.append(random_new_user)
 
             replacements_dict = {
                 "selected_new_user":random_new_user,
@@ -91,11 +83,14 @@ class NewUsersService:
             }
             try:
                 gpt_response = await self.chatforme_service.make_singleprompt_gpt_response(
-                    prompt_text=newuser_prompt,
+                    prompt_text=new_users_prompt,
                     replacements_dict=replacements_dict)
+                
+                self.logger.info(f"New users: {new_user_names_str}")
+                self.logger.info(f"Users sent message: {self.new_users_sent_messages_list}")
                 self.logger.info(f"Sent message to: {random_new_user}")
                 self.logger.info(f"Message: {gpt_response}")
-                
+
             except Exception as e:
                 self.logger.error(f"Error occurred in 'make_singleprompt_gpt_response': {e}")            
 
@@ -139,9 +134,9 @@ class NewUsersService:
             moderator_id = self.botclass.moderator_id,
             twitch_bot_client_id = self.botclass.twitch_bot_client_id
             )
-        self.botclass.new_users_since_last_sesion = await self.find_unique_to_second_dict(
+        new_users_since_last_sesion = await self.find_unique_to_second_dict(
             source_dict = self.botclass.historic_users_at_start_of_session, 
             new_dict = self.botclass.current_users_in_session
             )
 
-        return self.botclass.new_users_since_last_sesion
+        return new_users_since_last_sesion

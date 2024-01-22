@@ -194,7 +194,10 @@ class Bot(twitch_commands.Bot):
         self.loop.create_task(self.ouat_storyteller())
 
         #start newusers loop
-        self.loop.create_task(self.newusers_service.send_message_to_new_users_task(self.newusers_sleep_time))
+        self.loop.create_task(self.send_message_to_new_users_task(
+            historic_users_list=self.historic_users_at_start_of_session,
+            interval_seconds=self.newusers_sleep_time)
+            )
 
         # Say hello to the chat 
         if self.gpt_hello_world == True:
@@ -515,6 +518,27 @@ class Bot(twitch_commands.Bot):
     async def endstory(self, ctx):
         self.ouat_counter = self.ouat_story_max_counter
         printc(f"Story is being forced to end by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}", bcolors.WARNING)
+
+    async def send_message_to_new_users_task(
+            self, 
+            historic_users_list: list,
+            interval_seconds
+            ):
+
+        while True:
+            await asyncio.sleep(interval_seconds)
+
+            current_users_list = await self.message_handler.get_current_users_in_session(
+                bearer_token = self.TWITCH_BOT_ACCESS_TOKEN,
+                broadcaster_id = self.broadcaster_id,
+                moderator_id = self.moderator_id,
+                twitch_bot_client_id = self.twitch_bot_client_id
+                )
+            
+            await self.newusers_service.send_message_to_new_users(
+                historic_users_list = historic_users_list,
+                current_users_list = current_users_list
+            )
 
     async def stop_vibechecker_loop(self) -> None:
         self.is_vibecheck_loop_active = False

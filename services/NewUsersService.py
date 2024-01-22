@@ -24,94 +24,117 @@ class NewUsersService:
 
         #create newusers event
         self.newusers_ready_event = asyncio.Event()
-
+        self.users_sent_messages_list = []
+        
         #Bot
         self.botclass = botclass
         
         #chatforme 
         self.chatforme_service = ChatForMeService(self.botclass)
 
-    async def send_message_to_new_users_task(self, interval_seconds):
-        while True:
-            await asyncio.sleep(interval_seconds)
-            await self.send_message_to_new_users()
-            
-    async def send_message_to_new_users(self):
-        # Extract newusers list, each 'user_login' from list and then string of users
-        new_users = await self._get_new_users_since_last_session()
-        new_user_names = [user['user_login'] for user in new_users]
-        new_user_names_str = ', '.join(new_user_names)
+    async def send_message_to_new_users(
+            self,
+            historic_users_list: list = None,
+            current_users_list: list = None
+            ):
 
-        new_users_sent_messages_list = []
+        # Extract newusers list, each 'user_login' from list and then string of users
+        current_new_users_list = await self._find_unique_to_new_dict(
+            source_dict = historic_users_list,
+            new_dict = current_users_list, 
+            )      
+          
+        current_user_names = [user['user_login'] for user in current_new_users_list]
+        current_user_names_str = ', '.join(current_user_names)
+
+        #set diff from current_user_names and self.users_sent_messages_list
+        users_not_yet_sent_message = await self._find_unique_to_new_list(
+            source_list=self.users_sent_messages_list,
+            new_list=current_user_names
+            )      
 
         #if no new/unique users found
-        if new_user_names_str == 'no unique users':
+        if current_user_names_str == 'no unique users' or len(users_not_yet_sent_message) == 0:
             self.logger.info("No users found, starting chat for me...")
             newusers_nonewusers_prompt = self.botclass.yaml_data['newusers_nonewusers_prompt']
             msg_history = self.botclass.message_handler.chatforme_msg_history 
 
-            #Select prompt from argument and format replacements
-            random_letter = random.choice('abcdefghijklmnopqrstuvwxyz')
-            replacements_dict = {
-                "wordcount_medium": self.botclass.wordcount_medium,
-                "random_letter": random_letter
-                }
             try:
+                #Select prompt from argument and format replacements
+                random_letter = random.choice('abcdefghijklmnopqrstuvwxyz')
+                replacements_dict = {
+                    "wordcount_medium": self.botclass.wordcount_medium,
+                    "random_letter": random_letter
+                    }
                 gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
                     prompt_text=newusers_nonewusers_prompt,
                     replacements_dict=replacements_dict,
                     msg_history=msg_history
                 )
                 self.logger.debug(f"'chatforme' completed successfully with response: {gpt_response}.")
-            
+                return  
+           
             except Exception as e:
                 self.logger.error(f"Error occurred in 'chatforme': {e}")
 
-        #if no new/unique users found
-        else:      
+        #if new/unique users found
+        elif len(users_not_yet_sent_message) > 0:      
             new_users_prompt = self.botclass.yaml_data['newusers_msg_prompt']
             self.logger.info("New users found, starting new users message...")
-
-            #set diff from new_user_names and new_users_sent_messages_list
-            users_not_yet_sent_message = await self._find_unique_to_second_list(
-                source_list=new_user_names,
-                new_list=new_users_sent_messages_list
-                )            
-
-            random_new_user = self._select_random_user(users_not_yet_sent_message)
-            new_users_sent_messages_list.append(random_new_user)
+            self.logger.debug(f"Initial value of self.users_sent_messages_list: {self.users_sent_messages_list}")   
+            random_new_user = await self._select_random_user(users_not_yet_sent_message)
+            self.users_sent_messages_list.append(random_new_user)
             
-            replacements_dict = {
-                "random_new_user":random_new_user,
-                "wordcount_medium":self.botclass.wordcount_medium
-            }
             try:
+                replacements_dict = {
+                    "random_new_user":random_new_user,
+                    "wordcount_medium":self.botclass.wordcount_medium
+                }
                 gpt_response = await self.chatforme_service.make_singleprompt_gpt_response(
                     prompt_text=new_users_prompt,
-                    replacements_dict=replacements_dict)
+                    replacements_dict=replacements_dict
+                    )
                 
-                self.logger.debug(f"new_users: {new_users}")
-                self.logger.debug(f"new_user_names: {new_user_names}")
-                self.logger.debug(f"new_user_names_str: {new_user_names_str}")
-                self.logger.debug(f"new_users_sent_messages_list: {new_users_sent_messages_list}")
+                self.logger.debug(f"current_new_users_list: {current_new_users_list}")
+                self.logger.debug(f"current_user_names: {current_user_names}")
+                self.logger.debug(f"current_user_names_str: {current_user_names_str}")
+                self.logger.debug(f"self.users_sent_messages_list: {self.users_sent_messages_list}")
                 self.logger.debug(f"users_not_yet_sent_message: {users_not_yet_sent_message}")
                 self.logger.info(f"random_new_user: {random_new_user}")
                 self.logger.info(f"gpt_response: {gpt_response}")
+                return
 
             except Exception as e:
-                self.logger.error(f"Error occurred in 'make_singleprompt_gpt_response': {e}")            
-
+                self.logger.exception(f"Error occurred in 'make_singleprompt_gpt_response': {e}")            
+        
+        self.logger.warning(f"The function calls current_user_names_str ({current_user_names_str}) and users_not_yet_sent_message: ({users_not_yet_sent_message}) were not met.")
+        return
+    
     async def _select_random_user(self, user_list):
-        random_user = np.random.rand(user_list)
+        random_user = random.choice(user_list)
         return random_user
 
-    async def _find_unique_to_second_list(self, source_list, new_list):
+    async def _find_unique_to_new_list(
+            self, 
+            source_list, 
+            new_list
+            ) -> list:
         set1 = set(source_list)
         set2 = set(new_list)
         unique_strings = set2 - set1
-        return list(unique_strings)
+        unique_list = list(unique_strings)
 
-    async def find_unique_to_second_dict(self, source_dict, new_dict):
+        self.logger.debug("_find_unique_to_new_list inputs/output:")
+        self.logger.debug(f"source_list: {source_list}")
+        self.logger.debug(f"new_list: {new_list}")
+        self.logger.debug(f"unique_list: {unique_list}")
+        return unique_list
+
+    async def _find_unique_to_new_dict(
+            self, 
+            source_dict, 
+            new_dict
+            ) -> dict:
         # Assuming the first dictionary in list2 represents the key structure
         keys = new_dict[0].keys()
 
@@ -132,18 +155,3 @@ class NewUsersService:
             return [placeholder]
 
         return unique_users
-
-    async def _get_new_users_since_last_session(self):
-        #TODO: Should BQ Uploader be injected instead of the entire botclass?
-        self.botclass.current_users_in_session = await self.botclass.message_handler.get_current_users_in_session(
-            bearer_token = self.botclass.TWITCH_BOT_ACCESS_TOKEN,
-            broadcaster_id = self.botclass.broadcaster_id,
-            moderator_id = self.botclass.moderator_id,
-            twitch_bot_client_id = self.botclass.twitch_bot_client_id
-            )
-        new_users_since_last_sesion = await self.find_unique_to_second_dict(
-            source_dict = self.botclass.historic_users_at_start_of_session, 
-            new_dict = self.botclass.current_users_in_session
-            )
-
-        return new_users_since_last_sesion

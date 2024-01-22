@@ -4,6 +4,7 @@ from twitchio.ext import commands as twitch_commands
 import random
 import re
 import os
+import inspect
 
 from my_modules.my_logging import create_logger
 from my_modules.config import run_config
@@ -193,7 +194,10 @@ class Bot(twitch_commands.Bot):
         self.loop.create_task(self.ouat_storyteller())
 
         #start newusers loop
-        self.loop.create_task(self.newusers_service.send_message_to_new_users_task(self.newusers_sleep_time))
+        self.loop.create_task(self.send_message_to_new_users_task(
+            historic_users_list=self.historic_users_at_start_of_session,
+            interval_seconds=self.newusers_sleep_time)
+            )
 
         # Say hello to the chat 
         if self.gpt_hello_world == True:
@@ -266,6 +270,24 @@ class Bot(twitch_commands.Bot):
         self.logger.info("-------------------------------------") 
         self.logger.info("---------END OF MESSAGE LOG----------")
         self.logger.info("-------------------------------------")        
+
+    async def check_mod(self, ctx, command) -> bool:
+        is_sender_mod = False
+        command_name = inspect.currentframe().f_back.f_code.co_name
+        if not ctx.author.is_mod:
+            await ctx.send(f"Oops, the {command_name} is for mods...")
+        else:
+            is_sender_mod = True
+        return is_sender_mod
+
+    @twitch_commands.command(name='updatetodo')
+    async def updatetodo(self, ctx, *args):
+            is_sender_mod = self.check_mod(ctx)
+
+            if is_sender_mod == True:
+                updated_string = ' '.join(args)
+                self.gpt_todo_prompt = updated_string
+                self.logger.info(f"updated todo list: {updated_string}")
 
     @twitch_commands.command(name='todo')
     async def todo(self, ctx):
@@ -496,6 +518,27 @@ class Bot(twitch_commands.Bot):
     async def endstory(self, ctx):
         self.ouat_counter = self.ouat_story_max_counter
         printc(f"Story is being forced to end by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}", bcolors.WARNING)
+
+    async def send_message_to_new_users_task(
+            self, 
+            historic_users_list: list,
+            interval_seconds
+            ):
+
+        while True:
+            await asyncio.sleep(interval_seconds)
+
+            current_users_list = await self.message_handler.get_current_users_in_session(
+                bearer_token = self.TWITCH_BOT_ACCESS_TOKEN,
+                broadcaster_id = self.broadcaster_id,
+                moderator_id = self.moderator_id,
+                twitch_bot_client_id = self.twitch_bot_client_id
+                )
+            
+            await self.newusers_service.send_message_to_new_users(
+                historic_users_list = historic_users_list,
+                current_users_list = current_users_list
+            )
 
     async def stop_vibechecker_loop(self) -> None:
         self.is_vibecheck_loop_active = False

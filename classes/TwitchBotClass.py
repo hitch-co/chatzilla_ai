@@ -35,7 +35,7 @@ class Bot(twitch_commands.Bot):
             name=yaml_data['twitch-app']['twitch_bot_username'],
             prefix='!',
             initial_channels=[yaml_data['twitch-app']['twitch_bot_channel_name']],
-            nick = 'chatforme_bot'
+            nick = 'chatzilla_ai'
             #NOTE/QUESTION:what other variables should be set here?
         )
 
@@ -117,9 +117,10 @@ class Bot(twitch_commands.Bot):
         # load yaml/env
         self.yaml_data = run_config()
 
-        # TTS folder/filenames
+        # TTS folder/filenames/voices
         self.tts_file_name = self.yaml_data['openai-api']['tts_file_name']
         self.tts_data_folder = self.yaml_data['openai-api']['tts_data_folder']
+        self.tts_voices = self.yaml_data['openai-api']['tts_voices']
 
         # Twitch Bot Details
         self.twitch_bot_channel_name = self.yaml_data['twitch-app']['twitch_bot_channel_name']
@@ -142,7 +143,7 @@ class Bot(twitch_commands.Bot):
         self.gpt_todo_prompt_suffix = self.yaml_data['gpt_todo_prompt_suffix']
         
         # GPT Hello World Vars:
-        self.gpt_hello_world = os.getenv('gpt_hello_world')
+        self.gpt_hello_world = self.gpt_hello_world = True if os.getenv('gpt_hello_world') == 'True' else False
         self.hello_assistant_prompt = self.yaml_data['formatted_gpt_helloworld_prompt']
         self.helloworld_message_wordcount = self.yaml_data['helloworld_message_wordcount']
 
@@ -303,12 +304,16 @@ class Bot(twitch_commands.Bot):
             incl_voice='yes'
             )
 
-    @twitch_commands.command(name='chatforme')
+    @twitch_commands.command(name='chat')
     async def chatforme(self, ctx):
         """
         A Twitch bot command that interacts with OpenAI's GPT API.
         It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
         """
+
+        # Select random voice from the list of voices
+        tts_voice = random.choice(random.choice(list(self.tts_voices.values())))
+
         # Extract usernames from previous chat messages stored in chatforme_msg_history.
         users_in_messages_list_text = self.message_handler._get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
 
@@ -326,7 +331,8 @@ class Bot(twitch_commands.Bot):
             gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
                 prompt_text=chatforme_prompt,
                 replacements_dict=replacements_dict,
-                msg_history=self.message_handler.chatforme_msg_history
+                msg_history=self.message_handler.chatforme_msg_history,
+                voice_name=tts_voice
             )
             return self.logger.info("chatforme has run successfully.")
         except:
@@ -370,7 +376,7 @@ class Bot(twitch_commands.Bot):
         if self.ouat_counter == 1:
             self.message_handler.ouat_msg_history.clear()
             user_requested_plotline_str = ' '.join(args)
-            self.current_story_voice = 'nova'
+            self.current_story_voice = random.choice(random.choice(list(self.tts_voices.values())))
             
             # Randomly select tone/style/theme from list, set replacements dictionary
             writing_tone_values = list(self.yaml_data['ouat-writing-parameters']['writing_tone'].values())

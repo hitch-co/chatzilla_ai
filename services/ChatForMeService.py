@@ -1,8 +1,6 @@
 import asyncio
 import copy
 
-from classes.GPTTextToSpeechClass import GPTTextToSpeech
-
 from my_modules.my_logging import create_logger
 from my_modules import gpt
 from my_modules import utils

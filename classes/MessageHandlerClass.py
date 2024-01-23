@@ -83,7 +83,8 @@ class MessageHandler:
         ]
         for msg_history, limit in message_histories:
             self._pop_message_from_message_history(msg_history_list_dict=msg_history, msg_history_limit=limit)
-
+            self.logger.debug(f"Log history cleaned for message_histories: {message_histories}")
+    
     def _add_user_to_users_in_messages_list(self, message_metadata: dict) -> None:
         self.users_in_messages_list.append(message_metadata['name'])
         self.users_in_messages_list = list(set(self.users_in_messages_list))
@@ -105,7 +106,8 @@ class MessageHandler:
             )
             response_json = response.json()
             current_users_in_session = response_json['data'] #-> list[{user_id, user_login, user_name},{}] 
-
+            
+            self.logger.debug(f"current_users_in_session: {current_users_in_session}")
             return current_users_in_session 
 
     def _get_string_of_users(self, usernames_list) -> str:

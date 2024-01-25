@@ -155,6 +155,7 @@ class Bot(twitch_commands.Bot):
         # self.botthot_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['botthot']
  
         # GPT Thread Prompts
+        self.storyteller_storysuffix_prompt = self.yaml_data['gpt_thread_prompts']['story_suffix']
         self.storyteller_storystarter_prompt = self.yaml_data['gpt_thread_prompts']['story_starter']
         self.storyteller_storyprogressor_prompt = self.yaml_data['gpt_thread_prompts']['story_progressor']
         self.storyteller_storyfinisher_prompt = self.yaml_data['gpt_thread_prompts']['story_finisher']
@@ -165,7 +166,6 @@ class Bot(twitch_commands.Bot):
         self.ouat_message_recurrence_seconds = self.yaml_data['ouat_message_recurrence_seconds']
         self.ouat_story_progression_number = self.yaml_data['ouat_story_progression_number']
         self.ouat_story_max_counter = self.yaml_data['ouat_story_max_counter']
-        self.ouat_wordcount = self.yaml_data['ouat_wordcount']
 
         # Generic config items
         self.num_bot_responses = self.yaml_data['num_bot_responses']
@@ -404,7 +404,7 @@ class Bot(twitch_commands.Bot):
 
                 replacements_dict = {
                     "user_requested_plotline":user_requested_plotline_str,
-                    "ouat_wordcount":self.ouat_wordcount
+                    "ouat_wordcount":self.wordcount_short
                     }
                 
                 bullet_list_prompt_text = gpt.prompt_text_replacement(
@@ -455,7 +455,7 @@ class Bot(twitch_commands.Bot):
                 replacements_dict = {
                     "random_article_content":self.random_article_content,
                     "user_requested_plotline":article_content_plotline_gptlistdict,
-                    "ouat_wordcount":self.ouat_wordcount,
+                    "ouat_wordcount":self.wordcount_short,
                     }                
                 bullet_list_prompt_text = gpt.prompt_text_replacement(
                     gpt_prompt_text=self.story_article_bullet_list_summary_prompt,
@@ -601,6 +601,9 @@ class Bot(twitch_commands.Bot):
                     await self.stop_ouat_loop()
                     continue
 
+                # Combine prefix and meat
+                gpt_prompt_final = self.storyteller_storysuffix_prompt + " " + gpt_prompt_final
+                
                 self.logger.info("------------------------")
                 self.logger.info("------------------------")                
                 self.logger.info("OUAT details:")
@@ -609,7 +612,7 @@ class Bot(twitch_commands.Bot):
                 self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
 
                 #TODO: Turn this into a function up to the 'continue'
-                replacements_dict = {"ouat_wordcount":self.ouat_wordcount,
+                replacements_dict = {"ouat_wordcount":self.wordcount_short,
                                      'twitch_bot_display_name':self.twitch_bot_display_name,
                                      'num_bot_responses':self.num_bot_responses,
                                      'rss_feed_article_plot':self.random_article_content_plot_summary,

@@ -154,6 +154,7 @@ class Bot(twitch_commands.Bot):
         # self.botthot_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['botthot']
  
         # GPT Thread Prompts
+        self.storyteller_storysuffix_prompt = self.yaml_data['gpt_thread_prompts']['story_suffix']
         self.storyteller_storystarter_prompt = self.yaml_data['gpt_thread_prompts']['story_starter']
         self.storyteller_storyprogressor_prompt = self.yaml_data['gpt_thread_prompts']['story_progressor']
         self.storyteller_storyfinisher_prompt = self.yaml_data['gpt_thread_prompts']['story_finisher']
@@ -595,6 +596,9 @@ class Bot(twitch_commands.Bot):
                     await self.stop_ouat_loop()
                     continue
 
+                # Combine prefix and meat
+                gpt_prompt_final = self.storyteller_storysuffix_prompt + " " + gpt_prompt_final
+                
                 self.logger.info("------------------------")
                 self.logger.info("------------------------")                
                 self.logger.info("OUAT details:")

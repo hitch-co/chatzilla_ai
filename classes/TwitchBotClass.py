@@ -281,6 +281,10 @@ class Bot(twitch_commands.Bot):
             is_sender_mod = True
         return is_sender_mod
 
+    @twitch_commands.command(name='commands')
+    async def showcommands(self, ctx):
+        await self.channel.send("Commands include: chatforme, todo, startstory, addtostory, extendstory")
+
     @twitch_commands.command(name='updatetodo')
     async def updatetodo(self, ctx, *args):
             is_sender_mod = self.check_mod(ctx)

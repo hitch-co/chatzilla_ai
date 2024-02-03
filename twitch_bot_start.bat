@@ -1,7 +1,10 @@
 @echo off
 
+:: Switch directory 
+cd "C:\_repos\chatzilla_ai_prod\chatzilla_ai\"
+
 :: Activate venv
-call "C:\_repos\chatzilla_ai_prod\chatzilla_ai\venv\Scripts\activate"
+call ".\venv\Scripts\activate"
 
 :: Set default values
 set input_port_number=3000

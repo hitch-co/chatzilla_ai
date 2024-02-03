@@ -197,10 +197,10 @@ class Bot(twitch_commands.Bot):
 
         # Instantiate the bot years class and start the stream
         self.bot_ears = BotEars(
-            audio_device=self.yaml_data['botears_audio_device'],
+            audio_device=self.yaml_data['botears_device_mic'],
             event_loop=self.loop,
             duration=self.yaml_data['botears_audio_n_seconds'],
-            samplerate=44100,
+            samplerate=48000,
             channels=2
             )
         self.loop.create_task(self.bot_ears.start_stream())

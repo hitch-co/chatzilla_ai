@@ -3,6 +3,7 @@ import sounddevice as sd
 import numpy as np
 import asyncio 
 from collections import deque 
+from datetime import datetime
 
 from my_modules.config import run_config
 from my_modules import my_logging
@@ -18,7 +19,7 @@ class BotEars:
             audio_device,
             event_loop, 
             duration: int = 7, 
-            samplerate = 44100, 
+            samplerate = 48000, 
             channels = 2):
         """
 
@@ -69,14 +70,19 @@ class BotEars:
         """
         Starts the audio stream.
         """
-        with self.stream:
-            await asyncio.sleep(self.duration)
-
+        try:
+            with self.stream:
+                #How long is being recorded
+                await asyncio.sleep(self.duration)
+        except sd.PortAudioError as e:
+            print(f"Error starting audio stream: {e}")
+    
     def save_last_n_seconds(self, n):
         """
         Saves the last n seconds of audio to a file.
         """
-        filename = self.botears_audio_filename 
+        suffix ='' #datetime.now().strftime("%Y%m%d-%H%M%S")
+        filename = self.botears_audio_filename+suffix+".wav"
         last_n_seconds = np.array(self.buffer).reshape(-1, self.channels)
         samplerate = self.samplerate
         
@@ -108,12 +114,14 @@ async def main():
 
     # save the last n seconds of audio to a file
     print("...saving audio")
-    ears.save_last_n_seconds(n=4)
+    ears.save_last_n_seconds(n=0.2)
     
 if __name__ == "__main__":
-    # Create an event loop
-    event_loop = asyncio.get_event_loop()
+    # # Create an event loop
+    # event_loop = asyncio.get_event_loop()
 
-    # Run the main function
-    event_loop.run_until_complete(main())
-    
+    # # Run the main function
+    # event_loop.run_until_complete(main())
+
+    devices = sd.query_devices()
+    print(devices)

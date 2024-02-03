@@ -17,6 +17,7 @@ from classes import ArticleGeneratorClass
 from services.VibecheckService import VibeCheckService
 from services.NewUsersService import NewUsersService
 from services.ChatForMeService import ChatForMeService
+from services.BotEars import BotEars
 
 runtime_logger_level = 'DEBUG'
 class Bot(twitch_commands.Bot):
@@ -57,7 +58,7 @@ class Bot(twitch_commands.Bot):
 
         # instantiate the NewUserService
         self.chatforme_service = ChatForMeService(botclass=self)
-
+        
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
 
@@ -194,27 +195,37 @@ class Bot(twitch_commands.Bot):
         self.loop = asyncio.get_event_loop()
         self.loop.create_task(self.ouat_storyteller())
 
+        # Instantiate the bot years class and start the stream
+        self.bot_ears = BotEars(
+            audio_device=self.yaml_data['botears_audio_device'],
+            event_loop=self.loop,
+            duration=self.yaml_data['botears_audio_n_seconds'],
+            samplerate=44100,
+            channels=2
+            )
+        self.loop.create_task(self.bot_ears.start_stream())
+
         #start newusers loop
         self.loop.create_task(self.send_message_to_new_users_task(
             historic_users_list=self.historic_users_at_start_of_session,
             interval_seconds=self.newusers_sleep_time)
             )
 
-        # Say hello to the chat 
-        if self.gpt_hello_world == True:
-            replacements_dict = {
-                "helloworld_message_wordcount":self.helloworld_message_wordcount,
-                'twitch_bot_display_name':self.twitch_bot_display_name,
-                'twitch_bot_channel_name':self.twitch_bot_channel_name,
-                'param_in_text':'variable_from_scope'
-                }
-            prompt_text = self.hello_assistant_prompt
+        # # Say hello to the chat 
+        # if self.gpt_hello_world == True:
+        #     replacements_dict = {
+        #         "helloworld_message_wordcount":self.helloworld_message_wordcount,
+        #         'twitch_bot_display_name':self.twitch_bot_display_name,
+        #         'twitch_bot_channel_name':self.twitch_bot_channel_name,
+        #         'param_in_text':'variable_from_scope'
+        #         }
+        #     prompt_text = self.hello_assistant_prompt
 
-            await self.chatforme_service.make_singleprompt_gpt_response(
-                prompt_text=prompt_text, 
-                replacements_dict=replacements_dict,
-                incl_voice='yes'
-                )
+        #     await self.chatforme_service.make_singleprompt_gpt_response(
+        #         prompt_text=prompt_text, 
+        #         replacements_dict=replacements_dict,
+        #         incl_voice='yes'
+        #         )
 
     async def event_message(self, message):
 
@@ -280,6 +291,10 @@ class Bot(twitch_commands.Bot):
         else:
             is_sender_mod = True
         return is_sender_mod
+
+    @twitch_commands.command(name='what')
+    async def what(self, ctx):
+        self.bot_ears.save_last_n_seconds(self.yaml_data['botears_audio_n_seconds'])
 
     @twitch_commands.command(name='commands')
     async def showcommands(self, ctx):

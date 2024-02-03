@@ -3,6 +3,7 @@ import soundfile as sf
 import sounddevice as sd
 import numpy as np
 import asyncio 
+from collections import deque 
 
 from my_modules.config import run_config
 from my_modules import my_logging
@@ -41,7 +42,7 @@ class BotEars:
         self.channels = channels
 
         # initialize the audio stream
-        self.buffer = np.zeros((samplerate * duration, channels))
+        self.buffer = deque(maxlen=samplerate * duration * channels)
         
         self.loop = event_loop
 
@@ -63,8 +64,7 @@ class BotEars:
         """
         Callback function for the audio stream.
         """
-        self.buffer = np.roll(self.buffer, -frames, axis=0)
-        self.buffer[-frames:] = indata
+        self.buffer.extend(indata.flatten())
 
     async def start_stream(self):
         """
@@ -73,15 +73,15 @@ class BotEars:
         with self.stream:
             await asyncio.sleep(self.duration)
 
-    def save_last_n_seconds(self):
+    def save_last_n_seconds(self, n):
         """
         Saves the last n seconds of audio to a file.
         """
         filename = self.botears_audio_filename 
-        buffer = self.buffer
+        last_n_seconds = np.array(self.buffer).reshape(-1, self.channels)
         samplerate = self.samplerate
         
-        sf.write(filename, buffer, samplerate)
+        sf.write(filename, last_n_seconds[-n * self.samplerate:], samplerate)
 
 async def main():
     # Create an event loop
@@ -99,16 +99,18 @@ async def main():
         channels=2
     )
 
-    # pause script
-    await asyncio.sleep(5)
-
     # run asyncio loop
+    print("...starting stream")
     await ears.start_stream()
 
-    # save the last n seconds of audio to a file
-    ears.save_last_n_seconds()
-    
+    # pause script
+    print("...sleeping app ")
+    await asyncio.sleep(5)
 
+    # save the last n seconds of audio to a file
+    print("...saving audio")
+    ears.save_last_n_seconds(n=4)
+    
 if __name__ == "__main__":
     # Create an event loop
     event_loop = asyncio.get_event_loop()

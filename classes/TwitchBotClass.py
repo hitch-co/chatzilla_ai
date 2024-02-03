@@ -294,7 +294,7 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='what')
     async def what(self, ctx):
-        self.bot_ears.save_last_n_seconds(self.yaml_data['botears_audio_n_seconds'])
+        self.bot_ears.save_last_n_seconds(self.yaml_data['botears_save_last_n_seconds'])
 
     @twitch_commands.command(name='commands')
     async def showcommands(self, ctx):

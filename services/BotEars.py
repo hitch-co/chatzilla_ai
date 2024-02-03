@@ -18,7 +18,7 @@ class BotEars:
             self, 
             audio_device,
             event_loop, 
-            duration: int = 7, 
+            duration = 7, 
             samplerate = 48000, 
             channels = 2):
         """
@@ -64,7 +64,7 @@ class BotEars:
         """
         Callback function for the audio stream.
         """
-        self.buffer.extend(indata.flatten())
+        self.buffer.extend(indata.reshape(-1))
 
     async def start_stream(self):
         """
@@ -81,12 +81,24 @@ class BotEars:
         """
         Saves the last n seconds of audio to a file.
         """
-        suffix ='' #datetime.now().strftime("%Y%m%d-%H%M%S")
-        filename = self.botears_audio_filename+suffix+".wav"
-        last_n_seconds = np.array(self.buffer).reshape(-1, self.channels)
-        samplerate = self.samplerate
+        filename = self.botears_audio_filename+".wav"
+
+        # Method #1
+        # Calculate the number of samples to keep
+        num_samples = n * self.samplerate * self.channels
+        # Convert the buffer to a numpy array and reshape it
+        audio_data = np.array(self.buffer).reshape(-1, self.channels)
+        # Ensure we only keep the last n seconds of samples
+        if len(audio_data) > num_samples:
+            audio_data = audio_data[-num_samples:]
+        # Save the most recent n seconds of audio
+        sf.write(filename, audio_data, self.samplerate)
+
+        # Method #2
+        # last_n_seconds = np.array(self.buffer).reshape(-1, self.channels)
+        # samplerate = self.samplerate
         
-        sf.write(filename, last_n_seconds[-n * self.samplerate:], samplerate)
+        # sf.write(filename, last_n_seconds[-n * self.samplerate:], samplerate)
 
 async def main():
     # Create an event loop
@@ -114,7 +126,7 @@ async def main():
 
     # save the last n seconds of audio to a file
     print("...saving audio")
-    ears.save_last_n_seconds(n=0.2)
+    ears.save_last_n_seconds(n=2)
     
 if __name__ == "__main__":
     # # Create an event loop

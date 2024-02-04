@@ -18,7 +18,7 @@ class BotEars:
             self, 
             audio_device,
             event_loop, 
-            duration = 7, 
+            duration = 15, 
             samplerate = 48000, 
             channels = 2):
         """
@@ -46,6 +46,7 @@ class BotEars:
         
         self.loop = event_loop
 
+        # Set the audio device to use
         self.stream = sd.InputStream(
             device=self.botears_device_audio,
             callback=self.audio_callback, 
@@ -72,33 +73,32 @@ class BotEars:
         """
         try:
             with self.stream:
-                #How long is being recorded
-                await asyncio.sleep(self.duration)
+                await asyncio.sleep(self.yaml_data['botears_save_last_n_seconds'])
         except sd.PortAudioError as e:
             print(f"Error starting audio stream: {e}")
     
-    def save_last_n_seconds(self, n):
+    async def save_last_n_seconds(self, filepath, n):
         """
         Saves the last n seconds of audio to a file.
         """
-        filename = self.botears_audio_filename+".wav"
 
         # Method #1
         # Calculate the number of samples to keep
         num_samples = n * self.samplerate * self.channels
+
         # Convert the buffer to a numpy array and reshape it
         audio_data = np.array(self.buffer).reshape(-1, self.channels)
+
+        print("This is the audio_data")
+        print(type(audio_data))
+        print(audio_data[:10])      
+
         # Ensure we only keep the last n seconds of samples
         if len(audio_data) > num_samples:
             audio_data = audio_data[-num_samples:]
-        # Save the most recent n seconds of audio
-        sf.write(filename, audio_data, self.samplerate)
 
-        # Method #2
-        # last_n_seconds = np.array(self.buffer).reshape(-1, self.channels)
-        # samplerate = self.samplerate
-        
-        # sf.write(filename, last_n_seconds[-n * self.samplerate:], samplerate)
+        # Save the most recent n seconds of audio
+        sf.write(filepath, audio_data, self.samplerate)
 
 async def main():
     # Create an event loop
@@ -126,7 +126,11 @@ async def main():
 
     # save the last n seconds of audio to a file
     print("...saving audio")
-    ears.save_last_n_seconds(n=2)
+    filename = yaml_data['botears_audio_filename'] + ".wav"
+    ears.save_last_n_seconds(
+        filename=filename,
+        n=2
+        )
     
 if __name__ == "__main__":
     # # Create an event loop

@@ -55,6 +55,9 @@ class Bot(twitch_commands.Bot):
         # load config
         self.yaml_data = self.run_configuration()
 
+        #start OUAT loop
+        self.loop = asyncio.get_event_loop()
+
         # instantiate the NewUsersService
         self.newusers_service = NewUsersService(botclass=self)
 
@@ -64,6 +67,15 @@ class Bot(twitch_commands.Bot):
         # instantiate the AudioService
         self.audio_service = AudioService(volume=0.50)
 
+        # Instantiate the bot years class and start the stream
+        self.bot_ears = BotEars(
+            audio_device=self.yaml_data['botears_device_mic'],
+            event_loop=self.loop,
+            duration=self.yaml_data['botears_audio_n_seconds'],
+            samplerate=48000,
+            channels=2
+            )
+        
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
 
@@ -199,15 +211,6 @@ class Bot(twitch_commands.Bot):
         #start OUAT loop
         self.loop = asyncio.get_event_loop()
         self.loop.create_task(self.ouat_storyteller())
-
-        # Instantiate the bot years class and start the stream
-        self.bot_ears = BotEars(
-            audio_device=self.yaml_data['botears_device_mic'],
-            event_loop=self.loop,
-            duration=self.yaml_data['botears_audio_n_seconds'],
-            samplerate=48000,
-            channels=2
-            )
         self.loop.create_task(self.bot_ears.start_stream())
 
         #start newusers loop

@@ -5,6 +5,7 @@ import random
 import re
 import os
 import inspect
+from datetime import datetime
 
 from my_modules.my_logging import create_logger
 from my_modules.config import run_config
@@ -17,6 +18,7 @@ from classes import ArticleGeneratorClass
 from services.VibecheckService import VibeCheckService
 from services.NewUsersService import NewUsersService
 from services.ChatForMeService import ChatForMeService
+from services.AudioService import AudioService
 from services.BotEars import BotEars
 
 runtime_logger_level = 'DEBUG'
@@ -59,6 +61,9 @@ class Bot(twitch_commands.Bot):
         # instantiate the NewUserService
         self.chatforme_service = ChatForMeService(botclass=self)
         
+        # instantiate the AudioService
+        self.audio_service = AudioService(volume=0.50)
+
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
 
@@ -294,7 +299,15 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='what')
     async def what(self, ctx):
-        self.bot_ears.save_last_n_seconds(self.yaml_data['botears_save_last_n_seconds'])
+        #add format for concat with filename in trext format
+        
+        path = os.path.join(self.yaml_data['botears_audio_path'])
+        filename = self.yaml_data['botears_audio_filename'] + datetime.now().strftime("%Y%m%d_%H%M%S") + ".wav"
+        filepath = os.path.join(path, filename, )
+        last_n_seconds = self.yaml_data['botears_save_last_n_seconds']
+        
+        await self.bot_ears.save_last_n_seconds(filepath=filepath, n=last_n_seconds,)
+        await self.audio_service.play_local_wav(filepath=filepath)
 
     @twitch_commands.command(name='commands')
     async def showcommands(self, ctx):

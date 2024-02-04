@@ -110,10 +110,10 @@ def openai_gpt_chatcompletion(
         if gpt_response_text_len < max_characters:
             logger.debug(f'OK: The generated message was <{max_characters} characters')
             logger.debug(f"gpt_response_text: {gpt_response_text}")
-            break  
+            break
 
         else: # Did not get a msg < n chars, try again.
-            logger.warning(f'\gpt_response_text_len: >{max_characters} characters, retrying call to openai_gpt_chatcompletion')
+            logger.warning(f'gpt_response_text_len: >{max_characters} characters, retrying call to openai_gpt_chatcompletion')
             messages_dict_gpt_updated = [{'role':'user', 'content':f"{shorten_message_prompt}: '{gpt_response_text}'"}]
             generated_response = client.chat.completions.create(
                 model=model,

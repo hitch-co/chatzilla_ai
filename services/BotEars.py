@@ -9,7 +9,7 @@ from my_modules.config import run_config
 from my_modules import my_logging
 
 # Set the logging level for the runtime.
-runtime_logger_level = 'DEBUG'
+runtime_logger_level = 'INFO'
 
 class BotEars:
     """A class to handle the playing of audio files using Pygame."""
@@ -54,6 +54,12 @@ class BotEars:
             channels=self.channels
             )
 
+    def log_stream_state(self):
+        if self.stream.active:
+            self.logger.info("Stream is active.")
+        else:
+            self.logger.info("Stream is inactive.")
+
     def find_device_index(device_name):
         devices = sd.query_devices()
         for index, device in enumerate(devices):
@@ -69,29 +75,23 @@ class BotEars:
 
     async def start_stream(self):
         """
-        Starts the audio stream.
+        Starts the audio stream continuously.
         """
         try:
-            with self.stream:
-                await asyncio.sleep(self.yaml_data['botears_save_last_n_seconds'])
+            self.stream.start()
+            self.logger.info("Audio input stream started.")
         except sd.PortAudioError as e:
-            print(f"Error starting audio stream: {e}")
+            self.logger.error(f"Error starting audio stream: {e}")
     
     async def save_last_n_seconds(self, filepath, n):
         """
         Saves the last n seconds of audio to a file.
         """
-
-        # Method #1
         # Calculate the number of samples to keep
         num_samples = n * self.samplerate * self.channels
 
         # Convert the buffer to a numpy array and reshape it
         audio_data = np.array(self.buffer).reshape(-1, self.channels)
-
-        print("This is the audio_data")
-        print(type(audio_data))
-        print(audio_data[:10])      
 
         # Ensure we only keep the last n seconds of samples
         if len(audio_data) > num_samples:

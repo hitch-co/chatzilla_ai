@@ -302,14 +302,13 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='what')
     async def what(self, ctx):
-        #add format for concat with filename in trext format
-        
+        #add format for concat with filename in trext format       
         path = os.path.join(self.yaml_data['botears_audio_path'])
         filename = self.yaml_data['botears_audio_filename'] + datetime.now().strftime("%Y%m%d_%H%M%S") + ".wav"
-        filepath = os.path.join(path, filename, )
+        filepath = os.path.join(path, filename)
         last_n_seconds = self.yaml_data['botears_save_last_n_seconds']
-        
-        await self.bot_ears.save_last_n_seconds(filepath=filepath, n=last_n_seconds,)
+  
+        await self.bot_ears.save_last_n_seconds(filepath=filepath, n=last_n_seconds)
         await self.audio_service.play_local_wav(filepath=filepath)
 
     @twitch_commands.command(name='commands')

@@ -324,10 +324,13 @@ class Bot(twitch_commands.Bot):
             "botears_questioncomment": text
         }
         prompt_text = self.yaml_data['botears_prompt']
-        gpt_response = await self.chatforme_service.make_singleprompt_gpt_response(
+        
+        await self.chatforme_service.make_msghistory_gpt_response(
             prompt_text=prompt_text,
             replacements_dict=replacements_dict,
+            msg_history=self.message_handler.chatforme_msg_history,
             incl_voice='yes'
+
         )
 
     @twitch_commands.command(name='commands')

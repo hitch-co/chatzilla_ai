@@ -13,3 +13,5 @@ tiktoken==0.5.2
 twitchio==2.8.2
 google-cloud-bigquery==3.13.0
 lxml
+soundfile==0.12.1
+sounddevice==0.4.6

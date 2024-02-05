@@ -7,7 +7,7 @@ logger = create_logger(
     dirname='log', 
     logger_name='logger_yaml_env', 
     debug_level='DEBUG', 
-    mode='a',
+    mode='w',
     stream_logs=False
     )
 

@@ -122,6 +122,9 @@ class VibeCheckService:
                         )  
                     self.logger.info(f"vibechecker_prompt: {vibechecker_prompt}")
 
+                    # TODO: This comes from my_modules.gpt -- Should change this
+                    #  to come from ChatForMeService.combine_msghistory_and_prompttext
+                    #  instead.
                     #Create message_dict from prompt and add the prompt to the message history
                     vibecheckee_message_dict = combine_msghistory_and_prompttext(
                         prompt_text=vibechecker_prompt,

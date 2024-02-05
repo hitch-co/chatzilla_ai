@@ -1,8 +1,6 @@
 import requests
 import numpy as np
-import json
 from bs4 import BeautifulSoup
-import os
 from my_modules import utils
 
 from classes.ConsoleColoursClass import bcolors, printc

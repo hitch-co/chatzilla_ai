@@ -309,7 +309,13 @@ class Bot(twitch_commands.Bot):
         last_n_seconds = self.yaml_data['botears_save_last_n_seconds']
   
         await self.bot_ears.save_last_n_seconds(filepath=filepath, n=last_n_seconds)
-        await self.audio_service.play_local_wav(filepath=filepath)
+        #await self.audio_service.play_local_wav(filepath=filepath)
+
+        # Translate the audio to text
+
+        # feed the audio to the GPT model for a response
+
+        # send the response to the chat
 
     @twitch_commands.command(name='commands')
     async def showcommands(self, ctx):

@@ -20,6 +20,7 @@ from services.NewUsersService import NewUsersService
 from services.ChatForMeService import ChatForMeService
 from services.AudioService import AudioService
 from services.BotEars import BotEars
+from services.SpeechToTextService import SpeechToTextService
 
 runtime_logger_level = 'DEBUG'
 class Bot(twitch_commands.Bot):
@@ -75,6 +76,9 @@ class Bot(twitch_commands.Bot):
             samplerate=48000,
             channels=2
             )
+        
+        # Instantiate the speech to text service
+        self.s2t_service = SpeechToTextService()
         
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
@@ -312,10 +316,19 @@ class Bot(twitch_commands.Bot):
         #await self.audio_service.play_local_wav(filepath=filepath)
 
         # Translate the audio to text
+        text = self.s2t_service.convert_audio_to_text(filepath)
 
-        # feed the audio to the GPT model for a response
-
-        # send the response to the chat
+        # feed the text to the GPT model for a response
+        replacements_dict = {
+            "wordcount_medium": self.wordcount_medium,
+            "botears_questioncomment": text
+        }
+        prompt_text = self.yaml_data['botears_prompt']
+        gpt_response = await self.chatforme_service.make_singleprompt_gpt_response(
+            prompt_text=prompt_text,
+            replacements_dict=replacements_dict,
+            incl_voice='yes'
+        )
 
     @twitch_commands.command(name='commands')
     async def showcommands(self, ctx):

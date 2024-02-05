@@ -1,6 +1,6 @@
 import speech_recognition as sr
 
-class SpeechToTextConverter:
+class SpeechToTextService:
     def __init__(self):
         self.recognizer = sr.Recognizer()
 
@@ -23,7 +23,7 @@ class SpeechToTextConverter:
             
 def main():
     # Create an instance of the SpeechToTextConverter class
-    stt = SpeechToTextConverter()
+    stt = SpeechToTextService()
 
     filepath = r'C:\_repos\chatzilla_ai\data\ears\latest_ears.wav'
     # Convert the audio file to text

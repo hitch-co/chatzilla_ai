@@ -43,18 +43,17 @@ class ChatForMeService:
         - text (str): The text message to be sent.
         - incl_voice (str): Specifies whether to include voice output ('yes' or 'no').
         - voice_name (str): The name of the voice to be used in the text-to-speech service.
-        
         """
         datetime_string = utils.get_datetime_formats()['filename_format']
         if incl_voice == 'yes':
             # Generate speech object and create .mp3:
-            output_filename = "chatforme_"+"_"+datetime_string+"_"+self.botclass.tts_file_name
+            output_filename = "chatforme_"+"_"+datetime_string+"_"+self.botclass.config.tts_file_name
             
             # TODO: Does this class need botclass injected simply to get a tts_client??
             self.botclass.tts_client.workflow_t2s(
                 text_input=text,
                 voice_name=voice_name,
-                output_dirpath=self.botclass.tts_data_folder,
+                output_dirpath=self.botclass.config.tts_data_folder,
                 output_filename=output_filename
                 )
 
@@ -63,7 +62,7 @@ class ChatForMeService:
 
         if incl_voice == 'yes':
             self.botclass.tts_client.play_local_mp3(
-                dirpath=self.botclass.tts_data_folder, 
+                dirpath=self.botclass.config.tts_data_folder, 
                 filename=output_filename
                 )
             

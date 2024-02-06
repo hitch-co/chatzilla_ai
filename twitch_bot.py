@@ -8,10 +8,10 @@ from flask import Flask, request
 
 from classes.TwitchBotClass import Bot
 from classes.ArgsConfigManagerClass import ArgsConfigManager
+from classes.ConfigManagerClass import ConfigManager
 from config.DependencyInjector import DependencyInjector
 
 from my_modules.my_logging import create_logger
-from my_modules.config import run_config
 
 use_reloader_bool = False
 runtime_logger_level = 'DEBUG'
@@ -25,13 +25,15 @@ root_logger = create_logger(
 # Bot Thread
 TWITCH_CHATFORME_BOT_THREAD = None
 
-# Load configurations from YAML and environment variables
-yaml_data = run_config()
 
-twitch_bot_redirect_path = yaml_data['twitch-app']['twitch_bot_redirect_path']
-TWITCH_BOT_CLIENT_ID = os.getenv('TWITCH_BOT_CLIENT_ID')
-TWITCH_BOT_CLIENT_SECRET = os.getenv('TWITCH_BOT_CLIENT_SECRET')
-TWITCH_BOT_SCOPE = os.getenv('TWITCH_BOT_SCOPE')
+# NOTE: Setup Configurations (NEW METHOD, thsi is the new way forward...)
+ConfigManager.initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
+config = ConfigManager.get_instance()
+
+twitch_bot_redirect_path = config.twitch_bot_redirect_path
+TWITCH_BOT_CLIENT_ID = config.twitch_bot_client_id
+TWITCH_BOT_CLIENT_SECRET = config.twitch_bot_client_secret
+TWITCH_BOT_SCOPE = config.twitch_bot_scope
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -57,10 +59,7 @@ def auth():
 @app.route('/callback')
 def callback():
     global TWITCH_CHATFORME_BOT_THREAD  # declare the variable as global inside the function
-
-    # Load configurations from YAML and environment variables
-    yaml_data = run_config()
-
+   
     # Runtime args
     input_port_number = str(args_config.input_port_number)
     redirect_uri = f'http://localhost:{input_port_number}/{twitch_bot_redirect_path}'
@@ -93,7 +92,7 @@ def callback():
 
         # Only start bot thread if it's not already running
         if TWITCH_CHATFORME_BOT_THREAD is None or not TWITCH_CHATFORME_BOT_THREAD.is_alive():
-            TWITCH_CHATFORME_BOT_THREAD = Thread(target=run_bot, args=(TWITCH_BOT_ACCESS_TOKEN, yaml_data))
+            TWITCH_CHATFORME_BOT_THREAD = Thread(target=run_bot, args=(TWITCH_BOT_ACCESS_TOKEN, config))
             TWITCH_CHATFORME_BOT_THREAD.start()
             twitch_bot_status = 'Twitch bot was not active or did not exist and thread was started.'
         else: 
@@ -104,20 +103,20 @@ def callback():
         return '<a>There was an issue retrieving and setting the access token.  If you would like to include more detail in this message, return "template.html" or equivalent using the render_template() method from flask and add it to this response...'
 
 #This is run after the auth process completes
-def run_bot(TWITCH_BOT_ACCESS_TOKEN, yaml_data):
+def run_bot(TWITCH_BOT_ACCESS_TOKEN, config):
 
     #asyncio event loop
     new_loop = asyncio.new_event_loop()
     asyncio.set_event_loop(new_loop)
     
     #dependency injector
-    dependencies = DependencyInjector(yaml_data)
+    dependencies = DependencyInjector(config)
     dependencies.create_dependencies()
 
     #instantiate the class
     bot = Bot(
         TWITCH_BOT_ACCESS_TOKEN, 
-        yaml_data=yaml_data,
+        yaml_data=config,
         gpt_client=dependencies.gpt_client,
         bq_uploader=dependencies.bq_uploader,
         tts_client=dependencies.tts_client,

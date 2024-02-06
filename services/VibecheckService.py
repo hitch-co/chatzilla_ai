@@ -34,20 +34,20 @@ class VibeCheckService:
         
         #constants
         self.is_vibecheck_loop_active = False
+        self.vibechecker_interactions_counter = 0
         self.vibechecker_players = vibechecker_players
         self.vibecheckee_username = vibechecker_players['vibecheckee_username']
         self.vibechecker_username = vibechecker_players['vibechecker_username']
         self.vibecheckbot_username = vibechecker_players['vibecheckbot_username']
-        self.vibecheck_message_wordcount = yaml_config['vibechecker_max_wordcount']
-        self.vibechecker_max_interaction_count = yaml_config['vibechecker_max_interaction_count']
-        self.vibechecker_interactions_counter = 0
-        self.vibechecker_question_session_sleep_time = yaml_config['vibechecker_question_session_sleep_time']
-        self.vibechecker_listener_sleep_time = yaml_config['vibechecker_listener_sleep_time']
+        self.vibecheck_message_wordcount = yaml_config.vibechecker_message_wordcount
+        self.vibechecker_max_interaction_count = yaml_config.vibechecker_max_interaction_count
+        self.vibechecker_question_session_sleep_time = yaml_config.vibechecker_question_session_sleep_time
+        self.vibechecker_listener_sleep_time = yaml_config.vibechecker_listener_sleep_time
 
         #prompts
-        self.formatted_gpt_vibecheck_prompt = yaml_config['formatted_gpt_vibecheck_prompt']
-        self.formatted_gpt_viberesult_prompt =  yaml_config['formatted_gpt_viberesult_prompt']
-        self.formatted_gpt_vibecheck_alert = yaml_config['formatted_gpt_vibecheck_alert']
+        self.formatted_gpt_vibecheck_prompt = yaml_config.formatted_gpt_vibecheck_prompt
+        self.formatted_gpt_viberesult_prompt =  yaml_config.formatted_gpt_viberesult_prompt
+        self.formatted_gpt_vibecheck_alert = yaml_config.formatted_gpt_vibecheck_alert
 
     def start_vibecheck_session(self):
         self.is_vibecheck_loop_active = True

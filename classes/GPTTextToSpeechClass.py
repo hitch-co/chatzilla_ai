@@ -10,7 +10,7 @@ runtime_logger_level = 'WARNING'
 
 #TODO: SHould take a client as an argument
 class GPTTextToSpeech:
-    def __init__(self, output_filename='class_default_speech.mp3', output_dirpath=None):
+    def __init__(self, config):
         self.logger = my_logging.create_logger(
             debug_level=runtime_logger_level, 
             logger_name='logger_GPTTextToSpeechClass', 
@@ -18,27 +18,23 @@ class GPTTextToSpeech:
             stream_logs=True
             )
 
-        self.yaml_data = run_config()
-        openai.api_key = os.getenv('OPENAI_API_KEY')    
-        self.tts_model=self.yaml_data['openai-api']['tts_model']
-        self.tts_voice=self.yaml_data['openai-api']['tts_voice']
-        self.tts_data_folder = self.yaml_data['openai-api']['tts_data_folder']
-        self.tts_volume = self.yaml_data['openai-api']['tts_volume']
+        openai.api_key = config.openai_api_key
+        self.tts_model=config.tts_model
+        self.tts_data_folder = config.tts_data_folder
+        self.tts_volume = config.tts_volume
 
         ##folder/file details
-        self.output_filename = output_filename
-        self.output_dirpath = output_dirpath if output_dirpath is not None else self.tts_data_folder
+        self.output_filename = config.tts_file_name
+        self.output_dirpath = config.tts_data_folder
 
         self.tts_client = OpenAI()
 
-    def _get_speech_response(self, 
-                            text_input:str,
-                            voice_name=None
-                            ) -> object:
-        if voice_name==None:
-            voice_name = self.tts_voice
-
-        self.logger.info(f"Starting speech create with params: input={text_input}, model={self.tts_model}, voice={self.tts_voice}")
+    def _get_speech_response(
+            self, 
+            text_input:str,
+            voice_name
+            ) -> object:
+        self.logger.info(f"Starting speech create with params: input={text_input}, model={self.tts_model}, voice={voice_name}")
         response = self.tts_client.audio.speech.create(
             model=self.tts_model, #low latency
             voice=voice_name,
@@ -47,25 +43,26 @@ class GPTTextToSpeech:
         self.logger.info(response)
         return response
     
-    def _write_speech_to_file(self,
-                             response:object,
-                             speech_file_path:str
-                             ) -> None:
+    def _write_speech_to_file(
+            self,
+            response:object,
+            speech_file_path:str
+            ) -> None:
         self.logger.info("starting stream to speech file")
         response.stream_to_file(speech_file_path)
         self.logger.info(f"finished stream to speech file: {speech_file_path}")
 
-    def workflow_t2s(self,
-                     text_input,
-                     voice_name,
-                     output_filename=None,
-                     output_dirpath=None):
+    def workflow_t2s(
+            self,
+            text_input,
+            voice_name,
+            output_filename=None,
+            output_dirpath=None
+            ):
         if output_filename is None:
             output_filename = self.output_filename
         if output_dirpath is None:
             output_dirpath = self.output_dirpath
-        if voice_name is None:
-            voice_name = self.tts_voice
             
         speech_file_path = os.path.join(os.getcwd(),output_dirpath, output_filename)
         
@@ -99,8 +96,9 @@ class GPTTextToSpeech:
         pygame.mixer.quit()
 
 if __name__ == "__main__":
-    print(f"The use of __file__ for relative path traversal prevents this module from being run directly \
-          but an exmaple of how to use is provided in {__name__}")
+    print(f"The use of __file__ for relative path traversal prevents this module \
+          from being run directly but an exmaple of how to use is provided in \
+          {__name__}")
 
     # # Workflow
     # from classes import GPTTextToSpeech

@@ -25,7 +25,10 @@ class BQUploader:
         self.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
 
         #also set in twitch_bot.py
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = self.yaml_data['twitch-ouat']['google_service_account_credentials_file']
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(
+            self.yaml_data['keys_dirpath'], 
+            self.yaml_data['twitch-ouat']['google_service_account_credentials_file']
+        )
 
         #logger
         self.logger = my_logging.create_logger(

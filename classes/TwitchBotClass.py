@@ -428,7 +428,7 @@ class Bot(twitch_commands.Bot):
                 replacements_dict = {
                     "random_article_content":self.random_article_content,
                     "user_requested_plotline":article_content_plotline_gptlistdict,
-                    "ouat_wordcount":self.wordcount_short,
+                    "wordcount_short":self.wordcount_short,
                     }                
                 bullet_list_prompt_text = gpt.prompt_text_replacement(
                     gpt_prompt_text=self.config.story_article_bullet_list_summary_prompt,
@@ -585,14 +585,16 @@ class Bot(twitch_commands.Bot):
                 self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
 
                 #TODO: Turn this into a function up to the 'continue'
-                replacements_dict = {"ouat_wordcount":self.wordcount_short,
-                                     'twitch_bot_display_name':self.config.twitch_bot_display_name,
-                                     'num_bot_responses':self.config.num_bot_responses,
-                                     'rss_feed_article_plot':self.random_article_content_plot_summary,
-                                     'writing_style': self.selected_writing_style,
-                                     'writing_tone': self.selected_writing_tone,
-                                     'writing_theme': self.selected_theme,
-                                     'param_in_text':'variable_from_scope'} #for future use}
+                replacements_dict = {
+                    "wordcount_short":self.wordcount_short,
+                    'twitch_bot_display_name':self.config.twitch_bot_display_name,
+                    'num_bot_responses':self.config.num_bot_responses,
+                    'rss_feed_article_plot':self.random_article_content_plot_summary,
+                    'writing_style': self.selected_writing_style,
+                    'writing_tone': self.selected_writing_tone,
+                    'writing_theme': self.selected_theme,
+                    'param_in_text':'variable_from_scope' #for future use
+                    }
   
                 #Chatforme service for message send/voice
                 gpt_response = await self.chatforme_service.make_msghistory_gpt_response(

@@ -2,7 +2,11 @@
 # https://github.com/github/gitignore/blob/main/Python.gitignore
 
 #workspace
-rainday-gameday-forecasts.code-workspace
+chatzilla_ai-config.code-workspace
+chatzilla_ai_prod.code-workspace
+chatzilla_ai_dev.code-workspace
+chatzilla_ai.code-workspace
+
 
 #my ignores
 config.env
@@ -17,6 +21,28 @@ log/responses/*response*
 launch.json
 data/ears/*
 _notes/*
+
+#my old ignores
+ffprobe.exe
+ffmpeg.exe
+ffplay.exe
+log/
+/log
+config/keys/
+readme/README_games-countdown.md
+readme/helper_prompts/directory tree.md
+readme/helper_prompts/helper_prompts.md
+readme/helper_prompts/prompt_building
+_prompts/
+_learning/
+_junk/
+data/tts/
+twitch-dev-chatforme.code-workspace
+config/disallowed_terms_backup.json
+config/disallowed_terms.json
+
+
+
 
 # Python cache files
 __pycache__/
@@ -184,35 +210,3 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-all_historic_forecasts.csv
-unioned_forecasts.csv
-unioned_forecasts.xlsx
-unioned_dfs.csv
-unioned_dfs.xlsx
-analysis/historic_forecasts.twbx
-ffprobe.exe
-ffmpeg.exe
-ffplay.exe
-log/
-/log
-config/keys/
-discord_bot.py
-discord_games_countdown_bot.py
-discord_games_countdown.bat
-voice_t2s.py
-readme/README_games-countdown.md
-readme/helper_prompts/directory tree.md
-readme/helper_prompts/helper_prompts.md
-readme/helper_prompts/prompt_building
-_prompts/
-_learning/
-_junk/
-data/tts/
-GPTTextToSpeech_main.py
-function_signatures.txt
-twitch-dev-chatforme.code-workspace
-config/disallowed_terms_backup.json
-config/disallowed_terms.json
-twitch_bot_start_dev.bat
-
-chatzilla_ai-config.code-workspace

@@ -15,3 +15,4 @@ google-cloud-bigquery==3.13.0
 lxml
 soundfile==0.12.1
 sounddevice==0.4.6
+SpeechRecognition==3.10.1

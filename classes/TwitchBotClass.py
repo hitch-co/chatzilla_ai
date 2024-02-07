@@ -5,7 +5,6 @@ import random
 import re
 import os
 import inspect
-from datetime import datetime
 
 from my_modules.my_logging import create_logger
 from my_modules.config import run_config
@@ -28,7 +27,8 @@ class Bot(twitch_commands.Bot):
 
     def __init__(
             self, 
-            TWITCH_BOT_ACCESS_TOKEN, yaml_data, 
+            TWITCH_BOT_ACCESS_TOKEN, 
+            yaml_data, 
             gpt_client, 
             bq_uploader, 
             tts_client,  
@@ -36,9 +36,9 @@ class Bot(twitch_commands.Bot):
             ):
         super().__init__(
             token=TWITCH_BOT_ACCESS_TOKEN,
-            name=yaml_data['twitch-app']['twitch_bot_username'],
+            name=yaml_data.twitch_bot_username,
             prefix='!',
-            initial_channels=[yaml_data['twitch-app']['twitch_bot_channel_name']],
+            initial_channels=[yaml_data.twitch_bot_channel_name],
             nick = 'chatzilla_ai'
             #NOTE/QUESTION:what other variables should be set here?
         )
@@ -53,9 +53,9 @@ class Bot(twitch_commands.Bot):
             encoding='UTF-8'
             )
 
-        # load config
-        self.yaml_data = self.run_configuration()
-
+        #TODO: Next up, make this work...
+        self.config = yaml_data
+        
         #start OUAT loop
         self.loop = asyncio.get_event_loop()
 
@@ -66,13 +66,13 @@ class Bot(twitch_commands.Bot):
         self.chatforme_service = ChatForMeService(botclass=self)
         
         # instantiate the AudioService
-        self.audio_service = AudioService(volume=0.50)
+        self.audio_service = AudioService(volume=0.40)
 
         # Instantiate the bot years class and start the stream
         self.bot_ears = BotEars(
-            audio_device=self.yaml_data['botears_device_mic'],
+            audio_device=self.config.botears_device_mic,
             event_loop=self.loop,
-            duration=self.yaml_data['botears_audio_n_seconds'],
+            duration=self.config.botears_audio_n_seconds,
             samplerate=48000,
             channels=2
             )
@@ -83,39 +83,25 @@ class Bot(twitch_commands.Bot):
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
 
-        # Response wordcounts
-        self.wordcount_short = str(yaml_data['wordcounts']['short'])
-        self.wordcount_medium = str(yaml_data['wordcounts']['medium'])
-        self.wordcount_long = str(yaml_data['wordcounts']['long'])
-
-        # Twitch IDs
-        self.broadcaster_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
-        self.moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
-        self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
-
         # dependencies instances
         self.gpt_client = gpt_client
         self.bq_uploader = bq_uploader 
         self.tts_client = tts_client
         self.message_handler = message_handler
 
+        #TODO: rename 'yaml_dirpath' to 'config_dirpath'
         # required config/files
         self.command_spellecheck_terms = utils.load_json(
             self,
-            dir_path=self.yaml_data['yaml_dirpath'],
-            file_name='command_spellcheck_terms.json'
+            dir_path=self.config.config_dirpath,
+            file_name=self.config.command_spellcheck_terms_filename
             )
         
-        #Google Service Account Credentials
-        google_application_credentials_file = yaml_data['twitch-ouat']['google_service_account_credentials_file']
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_application_credentials_file
-
-        #BQ Table IDs
-        self.userdata_table_id=self.yaml_data['twitch-ouat']['talkzillaai_userdata_table_id']
-        self.usertransactions_table_id=self.yaml_data['twitch-ouat']['talkzillaai_usertransactions_table_id']
+        #Google Service Account Credentials & BQ Table IDs
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = self.config.google_application_credentials_file
         
         #Get historic stream viewers
-        self.historic_users_at_start_of_session = self.bq_uploader.fetch_users(self.userdata_table_id)
+        self.historic_users_at_start_of_session = self.bq_uploader.fetch_users(self.config.talkzillaai_userdata_table_id)
 
         #Set default loop state
         self.is_ouat_loop_active = False
@@ -124,94 +110,39 @@ class Bot(twitch_commands.Bot):
         #counters
         self.ouat_counter = 0
         self.vibechecker_interactions_counter = 0
-        
+
+        #NOTE: ARGUABLY DO NOT NEED TO INITIALIZE THESE HERE   
         #vibecheck params
-        self.vibechecker_max_interaction_count = self.yaml_data['vibechecker_max_interaction_count']
-        self.formatted_gpt_vibecheck_prompt = self.yaml_data['formatted_gpt_vibecheck_prompt']
-        self.formatted_gpt_viberesult_prompt = self.yaml_data['formatted_gpt_viberesult_prompt']
-        self.vibecheck_max_interactions = self.yaml_data['vibechecker_max_interaction_count']
+        self.vibechecker_max_interaction_count = self.config.vibechecker_max_interaction_count
+        self.formatted_gpt_vibecheck_prompt = self.config.formatted_gpt_vibecheck_prompt
+        self.formatted_gpt_viberesult_prompt = self.config.formatted_gpt_viberesult_prompt
+        self.vibechecker_max_interaction_count = self.config.vibechecker_max_interaction_count
 
-        #newusers params
-        self.newusers_sleep_time = self.yaml_data['newusers_sleep_time']
-
-    def run_configuration(self) -> dict:
-
-        # load yaml/env
-        self.yaml_data = run_config()
-
-        # TTS folder/filenames/voices
-        self.tts_file_name = self.yaml_data['openai-api']['tts_file_name']
-        self.tts_data_folder = self.yaml_data['openai-api']['tts_data_folder']
-        self.tts_voices = self.yaml_data['openai-api']['tts_voices']
-
-        # Twitch Bot Details
-        self.twitch_bot_channel_name = self.yaml_data['twitch-app']['twitch_bot_channel_name']
-        self.twitch_bot_username = self.yaml_data['twitch-app']['twitch_bot_username']
-        self.twitch_bot_display_name = self.yaml_data['twitch-app']['twitch_bot_display_name']
-        self.twitch_bot_operatorname = self.yaml_data['chatforme_prompts']['standard']
-
-        # Eleven Labs / OpenAI
-        self.ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')
-        self.ELEVENLABS_XI_VOICE = os.getenv('ELEVENLABS_XI_VOICE')
-        self.OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-
-        # News Article Feed/Prompts
-        self.newsarticle_rss_feed = self.yaml_data['twitch-ouat']['newsarticle_rss_feed']
-        self.story_article_bullet_list_summary_prompt = self.yaml_data['gpt_thread_prompts']['story_article_bullet_list_summary_prompt'] 
-        self.story_user_bullet_list_summary_prompt = self.yaml_data['gpt_thread_prompts']['story_user_bullet_list_summary_prompt']
-
-        # GPT todo command prompts:
-        self.gpt_todo_prompt = os.getenv('gpt_todo_prompt')
-        self.gpt_todo_prompt_prefix = self.yaml_data['gpt_todo_prompt_prefix']
-        self.gpt_todo_prompt_suffix = self.yaml_data['gpt_todo_prompt_suffix']
+        #NOTE: ARGUABLY DO NOT NEED TO INITIALIZE THESE HERE
+        # BQ Table IDs
+        self.userdata_table_id=self.config.talkzillaai_userdata_table_id
+        self.usertransactions_table_id=self.config.talkzillaai_usertransactions_table_id
         
-        # GPT Hello World Vars:
-        self.gpt_hello_world = self.gpt_hello_world = True if os.getenv('gpt_hello_world') == 'True' else False
-        self.hello_assistant_prompt = self.yaml_data['formatted_gpt_helloworld_prompt']
-        self.helloworld_message_wordcount = self.yaml_data['helloworld_message_wordcount']
+        #NOTE: ARGUABLY DO NOT NEED TO INITIALIZE THESE HERE
+        # Response wordcounts
+        self.wordcount_short = self.config.wordcount_short
+        self.wordcount_medium = self.config.wordcount_medium
+        self.wordcount_long = self.config.wordcount_long
 
-        # # GPT Assistant prompts:
-        # self.article_summarizer_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
-        # self.storyteller_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['storyteller']
-        # self.ouat_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['article_summarizer']
-        # self.chatforme_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['chatforme']
-        # self.botthot_assistant_prompt = self.yaml_data['gpt_assistant_prompts']['botthot']
- 
-        # GPT Thread Prompts
-        self.storyteller_storysuffix_prompt = self.yaml_data['gpt_thread_prompts']['story_suffix']
-        self.storyteller_storystarter_prompt = self.yaml_data['gpt_thread_prompts']['story_starter']
-        self.storyteller_storyprogressor_prompt = self.yaml_data['gpt_thread_prompts']['story_progressor']
-        self.storyteller_storyfinisher_prompt = self.yaml_data['gpt_thread_prompts']['story_finisher']
-        self.storyteller_storyender_prompt = self.yaml_data['gpt_thread_prompts']['story_ender']
-        self.ouat_prompt_addtostory_prefix = self.yaml_data['gpt_thread_prompts']['story_addtostory_prefix']
+        #NOTE: ARGUABLY DO NOT NEED TO INITIALIZE THESE HERE
+        self.broadcaster_id = self.config.twitch_broadcaster_author_id
+        self.moderator_id = self.config.twitch_bot_moderator_id
+        self.twitch_bot_client_id = self.config.twitch_bot_client_id
 
-        # OUAT Progression flow / Config
-        self.ouat_message_recurrence_seconds = self.yaml_data['ouat_message_recurrence_seconds']
-        self.ouat_story_progression_number = self.yaml_data['ouat_story_progression_number']
-        self.ouat_story_max_counter = self.yaml_data['ouat_story_max_counter']
+        #NOTE: ARGUABLY DO NOT NEED TO INITIALIZE THESE HERE
+        #newusers params
+        self.newusers_sleep_time = self.config.newusers_sleep_time 
 
-        # Generic config items
-        self.num_bot_responses = self.yaml_data['num_bot_responses']
-   
-        # GPT Prompt
-        self.gpt_prompt = None
-
-        # CHATFORME
-        # TODO: Can be moved into the load_configurations() function
-        self.chatforme_prompt = self.yaml_data['chatforme_prompts']['standard']
-        self.chatforme_prompt_prefix = str(self.yaml_data['chatforme_prompts']['chatforme_prompt_prefix'])
-        self.chatforme_prompt_suffix = str(self.yaml_data['chatforme_prompts']['chatforme_prompt_suffix'])
-
-        # VIBECHECK
-        # TODO: Can be moved into the load_configurations() function
-        self.vibecheck_message_wordcount = str(self.yaml_data['vibechecker_message_wordcount'])
-
-        self.logger.info("Configuration attributes loaded/refreshed from YAML/env variables")          
-        return self.yaml_data
+        self.logger.warning("The __init__ is complete")
 
     async def event_ready(self):
-        self.channel = self.get_channel(self.twitch_bot_channel_name)
-        print(f'TwitchBot ready | {self.twitch_bot_username} (nick:{self.nick})')
+        self.channel = self.get_channel(self.config.twitch_bot_channel_name)
+        print(f'TwitchBot ready | {self.config.twitch_bot_username} (nick:{self.nick})')
 
         #start OUAT loop
         self.loop = asyncio.get_event_loop()
@@ -224,21 +155,21 @@ class Bot(twitch_commands.Bot):
             interval_seconds=self.newusers_sleep_time)
             )
 
-        # # Say hello to the chat 
-        # if self.gpt_hello_world == True:
-        #     replacements_dict = {
-        #         "helloworld_message_wordcount":self.helloworld_message_wordcount,
-        #         'twitch_bot_display_name':self.twitch_bot_display_name,
-        #         'twitch_bot_channel_name':self.twitch_bot_channel_name,
-        #         'param_in_text':'variable_from_scope'
-        #         }
-        #     prompt_text = self.hello_assistant_prompt
+        # Say hello to the chat 
+        if self.config.gpt_hello_world == True:
+            replacements_dict = {
+                "helloworld_message_wordcount":self.config.helloworld_message_wordcount,
+                'twitch_bot_display_name':self.config.twitch_bot_display_name,
+                'twitch_bot_channel_name':self.config.twitch_bot_channel_name,
+                'param_in_text':'variable_from_scope'
+                }
+            prompt_text = self.config.hello_assistant_prompt
 
-        #     await self.chatforme_service.make_singleprompt_gpt_response(
-        #         prompt_text=prompt_text, 
-        #         replacements_dict=replacements_dict,
-        #         incl_voice='yes'
-        #         )
+            await self.chatforme_service.make_singleprompt_gpt_response(
+                prompt_text=prompt_text, 
+                replacements_dict=replacements_dict,
+                incl_voice='yes'
+                )
 
     async def event_message(self, message):
 
@@ -308,10 +239,10 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='what')
     async def what(self, ctx):
         #add format for concat with filename in trext format       
-        path = os.path.join(self.yaml_data['botears_audio_path'])
-        filename = self.yaml_data['botears_audio_filename'] + ".wav"
+        path = os.path.join(self.config.botears_audio_path)
+        filename = self.config.botears_audio_filename + ".wav"
         filepath = os.path.join(path, filename)
-        last_n_seconds = self.yaml_data['botears_save_last_n_seconds']
+        last_n_seconds = self.config.botears_save_last_n_seconds
   
         await self.bot_ears.save_last_n_seconds(filepath=filepath, n=last_n_seconds)
         #await self.audio_service.play_local_wav(filepath=filepath)
@@ -348,7 +279,7 @@ class Bot(twitch_commands.Bot):
 
             if is_sender_mod == True:
                 updated_string = ' '.join(args)
-                self.gpt_todo_prompt = updated_string
+                self.config.gpt_todo_prompt = updated_string
                 self.logger.info(f"updated todo list: {updated_string}")
 
     @twitch_commands.command(name='todo')
@@ -357,7 +288,7 @@ class Bot(twitch_commands.Bot):
             "wordcount_short": self.wordcount_short,
             'param_in_text':'variable_from_scope'
             }
-        prompt_text = self.gpt_todo_prompt_prefix + self.gpt_todo_prompt + self.gpt_todo_prompt_suffix
+        prompt_text = self.config.gpt_todo_prompt_prefix + self.config.gpt_todo_prompt + self.config.gpt_todo_prompt_suffix
 
         await self.chatforme_service.make_singleprompt_gpt_response(
             prompt_text=prompt_text, 
@@ -373,33 +304,33 @@ class Bot(twitch_commands.Bot):
         """
 
         # Select random voice from the list of voices
-        tts_voice = random.choice(random.choice(list(self.tts_voices.values())))
+        tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
 
         # Extract usernames from previous chat messages stored in chatforme_msg_history.
         users_in_messages_list_text = self.message_handler._get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
 
         #Select prompt from argument, build the final prompt textand format replacements
-        formatted_gpt_chatforme_prompt = self.chatforme_prompt
-        chatforme_prompt = self.chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.chatforme_prompt_suffix
+        formatted_gpt_chatforme_prompt = self.config.chatforme_prompt
+        chatforme_prompt = self.config.chatforme_prompt_prefix + formatted_gpt_chatforme_prompt + self.config.chatforme_prompt_suffix
         replacements_dict = {
-            "twitch_bot_display_name":self.twitch_bot_display_name,
-            "num_bot_responses":self.num_bot_responses,
+            "twitch_bot_display_name":self.config.twitch_bot_display_name,
+            "num_bot_responses":self.config.num_bot_responses,
             "users_in_messages_list_text":users_in_messages_list_text,
-            "wordcount_medium":self.wordcount_medium,
-            "twitch_bot_operatorname":self.twitch_bot_operatorname,
-            "twitch_bot_channel_name":self.twitch_bot_channel_name
+            "wordcount_medium":self.config.wordcount_medium,
+            "bot_operatorname":self.config.twitch_bot_operatorname,
+            "twitch_bot_channel_name":self.config.twitch_bot_channel_name
         }
 
         try:
-            gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
+            await self.chatforme_service.make_msghistory_gpt_response(
                 prompt_text=chatforme_prompt,
                 replacements_dict=replacements_dict,
                 msg_history=self.message_handler.chatforme_msg_history,
                 voice_name=tts_voice
             )
             return self.logger.info("chatforme has run successfully.")
-        except:
-            return self.logger.error("error with chatforme in twitchbotclass")
+        except Exception as e:
+            return self.logger.error(f"error with chatforme in twitchbotclass: {e}")
 
     @twitch_commands.command(name='vc')
     async def vc(self, message, *args):
@@ -415,7 +346,7 @@ class Bot(twitch_commands.Bot):
         name_end_pos = most_recent_message.find('>>>', name_start_pos)
         self.vibecheckee_username = most_recent_message[name_start_pos:name_end_pos]
         self.vibechecker_username = message.author.name
-        self.vibecheckbot_username = self.twitch_bot_display_name
+        self.vibecheckbot_username = self.config.twitch_bot_display_name
 
         self.vibechecker_players = {
             'vibecheckee_username': self.vibecheckee_username,
@@ -425,7 +356,7 @@ class Bot(twitch_commands.Bot):
 
         # Start the vibecheck service and then the session
         self.vibecheck_service = VibeCheckService(
-            yaml_config=self.yaml_data,
+            yaml_config=self.config,
             message_handler=self.message_handler,
             botclass=self,
             vibechecker_players=self.vibechecker_players
@@ -439,16 +370,16 @@ class Bot(twitch_commands.Bot):
         if self.ouat_counter == 1:
             self.message_handler.ouat_msg_history.clear()
             user_requested_plotline_str = ' '.join(args)
-            self.current_story_voice = random.choice(random.choice(list(self.tts_voices.values())))
+            self.current_story_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
             
             # Randomly select tone/style/theme from list, set replacements dictionary
-            writing_tone_values = list(self.yaml_data['ouat-writing-parameters']['writing_tone'].values())
+            writing_tone_values = list(self.config.writing_tone.values())
             self.selected_writing_tone = random.choice(writing_tone_values)
 
-            writing_style_values = list(self.yaml_data['ouat-writing-parameters']['writing_style'].values())
+            writing_style_values = list(self.config.writing_style.values())
             self.selected_writing_style = random.choice(writing_style_values)
 
-            theme_values = list(self.yaml_data['ouat-writing-parameters']['theme'].values())
+            theme_values = list(self.config.writing_theme.values())
             self.selected_theme = random.choice(theme_values)
 
             self.logger.info(f"A story was started by {message.author.name} ({message.author.id})")
@@ -467,11 +398,11 @@ class Bot(twitch_commands.Bot):
 
                 replacements_dict = {
                     "user_requested_plotline":user_requested_plotline_str,
-                    "ouat_wordcount":self.wordcount_short
+                    "wordcount_short":self.wordcount_short
                     }
                 
                 bullet_list_prompt_text = gpt.prompt_text_replacement(
-                    gpt_prompt_text=self.story_user_bullet_list_summary_prompt,
+                    gpt_prompt_text=self.config.story_user_bullet_list_summary_prompt + self.config.storyteller_storysuffix_prompt,
                     replacements_dict = replacements_dict
                     )
                 
@@ -495,7 +426,7 @@ class Bot(twitch_commands.Bot):
                     )
 
                 self.random_article_content_plot_summary = await self.chatforme_service.make_msghistory_gpt_response(
-                    prompt_text=self.storyteller_storystarter_prompt,
+                    prompt_text=self.config.storyteller_storystarter_prompt,
                     replacements_dict=replacements_dict,
                     msg_history=new_plotline_gptlistdict,
                     incl_voice='yes',
@@ -503,7 +434,7 @@ class Bot(twitch_commands.Bot):
                     )  
 
                 self.logger.debug(f"This is the user_requested_plotline_str: {user_requested_plotline_str}")
-                self.logger.debug(f"This is the self.story_user_bullet_list_summary_prompt: {self.story_user_bullet_list_summary_prompt}")   
+                self.logger.debug(f"This is the self.config.story_user_bullet_list_summary_prompt: {self.config.story_user_bullet_list_summary_prompt}")   
 
             ####################################
             ####################################
@@ -519,10 +450,10 @@ class Bot(twitch_commands.Bot):
                 replacements_dict = {
                     "random_article_content":self.random_article_content,
                     "user_requested_plotline":article_content_plotline_gptlistdict,
-                    "ouat_wordcount":self.wordcount_short,
+                    "wordcount_short":self.wordcount_short,
                     }                
                 bullet_list_prompt_text = gpt.prompt_text_replacement(
-                    gpt_prompt_text=self.story_article_bullet_list_summary_prompt,
+                    gpt_prompt_text=self.config.story_article_bullet_list_summary_prompt,
                     replacements_dict = replacements_dict
                     )
 
@@ -538,14 +469,14 @@ class Bot(twitch_commands.Bot):
                     
                 #TODO: Probably shouldn't be sending an output and maybe just generating a GPT message dictionary
                 self.random_article_content_plot_summary = await self.chatforme_service.make_msghistory_gpt_response(
-                    prompt_text=self.storyteller_storystarter_prompt,
+                    prompt_text=self.config.storyteller_storystarter_prompt,
                     replacements_dict=replacements_dict,
                     msg_history = self.story_bulleted_plotline,
                     incl_voice='yes',
                     voice_name=self.current_story_voice
                 )      
                 self.logger.debug(f"This is the article_content_plotline_gptlistdict: {article_content_plotline_gptlistdict}")
-                self.logger.debug(f"There was no user_requested_plotline_str, so the prompt_text is: {self.storyteller_storystarter_prompt}")
+                self.logger.debug(f"There was no user_requested_plotline_str, so the prompt_text is: {self.config.storyteller_storystarter_prompt}")
 
                 self.logger.debug(f"self.random_article_content_plot_summary: {self.random_article_content_plot_summary}")
                 self.logger.debug(f"self.story_bulleted_plotline: {self.story_bulleted_plotline}")  
@@ -562,7 +493,7 @@ class Bot(twitch_commands.Bot):
     async def add_to_story_ouat(self, ctx,  *args):
         author=ctx.message.author.name
         prompt_text = ' '.join(args)
-        prompt_text_prefix = f"{self.ouat_prompt_addtostory_prefix}:'{prompt_text}'"
+        prompt_text_prefix = f"{self.config.ouat_prompt_addtostory_prefix}:'{prompt_text}'"
         
         #workflow1: get gpt_ready_msg_dict and add message to message history        
         gpt_ready_msg_dict = self.message_handler._create_gpt_message_dict_from_strings(
@@ -576,7 +507,7 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='extendstory')
     async def extend_story(self, ctx, *args) -> None:
-        self.ouat_counter = self.ouat_story_progression_number
+        self.ouat_counter = self.config.ouat_story_progression_number
         printc(f"Story extension requested by {ctx.message.author.name} ({ctx.message.author.id}), self.ouat_counter has been set to {self.ouat_counter}", bcolors.WARNING)
 
     @twitch_commands.command(name='stopstory')
@@ -586,7 +517,7 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='endstory')
     async def endstory(self, ctx):
-        self.ouat_counter = self.ouat_story_max_counter
+        self.ouat_counter = self.config.ouat_story_max_counter
         printc(f"Story is being forced to end by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}", bcolors.WARNING)
 
     async def send_message_to_new_users_task(
@@ -631,7 +562,7 @@ class Bot(twitch_commands.Bot):
         self.message_handler.ouat_msg_history.clear()
 
     async def ouat_storyteller(self):
-        self.article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.newsarticle_rss_feed)
+        self.article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.config.newsarticle_rss_feed)
         self.article_generator.fetch_articles()
 
         #This is the while loop that generates the occurring GPT response
@@ -647,43 +578,45 @@ class Bot(twitch_commands.Bot):
 
                 #storystarter
                 if self.ouat_counter == 1:
-                    gpt_prompt_final = self.storyteller_storystarter_prompt
+                    gpt_prompt_final = self.config.storyteller_storystarter_prompt
 
                 #storyprogressor
-                if self.ouat_counter <= self.ouat_story_progression_number:
-                    gpt_prompt_final = self.storyteller_storyprogressor_prompt
+                if self.ouat_counter <= self.config.ouat_story_progression_number:
+                    gpt_prompt_final = self.config.storyteller_storyprogressor_prompt
 
                 #storyfinisher
-                elif self.ouat_counter < self.ouat_story_max_counter:
-                    gpt_prompt_final = self.storyteller_storyfinisher_prompt
+                elif self.ouat_counter < self.config.ouat_story_max_counter:
+                    gpt_prompt_final = self.config.storyteller_storyfinisher_prompt
 
                 #storyender
-                elif self.ouat_counter == self.ouat_story_max_counter:
-                    gpt_prompt_final = self.storyteller_storyender_prompt
+                elif self.ouat_counter == self.config.ouat_story_max_counter:
+                    gpt_prompt_final = self.config.storyteller_storyender_prompt
                                                     
-                elif self.ouat_counter > self.ouat_story_max_counter:
+                elif self.ouat_counter > self.config.ouat_story_max_counter:
                     await self.stop_ouat_loop()
                     continue
 
                 # Combine prefix and meat
-                gpt_prompt_final = self.storyteller_storysuffix_prompt + " " + gpt_prompt_final
+                gpt_prompt_final = self.config.storyteller_storysuffix_prompt + " " + gpt_prompt_final
                 
                 self.logger.info("------------------------")
                 self.logger.info("------------------------")                
                 self.logger.info("OUAT details:")
-                self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (self.ouat_story_max_counter={self.ouat_story_max_counter})")
+                self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (self.config.ouat_story_max_counter={self.config.ouat_story_max_counter})")
                 self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
                 self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
 
                 #TODO: Turn this into a function up to the 'continue'
-                replacements_dict = {"ouat_wordcount":self.wordcount_short,
-                                     'twitch_bot_display_name':self.twitch_bot_display_name,
-                                     'num_bot_responses':self.num_bot_responses,
-                                     'rss_feed_article_plot':self.random_article_content_plot_summary,
-                                     'writing_style': self.selected_writing_style,
-                                     'writing_tone': self.selected_writing_tone,
-                                     'writing_theme': self.selected_theme,
-                                     'param_in_text':'variable_from_scope'} #for future use}
+                replacements_dict = {
+                    "wordcount_short":self.wordcount_short,
+                    'twitch_bot_display_name':self.config.twitch_bot_display_name,
+                    'num_bot_responses':self.config.num_bot_responses,
+                    'rss_feed_article_plot':self.random_article_content_plot_summary,
+                    'writing_style': self.selected_writing_style,
+                    'writing_tone': self.selected_writing_tone,
+                    'writing_theme': self.selected_theme,
+                    'param_in_text':'variable_from_scope' #for future use
+                    }
   
                 #Chatforme service for message send/voice
                 gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
@@ -697,4 +630,4 @@ class Bot(twitch_commands.Bot):
                 self.logger.debug(f"gpt_response: {gpt_response}")
                 self.ouat_counter += 1
 
-            await asyncio.sleep(int(self.ouat_message_recurrence_seconds))
+            await asyncio.sleep(int(self.config.ouat_message_recurrence_seconds))

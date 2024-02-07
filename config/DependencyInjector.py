@@ -7,56 +7,61 @@ from services.VibecheckService import VibeCheckService
 
 import openai
 
-from my_modules.config import run_config
-
 class DependencyInjector:
     def __init__(self, config):
         self.config = config
-        self.tts_data_folder = config['openai-api']['tts_data_folder']
-        self.tts_file_name = config['openai-api']['tts_file_name']
-
-        # Create instances of the dependencies
         self.create_dependencies()
 
     def create_gpt_client(self):
-        return openai.OpenAI()
+        gpt_client = openai.OpenAI(
+            api_key=self.config.openai_api_key
+            )
+        return gpt_client
 
     def create_bq_uploader(self):
         return BQUploader()
 
-    def create_tts_client(self):
+    def create_tts_client(self, openai_client):
         tts_client = GPTTextToSpeech(
-            output_filename=self.tts_file_name,
-            output_dirpath=self.tts_data_folder
+            openai_client=openai_client,
+            config=self.config
             )
         return tts_client
     
     def create_message_handler(self):
-        return MessageHandler()
+        message_handler = MessageHandler(
+            config=self.config
+        )
+        return message_handler
     
     def create_vibecheck_service(self, message_handler):
-        return VibeCheckService(
+        vibecheck_service = VibeCheckService(
             yaml_config=self.config,
             message_handler=message_handler
             )
+        return vibecheck_service
 
     def create_dependencies(self):
         self.gpt_client = self.create_gpt_client()
         self.bq_uploader = self.create_bq_uploader()
-        self.tts_client = self.create_tts_client()
-
+        self.tts_client = self.create_tts_client(openai_client=self.gpt_client)
         self.message_handler = self.create_message_handler()
 
-def main():
-    yaml_data = run_config()
+def main(yaml_filepath):
+    from classes.ConfigManagerClass import ConfigManager
+    
+    ConfigManager.initialize(yaml_filepath)
+    config = ConfigManager.get_instance()
 
-    dependencies = DependencyInjector(yaml_data)
+    dependencies = DependencyInjector(config=config)
     dependencies.create_dependencies()
 
+    return dependencies
+
+if __name__ == '__main__':
+    yaml_filepath = r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml'
+    dependencies = main(yaml_filepath)
     print(dependencies.gpt_client)
     print(dependencies.message_handler)
     print(dependencies.bq_uploader)
     print(dependencies.tts_client)
-
-if __name__ == '__main__':
-    main()

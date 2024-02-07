@@ -3,32 +3,28 @@ import requests
 from google.cloud import bigquery
 from google.api_core.exceptions import GoogleAPIError
 import pandas as pd
+from tenacity import retry, stop_after_attempt, wait_fixed
 
-from my_modules.config import run_config
+from classes.ConfigManagerClass import ConfigManager
+
 from my_modules import my_logging
 from my_modules import utils
-
-from tenacity import retry, stop_after_attempt, wait_fixed
 
 runtime_debug_level = 'WARNING'
 
 class BQUploader:
     def __init__(self):
-        self.yaml_data = run_config()
+        self.config = ConfigManager.get_instance()
 
         # env variables 
         # TODO: Probably shouldn't need/use the twitch IDs in my bq uploader
         # TODO: Probably should move these env variables to config.yaml
-        self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
-        self.twitch_bot_moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
-        self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
-        self.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
+        self.twitch_broadcaster_author_id = self.config.twitch_broadcaster_author_id
+        self.twitch_bot_moderator_id = self.config.twitch_bot_moderator_id
+        self.twitch_bot_client_id = self.config.twitch_bot_client_id
 
-        #also set in twitch_bot.py
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(
-            self.yaml_data['keys_dirpath'], 
-            self.yaml_data['twitch-ouat']['google_service_account_credentials_file']
-        )
+        #Originally Set in twitch_bot.py after authentication
+        self.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
 
         #logger
         self.logger = my_logging.create_logger(
@@ -54,7 +50,7 @@ class BQUploader:
         ) -> object:
 
         self.logger.debug(f'Getting channel viewers with bearer_token')
-        base_url=self.yaml_data['twitch-ouat']['twitch-get-chatters-endpoint']
+        base_url=self.config.twitch_get_chatters_endpoint
         params = {
             'broadcaster_id': self.twitch_broadcaster_author_id,
             'moderator_id': self.twitch_bot_moderator_id

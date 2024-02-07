@@ -215,3 +215,4 @@ config/disallowed_terms_backup.json
 config/disallowed_terms.json
 twitch_bot_start_dev.bat
 
+chatzilla_ai-config.code-workspace

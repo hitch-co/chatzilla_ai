@@ -9,7 +9,7 @@ from my_modules import utils
 runtime_logger_level = 'DEBUG'
 
 class MessageHandler:
-    def __init__(self):
+    def __init__(self, config):
         self.logger = my_logging.create_logger(
             dirname='log', 
             logger_name='logger_MessageHandler',
@@ -19,21 +19,8 @@ class MessageHandler:
             )
         self.logger.debug('MessageHandler initialized.')
 
-        #run config
-        self.yaml_data = run_config()
-
-        #Bots Lists
-        self.bots_chatforme = self.yaml_data['twitch-bots']['chatforme']
-        self.bots_ouat = self.yaml_data['twitch-bots']['onceuponatime']    
-        self.bots_vibecheck = self.yaml_data['twitch-bots']['vibecheck']    
-        
-        #Known Bots
-        self.known_bots = []
-        for key in self.yaml_data['twitch-bots']:
-            self.known_bots.extend(self.yaml_data['twitch-bots'][key])
-        self.known_bots = list(set(self.known_bots))
-        self.logger.info("these are the self.known_bots")
-        self.logger.info(self.known_bots)
+        # #run config
+        self.yaml_data = config
 
         #Users in message history
         self.users_in_messages_list = []

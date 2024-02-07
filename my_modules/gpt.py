@@ -5,17 +5,22 @@ import tiktoken
 from typing import List
 import re
 import copy
+import json
+
+from classes.ConfigManagerClass import ConfigManager
 
 from my_modules import utils
 from my_modules.my_logging import create_logger
-from my_modules.config import run_config
 
 #LOGGING
 stream_logs = True
 runtime_logger_level = 'INFO'
-yaml_data = run_config()
-gpt_model = yaml_data['openai-api']['assistant_model']
-shorten_message_prompt = yaml_data['gpt_thread_options']['shorten_response_length']
+
+#Config
+config = ConfigManager.get_instance()
+
+gpt_model = config.gpt_model
+shorten_message_prompt = config.shorten_response_length
 
 logger = create_logger(
     dirname='log',
@@ -26,14 +31,14 @@ logger = create_logger(
     )
 
 def create_gpt_client():
-    client = openai.OpenAI(api_key = os.getenv('OPENAI_API_KEY'))
+    client = openai.OpenAI(api_key = config.openai_api_key)
     return client
 
 # call to chat gpt for completion TODO: Could add  limits here?
 def openai_gpt_chatcompletion(
         messages_dict_gpt:list[dict],
-        max_characters=200,
-        max_attempts=5,
+        max_characters=300,
+        max_attempts=3,
         model=gpt_model,
         frequency_penalty=1,
         presence_penalty=1,
@@ -269,11 +274,15 @@ def get_models(api_key=None):
     return response.json()
 
 if __name__ == '__main__':
-    yaml_data = run_config()
-    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+    
+    ConfigManager.initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
+    config = ConfigManager.get_instance()
+    OPENAI_API_KEY = config.openai_api_key
 
     #test2 -- Get models
-    gpt_models = get_models(OPENAI_API_KEY)
+    gpt_models = get_models(
+        api_key=config.openai_api_key
+        )
     # print("GPT Models:")
     # print(json.dumps(gpt_models, indent=4))
 

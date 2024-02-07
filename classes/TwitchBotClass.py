@@ -20,6 +20,7 @@ from services.NewUsersService import NewUsersService
 from services.ChatForMeService import ChatForMeService
 from services.AudioService import AudioService
 from services.BotEars import BotEars
+from services.SpeechToTextService import SpeechToTextService
 
 runtime_logger_level = 'DEBUG'
 class Bot(twitch_commands.Bot):
@@ -75,6 +76,9 @@ class Bot(twitch_commands.Bot):
             samplerate=48000,
             channels=2
             )
+        
+        # Instantiate the speech to text service
+        self.s2t_service = SpeechToTextService()
         
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
@@ -144,6 +148,7 @@ class Bot(twitch_commands.Bot):
         self.twitch_bot_channel_name = self.yaml_data['twitch-app']['twitch_bot_channel_name']
         self.twitch_bot_username = self.yaml_data['twitch-app']['twitch_bot_username']
         self.twitch_bot_display_name = self.yaml_data['twitch-app']['twitch_bot_display_name']
+        self.twitch_bot_operatorname = self.yaml_data['chatforme_prompts']['standard']
 
         # Eleven Labs / OpenAI
         self.ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')
@@ -199,7 +204,7 @@ class Bot(twitch_commands.Bot):
 
         # VIBECHECK
         # TODO: Can be moved into the load_configurations() function
-        self.vibecheck_message_wordcount = str(self.yaml_data['vibechecker_max_wordcount'])
+        self.vibecheck_message_wordcount = str(self.yaml_data['vibechecker_message_wordcount'])
 
         self.logger.info("Configuration attributes loaded/refreshed from YAML/env variables")          
         return self.yaml_data
@@ -309,15 +314,33 @@ class Bot(twitch_commands.Bot):
         last_n_seconds = self.yaml_data['botears_save_last_n_seconds']
   
         await self.bot_ears.save_last_n_seconds(filepath=filepath, n=last_n_seconds)
-        await self.audio_service.play_local_wav(filepath=filepath)
+        #await self.audio_service.play_local_wav(filepath=filepath)
+
+        # Translate the audio to text
+        text = self.s2t_service.convert_audio_to_text(filepath)
+
+        # feed the text to the GPT model for a response
+        replacements_dict = {
+            "wordcount_medium": self.wordcount_medium,
+            "botears_questioncomment": text
+        }
+        prompt_text = self.yaml_data['botears_prompt']
+        
+        await self.chatforme_service.make_msghistory_gpt_response(
+            prompt_text=prompt_text,
+            replacements_dict=replacements_dict,
+            msg_history=self.message_handler.chatforme_msg_history,
+            incl_voice='yes'
+        )
 
     @twitch_commands.command(name='commands')
     async def showcommands(self, ctx):
-        await self.channel.send("Commands include: chatforme, todo, startstory, addtostory, extendstory")
+        await self.channel.send("Commands include: !what, !chat, !todo, !startstory, !addtostory, !extendstory")
 
     @twitch_commands.command(name='discord')
-    async def showcommands(self, ctx):
-        await self.channel.send("ughhhhh, I really should make a discord shouldn't I... TODO LUL")
+    async def discord(self, ctx):
+        await self.channel.send("ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")
+
 
     @twitch_commands.command(name='updatetodo')
     async def updatetodo(self, ctx, *args):
@@ -362,7 +385,9 @@ class Bot(twitch_commands.Bot):
             "twitch_bot_display_name":self.twitch_bot_display_name,
             "num_bot_responses":self.num_bot_responses,
             "users_in_messages_list_text":users_in_messages_list_text,
-            "wordcount_medium":self.wordcount_medium
+            "wordcount_medium":self.wordcount_medium,
+            "twitch_bot_operatorname":self.twitch_bot_operatorname,
+            "twitch_bot_channel_name":self.twitch_bot_channel_name
         }
 
         try:
@@ -460,6 +485,7 @@ class Bot(twitch_commands.Bot):
                     )
                 
                 new_plotline = gpt.openai_gpt_chatcompletion(
+                    max_characters=2000,
                     messages_dict_gpt=bullet_list_prompt_and_user_plotline_request
                     )
                 

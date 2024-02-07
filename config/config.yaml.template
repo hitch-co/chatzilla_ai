@@ -1,6 +1,8 @@
 #CONFIG
-env_filename: 'env-filename-w-extension'
-env_dirname: 'path-to-your-env'
+env_filename: 'config.env'
+env_dirname: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config'
+config_dirpath: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config'
+keys_dirpath: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\keys'
 is_gpt_testing: True
 
 #########################

@@ -19,6 +19,7 @@ from services.NewUsersService import NewUsersService
 from services.ChatForMeService import ChatForMeService
 from services.AudioService import AudioService
 from services.BotEars import BotEars
+from services.SpeechToTextService import SpeechToTextService
 
 runtime_logger_level = 'DEBUG'
 class Bot(twitch_commands.Bot):
@@ -76,7 +77,9 @@ class Bot(twitch_commands.Bot):
             channels=2
             )
         
-        #NOTE: rename to lower case
+        # Instantiate the speech to text service
+        self.s2t_service = SpeechToTextService()
+        
         #Taken from app authentication class()
         self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
 
@@ -242,15 +245,33 @@ class Bot(twitch_commands.Bot):
         last_n_seconds = self.config.botears_save_last_n_seconds
   
         await self.bot_ears.save_last_n_seconds(filepath=filepath, n=last_n_seconds)
-        await self.audio_service.play_local_wav(filepath=filepath)
+        #await self.audio_service.play_local_wav(filepath=filepath)
+
+        # Translate the audio to text
+        text = self.s2t_service.convert_audio_to_text(filepath)
+
+        # feed the text to the GPT model for a response
+        replacements_dict = {
+            "wordcount_medium": self.wordcount_medium,
+            "botears_questioncomment": text
+        }
+        prompt_text = self.yaml_data['botears_prompt']
+        
+        await self.chatforme_service.make_msghistory_gpt_response(
+            prompt_text=prompt_text,
+            replacements_dict=replacements_dict,
+            msg_history=self.message_handler.chatforme_msg_history,
+            incl_voice='yes'
+        )
 
     @twitch_commands.command(name='commands')
     async def showcommands(self, ctx):
-        await self.channel.send("Commands include: chatforme, todo, startstory, addtostory, extendstory")
+        await self.channel.send("Commands include: !what, !chat, !todo, !startstory, !addtostory, !extendstory")
 
     @twitch_commands.command(name='discord')
-    async def showcommands(self, ctx):
-        await self.channel.send("ughhhhh, I really should make a discord shouldn't I... TODO LUL")
+    async def discord(self, ctx):
+        await self.channel.send("ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")
+
 
     @twitch_commands.command(name='updatetodo')
     async def updatetodo(self, ctx, *args):
@@ -395,6 +416,7 @@ class Bot(twitch_commands.Bot):
                     )
                 
                 new_plotline = gpt.openai_gpt_chatcompletion(
+                    max_characters=2000,
                     messages_dict_gpt=bullet_list_prompt_and_user_plotline_request
                     )
                 

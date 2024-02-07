@@ -5,19 +5,18 @@ import tiktoken
 from typing import List
 import re
 import copy
+import json
 
 from classes.ConfigManagerClass import ConfigManager
 
 from my_modules import utils
 from my_modules.my_logging import create_logger
-from my_modules.config import run_config
 
 #LOGGING
 stream_logs = True
 runtime_logger_level = 'INFO'
 
 #Config
-# yaml_data = run_config()
 config = ConfigManager.get_instance()
 
 gpt_model = config.gpt_model
@@ -38,7 +37,7 @@ def create_gpt_client():
 # call to chat gpt for completion TODO: Could add  limits here?
 def openai_gpt_chatcompletion(
         messages_dict_gpt:list[dict],
-        max_characters=250,
+        max_characters=300,
         max_attempts=3,
         model=gpt_model,
         frequency_penalty=1,
@@ -278,15 +277,14 @@ if __name__ == '__main__':
     
     ConfigManager.initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
     config = ConfigManager.get_instance()
-
     OPENAI_API_KEY = config.openai_api_key
 
     #test2 -- Get models
     gpt_models = get_models(
         api_key=config.openai_api_key
         )
-    print("GPT Models:")
-    print(json.dumps(gpt_models, indent=4))
+    # print("GPT Models:")
+    # print(json.dumps(gpt_models, indent=4))
 
      # test3 -- call to chatgpt chatcompletion
     # openai_gpt_chatcompletion(messages_dict_gpt=[{'role':'user', 'content':'Whats a tall buildings name?'}],

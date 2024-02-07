@@ -1,6 +1,7 @@
 import os
 import yaml
 import dotenv
+import traceback
 
 from my_modules.my_logging import create_logger
 
@@ -9,49 +10,78 @@ runtime_logger_level = 'DEBUG'
 class ConfigManager:
     _instance = None
 
-    def __new__(cls, yaml_filepath=None, yaml_filename=None):
+    @classmethod
+    def initialize(cls, yaml_filepath):
         if cls._instance is None:
-            cls._instance = object.__new__(cls)
-            cls._instance.init_attributes()
-            cls._instance.initialize_config(yaml_filepath, yaml_filename)
-        return cls._instance
+            try:
+                cls._instance = object.__new__(cls)
+            except Exception as e:
+                print(f"Exception in object.__new__(cls): {e}")
+            
+            try:
+                cls._instance.create_logger()
+            except Exception as e:
+                print(f"Exception in create_logger(): {e}")
 
-    def init_attributes(self):
-        # Create logger
-        self.logger = create_logger(
-            dirname='log', 
-            logger_name='logger_ConfigManagerClass', 
-            debug_level=runtime_logger_level,
-            mode='w',
-            stream_logs=True,
-            encoding='UTF-8'
-            )
-        
-        # Initialize all instance attributes
-        self.include_ouat = None
-        self.include_automsg = None
-        self.include_sound = None
-        self.input_port_number = None
-        self.prompt_list_ouat = None
-        self.prompt_list_automsg = None
-        self.prompt_list_chatforme = None
-        self.env_file_directory = None
-        self.env_file_name = None
+            try:
+                cls._instance.initialize_config(yaml_filepath=yaml_filepath)
+            except Exception as e:
+                print(f"Exception in initialize_config(): {e}")
 
-    def initialize_config(self, yaml_filepath, yaml_filename):
-        yaml_full_path = os.path.join(yaml_filepath, yaml_filename)
-        self.load_yaml_config(yaml_full_path)
-        self.set_env_variables()
+    @classmethod
+    def get_instance(cls):
+        try:
+            if cls._instance is None:
+                raise Exception("ConfigManager is not initialized. Call 'initialize' first.")
+            return cls._instance
+        except Exception as e:
+            print(f"Exception in get_instance(): {e}")
+
+    def __init__(self):
+        if not hasattr(self, 'initialized'):
+            self.initialized = True
+        else:
+            raise Exception("You cannot create multiple instances of ConfigManager. Use 'get_instance'.")
+
+    def initialize_config(self, yaml_filepath):
+        try:
+            self.load_yaml_config(yaml_full_path=yaml_filepath)
+        except Exception as e:
+            self.logger.error(f"Error, exception in load_yaml_config(): {e}", exc_info=True)
+
+        try:
+            self.set_env_variables()
+        except Exception as e:
+            self.logger.error(f"Error, exception in set_env_variables(): {e}", exc_info=True)
 
     def load_yaml_config(self, yaml_full_path):
         try:
             with open(yaml_full_path, 'r') as file:
+                self.logger.debug("loading individual configs...")
                 yaml_config = yaml.safe_load(file)
+                
+                self.yaml_twitchbot_config(yaml_config)
+                
+                self.yaml_depinjector_config(yaml_config)
                 self.update_config_from_yaml(yaml_config)
+
+                self.yaml_gcp_config(yaml_config)
+                
+                self.yaml_botears_config(yaml_config)
+                self.yaml_gpt_config(yaml_config)
+                self.yaml_chatforme_config(yaml_config)
+                self.yaml_ouat_config(yaml_config)
+                self.yaml_vibecheck_config(yaml_config)
+
+                self.yaml_helloworld_config(yaml_config)
+                self.yaml_todo_config(yaml_config)
+                
         except FileNotFoundError:
             self.logger.error(f"YAML configuration file not found at {yaml_full_path}")
         except yaml.YAMLError as e:
             self.logger.error(f"Error parsing YAML configuration: {e}")
+        except Exception as e:
+            self.logger.error(f"Error in load_yaml_config(): {e}")
 
     def set_env_variables(self):
         if self.env_file_directory and self.env_file_name:
@@ -59,129 +89,202 @@ class ConfigManager:
             if os.path.exists(env_path):
                 dotenv.load_dotenv(env_path)
                 self.update_config_from_env()
+                #TODO: self.other_update_from_env()
             else:
                 self.logger.error(f".env file not found at {env_path}")
 
     def update_config_from_env(self):
-        # Load and set runtime parameters from environment variables set in .bat
-        self.include_ouat = os.getenv("include_ouat", "yes")
-        self.include_automsg = os.getenv("include_automsg", "no")
-        self.include_sound = os.getenv("include_sound", "no")
-        self.input_port_number = os.getenv("input_port_number", 3000)
-        self.prompt_list_ouat = os.getenv("prompt_list_ouat", "newsarticle_dynamic")
-        self.prompt_list_automsg = os.getenv("prompt_list_automsg", "videogames")
-        self.prompt_list_chatforme = os.getenv("prompt_list_chatforme", "standard")
+        try:
+            self.openai_api_key = os.getenv('OPENAI_API_KEY')
+            
+            # Load and set runtime parameters from environment variables set in .bat
+            self.include_ouat = os.getenv("include_ouat", "yes")
+            self.include_automsg = os.getenv("include_automsg", "no")
+            self.include_sound = os.getenv("include_sound", "no")
+            self.input_port_number = os.getenv("input_port_number", 3000)
+            self.prompt_list_ouat = os.getenv("prompt_list_ouat", "newsarticle_dynamic")
+            self.prompt_list_automsg = os.getenv("prompt_list_automsg", "videogames")
+            self.prompt_list_chatforme = os.getenv("prompt_list_chatforme", "standard")
 
-        # Load twitch bot and mod identifiers
-        self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
-        self.twitch_bot_moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
-        self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
+            # Load twitch bot and mod identifiers
+            self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
+            self.twitch_bot_moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
+            self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
+            self.twitch_bot_client_secret = os.getenv('TWITCH_BOT_CLIENT_SECRET')
 
-        # Load runtime parameters from .bat
-        self.include_ouat = os.getenv("include_ouat", "yes")
-        self.include_automsg = os.getenv("include_automsg", "no")
-        self.include_sound = os.getenv("include_sound", "yes")
-        self.prompt_list_name_ouat = os.getenv("prompt_list_ouat", "newsarticle_dynamic")
-        self.prompt_list_name_automsg = os.getenv("prompt_list_automsg", "videogames")
-        self.prompt_list_chatforme = os.getenv("prompt_list_chatforme", "standard")
-        self.prompt_list_name_botthot = os.getenv("prompt_list_botthot", "standard")
-        self.input_port_number = int(os.getenv("input_port_number", 3000))        
+            # Load runtime parameters from .bat
+            self.include_ouat = os.getenv("include_ouat", "yes")
+            self.include_automsg = os.getenv("include_automsg", "no")
+            self.include_sound = os.getenv("include_sound", "yes")
+            self.prompt_list_name_ouat = os.getenv("prompt_list_ouat", "newsarticle_dynamic")
+            self.prompt_list_name_automsg = os.getenv("prompt_list_automsg", "videogames")
+            self.prompt_list_chatforme = os.getenv("prompt_list_chatforme", "standard")
+            self.prompt_list_name_botthot = os.getenv("prompt_list_botthot", "standard")
+            self.input_port_number = int(os.getenv("input_port_number", 3000))
+                    
+        except Exception as e:
+            self.logger.error(f"Error in update_config_from_env(): {e}")
+
+    def yaml_gcp_config(self, yaml_config):
+        try:
+            self.keys_dirpath = yaml_config['keys_dirpath']
+            self.google_service_account_credentials_file = yaml_config['twitch-ouat']['google_service_account_credentials_file']
+
+            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(
+                self.keys_dirpath, 
+                self.google_service_account_credentials_file
+                )
+        except Exception as e:
+            self.logger.error(f"Error in yaml_gcp_config(): {e}\nTraceback:", exc_info=True)
+
+    def yaml_botears_config(self, yaml_config):
+        try:
+            self.botears_device_mic = yaml_config['botears_device_mic']
+            self.botears_audio_n_seconds = yaml_config['botears_audio_n_seconds']
+            self.botears_audio_path = yaml_config['botears_audio_path']
+            self.botears_audio_filename = yaml_config['botears_audio_filename']
+            self.botears_save_last_n_seconds = yaml_config['botears_save_last_n_seconds']
+
+        except Exception as e:
+            self.logger.error(f"Error in yaml_botears_config(): {e}")
+
+    def yaml_gpt_config(self, yaml_config):
+        try:
+            self.wordcount_short = str(yaml_config['wordcounts']['short'])
+            self.wordcount_medium = str(yaml_config['wordcounts']['medium'])
+            self.wordcount_long = str(yaml_config['wordcounts']['long'])
+        except Exception as e:
+            self.logger.error(f"Error in yaml_gpt_config(): {e}")
+
+    def yaml_vibecheck_config(self, yaml_config):
+        try:
+            self.vibechecker_max_interaction_count = yaml_config['vibechecker_max_interaction_count']
+            self.formatted_gpt_vibecheck_prompt = yaml_config['formatted_gpt_vibecheck_prompt']
+            self.formatted_gpt_viberesult_prompt = yaml_config['formatted_gpt_viberesult_prompt']
+            self.newusers_sleep_time = yaml_config['newusers_sleep_time']
+            self.vibechecker_message_wordcount = str(yaml_config['vibechecker_message_wordcount'])
+            self.vibechecker_question_session_sleep_time = yaml_config['vibechecker_question_session_sleep_time']
+            self.vibechecker_listener_sleep_time = yaml_config['vibechecker_listener_sleep_time']
+            self.formatted_gpt_vibecheck_alert = yaml_config['formatted_gpt_vibecheck_alert']
+        except Exception as e:
+            self.logger.error(f"Error in yaml_vibecheck_config(): {e}")
+
+    def yaml_twitchbot_config(self, yaml_config):
+        try:
+            self.twitch_bot_channel_name = yaml_config['twitch-app']['twitch_bot_channel_name']
+            self.twitch_bot_username = yaml_config['twitch-app']['twitch_bot_username']
+            self.twitch_bot_display_name = yaml_config['twitch-app']['twitch_bot_display_name']
+            self.num_bot_responses = yaml_config['num_bot_responses']
+            self.twitch_bot_operatorname = yaml_config['twitch-app']['twitch_bot_operatorname']
+        except Exception as e:
+            self.logger.error(f"Error in yaml_twitchbot_config(): {e}")
+
+    def yaml_chatforme_config(self, yaml_config):
+        try:
+            self.chatforme_prompt = yaml_config['chatforme_prompts']['standard']
+            self.chatforme_prompt_prefix = str(yaml_config['chatforme_prompts']['chatforme_prompt_prefix'])
+            self.chatforme_prompt_suffix = str(yaml_config['chatforme_prompts']['chatforme_prompt_suffix'])
+        except Exception as e:
+            self.logger.error(f"Error in yaml_chatforme_config(): {e}")
+
+    def yaml_helloworld_config(self, yaml_config):
+        try:
+            # GPT Hello World Vars:
+            self.gpt_hello_world = self.gpt_hello_world = True if os.getenv('gpt_hello_world') == 'True' else False
+            self.hello_assistant_prompt = yaml_config['formatted_gpt_helloworld_prompt']
+            self.helloworld_message_wordcount = yaml_config['helloworld_message_wordcount']
+        except Exception as e:
+            self.logger.error(f"Error in yaml_helloworld_config(): {e}")
+
+    def yaml_todo_config(self, yaml_config):
+        try:
+            # GPT todo command prompts:
+            self.gpt_todo_prompt = yaml_config['gpt_todo_prompt']
+            self.gpt_todo_prompt_prefix = yaml_config['gpt_todo_prompt_prefix']
+            self.gpt_todo_prompt_suffix = yaml_config['gpt_todo_prompt_suffix']
+        except Exception as e:
+            self.logger.error(f"Error in yaml_todo_config(): {e}")
+
+    def yaml_ouat_config(self, yaml_config):
+        try:
+            # News Article Feed/Prompts
+            self.newsarticle_rss_feed = yaml_config['twitch-ouat']['newsarticle_rss_feed']
+            self.story_article_bullet_list_summary_prompt = yaml_config['gpt_thread_prompts']['story_article_bullet_list_summary_prompt'] 
+            self.story_user_bullet_list_summary_prompt = yaml_config['gpt_thread_prompts']['story_user_bullet_list_summary_prompt']
+
+            # GPT Thread Prompts
+            self.storyteller_storysuffix_prompt = yaml_config['gpt_thread_prompts']['story_suffix']
+            self.storyteller_storystarter_prompt = yaml_config['gpt_thread_prompts']['story_starter']
+            self.storyteller_storyprogressor_prompt = yaml_config['gpt_thread_prompts']['story_progressor']
+            self.storyteller_storyfinisher_prompt = yaml_config['gpt_thread_prompts']['story_finisher']
+            self.storyteller_storyender_prompt = yaml_config['gpt_thread_prompts']['story_ender']
+            self.ouat_prompt_addtostory_prefix = yaml_config['gpt_thread_prompts']['story_addtostory_prefix']
+
+            # OUAT Progression flow / Config
+            self.ouat_message_recurrence_seconds = yaml_config['ouat_message_recurrence_seconds']
+            self.ouat_story_progression_number = yaml_config['ouat_story_progression_number']
+            self.ouat_story_max_counter = yaml_config['ouat_story_max_counter']
+
+            # GPT Writing Style/Theme/Tone Paramaters
+            self.writing_tone = yaml_config.get('ouat-writing-parameters', {}).get('writing_tone', 'no specified writing tone')
+            self.writing_style = yaml_config.get('ouat-writing-parameters', {}).get('writing_style', 'no specified writing tone')
+            self.writing_theme = yaml_config.get('ouat-writing-parameters', {}).get('writing_theme', 'no specified writing tone')
+        except Exception as e:
+            self.logger.error(f"Error in yaml_ouat_config(): {e}")
+
+    def yaml_depinjector_config(self, yaml_config):
+        try:
+            self.tts_data_folder = yaml_config['openai-api']['tts_data_folder']
+            self.tts_file_name = yaml_config['openai-api']['tts_file_name']
+            self.tts_voices = yaml_config['openai-api']['tts_voices']
+            self.tts_volume = yaml_config['openai-api']['tts_volume']
+        except Exception as e:
+            self.logger.error(f"Error in yaml_depinjector_config(): {e}")
 
     def update_config_from_yaml(self, yaml_config):
-        # Update instance variables with YAML configurations
-        self.env_file_directory = yaml_config.get('env_dirname')
-        self.env_file_name = yaml_config.get('env_filename')
+        try:
+            # Update instance variables with YAML configurations
+            self.env_file_directory = yaml_config['env_dirname']
+            self.env_file_name = yaml_config['env_filename']
+            
+            self.twitch_get_chatters_endpoint = yaml_config['twitch-ouat']['twitch-get-chatters-endpoint']
+            self.shorten_response_length = yaml_config['gpt_thread_options']['shorten_response_length']
 
-        # twitch
-        # yaml_config.get('twitch-ouat', {}).get('twitch-get-chatters-endpoint','speech.mp3')
-        # self.yaml_data['twitch-ouat']['twitch-get-chatters-endpoint']
+            self.config_dirpath = yaml_config['config_dirpath']
+            self.keys_dirpath = yaml_config['keys_dirpath']
+            self.command_spellcheck_terms_filename = yaml_config['command_spellcheck_terms_filename']
+            
+            self.google_application_credentials_file = yaml_config['twitch-ouat']['google_service_account_credentials_file']
+            self.talkzillaai_userdata_table_id = yaml_config['twitch-ouat']['talkzillaai_userdata_table_id']
+            self.talkzillaai_usertransactions_table_id = yaml_config['twitch-ouat']['talkzillaai_usertransactions_table_id']
+            
+            self.twitch_bot_redirect_path = yaml_config['twitch-app']['twitch_bot_redirect_path']
+            self.twitch_bot_scope = yaml_config['twitch-app']['twitch_bot_scope']
 
-        # twitch-app/bots
-        #yaml_config.get('twitch-app', {}).get('twitch_bot_username','yaml_val_not_found')
-        self.bots_automsg = yaml_config.get('twitch-bots', {}).get('automsg','yaml_val_not_found')
-        self.bots_chatforme = yaml_config.get('twitch-bots', {}).get('chatforme','yaml_val_not_found')
-        self.bots_ouat = yaml_config.get('twitch-bots', {}).get('onceuponatime','yaml_val_not_found')
+            # openai t2s, models, prompt
+            self.gpt_model = yaml_config.get('openai-api',{}).get('assistant_model', 'gpt-3.5-turbo') 
+            self.tts_model = yaml_config.get('openai-api', {}).get('tts_model','tts-1')
+        except Exception as e:
+            self.logger.error(f"Error in update_config_from_yaml(): {e}")
 
-        # bots_all - Iterate over each key and extend self.bots_all
-        self.bots_all = []
-        keys = ['automsg', 'chatforme', 'onceuponatime']
-        for key in keys:
-            bots = yaml_config.get('twitch-bots', {}).get(key, [])
-            if bots != 'yaml_val_not_found':
-                self.bots_all.extend(bots)
-        self.bots_all = list(set(self.bots_all))
-        self.logger.info("these are the self.bots_all")
-        self.logger.info(self.bots_all)
+    def create_logger(self):
+        self.logger = create_logger(
+            logger_name='logger_ConfigManagerClass', 
+            debug_level=runtime_logger_level,
+            stream_logs=True,
+            encoding='UTF-8'
+            )
 
-        # BQ Table IDs
-        self.userdata_table_id = yaml_config.get('twitch-ouat',{}).get('talkzillaai_userdata_table_id')
-        self.usertransactions_table_id = yaml_config.get('twitch-ouat',{}).get('talkzillaai_usertransactions_table_id')
-        
-        # openai t2s, models, prompt
-        self.gpt_model = yaml_config.get('openai-api',{}).get('assistant_model', 'gpt-3.5-turbo') 
-        self.tts_model = yaml_config.get('openai-api', {}).get('tts_model','tts-1')
-        self.tts_voice = yaml_config.get('openai-api', {}).get('tts_voice','shimmer')
-        self.tts_data_folder = yaml_config.get('openai-api', {}).get('tts_data_folder','data\\tts')
-        self.tts_file_name = yaml_config.get('openai-api', {}).get('tts_file_name','speech.mp3')
-        self.gpt_shorten_message_prompt = yaml_config.get('ouat_prompts',{}).get('shorten_response_length_prompt', 'shorten this message to 20 characters')
+def main(yaml_filepath):
+    ConfigManager.initialize(yaml_filepath)
+    config = ConfigManager.get_instance()
+    return config
 
-        # Twitch bot details
-        self.twitch_bot_channel_name = yaml_config.get('twitch-app', {}).get('twitch_bot_channel_name')
-        self.twitch_bot_username = yaml_config.get('twitch-app',{}).get('twitch_bot_username')
-
-        ###################################################################
-        # News Article Feed/Prompts
-        self.newsarticle_rss_feed = yaml_config.get('twitch-ouat', {}).get('newsarticle_rss_feed')
-        self.ouat_news_article_summary_prompt = yaml_config.get('ouat_prompts', {}).get('ouat_news_article_summary_prompt')
-
-        # Generic config items
-        self.num_bot_responses = yaml_config.get('num_bot_responses')
-
-        # Load settings and configurations from a YAML file
-        self.chatforme_message_wordcount = str(yaml_config.get('chatforme_message_wordcount'))
-        self.formatted_gpt_chatforme_prompt_prefix = str(yaml_config.get('formatted_gpt_chatforme_prompt_prefix'))
-        self.formatted_gpt_chatforme_prompt_suffix = str(yaml_config.get('formatted_gpt_chatforme_prompt_suffix'))
-        self.formatted_gpt_chatforme_prompts = yaml_config.get('formatted_gpt_chatforme_prompts')
-        self.formatted_gpt_botthot_prompts = yaml_config.get('formatted_gpt_botthot_prompts')
-
-        # Prompts 
-        self.ouat_prompt_addtostory_prefix = yaml_config.get('ouat_prompts', {}).get('ouat_prompt_addtostory_prefix')
-
-        # USED IN OPENAI GPT ASSISTANTS WORKFLOW
-        ########################################################################
-        # GPT Assistant prompts:
-        # self.article_summarizer_assistant_prompt = yaml_config.get('gpt_assistant_prompts', {}).get('article_summarizer')
-        # self.storyteller_assistant_prompt = yaml_config.get('gpt_assistant_prompts', {}).get('storyteller')
-        # self.ouat_assistant_prompt = yaml_config.get('gpt_assistant_prompts', {}).get('article_summarizer')
-        # self.chatforme_assistant_prompt = yaml_config.get('gpt_assistant_prompts', {}).get('chatforme')
-        # self.botthot_assistant_prompt = yaml_config.get('gpt_assistant_prompts', {}).get('botthot')
-
-        # GPT Thread Prompts
-        self.storyteller_storystarter_prompt = yaml_config.get('gpt_thread_prompts', {}).get('story_starter')
-        self.storyteller_storyprogressor_prompt = yaml_config.get('gpt_thread_prompts', {}).get('story_progressor')
-        self.storyteller_storyfinisher_prompt = yaml_config.get('gpt_thread_prompts', {}).get('story_finisher')
-        self.storyteller_storyender_prompt = yaml_config.get('gpt_thread_prompts', {}).get('story_ender')
-
-        # GPT Writing Style/Theme/Tone Paramaters
-        self.writing_tone = yaml_config.get('ouat-writing-parameters', {}).get('writing_tone', 'no specified writing tone')
-        self.writing_style = yaml_config.get('ouat-writing-parameters', {}).get('writing_style', 'no specified writing tone')
-        self.writing_theme = yaml_config.get('ouat-writing-parameters', {}).get('theme', 'no specified writing tone')
-
-
-        ########################################################################
-
-        # USED IN OPENAI CHAT COMPLETION ENDPOINT
-        ########################################################################
-        # OUAT Progression flow / Config
-        self.ouat_message_recurrence_seconds = yaml_config.get('ouat_message_recurrence_seconds')
-        self.ouat_story_progression_number = yaml_config.get('ouat_story_progression_number')
-        self.ouat_story_max_counter = yaml_config.get('ouat_story_max_counter')
-        self.ouat_wordcount = yaml_config.get('ouat_wordcount')
-        ########################################################################
-
-def main():
-    config_manager = ConfigManager(yaml_filepath='.\config', yaml_filename='config.yaml')
-    print(config_manager.bots_ouat)
-    
 if __name__ == "__main__":
-    main()
+    yaml_filepath = r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml'
+    print(f"yaml_filepath_type: {type(yaml_filepath)}")
+
+    config = main(yaml_filepath)
+
+    print(config.tts_data_folder)
+    print(config.tts_file_name)

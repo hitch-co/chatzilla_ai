@@ -1,3 +1,8 @@
+
+# NOTE: Setup Configurations (NEW METHOD, thsi is the new way forward...)
+from classes.ConfigManagerClass import ConfigManager
+ConfigManager.initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
+
 import uuid
 import requests
 import os
@@ -8,7 +13,6 @@ from flask import Flask, request
 
 from classes.TwitchBotClass import Bot
 from classes.ArgsConfigManagerClass import ArgsConfigManager
-from classes.ConfigManagerClass import ConfigManager
 from config.DependencyInjector import DependencyInjector
 
 from my_modules.my_logging import create_logger
@@ -25,9 +29,7 @@ root_logger = create_logger(
 # Bot Thread
 TWITCH_CHATFORME_BOT_THREAD = None
 
-
-# NOTE: Setup Configurations (NEW METHOD, thsi is the new way forward...)
-ConfigManager.initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
+# Grab the config
 config = ConfigManager.get_instance()
 
 twitch_bot_redirect_path = config.twitch_bot_redirect_path
@@ -110,7 +112,7 @@ def run_bot(TWITCH_BOT_ACCESS_TOKEN, config):
     asyncio.set_event_loop(new_loop)
     
     #dependency injector
-    dependencies = DependencyInjector(config)
+    dependencies = DependencyInjector(config = config)
     dependencies.create_dependencies()
 
     #instantiate the class
@@ -126,4 +128,8 @@ def run_bot(TWITCH_BOT_ACCESS_TOKEN, config):
 
 #NOTE: When /callback is hit, new bot instance is started.   
 if __name__ == "__main__":
-    app.run(port=args_config.input_port_number, debug=True, use_reloader=use_reloader_bool)
+    app.run(
+        port=args_config.input_port_number, 
+        debug=True, 
+        use_reloader=use_reloader_bool
+        )

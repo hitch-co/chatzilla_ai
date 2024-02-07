@@ -1,16 +1,14 @@
 import os
-import openai
-from openai import OpenAI
 import pygame
 
-from my_modules.config import run_config
 from my_modules import my_logging
 
 runtime_logger_level = 'WARNING'
 
 #TODO: SHould take a client as an argument
 class GPTTextToSpeech:
-    def __init__(self, config):
+    # TODO (48):
+    def __init__(self, openai_client, config):
         self.logger = my_logging.create_logger(
             debug_level=runtime_logger_level, 
             logger_name='logger_GPTTextToSpeechClass', 
@@ -18,16 +16,16 @@ class GPTTextToSpeech:
             stream_logs=True
             )
 
-        openai.api_key = config.openai_api_key
+        # TODO (48): api_key is being set in an instance created in the class rather 
+        # than having a client passed to the class, is this a good idea or not?
+        self.tts_client = openai_client
+
+        # Set other class vars
         self.tts_model=config.tts_model
-        self.tts_data_folder = config.tts_data_folder
         self.tts_volume = config.tts_volume
-
-        ##folder/file details
-        self.output_filename = config.tts_file_name
         self.output_dirpath = config.tts_data_folder
+        self.output_filename = config.tts_file_name
 
-        self.tts_client = OpenAI()
 
     def _get_speech_response(
             self, 
@@ -36,7 +34,7 @@ class GPTTextToSpeech:
             ) -> object:
         self.logger.info(f"Starting speech create with params: input={text_input}, model={self.tts_model}, voice={voice_name}")
         response = self.tts_client.audio.speech.create(
-            model=self.tts_model, #low latency
+            model=self.tts_model,
             voice=voice_name,
             input=text_input)
         self.logger.info("Got response:")

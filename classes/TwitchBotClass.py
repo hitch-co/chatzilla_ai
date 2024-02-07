@@ -148,6 +148,7 @@ class Bot(twitch_commands.Bot):
         self.twitch_bot_channel_name = self.yaml_data['twitch-app']['twitch_bot_channel_name']
         self.twitch_bot_username = self.yaml_data['twitch-app']['twitch_bot_username']
         self.twitch_bot_display_name = self.yaml_data['twitch-app']['twitch_bot_display_name']
+        self.twitch_bot_operatorname = self.yaml_data['chatforme_prompts']['standard']
 
         # Eleven Labs / OpenAI
         self.ELEVENLABS_XI_API_KEY = os.getenv('ELEVENLABS_XI_API_KEY')
@@ -203,7 +204,7 @@ class Bot(twitch_commands.Bot):
 
         # VIBECHECK
         # TODO: Can be moved into the load_configurations() function
-        self.vibecheck_message_wordcount = str(self.yaml_data['vibechecker_max_wordcount'])
+        self.vibecheck_message_wordcount = str(self.yaml_data['vibechecker_message_wordcount'])
 
         self.logger.info("Configuration attributes loaded/refreshed from YAML/env variables")          
         return self.yaml_data
@@ -330,16 +331,16 @@ class Bot(twitch_commands.Bot):
             replacements_dict=replacements_dict,
             msg_history=self.message_handler.chatforme_msg_history,
             incl_voice='yes'
-
         )
 
     @twitch_commands.command(name='commands')
     async def showcommands(self, ctx):
-        await self.channel.send("Commands include: chatforme, todo, startstory, addtostory, extendstory")
+        await self.channel.send("Commands include: !what, !chat, !todo, !startstory, !addtostory, !extendstory")
 
     @twitch_commands.command(name='discord')
-    async def showcommands(self, ctx):
-        await self.channel.send("ughhhhh, I really should make a discord shouldn't I... TODO LUL")
+    async def discord(self, ctx):
+        await self.channel.send("ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")
+
 
     @twitch_commands.command(name='updatetodo')
     async def updatetodo(self, ctx, *args):
@@ -384,7 +385,9 @@ class Bot(twitch_commands.Bot):
             "twitch_bot_display_name":self.twitch_bot_display_name,
             "num_bot_responses":self.num_bot_responses,
             "users_in_messages_list_text":users_in_messages_list_text,
-            "wordcount_medium":self.wordcount_medium
+            "wordcount_medium":self.wordcount_medium,
+            "twitch_bot_operatorname":self.twitch_bot_operatorname,
+            "twitch_bot_channel_name":self.twitch_bot_channel_name
         }
 
         try:
@@ -482,6 +485,7 @@ class Bot(twitch_commands.Bot):
                     )
                 
                 new_plotline = gpt.openai_gpt_chatcompletion(
+                    max_characters=2000,
                     messages_dict_gpt=bullet_list_prompt_and_user_plotline_request
                     )
                 

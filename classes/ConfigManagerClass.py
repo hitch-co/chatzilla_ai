@@ -1,7 +1,6 @@
 import os
 import yaml
 import dotenv
-import traceback
 
 from my_modules.my_logging import create_logger
 
@@ -139,6 +138,8 @@ class ConfigManager:
 
     def yaml_botears_config(self, yaml_config):
         try:
+            self.botears_devices_json_filepath = yaml_config['botears_devices_json_filepath']
+            self.botears_prompt = yaml_config['botears_prompt']
             self.botears_device_mic = yaml_config['botears_device_mic']
             self.botears_audio_n_seconds = yaml_config['botears_audio_n_seconds']
             self.botears_audio_path = yaml_config['botears_audio_path']
@@ -162,6 +163,7 @@ class ConfigManager:
             self.formatted_gpt_vibecheck_prompt = yaml_config['formatted_gpt_vibecheck_prompt']
             self.formatted_gpt_viberesult_prompt = yaml_config['formatted_gpt_viberesult_prompt']
             self.newusers_sleep_time = yaml_config['newusers_sleep_time']
+            self.newusers_nonewusers_prompt = yaml_config['newusers_nonewusers_prompt']
             self.vibechecker_message_wordcount = str(yaml_config['vibechecker_message_wordcount'])
             self.vibechecker_question_session_sleep_time = yaml_config['vibechecker_question_session_sleep_time']
             self.vibechecker_listener_sleep_time = yaml_config['vibechecker_listener_sleep_time']
@@ -246,8 +248,9 @@ class ConfigManager:
             # Update instance variables with YAML configurations
             self.env_file_directory = yaml_config['env_dirname']
             self.env_file_name = yaml_config['env_filename']
+            self.app_config_dirpath = yaml_config['app_config_dirpath']
             
-            self.twitch_get_chatters_endpoint = yaml_config['twitch-ouat']['twitch-get-chatters-endpoint']
+            self.twitch_get_chatters_endpoint = yaml_config['twitch-ouat']['twitch_get_chatters_endpoint']
             self.shorten_response_length = yaml_config['gpt_thread_options']['shorten_response_length']
 
             self.config_dirpath = yaml_config['config_dirpath']

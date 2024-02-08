@@ -33,13 +33,6 @@ class DependencyInjector:
             config=self.config
         )
         return message_handler
-    
-    def create_vibecheck_service(self, message_handler):
-        vibecheck_service = VibeCheckService(
-            yaml_config=self.config,
-            message_handler=message_handler
-            )
-        return vibecheck_service
 
     def create_dependencies(self):
         self.gpt_client = self.create_gpt_client()

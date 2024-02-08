@@ -10,8 +10,8 @@ class VibeCheckService:
             self, 
             yaml_config, 
             message_handler, 
-            botclass, 
-            vibechecker_players
+            vibechecker_players,
+            send_channel_message
             ):
 
         self.logger = create_logger(
@@ -26,8 +26,8 @@ class VibeCheckService:
         #create vc event
         self.vibecheck_ready_event = asyncio.Event()
         
-        #Bot
-        self.botclass = botclass
+        #Bot (send channel function)
+        self.send_channel_message = send_channel_message
 
         #message handler
         self.message_handler = message_handler
@@ -71,8 +71,8 @@ class VibeCheckService:
 
         self.vibecheckee_username = None
         self.is_vibecheck_loop_active = False
-        if hasattr(self.botclass, 'vibecheck_service'):
-            self.botclass.vibecheck_service = None
+        # if hasattr(self.botclass, 'vibecheck_service'):
+        #     self.botclass.vibecheck_service = None
         self.logger.debug("General cleanup of vibecheckee_username/loop status and vibecheck service completed")
 
     async def _vibechecker_question_session(self):
@@ -152,7 +152,7 @@ class VibeCheckService:
                     self.message_handler.all_msg_history_gptdict.append(gpt_response_dict)
 
                     #Send the nth response to vibechecker_question_session
-                    await self.botclass.channel.send(gpt_response)
+                    await self.send_channel_message(gpt_response)
                     
                     # Wait for either the event to be set or the timer to run out
                     try:

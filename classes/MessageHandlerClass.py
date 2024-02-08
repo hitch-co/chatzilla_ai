@@ -2,7 +2,6 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 import requests
 import traceback
 
-from my_modules.config import run_config
 from my_modules import my_logging
 from my_modules import utils
 
@@ -113,7 +112,7 @@ class MessageHandler:
         ) -> object:
         try:
             self.logger.debug(f'Getting channel viewers with bearer_token')
-            base_url=self.yaml_data['twitch-ouat']['twitch-get-chatters-endpoint']
+            base_url=self.yaml_data.twitch_get_chatters_endpoint
             params = {
                 'broadcaster_id': broadcaster_id,
                 'moderator_id': moderator_id

@@ -283,8 +283,8 @@ if __name__ == '__main__':
     gpt_models = get_models(
         api_key=config.openai_api_key
         )
-    # print("GPT Models:")
-    # print(json.dumps(gpt_models, indent=4))
+    print("GPT Models:")
+    print(json.dumps(gpt_models, indent=4))
 
      # test3 -- call to chatgpt chatcompletion
     # openai_gpt_chatcompletion(messages_dict_gpt=[{'role':'user', 'content':'Whats a tall buildings name?'}],

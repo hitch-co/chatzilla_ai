@@ -20,9 +20,20 @@ def load_json(
         ):
     file_path = os.path.join(dir_path, file_name)
     
-    with open(file_path, 'r') as f:
-        data = json.load(f)
+    #Add Error Checkign
+    if not os.path.exists(file_path):
+        logger.error(f"File {file_path} does not exist.")
+        return None
+    else:
+        logger.debug(f"File {file_path} exists.")
     
+    try:
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading JSON file: {e}")
+        return None
+
     return data
 
 def show_json(obj):

@@ -1,0 +1,24 @@
+{
+    "audioDevices": {
+        "mic": {
+            "Microphone (Yeti Classic), MME": {
+                "samplerate": 48000,
+                "channels": 2
+            },
+            "Mic2...": {
+                "samplerate": 44100,
+                "channels": 2
+            }
+        },
+        "speaker": {
+            "Speaker1": {
+                "samplerate": 48000,
+                "channels": 2
+            },
+            "Speaker2": {
+                "samplerate": 44100,
+                "channels": 2
+            }
+        }
+    }
+}

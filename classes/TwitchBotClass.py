@@ -7,7 +7,6 @@ import os
 import inspect
 
 from my_modules.my_logging import create_logger
-from my_modules.config import run_config
 from my_modules import utils
 from my_modules import gpt
 
@@ -59,37 +58,46 @@ class Bot(twitch_commands.Bot):
         #start OUAT loop
         self.loop = asyncio.get_event_loop()
 
-        # instantiate the NewUsersService
-        self.newusers_service = NewUsersService(botclass=self)
-
-        # instantiate the NewUserService
-        self.chatforme_service = ChatForMeService(botclass=self)
-        
-        # instantiate the AudioService
-        self.audio_service = AudioService(volume=0.40)
-
-        # Instantiate the bot years class and start the stream
-        self.bot_ears = BotEars(
-            audio_device=self.config.botears_device_mic,
-            event_loop=self.loop,
-            duration=self.config.botears_audio_n_seconds,
-            samplerate=48000,
-            channels=2
-            )
-        
-        # Instantiate the speech to text service
-        self.s2t_service = SpeechToTextService()
-        
-        #Taken from app authentication class()
-        self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
-
         # dependencies instances
         self.gpt_client = gpt_client
         self.bq_uploader = bq_uploader 
         self.tts_client = tts_client
         self.message_handler = message_handler
 
-        #TODO: rename 'yaml_dirpath' to 'config_dirpath'
+        # instantiate the ChatForMeService
+        self.chatforme_service = ChatForMeService(
+            tts_client=self.tts_client,
+            send_channel_message=self.send_channel_message_wrapper
+            )
+
+        # instantiate the NewUsersService
+        self.newusers_service = NewUsersService(
+            message_handler=self.message_handler,
+            chatforme_service=self.chatforme_service
+        )
+
+
+        # instantiate the AudioService
+        self.audio_service = AudioService(volume=0.40)
+
+        # Instantiate the bot years class and start the stream
+        device_name = "Microphone (Yeti Classic), MME"
+        try:
+            self.bot_ears = BotEars(
+                config=self.config,
+                device_name=device_name,
+                event_loop=self.loop,
+                duration=4
+            )
+        except Exception as e:
+            self.logger.error(f"Error creating BotEars: {e}")
+
+        # Instantiate the speech to text service
+        self.s2t_service = SpeechToTextService()
+        
+        #Taken from app authentication class()
+        self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
+
         # required config/files
         self.command_spellecheck_terms = utils.load_json(
             self,
@@ -227,6 +235,9 @@ class Bot(twitch_commands.Bot):
         self.logger.info("---------END OF MESSAGE LOG----------")
         self.logger.info("-------------------------------------")        
 
+    async def send_channel_message_wrapper(self, message):
+        await self.channel.send(message)
+
     async def check_mod(self, ctx, command) -> bool:
         is_sender_mod = False
         command_name = inspect.currentframe().f_back.f_code.co_name
@@ -255,7 +266,7 @@ class Bot(twitch_commands.Bot):
             "wordcount_medium": self.wordcount_medium,
             "botears_questioncomment": text
         }
-        prompt_text = self.yaml_data['botears_prompt']
+        prompt_text = self.config.botears_prompt
         
         await self.chatforme_service.make_msghistory_gpt_response(
             prompt_text=prompt_text,
@@ -266,11 +277,11 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='commands')
     async def showcommands(self, ctx):
-        await self.channel.send("Commands include: !what, !chat, !todo, !startstory, !addtostory, !extendstory")
+        await self.send_channel_message_wrapper("Commands include: !what, !chat, !todo, !startstory, !addtostory, !extendstory")
 
     @twitch_commands.command(name='discord')
     async def discord(self, ctx):
-        await self.channel.send("ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")
+        await self.send_channel_message_wrapper("ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")
 
 
     @twitch_commands.command(name='updatetodo')
@@ -339,7 +350,7 @@ class Bot(twitch_commands.Bot):
     
         # Extract the bot/checker/checkee (important players) in the convo
         try: most_recent_message = self.message_handler.all_msg_history_gptdict[-2]['content']
-        except: await self.channel.send("No user to be vibechecked, try again after they send a message")
+        except: await self.send_channel_message_wrapper("No user to be vibechecked, try again after they send a message")
 
         # Collect the vibechecker_players    
         name_start_pos = most_recent_message.find('<<<') + 3
@@ -358,8 +369,8 @@ class Bot(twitch_commands.Bot):
         self.vibecheck_service = VibeCheckService(
             yaml_config=self.config,
             message_handler=self.message_handler,
-            botclass=self,
-            vibechecker_players=self.vibechecker_players
+            vibechecker_players=self.vibechecker_players,
+            send_channel_message=self.send_channel_message_wrapper
             )
         self.vibecheck_service.start_vibecheck_session()
 
@@ -512,7 +523,7 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='stopstory')
     async def stop_story(self, ctx):
-        await self.channel.send("to be continued...")
+        await self.send_channel_message_wrapper("to be continued...")
         await self.stop_ouat_loop()
 
     @twitch_commands.command(name='endstory')

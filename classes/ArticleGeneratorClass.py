@@ -62,8 +62,8 @@ class ArticleGenerator:
                 response = requests.get(random_article_link)
                 response.raise_for_status()  # This will raise if HTTP request returned an unsuccessful status code
             except requests.RequestException as e:
-                self.logger.error(f"Failed to fetch the article at {random_article_link}. Error: {e}")
-                printc(f"Failed to fetch the article at {random_article_link}. Error: {e}", bcolors.FAIL)
+                self.logger.warning(f"Failed to fetch the article at {random_article_link}. Error: {e}")
+                self.logger.warning(f"Failed to fetch the article at {random_article_link}. Error: {e}", bcolors.FAIL)
                 return ['']
 
             try:
@@ -71,7 +71,7 @@ class ArticleGenerator:
                 content_html_soup = soup.find('div', {'class': 'article__content'})
             except Exception as e:
                 self.logger.error(f"Error during parsing the article at {random_article_link}. Error: {e}")
-                printc(f"Error during parsing the article at {random_article_link}. Error: {e}", bcolors.FAIL)
+                self.logger.warning(f"Error during parsing the article at {random_article_link}. Error: {e}", bcolors.FAIL)
                 return ['']
 
             if content_html_soup:

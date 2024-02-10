@@ -1,10 +1,11 @@
 {
-    "!chatforme": [
+    "!chat": [
         "!chatfrome", "!chatform", "!chatforrme", "!chattforme", 
         "!chatfome", "!chatfotme", "!chatformee", "!chatformme", 
         "!chatfotme", "!chatfome", "!chatorme", "!chatformne",
         "!cahtforme", "!chatformem", "!chtatforme", "!chatform3", 
-        "!chatformw", "!chatformr", "!chatforma", "!chattfrome"
+        "!chatformw", "!chatformr", "!chatforma", "!chattfrome", 
+        "!caht", "!ctha", "!chta", "!hcat" 
     ],
     "!startstory": [
         "!startstroy", "!starstory", "!starttory", "!startstorry",
@@ -26,5 +27,8 @@
         "!vibecheeck", "!vibechecck", "!vibeechek", "!vivecheck",
         "!vibechekc", "!vibehceck", "!vibechecj", "!vibeczech",
         "!vibecechk", "!vibechcek", "!vibehcheck", "!vibecheckk"
+    ],
+    "!what": [
+        "!hwat", "!whta", "!awth", "!waht", "!wha", "!wath", "!wht"
     ]
 }

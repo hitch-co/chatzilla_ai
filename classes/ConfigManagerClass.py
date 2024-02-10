@@ -1,7 +1,6 @@
 import os
 import yaml
 import dotenv
-import traceback
 
 from my_modules.my_logging import create_logger
 
@@ -139,11 +138,13 @@ class ConfigManager:
 
     def yaml_botears_config(self, yaml_config):
         try:
+            self.botears_devices_json_filepath = yaml_config['botears_devices_json_filepath']
+            self.botears_prompt = yaml_config['botears_prompt']
             self.botears_device_mic = yaml_config['botears_device_mic']
-            self.botears_audio_n_seconds = yaml_config['botears_audio_n_seconds']
             self.botears_audio_path = yaml_config['botears_audio_path']
             self.botears_audio_filename = yaml_config['botears_audio_filename']
-            self.botears_save_last_n_seconds = yaml_config['botears_save_last_n_seconds']
+            self.botears_save_length_seconds = yaml_config['botears_save_length_seconds']
+            self.botears_buffer_length_seconds = yaml_config['botears_buffer_length_seconds']
 
         except Exception as e:
             self.logger.error(f"Error in yaml_botears_config(): {e}")
@@ -162,6 +163,8 @@ class ConfigManager:
             self.formatted_gpt_vibecheck_prompt = yaml_config['formatted_gpt_vibecheck_prompt']
             self.formatted_gpt_viberesult_prompt = yaml_config['formatted_gpt_viberesult_prompt']
             self.newusers_sleep_time = yaml_config['newusers_sleep_time']
+            self.newusers_nonewusers_prompt = yaml_config['newusers_nonewusers_prompt']
+            self.newusers_msg_prompt = yaml_config['newusers_msg_prompt']
             self.vibechecker_message_wordcount = str(yaml_config['vibechecker_message_wordcount'])
             self.vibechecker_question_session_sleep_time = yaml_config['vibechecker_question_session_sleep_time']
             self.vibechecker_listener_sleep_time = yaml_config['vibechecker_listener_sleep_time']
@@ -176,14 +179,14 @@ class ConfigManager:
             self.twitch_bot_display_name = yaml_config['twitch-app']['twitch_bot_display_name']
             self.num_bot_responses = yaml_config['num_bot_responses']
             self.twitch_bot_operatorname = yaml_config['twitch-app']['twitch_bot_operatorname']
+            self.msg_history_limit = yaml_config['msg_history_limit']
+
         except Exception as e:
             self.logger.error(f"Error in yaml_twitchbot_config(): {e}")
 
     def yaml_chatforme_config(self, yaml_config):
         try:
             self.chatforme_prompt = yaml_config['chatforme_prompts']['standard']
-            self.chatforme_prompt_prefix = str(yaml_config['chatforme_prompts']['chatforme_prompt_prefix'])
-            self.chatforme_prompt_suffix = str(yaml_config['chatforme_prompts']['chatforme_prompt_suffix'])
         except Exception as e:
             self.logger.error(f"Error in yaml_chatforme_config(): {e}")
 
@@ -246,8 +249,8 @@ class ConfigManager:
             # Update instance variables with YAML configurations
             self.env_file_directory = yaml_config['env_dirname']
             self.env_file_name = yaml_config['env_filename']
+            self.app_config_dirpath = yaml_config['app_config_dirpath']
             
-            self.twitch_get_chatters_endpoint = yaml_config['twitch-ouat']['twitch-get-chatters-endpoint']
             self.shorten_response_length = yaml_config['gpt_thread_options']['shorten_response_length']
 
             self.config_dirpath = yaml_config['config_dirpath']

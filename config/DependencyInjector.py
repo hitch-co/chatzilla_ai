@@ -3,7 +3,6 @@
 from classes.MessageHandlerClass import MessageHandler
 from classes.BQUploaderClass import BQUploader
 from classes.GPTTextToSpeechClass import GPTTextToSpeech
-from services.VibecheckService import VibeCheckService
 
 import openai
 
@@ -23,23 +22,15 @@ class DependencyInjector:
 
     def create_tts_client(self, openai_client):
         tts_client = GPTTextToSpeech(
-            openai_client=openai_client,
-            config=self.config
+            openai_client=openai_client
             )
         return tts_client
     
     def create_message_handler(self):
         message_handler = MessageHandler(
-            config=self.config
+            self.config.msg_history_limit
         )
         return message_handler
-    
-    def create_vibecheck_service(self, message_handler):
-        vibecheck_service = VibeCheckService(
-            yaml_config=self.config,
-            message_handler=message_handler
-            )
-        return vibecheck_service
 
     def create_dependencies(self):
         self.gpt_client = self.create_gpt_client()

@@ -14,18 +14,6 @@ runtime_debug_level = 'WARNING'
 
 class BQUploader:
     def __init__(self):
-        self.config = ConfigManager.get_instance()
-
-        # env variables 
-        # TODO: Probably shouldn't need/use the twitch IDs in my bq uploader
-        # TODO: Probably should move these env variables to config.yaml
-        self.twitch_broadcaster_author_id = self.config.twitch_broadcaster_author_id
-        self.twitch_bot_moderator_id = self.config.twitch_bot_moderator_id
-        self.twitch_bot_client_id = self.config.twitch_bot_client_id
-
-        #Originally Set in twitch_bot.py after authentication
-        self.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
-
         #logger
         self.logger = my_logging.create_logger(
             dirname='log', 
@@ -36,6 +24,21 @@ class BQUploader:
             )
         self.logger.debug('BQUploader Logger initialized.')
 
+        self.config = ConfigManager.get_instance()
+
+        # env variables 
+        #TODO: get_channel_viewers should probably be a separate helper
+        # module/function/class to work with the twitch API directly
+        self.twitch_broadcaster_author_id = self.config.twitch_broadcaster_author_id
+        self.twitch_bot_moderator_id = self.config.twitch_bot_moderator_id
+        self.twitch_bot_client_id = self.config.twitch_bot_client_id
+
+        # chatters endpoint
+        self.twitch_get_chatters_endpoint = 'https://api.twitch.tv/helix/chat/chatters'
+        
+        #Originally Set in twitch_bot.py after authentication
+        self.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
+
         #Build the client
         self.bq_client = bigquery.Client()
 
@@ -43,6 +46,8 @@ class BQUploader:
         self.channel_viewers_list_dict_temp = []
         self.channel_viewers_queue = []
 
+    #TODO: get_channel_viewers should probably be a separate helper
+    # module/function/class to work with the twitch API directly
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
     def get_channel_viewers(
         self,
@@ -50,7 +55,7 @@ class BQUploader:
         ) -> object:
 
         self.logger.debug(f'Getting channel viewers with bearer_token')
-        base_url=self.config.twitch_get_chatters_endpoint
+        base_url=self.twitch_get_chatters_endpoint
         params = {
             'broadcaster_id': self.twitch_broadcaster_author_id,
             'moderator_id': self.twitch_bot_moderator_id
@@ -163,10 +168,14 @@ class BQUploader:
 
         return results
 
-    def get_process_queue_create_channel_viewers_query(self, 
-                                                       bearer_token,
-                                                       table_id,
-                                                       response = None) -> str:
+    #TODO: get_channel_viewers should probably be a separate helper
+    # module/function/class to work with the twitch API directly
+    def get_process_queue_create_channel_viewers_query(
+            self, 
+            bearer_token,
+            table_id,
+            response = None
+            ) -> str:
         
         #Response from twitch API
         if response == None:

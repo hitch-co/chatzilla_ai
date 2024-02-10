@@ -118,7 +118,7 @@ def run_bot(TWITCH_BOT_ACCESS_TOKEN, config):
     #instantiate the class
     bot = Bot(
         TWITCH_BOT_ACCESS_TOKEN, 
-        yaml_data=config,
+        config=config,
         gpt_client=dependencies.gpt_client,
         bq_uploader=dependencies.bq_uploader,
         tts_client=dependencies.tts_client,

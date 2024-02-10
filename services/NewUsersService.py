@@ -1,17 +1,20 @@
 import asyncio
-import numpy as np
 import random
+
+from classes.ConfigManagerClass import ConfigManager
 
 from my_modules.my_logging import create_logger
 
-from services.ChatForMeService import ChatForMeService
-runtime_logger_level = 'DEBUG'
+runtime_logger_level = 'INFO'
 
 class NewUsersService:
     def __init__(
             self,
-            botclass
+            message_handler,
+            chatforme_service
             ):
+
+        self.config = ConfigManager.get_instance()
 
         self.logger = create_logger(
             dirname='log', 
@@ -26,11 +29,11 @@ class NewUsersService:
         self.newusers_ready_event = asyncio.Event()
         self.users_sent_messages_list = []
         
-        #Bot
-        self.botclass = botclass
-        
+        #message handler
+        self.message_handler = message_handler
+
         #chatforme 
-        self.chatforme_service = ChatForMeService(self.botclass)
+        self.chatforme_service = chatforme_service
 
     async def send_message_to_new_users(
             self,
@@ -56,14 +59,14 @@ class NewUsersService:
         #if no new/unique users found
         if current_user_names_str == 'no unique users' or len(users_not_yet_sent_message) == 0:
             self.logger.info("No users found, starting chat for me...")
-            newusers_nonewusers_prompt = self.botclass.yaml_data['newusers_nonewusers_prompt']
-            msg_history = self.botclass.message_handler.chatforme_msg_history 
+            newusers_nonewusers_prompt = self.config.newusers_nonewusers_prompt
+            msg_history = self.message_handler.chatforme_msg_history 
 
             try:
                 #Select prompt from argument and format replacements
                 random_letter = random.choice('abcdefghijklmnopqrstuvwxyz')
                 replacements_dict = {
-                    "wordcount_medium": self.botclass.wordcount_medium,
+                    "wordcount_medium": self.config.wordcount_medium,
                     "random_letter": random_letter
                     }
                 gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
@@ -79,7 +82,7 @@ class NewUsersService:
 
         #if new/unique users found
         elif len(users_not_yet_sent_message) > 0:      
-            new_users_prompt = self.botclass.yaml_data['newusers_msg_prompt']
+            new_users_prompt = self.config.newusers_msg_prompt
             self.logger.info("New users found, starting new users message...")
             self.logger.debug(f"Initial value of self.users_sent_messages_list: {self.users_sent_messages_list}")   
             random_new_user = await self._select_random_user(users_not_yet_sent_message)
@@ -88,7 +91,7 @@ class NewUsersService:
             try:
                 replacements_dict = {
                     "random_new_user":random_new_user,
-                    "wordcount_medium":self.botclass.wordcount_medium
+                    "wordcount_medium":self.config.wordcount_medium
                 }
                 gpt_response = await self.chatforme_service.make_singleprompt_gpt_response(
                     prompt_text=new_users_prompt,

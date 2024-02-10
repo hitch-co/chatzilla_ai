@@ -2,14 +2,13 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 import requests
 import traceback
 
-from my_modules.config import run_config
 from my_modules import my_logging
 from my_modules import utils
 
-runtime_logger_level = 'DEBUG'
+runtime_logger_level = 'INFO'
 
 class MessageHandler:
-    def __init__(self, config):
+    def __init__(self, msg_history_limit):
         self.logger = my_logging.create_logger(
             dirname='log', 
             logger_name='logger_MessageHandler',
@@ -17,10 +16,10 @@ class MessageHandler:
             mode='w',
             stream_logs=True
             )
-        self.logger.debug('MessageHandler initialized.')
+        self.msg_history_limit = msg_history_limit
 
-        # #run config
-        self.yaml_data = config
+        # Chatters endpoint
+        self.twitch_get_chatters_endpoint = 'https://api.twitch.tv/helix/chat/chatters'
 
         #Users in message history
         self.users_in_messages_list = []
@@ -34,6 +33,8 @@ class MessageHandler:
         self.ouat_msg_history = []
         self.chatforme_msg_history = []
         self.nonbot_temp_msg_history = []
+
+        self.logger.info('MessageHandler initialized.')
 
     def _get_message_metadata(self, message) -> None:
 
@@ -61,21 +62,27 @@ class MessageHandler:
         return message_metadata
 
     def _cleanup_message_history(self):
-        #cleanup msg histories for GPT
+        # Cleanup message histories for GPT
         message_histories = [
-            (self.ouat_msg_history, 15),
-            (self.chatforme_msg_history, 15),
-            (self.nonbot_temp_msg_history, 15),
-            (self.all_msg_history_gptdict, 25)
+            ("ouat_msg_history", self.ouat_msg_history, self.msg_history_limit),
+            ("chatforme_msg_history", self.chatforme_msg_history, self.msg_history_limit),
+            ("nonbot_temp_msg_history", self.nonbot_temp_msg_history, self.msg_history_limit),
+            ("all_msg_history_gptdict", self.all_msg_history_gptdict, self.msg_history_limit)
         ]
-        for msg_history, limit in message_histories:
+        for name, msg_history, limit in message_histories:
             self._pop_message_from_message_history(msg_history_list_dict=msg_history, msg_history_limit=limit)
-            self.logger.debug(f"Log history cleaned for message_histories: {message_histories}")
-    
+            if msg_history:
+                self.logger.debug(f"Log history cleaned for {name}. Preview of latest message:")
+                self.logger.debug(f"{msg_history[-1]}")
+            else:
+                self.logger.debug(f"{name}: No messages in history.")
+
     def _add_user_to_users_in_messages_list(self, message_metadata: dict) -> None:
         self.users_in_messages_list.append(message_metadata['name'])
         self.users_in_messages_list = list(set(self.users_in_messages_list))
 
+    #TODO: get_channel_viewers should probably be a separate helper
+    # module/function/class to work with the twitch API directly
     async def get_current_users_in_session(
             self, 
             bearer_token,
@@ -94,15 +101,19 @@ class MessageHandler:
             response_json = response.json()
             current_users_in_session = response_json['data'] #-> list[{user_id, user_login, user_name},{}] 
             
-            self.logger.debug(f"current_users_in_session: {current_users_in_session}")
+            self.logger.info(f"current_users_in_session: {current_users_in_session}")
             return current_users_in_session 
 
-    def _get_string_of_users(self, usernames_list) -> str:
+    #TODO: get_channel_viewers should probably be a separate helper
+    # module/function/class to work with the twitch API directly
+    def get_string_of_users(self, usernames_list) -> str:
         users_in_users_list = list(set([username for username in usernames_list]))
-        users_in_users_list_text = "', '".join(users_in_users_list)
-        self.logger.debug(f"These are the users in message list text: {users_in_users_list_text}")
+        users_in_users_list_text = "'"+", ".join(users_in_users_list)+"'"
+        self.logger.info(f"These are the users_in_message_list_text: {users_in_users_list_text}")
         return users_in_users_list_text
 
+    #TODO: get_channel_viewers should probably be a separate helper
+    # module/function/class to work with the twitch API directly
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
     async def _get_channel_viewers(
         self,
@@ -113,7 +124,7 @@ class MessageHandler:
         ) -> object:
         try:
             self.logger.debug(f'Getting channel viewers with bearer_token')
-            base_url=self.yaml_data['twitch-ouat']['twitch-get-chatters-endpoint']
+            base_url=self.twitch_get_chatters_endpoint
             params = {
                 'broadcaster_id': broadcaster_id,
                 'moderator_id': moderator_id
@@ -158,7 +169,7 @@ class MessageHandler:
             return 'unknown_name - see message.raw_data for details'
         else:
             message_extracted_name = message_rawdata[start_index:end_index]
-            self.logger.debug(f"This is the message_extracted_name: {message_extracted_name} and message.raw_data:")
+            self.logger.debug(f"This is the message_extracted_name: {message_extracted_name}:")
             self.logger.debug(message.raw_data)
             return message_extracted_name
 
@@ -179,8 +190,6 @@ class MessageHandler:
         return msg_history_list_dict
 
     def add_to_appropriate_message_history(self, message):
-        self.logger.info(f"----------------------------------")
-        
         #Grab and write metadata, add users to users list
         message_metadata = self._get_message_metadata(message)
 
@@ -218,8 +227,8 @@ class MessageHandler:
         #log 
         # self.logger.debug(f"message_history_raw:")
         # self.logger.debug(self.message_history_raw)
-        self.logger.debug(f"self.all_msg_history_gptdict:") 
-        self.logger.debug(self.all_msg_history_gptdict)
+        # self.logger.debug(f"self.all_msg_history_gptdict:") 
+        # self.logger.debug(self.all_msg_history_gptdict)
         # self.logger.debug("This is the gpt_ready_msg_dict")
         # self.logger.debug(gpt_ready_msg_dict)
 

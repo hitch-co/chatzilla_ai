@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import openai
 
 from my_modules.my_logging import create_logger
 from my_modules import gpt
@@ -9,8 +10,11 @@ runtime_logger_level = 'DEBUG'
 class ChatForMeService:
     def __init__(
             self,
-            botclass
+            tts_client,
+            send_channel_message
             ):
+        
+        self.send_channel_message = send_channel_message
 
         self.logger = create_logger(
             dirname='log', 
@@ -21,12 +25,8 @@ class ChatForMeService:
             encoding='UTF-8'
             )
 
-        # TODO: configuration
-        #
-        #
-
-        # bot class
-        self.botclass = botclass
+        # tts client
+        self.tts_client = tts_client
 
     async def _send_output_message_and_voice(
             self,
@@ -46,23 +46,21 @@ class ChatForMeService:
         """
         datetime_string = utils.get_datetime_formats()['filename_format']
         if incl_voice == 'yes':
-            # Generate speech object and create .mp3:
-            output_filename = "chatforme_"+"_"+datetime_string+"_"+self.botclass.config.tts_file_name
-            
-            # TODO: Does this class need botclass injected simply to get a tts_client??
-            self.botclass.tts_client.workflow_t2s(
+            # Generate speech object and generate speech object/mp3
+            output_filename = "chatforme_"+"_"+datetime_string+"_"+self.tts_client.tts_file_name
+            self.tts_client.workflow_t2s(
                 text_input=text,
                 voice_name=voice_name,
-                output_dirpath=self.botclass.config.tts_data_folder,
+                output_dirpath=self.tts_client.tts_data_folder,
                 output_filename=output_filename
                 )
 
         # TODO: Does this class need botclass injected simply to send messages? 
-        await self.botclass.channel.send(text)
+        await self.send_channel_message(text)
 
         if incl_voice == 'yes':
-            self.botclass.tts_client.play_local_mp3(
-                dirpath=self.botclass.config.tts_data_folder, 
+            self.tts_client.play_local_mp3(
+                dirpath=self.tts_client.tts_data_folder, 
                 filename=output_filename
                 )
             
@@ -111,6 +109,10 @@ class ChatForMeService:
             incl_voice=incl_voice,
             voice_name=voice_name
         )
+        
+        self.logger.debug(f"prompt_text (incl_voice: {incl_voice}): {prompt_text}")
+        self.logger.info(f"final prompt_text is: {prompt_text}")
+        self.logger.info(f"final gpt_response (incl_voice: {incl_voice}): {gpt_response}")
         return gpt_response
 
     async def make_msghistory_gpt_response(
@@ -137,11 +139,6 @@ class ChatForMeService:
         - str: The generated GPT response.
         
         """
-        self.logger.info(f"incl_voice: {incl_voice}")
-        self.logger.info(f"prompt_text: {prompt_text}")
-        self.logger.info(f"msg_history: {msg_history}")
-        self.logger.info(f"replacements_dict: {replacements_dict}")
-
         try:
             prompt_text = gpt.prompt_text_replacement(
                 gpt_prompt_text=prompt_text,
@@ -166,6 +163,11 @@ class ChatForMeService:
             incl_voice=incl_voice,
             voice_name=voice_name
         )
+
+        self.logger.debug(f"prompt_text (incl_voice: {incl_voice}): {prompt_text}")
+        self.logger.debug(f"msg_history (most recent 2 messages): {msg_history[-2:]}")
+        self.logger.info(f"final prompt_text is: {prompt_text}")
+        self.logger.info(f"final gpt_response (incl_voice: {incl_voice}): {gpt_response}")
         return gpt_response
 
     def combine_msghistory_and_prompttext(
@@ -212,10 +214,11 @@ class ChatForMeService:
             }]
             reformatted_msg_history_list_dict.append(prompt_dict)
             msg_history_list_dict_temp = reformatted_msg_history_list_dict
-            self.logger.debug(msg_history_list_dict_temp)
         else:
             msg_history_list_dict_temp.append(prompt_dict)
-            self.logger.debug(msg_history_list_dict_temp)
+
+        self.logger.debug(f"This is the most recent 2 messsages from msg_history_list_dict_temp:")
+        self.logger.debug(msg_history_list_dict_temp[-2:])
 
         utils.write_json_to_file(
             data=msg_history_list_dict_temp, 
@@ -234,19 +237,29 @@ class ChatForMeService:
         prompt_listdict = [{'role': prompt_text_role, 'content': f'{prompt_text}'}]
         return prompt_listdict
 
-async def main():
-    class botclass:
-        def __init__():
-            botclass.tts_data_folder = "data\\tts"
-            botclass.tts_file_name = "speech.mp3"
-            print(botclass.tts_file_name)
-    chatforme_service = ChatForMeService(botclass)
-    gpt_response = await chatforme_service.make_singleprompt_gpt_response(
-        prompt_text="hello how are you", 
-        replacements_dict=None
-        )
-    return gpt_response
+async def main(yaml_filepath):
+    print("main function")
+    # ConfigManager.initialize(yaml_filepath)
+    # config = ConfigManager.get_instance()
+
+    # openai_client = openai.OpenAI(
+    #     api_key=config.openai_api_key
+    #     )
+    # tts_client = GPTTextToSpeech(
+    #     openai_client=openai_client
+    #     )
+
+    # chatforme_service = ChatForMeService(
+    #     tts_client=tts_client,
+    #     send_channel_message=None
+    #     )
+    # gpt_response = await chatforme_service.make_singleprompt_gpt_response(
+    #     prompt_text="hello how are you", 
+    #     replacements_dict=None
+    #     )
+    # return gpt_response
 
 if __name__ == "__main__":
-    gpt_response = asyncio.run(main())
-    print(gpt_response)
+    yaml_filepath = r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml'
+    # gpt_response = asyncio.run(main(yaml_filepath))
+    # print(gpt_response)

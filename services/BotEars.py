@@ -5,7 +5,6 @@ import asyncio
 import json
 import os
 from collections import deque 
-from datetime import datetime
 
 from my_modules import my_logging, utils
 
@@ -19,8 +18,8 @@ class BotEars():
             self,
             config, 
             device_name,
-            event_loop, 
-            duration = 15, 
+            #event_loop, # Removed 2024-02-10       
+            buffer_length_seconds, 
             ):
         """
 
@@ -32,57 +31,57 @@ class BotEars():
             stream_logs=True
             )
         
-        self.yaml_data = config
+        self.config = config
         
         # Get the audio device details from the JSON file
-        self.logger.debug("self.yaml_data.app_config_dirpath: " + self.yaml_data.app_config_dirpath)
-        self.logger.debug("self.yaml_data.botears_devices_json_filepath: " + self.yaml_data.botears_devices_json_filepath)
+        self.logger.debug("self.config.app_config_dirpath: " + self.config.app_config_dirpath)
+        self.logger.debug("self.config.botears_devices_json_filepath: " + self.config.botears_devices_json_filepath)
         audio_devices = utils.load_json(
             self,
-            dir_path=self.yaml_data.app_config_dirpath,
-            file_name=self.yaml_data.botears_devices_json_filepath
+            dir_path=self.config.app_config_dirpath,
+            file_name=self.config.botears_devices_json_filepath
         )
         audio_device = audio_devices['audioDevices']['mic'][device_name]
-        self.logger.debug(json.dumps(audio_device, indent=4))
-        
-        # Load device details from audio_device dictionary
         self.samplerate = audio_device['samplerate']
         self.channels = audio_device['channels']
 
+        self.logger.debug(f"These are the json audio device details for {device_name}:")
+        self.logger.debug(json.dumps(audio_device, indent=4))
+
         # Load configuration data from YAML file.
-        self.botears_audio_filename = self.yaml_data.botears_audio_filename  
-        self.botears_device_audio = device_name
+        self.botears_audio_filename = self.config.botears_audio_filename  
 
         # initialize vars
-        self.duration = duration
+        self.buffer_length_seconds = buffer_length_seconds
 
         # initialize the audio stream
-        self.buffer = deque(maxlen=self.samplerate * duration * self.channels)
-        
-        self.loop = event_loop
+        self.buffer = deque(maxlen=buffer_length_seconds * self.samplerate * self.channels)
+
+        # Removed 2024-02-10        
+        # self.loop = event_loop
 
         # Set the audio device to use
         self.stream = sd.InputStream(
-            device=self.botears_device_audio,
-            callback=self.audio_callback, 
+            device=device_name,
+            callback=self._audio_callback, 
             samplerate=self.samplerate, 
             channels=self.channels
             )
 
-    def log_stream_state(self):
-        if self.stream.active:
-            self.logger.info("Stream is active.")
-        else:
-            self.logger.info("Stream is inactive.")
+    # def log_stream_state(self):
+    #     if self.stream.active:
+    #         self.logger.info("Stream is active.")
+    #     else:
+    #         self.logger.info("Stream is inactive.")
 
-    def find_device_index(device_name):
-        devices = sd.query_devices()
-        for index, device in enumerate(devices):
-            if device_name in device['name']:
-                return index
-        raise ValueError(f"Device {device_name} not found.")
+    # def find_device_index(device_name):
+    #     devices = sd.query_devices()
+    #     for index, device in enumerate(devices):
+    #         if device_name in device['name']:
+    #             return index
+    #     raise ValueError(f"Device {device_name} not found.")
 
-    def audio_callback(self, indata, frames, time, status):
+    def _audio_callback(self, indata, frames, time, status):
         """
         Callback function for the audio stream.
         """
@@ -98,12 +97,16 @@ class BotEars():
         except sd.PortAudioError as e:
             self.logger.error(f"Error starting audio stream: {e}")
     
-    async def save_last_n_seconds(self, filepath, n):
+    async def save_last_n_seconds(
+            self, 
+            filepath, 
+            saved_seconds
+            ):
         """
         Saves the last n seconds of audio to a file.
         """
         # Calculate the number of samples to keep
-        num_samples = n * self.samplerate * self.channels
+        num_samples = saved_seconds * self.samplerate * self.channels
 
         # Convert the buffer to a numpy array and reshape it
         audio_data = np.array(self.buffer).reshape(-1, self.channels)
@@ -115,6 +118,8 @@ class BotEars():
         # Save the most recent n seconds of audio
         sf.write(filepath, audio_data, self.samplerate)
 
+        self.logger.debug(f"Saved {saved_seconds} seconds of audio to: {filepath}")
+
 async def main():
 
     from classes.ConfigManagerClass import ConfigManager
@@ -122,8 +127,8 @@ async def main():
     config = ConfigManager.get_instance()
 
     # Get the audio device details from the JSON file
-    print("self.yaml_data.app_config_dirpath: " + config.app_config_dirpath)
-    print("self.yaml_data.botears_devices_json_filepath: " + config.botears_devices_json_filepath)
+    print("self.config.app_config_dirpath: " + config.app_config_dirpath)
+    print("self.config.botears_devices_json_filepath: " + config.botears_devices_json_filepath)
     
     audio_devices = load_json(
         dir_path=config.app_config_dirpath,
@@ -131,35 +136,36 @@ async def main():
     )
     device_name = "Microphone (Yeti Classic), MME"
     audio_device = audio_devices['audioDevices']['mic'][device_name]
+    print(f"These are the json audio device details for {device_name}:")
     print(json.dumps(audio_device, indent=4))
 
-    # Create an event loop
-    event_loop = asyncio.get_event_loop()
+    # Removed 2024-02-10      
+    # # Create an event loop
+    #event_loop = asyncio.get_event_loop()
 
     try:
         ears = BotEars(
             config=config,
             device_name=device_name,
-            event_loop=event_loop,
-            duration=4
+            #event_loop=event_loop, # Removed 2024-02-10      
+            buffer_length_seconds=4
         )
     except Exception as e:
         print(f"Error creating BotEars instance: {e}")
     
     # run asyncio loop
-    print("...starting stream")
-    ears.start_stream()
+    await ears.start_stream()
 
     # wait for 5 seconds
-    print("...sleeping app ")
+    print("...sleeping app.  This is not done in the class itself as the audio  \
+          stream is running constantly.  This is just to simulate the app running.")
     await asyncio.sleep(5)
 
     # save the last n seconds of audio to a file
-    print("...saving audio")
     filename = os.path.join(config.botears_audio_path, config.botears_audio_filename + ".wav")
     await ears.save_last_n_seconds(
         filepath=filename,
-        n=2
+        n=4
         )
 
 def load_json(
@@ -168,7 +174,6 @@ def load_json(
         ):
     file_path = os.path.join(dir_path, file_name)
     
-    #Add Error Checkign
     if not os.path.exists(file_path):
         return None
     

@@ -1,5 +1,7 @@
 import asyncio
 
+from classes.ConfigManagerClass import ConfigManager
+
 from my_modules.gpt import openai_gpt_chatcompletion, prompt_text_replacement, combine_msghistory_and_prompttext
 from my_modules.my_logging import create_logger
 
@@ -7,8 +9,7 @@ runtime_logger_level = 'DEBUG'
 
 class VibeCheckService:
     def __init__(
-            self, 
-            yaml_config, 
+            self,
             message_handler, 
             vibechecker_players,
             send_channel_message
@@ -22,6 +23,9 @@ class VibeCheckService:
             stream_logs=True,
             encoding='UTF-8'
             )
+
+        # Config
+        self.config = ConfigManager.get_instance()
 
         #create vc event
         self.vibecheck_ready_event = asyncio.Event()
@@ -39,15 +43,15 @@ class VibeCheckService:
         self.vibecheckee_username = vibechecker_players['vibecheckee_username']
         self.vibechecker_username = vibechecker_players['vibechecker_username']
         self.vibecheckbot_username = vibechecker_players['vibecheckbot_username']
-        self.vibecheck_message_wordcount = yaml_config.vibechecker_message_wordcount
-        self.vibechecker_max_interaction_count = yaml_config.vibechecker_max_interaction_count
-        self.vibechecker_question_session_sleep_time = yaml_config.vibechecker_question_session_sleep_time
-        self.vibechecker_listener_sleep_time = yaml_config.vibechecker_listener_sleep_time
+        self.vibecheck_message_wordcount = self.config.vibechecker_message_wordcount
+        self.vibechecker_max_interaction_count = self.config.vibechecker_max_interaction_count
+        self.vibechecker_question_session_sleep_time = self.config.vibechecker_question_session_sleep_time
+        self.vibechecker_listener_sleep_time = self.config.vibechecker_listener_sleep_time
 
         #prompts
-        self.formatted_gpt_vibecheck_prompt = yaml_config.formatted_gpt_vibecheck_prompt
-        self.formatted_gpt_viberesult_prompt =  yaml_config.formatted_gpt_viberesult_prompt
-        self.formatted_gpt_vibecheck_alert = yaml_config.formatted_gpt_vibecheck_alert
+        self.formatted_gpt_vibecheck_prompt = self.config.formatted_gpt_vibecheck_prompt
+        self.formatted_gpt_viberesult_prompt =  self.config.formatted_gpt_viberesult_prompt
+        self.formatted_gpt_vibecheck_alert = self.config.formatted_gpt_vibecheck_alert
 
     def start_vibecheck_session(self):
         self.is_vibecheck_loop_active = True
@@ -71,6 +75,9 @@ class VibeCheckService:
 
         self.vibecheckee_username = None
         self.is_vibecheck_loop_active = False
+
+        # NOTE: Unsure why this is needed, removed it so an instance of botclass
+        #  doesn't need to be passed  
         # if hasattr(self.botclass, 'vibecheck_service'):
         #     self.botclass.vibecheck_service = None
         self.logger.debug("General cleanup of vibecheckee_username/loop status and vibecheck service completed")

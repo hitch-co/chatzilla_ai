@@ -2,9 +2,6 @@ import asyncio
 import copy
 import openai
 
-from classes.ConfigManagerClass import ConfigManager
-from classes.GPTTextToSpeechClass import GPTTextToSpeech
-
 from my_modules.my_logging import create_logger
 from my_modules import gpt
 from my_modules import utils
@@ -18,8 +15,6 @@ class ChatForMeService:
             ):
         
         self.send_channel_message = send_channel_message
-        
-        self.config = ConfigManager.get_instance()
 
         self.logger = create_logger(
             dirname='log', 
@@ -52,11 +47,11 @@ class ChatForMeService:
         datetime_string = utils.get_datetime_formats()['filename_format']
         if incl_voice == 'yes':
             # Generate speech object and generate speech object/mp3
-            output_filename = "chatforme_"+"_"+datetime_string+"_"+self.config.tts_file_name
+            output_filename = "chatforme_"+"_"+datetime_string+"_"+self.tts_client.tts_file_name
             self.tts_client.workflow_t2s(
                 text_input=text,
                 voice_name=voice_name,
-                output_dirpath=self.config.tts_data_folder,
+                output_dirpath=self.tts_client.tts_data_folder,
                 output_filename=output_filename
                 )
 
@@ -65,7 +60,7 @@ class ChatForMeService:
 
         if incl_voice == 'yes':
             self.tts_client.play_local_mp3(
-                dirpath=self.config.tts_data_folder, 
+                dirpath=self.tts_client.tts_data_folder, 
                 filename=output_filename
                 )
             
@@ -114,6 +109,10 @@ class ChatForMeService:
             incl_voice=incl_voice,
             voice_name=voice_name
         )
+        
+        self.logger.debug(f"prompt_text (incl_voice: {incl_voice}): {prompt_text}")
+        self.logger.info(f"final prompt_text is: {prompt_text}")
+        self.logger.info(f"final gpt_response (incl_voice: {incl_voice}): {gpt_response}")
         return gpt_response
 
     async def make_msghistory_gpt_response(
@@ -140,11 +139,6 @@ class ChatForMeService:
         - str: The generated GPT response.
         
         """
-        self.logger.info(f"incl_voice: {incl_voice}")
-        self.logger.info(f"prompt_text: {prompt_text}")
-        self.logger.info(f"msg_history: {msg_history}")
-        self.logger.info(f"replacements_dict: {replacements_dict}")
-
         try:
             prompt_text = gpt.prompt_text_replacement(
                 gpt_prompt_text=prompt_text,
@@ -169,6 +163,11 @@ class ChatForMeService:
             incl_voice=incl_voice,
             voice_name=voice_name
         )
+
+        self.logger.debug(f"prompt_text (incl_voice: {incl_voice}): {prompt_text}")
+        self.logger.debug(f"msg_history (most recent 2 messages): {msg_history[-2:]}")
+        self.logger.info(f"final prompt_text is: {prompt_text}")
+        self.logger.info(f"final gpt_response (incl_voice: {incl_voice}): {gpt_response}")
         return gpt_response
 
     def combine_msghistory_and_prompttext(
@@ -215,10 +214,11 @@ class ChatForMeService:
             }]
             reformatted_msg_history_list_dict.append(prompt_dict)
             msg_history_list_dict_temp = reformatted_msg_history_list_dict
-            self.logger.debug(msg_history_list_dict_temp)
         else:
             msg_history_list_dict_temp.append(prompt_dict)
-            self.logger.debug(msg_history_list_dict_temp)
+
+        self.logger.debug(f"This is the most recent 2 messsages from msg_history_list_dict_temp:")
+        self.logger.debug(msg_history_list_dict_temp[-2:])
 
         utils.write_json_to_file(
             data=msg_history_list_dict_temp, 
@@ -246,8 +246,7 @@ async def main(yaml_filepath):
     #     api_key=config.openai_api_key
     #     )
     # tts_client = GPTTextToSpeech(
-    #     openai_client=openai_client,
-    #     config=config
+    #     openai_client=openai_client
     #     )
 
     # chatforme_service = ChatForMeService(

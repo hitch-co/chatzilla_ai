@@ -196,10 +196,11 @@ def combine_msghistory_and_prompttext(
         }]
         reformatted_msg_history_list_dict.append(prompt_dict)
         msg_history_list_dict_temp = reformatted_msg_history_list_dict
-        logger.debug(msg_history_list_dict_temp)
     else:
         msg_history_list_dict_temp.append(prompt_dict)
-        logger.debug(msg_history_list_dict_temp)
+
+    logger.debug(f"This is the 2 most recent messages in msg_history_list_dict_temp:")
+    logger.debug(msg_history_list_dict_temp[-2:])
 
     utils.write_json_to_file(
         data=msg_history_list_dict_temp, 

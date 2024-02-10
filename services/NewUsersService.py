@@ -1,13 +1,11 @@
 import asyncio
-import numpy as np
 import random
+
+from classes.ConfigManagerClass import ConfigManager
 
 from my_modules.my_logging import create_logger
 
-from services.ChatForMeService import ChatForMeService
-from classes.ConfigManagerClass import ConfigManager
-
-runtime_logger_level = 'DEBUG'
+runtime_logger_level = 'INFO'
 
 class NewUsersService:
     def __init__(

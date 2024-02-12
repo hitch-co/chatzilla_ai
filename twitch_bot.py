@@ -9,7 +9,6 @@ from classes.ConfigManagerClass import ConfigManager
 ConfigManager.initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
 
 from classes.TwitchBotClass import Bot
-from classes.ArgsConfigManagerClass import ArgsConfigManager
 from config.DependencyInjector import DependencyInjector
 
 from my_modules.my_logging import create_logger
@@ -29,6 +28,7 @@ TWITCH_CHATFORME_BOT_THREAD = None
 # Grab the config
 config = ConfigManager.get_instance()
 
+config.input_port_number = str(config.input_port_number)
 twitch_bot_redirect_path = config.twitch_bot_redirect_path
 TWITCH_BOT_CLIENT_ID = config.twitch_bot_client_id
 TWITCH_BOT_CLIENT_SECRET = config.twitch_bot_client_secret
@@ -36,7 +36,6 @@ TWITCH_BOT_SCOPE = config.twitch_bot_scope
 
 # Initialize Flask app
 app = Flask(__name__)
-args_config = ArgsConfigManager()
 
 #App route home
 @app.route('/')
@@ -47,8 +46,7 @@ def hello_world():
 @app.route('/auth')
 def auth():
     base_url_auth = 'https://id.twitch.tv/oauth2/authorize'
-    input_port_number = str(args_config.input_port_number)
-    redirect_uri = f'http://localhost:{input_port_number}/{twitch_bot_redirect_path}'
+    redirect_uri = f'http://localhost:{config.input_port_number}/{twitch_bot_redirect_path}'
     params_auth = f'?response_type=code&client_id={TWITCH_BOT_CLIENT_ID}&redirect_uri={redirect_uri}&scope={TWITCH_BOT_SCOPE}&state={uuid.uuid4().hex}'
     url = base_url_auth+params_auth
     root_logger.info(f"Generated redirect_uri: {redirect_uri}")
@@ -60,8 +58,7 @@ def callback():
     global TWITCH_CHATFORME_BOT_THREAD  # declare the variable as global inside the function
    
     # Runtime args
-    input_port_number = str(args_config.input_port_number)
-    redirect_uri = f'http://localhost:{input_port_number}/{twitch_bot_redirect_path}'
+    redirect_uri = f'http://localhost:{config.input_port_number}/{twitch_bot_redirect_path}'
     
     # Args in response
     code = request.args.get('code')
@@ -126,7 +123,7 @@ def run_bot(TWITCH_BOT_ACCESS_TOKEN, config):
 #NOTE: When /callback is hit, new bot instance is started.   
 if __name__ == "__main__":
     app.run(
-        port=args_config.input_port_number, 
+        port=config.input_port_number, 
         debug=True, 
         use_reloader=use_reloader_bool
         )

@@ -97,29 +97,13 @@ class ConfigManager:
             self.openai_api_key = os.getenv('OPENAI_API_KEY')
             
             # Load and set runtime parameters from environment variables set in .bat
-            self.include_ouat = os.getenv("include_ouat", "yes")
-            self.include_automsg = os.getenv("include_automsg", "no")
-            self.include_sound = os.getenv("include_sound", "no")
             self.input_port_number = os.getenv("input_port_number", 3000)
-            self.prompt_list_ouat = os.getenv("prompt_list_ouat", "newsarticle_dynamic")
-            self.prompt_list_automsg = os.getenv("prompt_list_automsg", "videogames")
-            self.prompt_list_chatforme = os.getenv("prompt_list_chatforme", "standard")
 
             # Load twitch bot and mod identifiers
             self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
             self.twitch_bot_moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
             self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
             self.twitch_bot_client_secret = os.getenv('TWITCH_BOT_CLIENT_SECRET')
-
-            # Load runtime parameters from .bat
-            self.include_ouat = os.getenv("include_ouat", "yes")
-            self.include_automsg = os.getenv("include_automsg", "no")
-            self.include_sound = os.getenv("include_sound", "yes")
-            self.prompt_list_name_ouat = os.getenv("prompt_list_ouat", "newsarticle_dynamic")
-            self.prompt_list_name_automsg = os.getenv("prompt_list_automsg", "videogames")
-            self.prompt_list_chatforme = os.getenv("prompt_list_chatforme", "standard")
-            self.prompt_list_name_botthot = os.getenv("prompt_list_botthot", "standard")
-            self.input_port_number = int(os.getenv("input_port_number", 3000))
                     
         except Exception as e:
             self.logger.error(f"Error in update_config_from_env(): {e}")

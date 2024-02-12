@@ -1,15 +1,12 @@
-
-# NOTE: Setup Configurations (NEW METHOD, thsi is the new way forward...)
-from classes.ConfigManagerClass import ConfigManager
-ConfigManager.initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
-
 import uuid
 import requests
 import os
 import asyncio
 from threading import Thread
-
 from flask import Flask, request
+
+from classes.ConfigManagerClass import ConfigManager
+ConfigManager.initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
 
 from classes.TwitchBotClass import Bot
 from classes.ArgsConfigManagerClass import ArgsConfigManager

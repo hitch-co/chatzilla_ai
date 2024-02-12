@@ -54,6 +54,7 @@ class Bot(twitch_commands.Bot):
 
         #TODO: Next up, make this work...
         self.config = config
+        
         # dependencies instances
         self.gpt_client = gpt_client
         self.bq_uploader = bq_uploader 

@@ -55,9 +55,6 @@ class Bot(twitch_commands.Bot):
         #TODO: Next up, make this work...
         self.config = config
         
-        #start OUAT loop
-        self.loop = asyncio.get_event_loop()
-
         # dependencies instances
         self.gpt_client = gpt_client
         self.bq_uploader = bq_uploader 

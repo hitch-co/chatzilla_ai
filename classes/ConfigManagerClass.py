@@ -88,16 +88,20 @@ class ConfigManager:
             if os.path.exists(env_path):
                 dotenv.load_dotenv(env_path)
                 self.update_config_from_env()
+                self.update_config_from_env_set_at_runtime()
                 #TODO: self.other_update_from_env()
             else:
                 self.logger.error(f".env file not found at {env_path}")
 
+    def update_config_from_env_set_at_runtime(self):
+        try:
+            self.input_port_number = str(os.getenv("input_port_number", 3000))
+        except Exception as e:
+            self.logger.error(f"Error in update_config_from_env_set_at_runtime(): {e}")
+
     def update_config_from_env(self):
         try:
             self.openai_api_key = os.getenv('OPENAI_API_KEY')
-            
-            # Load and set runtime parameters from environment variables set in .bat
-            self.input_port_number = os.getenv("input_port_number", 3000)
 
             # Load twitch bot and mod identifiers
             self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
@@ -158,6 +162,7 @@ class ConfigManager:
 
     def yaml_twitchbot_config(self, yaml_config):
         try:
+            self.twitch_bot_gpt_hello_world = yaml_config['twitch-app']['twitch_bot_gpt_hello_world']
             self.twitch_bot_channel_name = yaml_config['twitch-app']['twitch_bot_channel_name']
             self.twitch_bot_username = yaml_config['twitch-app']['twitch_bot_username']
             self.twitch_bot_display_name = yaml_config['twitch-app']['twitch_bot_display_name']

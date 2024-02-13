@@ -34,6 +34,15 @@ def create_gpt_client():
     client = openai.OpenAI(api_key = config.openai_api_key)
     return client
 
+def _strip_prefix(text):
+    # Regular expression pattern to match the prefix <<<[some_name]>>>:
+    pattern = r'^<<<[^>]+>>>:'
+    
+    # Use re.sub() to replace the matched pattern with an empty string
+    stripped_text = re.sub(pattern, '', text, count=1)
+    
+    return stripped_text
+
 # call to chat gpt for completion TODO: Could add  limits here?
 def openai_gpt_chatcompletion(
         messages_dict_gpt:list[dict],
@@ -140,6 +149,9 @@ def openai_gpt_chatcompletion(
         logger.error(message)        
         raise Exception(message)
 
+    # Strip the prefix from the response
+    gpt_response_text = _strip_prefix(gpt_response_text)
+    
     return gpt_response_text
 
 def prompt_text_replacement(gpt_prompt_text,

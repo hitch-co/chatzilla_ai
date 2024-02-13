@@ -142,22 +142,26 @@ class Bot(twitch_commands.Bot):
 
     async def event_ready(self):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
-        print(f'TwitchBot ready | {self.config.twitch_bot_username} (nick:{self.nick})')
+        self.logger.info(f'TwitchBot ready | {self.config.twitch_bot_username} (nick:{self.nick})')
 
         # initialize the event loop
+        self.logger.debug(f"Initializing event loop")
         self.loop = asyncio.get_event_loop()
 
         # start OUAT loop
+        self.logger.debug(f"Starting OUAT loop")
         self.loop.create_task(self.ouat_storyteller())
 
         # Start bot ears streaming
+        self.logger.debug(f"Starting bot ears streaming")
         self.loop.create_task(self.bot_ears.start_stream())
 
         # start newusers loop
+        self.logger.debug(f"Starting newusers loop")
         self.loop.create_task(self.send_message_to_new_users_task())
 
         # Say hello to the chat 
-        if self.config.gpt_hello_world == True:
+        if self.config.twitch_bot_gpt_hello_world == True:
             replacements_dict = {
                 "helloworld_message_wordcount":self.config.helloworld_message_wordcount,
                 'twitch_bot_display_name':self.config.twitch_bot_display_name,

@@ -394,9 +394,8 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='startstory')
     async def startstory(self, message, *args):
-        self.ouat_counter += 1
-
-        if self.ouat_counter == 1:
+        if self.ouat_counter == 0:
+            self.ouat_counter += 1
             self.message_handler.ouat_msg_history.clear()
             user_requested_plotline_str = ' '.join(args)
             self.current_story_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
@@ -522,12 +521,13 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='addtostory')
     async def add_to_story_ouat(self, ctx,  *args):
+        self.ouat_counter = self.config.ouat_story_progression_number
         author=ctx.message.author.name
         prompt_text = ' '.join(args)
         prompt_text_prefix = f"{self.config.ouat_prompt_addtostory_prefix}:'{prompt_text}'"
         
         #workflow1: get gpt_ready_msg_dict and add message to message history        
-        gpt_ready_msg_dict = self.message_handler._create_gpt_message_dict_from_strings(
+        gpt_ready_msg_dict = self.message_handler.create_gpt_message_dict_from_strings(
             content=prompt_text_prefix,
             role='user',
             name=author

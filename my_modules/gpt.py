@@ -36,10 +36,10 @@ def create_gpt_client():
 
 def _strip_prefix(text):
     # Regular expression pattern to match the prefix <<<[some_name]>>>:
-    pattern = r'^<<<[^>]+>>>:'
+    pattern = r'<<<[^>]*>>>'
     
     # Use re.sub() to replace the matched pattern with an empty string
-    stripped_text = re.sub(pattern, '', text, count=1)
+    stripped_text = re.sub(pattern, '', text)
     
     return stripped_text
 

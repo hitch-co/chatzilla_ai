@@ -74,7 +74,7 @@ class NewUsersService:
                     replacements_dict=replacements_dict,
                     msg_history=msg_history
                 )
-                self.logger.debug(f"'chatforme' completed successfully with response: {gpt_response}.")
+                self.logger.debug(f"NewUsers' 'chatforme' action completed (Using letter: '{random_letter}') successfully with response: {gpt_response}.")
                 return  
            
             except Exception as e:

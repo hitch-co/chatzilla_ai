@@ -147,7 +147,7 @@ class VibeCheckService:
                     gpt_response = openai_gpt_chatcompletion(
                         messages_dict_gpt=vibecheckee_message_dict
                         )  
-                    gpt_response_dict = self.message_handler._create_gpt_message_dict_from_strings(
+                    gpt_response_dict = self.message_handler.create_gpt_message_dict_from_strings(
                         content = gpt_response,
                         role = 'system',
                         name = self.vibecheckbot_username

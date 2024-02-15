@@ -173,10 +173,12 @@ class MessageHandler:
             self.logger.debug(message.raw_data)
             return message_extracted_name
 
-    def _create_gpt_message_dict_from_strings(self,
-                                             content,
-                                             role='user',
-                                             name='unknown'):
+    def create_gpt_message_dict_from_strings(
+            self,
+            content,
+            role='user',
+            name='unknown'
+            ):
         if role == 'system':
             gpt_ready_msg_dict = {'role': role, 'content': f'{content}'}
         if role in ['user','assistant']:
@@ -206,7 +208,7 @@ class MessageHandler:
         self.logger.info(f"message content: {message_content}")
 
         #Create gpt message dict
-        gpt_ready_msg_dict = self._create_gpt_message_dict_from_strings(
+        gpt_ready_msg_dict = self.create_gpt_message_dict_from_strings(
             role=message_role,
             name=message_username,
             content=message_content

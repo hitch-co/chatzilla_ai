@@ -17,7 +17,6 @@ app = Flask(__name__)
 
 # Load configuration
 config = ConfigManager.get_instance()
-print(f"config.twitch_bot_gpt_hello_world: {config.twitch_bot_gpt_hello_world}")
 
 # Setup logger
 logger = create_logger(

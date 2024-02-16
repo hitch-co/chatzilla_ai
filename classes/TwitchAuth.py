@@ -1,6 +1,7 @@
 import os
 import requests
 import uuid
+import json
 from urllib.parse import urlencode
 
 class TwitchAuth:
@@ -20,7 +21,7 @@ class TwitchAuth:
         self.logger.info(f"Generated Twitch auth URL: {url}")
         return url
 
-    def handle_auth_callback(self, code):
+    def get_response_object(self, code):
         data = {
             'client_id': self.config.twitch_bot_client_id,
             'client_secret': self.config.twitch_bot_client_secret,
@@ -29,7 +30,12 @@ class TwitchAuth:
             'redirect_uri': f'http://localhost:{self.config.input_port_number}/{self.config.twitch_bot_redirect_path}'
         }
         response = requests.post('https://id.twitch.tv/oauth2/token', data=data)
+        return response
 
+    def handle_auth_callback(self, response):
+        self.logger.debug("This is the response from Twitch.  Dump it")
+        self.logger.debug(json.dumps(response.json(), indent=4))
+        
         if response.status_code == 200:
             tokens = response.json()
             os.environ["TWITCH_BOT_ACCESS_TOKEN"] = tokens['access_token']

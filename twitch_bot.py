@@ -50,7 +50,9 @@ def callback():
         return "Error during authentication."
 
     # Exchange code for tokens and start bot thread
-    success, message = twitch_auth.handle_auth_callback(code)
+    response = twitch_auth.get_response_object(code)
+    success, message = twitch_auth.handle_auth_callback(response)
+
     if success:
         twitch_bot_manager.start_bot_thread()
     return message

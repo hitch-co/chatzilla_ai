@@ -17,6 +17,11 @@ class DependencyInjector:
             )
         return gpt_client
 
+    # # NiU: Optoinal instaed of creating client inside of BQUploader()
+    # def create_bq_client(self)
+    #     bq_client = bigquery.Client()
+    #     return bq_client
+    
     def create_bq_uploader(self):
         return BQUploader()
 

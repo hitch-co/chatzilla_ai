@@ -6,7 +6,7 @@ ConfigManager.initialize(yaml_filepath=yaml_filepath)
 from flask import Flask, redirect, request, url_for
 
 from classes.TwitchAuth import TwitchAuth
-from classes.BotThread import TwitchBotManager
+from classes.TwitchBotManager import TwitchBotManager
 from my_modules.my_logging import create_logger
 
 use_reloader_bool = False
@@ -30,7 +30,7 @@ logger = create_logger(
 twitch_bot_manager = TwitchBotManager(config, logger)
 
 # Twitch authentication helper
-twitch_auth = TwitchAuth(config=config, logger=logger)
+twitch_auth = TwitchAuth(config=config)
 
 @app.route('/')
 def index():
@@ -54,7 +54,7 @@ def callback():
     success, message = twitch_auth.handle_auth_callback(response)
 
     if success:
-        twitch_bot_manager.start_bot_thread()
+        twitch_bot_manager.start_bot(twitch_auth)
     return message
 
 if __name__ == "__main__":

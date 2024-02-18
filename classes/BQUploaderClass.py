@@ -145,7 +145,7 @@ class BQUploader:
         self.logger.debug(merge_query)
         return merge_query
 
-    def fetch_users(self, table_id):
+    def fetch_users(self, table_id) -> list[dict]:
         query = f"""
         SELECT user_id, user_login, user_name
         FROM `{table_id}`

@@ -89,7 +89,7 @@ class MessageHandler:
             broadcaster_id,
             moderator_id,
             twitch_bot_client_id
-            ):
+            ) -> list[dict]:
 
             #Get response/data
             response = await self._get_channel_viewers(
@@ -99,7 +99,7 @@ class MessageHandler:
                 twitch_bot_client_id=twitch_bot_client_id
             )
             response_json = response.json()
-            current_users_in_session = response_json['data'] #-> list[{user_id, user_login, user_name},{}] 
+            current_users_in_session = response_json['data']
             
             self.logger.info(f"current_users_in_session: {current_users_in_session}")
             return current_users_in_session 

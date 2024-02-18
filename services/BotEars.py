@@ -18,7 +18,6 @@ class BotEars():
             self,
             config, 
             device_name,
-            #event_loop, # Removed 2024-02-10       
             buffer_length_seconds, 
             ):
         """

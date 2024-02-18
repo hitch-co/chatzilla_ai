@@ -42,7 +42,6 @@ class Bot(twitch_commands.Bot):
             prefix='!',
             initial_channels=[config.twitch_bot_channel_name],
             nick = 'chatzilla_ai'
-            #NOTE/QUESTION:what other variables should be set here?
         )
 
         #setup logger
@@ -302,7 +301,6 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='discord')
     async def discord(self, ctx):
         await self.send_channel_message_wrapper("ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")
-
 
     @twitch_commands.command(name='updatetodo')
     async def updatetodo(self, ctx, *args):

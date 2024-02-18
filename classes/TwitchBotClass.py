@@ -5,6 +5,7 @@ import random
 import re
 import os
 import inspect
+import time
 
 from my_modules.my_logging import create_logger
 from my_modules import utils
@@ -26,15 +27,17 @@ class Bot(twitch_commands.Bot):
 
     def __init__(
             self, 
-            TWITCH_BOT_ACCESS_TOKEN, 
             config, 
             gpt_client, 
             bq_uploader, 
             tts_client,  
-            message_handler
+            message_handler,
+            twitch_auth
             ):
+        self.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
+        
         super().__init__(
-            token=TWITCH_BOT_ACCESS_TOKEN,
+            token=self.twitch_bot_access_token,
             name=config.twitch_bot_username,
             prefix='!',
             initial_channels=[config.twitch_bot_channel_name],
@@ -91,7 +94,7 @@ class Bot(twitch_commands.Bot):
         self.s2t_service = SpeechToTextService()
         
         #Taken from app authentication class()
-        self.TWITCH_BOT_ACCESS_TOKEN = TWITCH_BOT_ACCESS_TOKEN
+        self.twitch_auth = twitch_auth
 
         # required config/files
         self.command_spellecheck_terms = utils.load_json(
@@ -149,7 +152,7 @@ class Bot(twitch_commands.Bot):
         self.loop = asyncio.get_event_loop()
 
         # start OUAT loop
-        self.logger.debug(f"Starting OUAT loop")
+        self.logger.debug(f"Starting OUAT service")
         self.loop.create_task(self.ouat_storyteller())
 
         # Start bot ears streaming
@@ -157,8 +160,12 @@ class Bot(twitch_commands.Bot):
         self.loop.create_task(self.bot_ears.start_stream())
 
         # start newusers loop
-        self.logger.debug(f"Starting newusers loop")
+        self.logger.debug(f"Starting newusers service")
         self.loop.create_task(self.send_message_to_new_users_task())
+
+        # start authentication refresh loop
+        self.logger.debug('Starting the refresh token service')
+        self.loop.create_task(self.token_refresh_task())
 
         # Say hello to the chat 
         if self.config.twitch_bot_gpt_hello_world == True:
@@ -177,8 +184,22 @@ class Bot(twitch_commands.Bot):
                 )
             self.logger.debug(f"This is the final gpt response for the hello_world: {gpt_response}")
 
-    async def event_message(self, message):
+    async def token_refresh_task(self):
+        while True:
+            try:
+                if self.twitch_auth.access_token_expiry <= time.time():
+                    self.logger.warning(f"Access Token near expiry, generating new access token using the refresh token...")
+                    response = await self.twitch_auth.refresh_access_token()
+                    tokens = response.json()
+                    self.twitch_auth.access_token_expiry = time.time() (int(tokens['expires_in'])-3600)
+                    self.twitch_auth.handle_auth_callback(response)
+                else:
+                    self.logger.debug("Access token not nearing expiry. No need to refresh")
+            except Exception as e:
+                self.logger.error(f"Failed to refresh Twitch access token: {e}")
+            await asyncio.sleep(1800)
 
+    async def event_message(self, message):
         def clean_message_content(content, command_spellings):
             for correct_command, misspellings in command_spellings.items():
                 for misspelled in misspellings:
@@ -203,7 +224,7 @@ class Bot(twitch_commands.Bot):
         # 3. Get chatter data, store in queue, generate query for sending to BQ
         channel_viewers_queue_query = self.bq_uploader.get_process_queue_create_channel_viewers_query(
             table_id=self.userdata_table_id,
-            bearer_token=self.TWITCH_BOT_ACCESS_TOKEN
+            bearer_token=self.twitch_bot_access_token
             )
 
         # 4. Send the data to BQ when queue is full.  Clear queue when done
@@ -561,7 +582,7 @@ class Bot(twitch_commands.Bot):
             #TODO: get_current_users_in_session should be a method of the 
             # NewUsersService or a twitch specific service
             current_users_list = await self.message_handler.get_current_users_in_session(
-                bearer_token = self.TWITCH_BOT_ACCESS_TOKEN,
+                bearer_token = self.twitch_bot_access_token,
                 broadcaster_id = self.broadcaster_id,
                 moderator_id = self.moderator_id,
                 twitch_bot_client_id = self.twitch_bot_client_id

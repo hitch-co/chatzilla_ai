@@ -35,9 +35,6 @@ class BQUploader:
 
         # chatters endpoint
         self.twitch_get_chatters_endpoint = 'https://api.twitch.tv/helix/chat/chatters'
-        
-        #Originally Set in twitch_bot.py after authentication
-        self.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
 
         #Build the client
         self.bq_client = bigquery.Client()

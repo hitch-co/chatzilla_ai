@@ -106,7 +106,9 @@ class Bot(twitch_commands.Bot):
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = self.config.google_application_credentials_file
         
         #Get historic stream viewers
-        self.historic_users_at_start_of_session = self.bq_uploader.fetch_users(self.config.talkzillaai_userdata_table_id)
+        self.historic_users_at_start_of_session = self.bq_uploader.fetch_usernames_as_list(
+            self.config.talkzillaai_userdata_table_id
+            )
 
         #Set default loop state
         self.is_ouat_loop_active = False

@@ -145,7 +145,7 @@ class BQUploader:
         self.logger.debug(merge_query)
         return merge_query
 
-    def fetch_users(self, table_id) -> list[dict]:
+    def fetch_users_details_as_dict(self, table_id) -> list[dict]:
         query = f"""
         SELECT user_id, user_login, user_name
         FROM `{table_id}`
@@ -162,6 +162,19 @@ class BQUploader:
                 "user_login": row.user_login,
                 "user_name": row.user_name
             })
+
+        return results
+    
+    def fetch_usernames_as_list(self, table_id) -> list[str]:
+        query = f"""
+        SELECT user_name FROM `{table_id}`
+        """
+
+        # Execute the query
+        query_job = self.bq_client.query(query)
+
+        # Process the results
+        results = [row.user_name for row in query_job]
 
         return results
 

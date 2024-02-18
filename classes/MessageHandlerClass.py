@@ -83,7 +83,7 @@ class MessageHandler:
 
     #TODO: get_channel_viewers should probably be a separate helper
     # module/function/class to work with the twitch API directly
-    async def get_current_users_in_session(
+    async def get_current_users_listdict(
             self, 
             bearer_token,
             broadcaster_id,
@@ -103,6 +103,30 @@ class MessageHandler:
             
             self.logger.info(f"current_users_in_session: {current_users_in_session}")
             return current_users_in_session 
+
+    #TODO: get_channel_viewers should probably be a separate helper
+    # module/function/class to work with the twitch API directly
+    async def get_current_user_names_list(
+            self, 
+            bearer_token,
+            broadcaster_id,
+            moderator_id,
+            twitch_bot_client_id
+            ) -> list[str]:
+
+            #Get response/data
+            response = await self._get_channel_viewers(
+                bearer_token=bearer_token,
+                broadcaster_id=broadcaster_id,
+                moderator_id=moderator_id,
+                twitch_bot_client_id=twitch_bot_client_id
+            )
+            response_json = response.json()
+            current_users_in_session = response_json['data']
+            
+            current_user_names = [user['user_login'] for user in current_users_in_session]
+            self.logger.info(f"current_user_names: {current_user_names}")
+            return current_user_names 
 
     #TODO: get_channel_viewers should probably be a separate helper
     # module/function/class to work with the twitch API directly

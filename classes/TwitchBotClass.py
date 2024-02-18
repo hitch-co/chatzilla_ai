@@ -72,10 +72,7 @@ class Bot(twitch_commands.Bot):
 
         # TODO: Could be a good idea to inject these dependencies into the services
         # instantiate the NewUsersService
-        self.newusers_service = NewUsersService(
-            message_handler=self.message_handler,
-            chatforme_service=self.chatforme_service
-        )
+        self.newusers_service = NewUsersService()
 
         # TODO: Could be a good idea to inject these dependencies into the services
         # instantiate the AudioService and BotEars
@@ -573,25 +570,62 @@ class Bot(twitch_commands.Bot):
         self.logger.info(f"Story is being forced to end by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}")
 
     async def send_message_to_new_users_task(self):
-
-        #TODO: Implement a way of doing this on command as well, making use of 
-        # a newly created new_users_loop_active var. 
         while True:
             await asyncio.sleep(self.newusers_sleep_time)
 
-            #TODO: get_current_users_in_session should be a method of the 
+            #TODO: get_current_users_listdict should be a method of the 
             # NewUsersService or a twitch specific service
-            current_users_list = await self.message_handler.get_current_users_in_session(
+            current_users_list = await self.message_handler.get_current_user_names_list(
                 bearer_token = self.twitch_bot_access_token,
                 broadcaster_id = self.broadcaster_id,
                 moderator_id = self.moderator_id,
                 twitch_bot_client_id = self.twitch_bot_client_id
                 )
             
-            await self.newusers_service.send_message_to_new_users(
+            # if no current_users_list is returned, return a list of value test_user
+            if current_users_list is None:
+                current_users_list = ['test_user']
+                self.logger.warning(f"current_users_list is None, using test_user: {current_users_list}")
+            
+            #Generate Message to new users
+            users_not_yet_sent_message = await self.newusers_service.get_users_to_send_message_list(
                 historic_users_list = self.historic_users_at_start_of_session,
                 current_users_list = current_users_list
             )
+
+            if users_not_yet_sent_message is None:
+                self.logger.error("users_not_yet_sent_message is None, this should not happen")
+                raise ValueError("users_not_yet_sent_message is None, this should not happen")
+            
+            elif len(users_not_yet_sent_message) == 0:
+                self.logger.debug("No users found, starting chat for me...")
+                continue
+            
+            elif len(users_not_yet_sent_message) > 0:      
+                self.logger.info("New users found, starting new users message...")
+                self.logger.debug(f"Initial value of self.newusers_service.users_sent_messages_list: {self.newusers_service.users_sent_messages_list}")   
+                random_new_user = random.choice(users_not_yet_sent_message)
+                self.newusers_service.users_sent_messages_list.append(random_new_user)
+                
+                try:
+                    replacements_dict = {
+                        "random_new_user":random_new_user,
+                        "wordcount_medium":self.config.wordcount_medium
+                    }
+                    gpt_response = await self.chatforme_service.make_singleprompt_gpt_response(
+                        prompt_text=self.config.newusers_msg_prompt,
+                        replacements_dict=replacements_dict
+                        )
+                    
+                    self.logger.debug(f"self.newusers_service.users_sent_messages_list: {self.newusers_service.users_sent_messages_list}")
+                    self.logger.debug(f"users_not_yet_sent_message: {users_not_yet_sent_message}")
+                    self.logger.info(f"random_new_user: {random_new_user}")
+                    self.logger.info(f"gpt_response: {gpt_response}")
+                    continue
+
+                except Exception as e:
+                    self.logger.exception(f"Error occurred in 'make_singleprompt_gpt_response': {e}")            
+                    continue
 
     async def stop_vibechecker_loop(self) -> None:
         self.is_vibecheck_loop_active = False

@@ -67,7 +67,7 @@ class Bot(twitch_commands.Bot):
         # instantiate the ChatForMeService
         self.chatforme_service = ChatForMeService(
             tts_client=self.tts_client,
-            send_channel_message=self.send_channel_message_wrapper
+            send_channel_message=self._send_channel_message_wrapper
             )
 
         # TODO: Could be a good idea to inject these dependencies into the services
@@ -94,7 +94,6 @@ class Bot(twitch_commands.Bot):
 
         # required config/files
         self.command_spellecheck_terms = utils.load_json(
-            self,
             dir_path=self.config.config_dirpath,
             file_name=self.config.command_spellcheck_terms_filename
             )
@@ -151,19 +150,19 @@ class Bot(twitch_commands.Bot):
 
         # start OUAT loop
         self.logger.debug(f"Starting OUAT service")
-        self.loop.create_task(self.ouat_storyteller())
+        self.loop.create_task(self.ouat_storyteller_task())
 
         # Start bot ears streaming
         self.logger.debug(f"Starting bot ears streaming")
-        self.loop.create_task(self.bot_ears.start_stream())
+        self.loop.create_task(self.bot_ears.start_botears_audio_stream())
 
         # start newusers loop
         self.logger.debug(f"Starting newusers service")
-        self.loop.create_task(self.send_message_to_new_users_task())
+        self.loop.create_task(self._send_message_to_new_users_task())
 
         # start authentication refresh loop
         self.logger.debug('Starting the refresh token service')
-        self.loop.create_task(self.token_refresh_task())
+        self.loop.create_task(self._token_refresh_task())
 
         # Say hello to the chat 
         if self.config.twitch_bot_gpt_hello_world == True:
@@ -181,21 +180,6 @@ class Bot(twitch_commands.Bot):
                 incl_voice='yes'
                 )
             self.logger.debug(f"This is the final gpt response for the hello_world: {gpt_response}")
-
-    async def token_refresh_task(self):
-        while True:
-            try:
-                if self.twitch_auth.access_token_expiry <= time.time():
-                    self.logger.warning(f"Access Token near expiry, generating new access token using the refresh token...")
-                    response = await self.twitch_auth.refresh_access_token()
-                    tokens = response.json()
-                    self.twitch_auth.access_token_expiry = time.time() (int(tokens['expires_in'])-3600)
-                    self.twitch_auth.handle_auth_callback(response)
-                else:
-                    self.logger.debug("Access token not nearing expiry. No need to refresh")
-            except Exception as e:
-                self.logger.error(f"Failed to refresh Twitch access token: {e}")
-            await asyncio.sleep(1800)
 
     async def event_message(self, message):
         def clean_message_content(content, command_spellings):
@@ -253,10 +237,83 @@ class Bot(twitch_commands.Bot):
         self.logger.info("----- ...finished processing msg ----")
         self.logger.info("-------------------------------------\n")        
 
-    async def send_channel_message_wrapper(self, message):
+    async def _token_refresh_task(self):
+        while True:
+            try:
+                if self.twitch_auth.access_token_expiry <= time.time():
+                    self.logger.warning(f"Access Token near expiry, generating new access token using the refresh token...")
+                    response = await self.twitch_auth.refresh_access_token()
+                    tokens = response.json()
+                    self.twitch_auth.access_token_expiry = time.time() (int(tokens['expires_in'])-3600)
+                    self.twitch_auth.handle_auth_callback(response)
+                else:
+                    self.logger.debug("Access token not nearing expiry. No need to refresh")
+            except Exception as e:
+                self.logger.error(f"Failed to refresh Twitch access token: {e}")
+            await asyncio.sleep(1800)
+
+    async def _send_message_to_new_users_task(self):
+        while True:
+            await asyncio.sleep(self.newusers_sleep_time)
+
+            #TODO: get_current_users_listdict should be a method of the 
+            # NewUsersService or a twitch specific service
+            current_users_list = await self.message_handler.get_current_user_names_list(
+                bearer_token = self.twitch_bot_access_token,
+                broadcaster_id = self.broadcaster_id,
+                moderator_id = self.moderator_id,
+                twitch_bot_client_id = self.twitch_bot_client_id
+                )
+            
+            # if no current_users_list is returned, return a list of value test_user
+            if current_users_list is None:
+                current_users_list = ['test_user']
+                self.logger.warning(f"current_users_list is None, using test_user: {current_users_list}")
+            
+            #Generate Message to new users
+            users_not_yet_sent_message = await self.newusers_service.get_users_not_yet_sent_message(
+                historic_users_list = self.historic_users_at_start_of_session,
+                current_users_list = current_users_list
+            )
+
+            if users_not_yet_sent_message is None:
+                self.logger.error("users_not_yet_sent_message is None, this should not happen")
+                raise ValueError("users_not_yet_sent_message is None, this should not happen")
+            
+            elif len(users_not_yet_sent_message) == 0:
+                self.logger.debug("No users found, starting chat for me...")
+                continue
+            
+            elif len(users_not_yet_sent_message) > 0:      
+                self.logger.info("New users found, starting new users message...")
+                self.logger.debug(f"Initial value of self.newusers_service.users_sent_messages_list: {self.newusers_service.users_sent_messages_list}")   
+                random_new_user = random.choice(users_not_yet_sent_message)
+                self.newusers_service.users_sent_messages_list.append(random_new_user)
+                
+                try:
+                    replacements_dict = {
+                        "random_new_user":random_new_user,
+                        "wordcount_medium":self.config.wordcount_medium
+                    }
+                    gpt_response = await self.chatforme_service.make_singleprompt_gpt_response(
+                        prompt_text=self.config.newusers_msg_prompt,
+                        replacements_dict=replacements_dict
+                        )
+                    
+                    self.logger.debug(f"self.newusers_service.users_sent_messages_list: {self.newusers_service.users_sent_messages_list}")
+                    self.logger.debug(f"users_not_yet_sent_message: {users_not_yet_sent_message}")
+                    self.logger.info(f"random_new_user: {random_new_user}")
+                    self.logger.info(f"gpt_response: {gpt_response}")
+                    continue
+
+                except Exception as e:
+                    self.logger.exception(f"Error occurred in 'make_singleprompt_gpt_response': {e}")            
+                    continue
+
+    async def _send_channel_message_wrapper(self, message):
         await self.channel.send(message)
 
-    async def check_mod(self, ctx, command) -> bool:
+    async def _check_mod(self, ctx, command) -> bool:
         is_sender_mod = False
         command_name = inspect.currentframe().f_back.f_code.co_name
         if not ctx.author.is_mod:
@@ -295,15 +352,15 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='commands')
     async def showcommands(self, ctx):
-        await self.send_channel_message_wrapper("Commands include: !what, !chat, !todo, !startstory, !addtostory, !extendstory")
+        await self._send_channel_message_wrapper("Commands include: !what, !chat, !todo, !startstory, !addtostory, !extendstory")
 
     @twitch_commands.command(name='discord')
     async def discord(self, ctx):
-        await self.send_channel_message_wrapper("ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")
+        await self._send_channel_message_wrapper("ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")
 
     @twitch_commands.command(name='updatetodo')
     async def updatetodo(self, ctx, *args):
-            is_sender_mod = self.check_mod(ctx)
+            is_sender_mod = self._check_mod(ctx)
 
             if is_sender_mod == True:
                 updated_string = ' '.join(args)
@@ -389,7 +446,7 @@ class Bot(twitch_commands.Bot):
 
             except IndexError:
                 # Handle the case where there are no more messages to check
-                await self.send_channel_message_wrapper("No valid user to be vibechecked, try again after they send a message")
+                await self._send_channel_message_wrapper("No valid user to be vibechecked, try again after they send a message")
                 return
 
         # Proceed with the rest of the function after finding a valid vibecheckee
@@ -406,9 +463,17 @@ class Bot(twitch_commands.Bot):
         self.vibecheck_service = VibeCheckService(
             message_handler=self.message_handler,
             vibechecker_players=self.vibechecker_players,
-            send_channel_message=self.send_channel_message_wrapper
+            send_channel_message=self._send_channel_message_wrapper
             )
         self.vibecheck_service.start_vibecheck_session()
+
+    async def stop_vibechecker_loop(self) -> None:
+        self.is_vibecheck_loop_active = False
+        self.vibechecker_task.cancel()
+        try:
+            await self.vibechecker_task  # Await the task to ensure it's fully cleaned up
+        except asyncio.CancelledError:
+            self.logger.debug("(message from stop_vibechecker_loop()) -- Task was cancelled and cleanup is complete")
 
     @twitch_commands.command(name='startstory')
     async def startstory(self, message, *args):
@@ -530,13 +595,6 @@ class Bot(twitch_commands.Bot):
 
             self.is_ouat_loop_active = True
 
-            # printc(f"A story was started by {message.author.name} ({message.author.id})", bcolors.WARNING)
-            # printc(f"This is the article_content_plotline_gptlistdict: {article_content_plotline_gptlistdict}", bcolors.OKBLUE)
-            # printc(f"This is the create_bullet_list_promp_text: {create_bullet_list_promp_text}", bcolors.OKBLUE)
-            # printc(f"This is the self.story_bulleted_plotline: {self.story_bulleted_plotline}", bcolors.OKBLUE)
-            # printc(f"There was no user_requested_plotline_str, so the prompt_text is: {self.config.storyteller_storystarter_prompt}, bcolors.OKBLUE")
-            # printc(f"This is the final response, aka the self.random_article_content_plot_summary: {self.random_article_content_plot_summary}, bcolors.OKBLUE")
-
     @twitch_commands.command(name='addtostory')
     async def add_to_story_ouat(self, ctx,  *args):
         self.ouat_counter = self.config.ouat_story_progression_number
@@ -561,79 +619,13 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='stopstory')
     async def stop_story(self, ctx):
-        await self.send_channel_message_wrapper("to be continued...")
+        await self._send_channel_message_wrapper("to be continued...")
         await self.stop_ouat_loop()
 
     @twitch_commands.command(name='endstory')
     async def endstory(self, ctx):
         self.ouat_counter = self.config.ouat_story_max_counter
         self.logger.info(f"Story is being forced to end by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}")
-
-    async def send_message_to_new_users_task(self):
-        while True:
-            await asyncio.sleep(self.newusers_sleep_time)
-
-            #TODO: get_current_users_listdict should be a method of the 
-            # NewUsersService or a twitch specific service
-            current_users_list = await self.message_handler.get_current_user_names_list(
-                bearer_token = self.twitch_bot_access_token,
-                broadcaster_id = self.broadcaster_id,
-                moderator_id = self.moderator_id,
-                twitch_bot_client_id = self.twitch_bot_client_id
-                )
-            
-            # if no current_users_list is returned, return a list of value test_user
-            if current_users_list is None:
-                current_users_list = ['test_user']
-                self.logger.warning(f"current_users_list is None, using test_user: {current_users_list}")
-            
-            #Generate Message to new users
-            users_not_yet_sent_message = await self.newusers_service.get_users_to_send_message_list(
-                historic_users_list = self.historic_users_at_start_of_session,
-                current_users_list = current_users_list
-            )
-
-            if users_not_yet_sent_message is None:
-                self.logger.error("users_not_yet_sent_message is None, this should not happen")
-                raise ValueError("users_not_yet_sent_message is None, this should not happen")
-            
-            elif len(users_not_yet_sent_message) == 0:
-                self.logger.debug("No users found, starting chat for me...")
-                continue
-            
-            elif len(users_not_yet_sent_message) > 0:      
-                self.logger.info("New users found, starting new users message...")
-                self.logger.debug(f"Initial value of self.newusers_service.users_sent_messages_list: {self.newusers_service.users_sent_messages_list}")   
-                random_new_user = random.choice(users_not_yet_sent_message)
-                self.newusers_service.users_sent_messages_list.append(random_new_user)
-                
-                try:
-                    replacements_dict = {
-                        "random_new_user":random_new_user,
-                        "wordcount_medium":self.config.wordcount_medium
-                    }
-                    gpt_response = await self.chatforme_service.make_singleprompt_gpt_response(
-                        prompt_text=self.config.newusers_msg_prompt,
-                        replacements_dict=replacements_dict
-                        )
-                    
-                    self.logger.debug(f"self.newusers_service.users_sent_messages_list: {self.newusers_service.users_sent_messages_list}")
-                    self.logger.debug(f"users_not_yet_sent_message: {users_not_yet_sent_message}")
-                    self.logger.info(f"random_new_user: {random_new_user}")
-                    self.logger.info(f"gpt_response: {gpt_response}")
-                    continue
-
-                except Exception as e:
-                    self.logger.exception(f"Error occurred in 'make_singleprompt_gpt_response': {e}")            
-                    continue
-
-    async def stop_vibechecker_loop(self) -> None:
-        self.is_vibecheck_loop_active = False
-        self.vibechecker_task.cancel()
-        try:
-            await self.vibechecker_task  # Await the task to ensure it's fully cleaned up
-        except asyncio.CancelledError:
-            self.logger.debug("(message from stop_vibechecker_loop()) -- Task was cancelled and cleanup is complete")
 
     async def stop_ouat_loop(self) -> None:
         self.is_ouat_loop_active = False
@@ -647,7 +639,7 @@ class Bot(twitch_commands.Bot):
             )
         self.message_handler.ouat_msg_history.clear()
 
-    async def ouat_storyteller(self):
+    async def ouat_storyteller_task(self):
         self.article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.config.newsarticle_rss_feed)
         self.article_generator.fetch_articles()
 

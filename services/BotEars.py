@@ -36,7 +36,6 @@ class BotEars():
         self.logger.debug("self.config.app_config_dirpath: " + self.config.app_config_dirpath)
         self.logger.debug("self.config.botears_devices_json_filepath: " + self.config.botears_devices_json_filepath)
         audio_devices = utils.load_json(
-            self,
             dir_path=self.config.app_config_dirpath,
             file_name=self.config.botears_devices_json_filepath
         )
@@ -56,9 +55,6 @@ class BotEars():
         # initialize the audio stream
         self.buffer = deque(maxlen=buffer_length_seconds * self.samplerate * self.channels)
 
-        # Removed 2024-02-10        
-        # self.loop = event_loop
-
         # Set the audio device to use
         self.stream = sd.InputStream(
             device=device_name,
@@ -67,18 +63,18 @@ class BotEars():
             channels=self.channels
             )
 
-    # def log_stream_state(self):
-    #     if self.stream.active:
-    #         self.logger.info("Stream is active.")
-    #     else:
-    #         self.logger.info("Stream is inactive.")
+    def log_stream_state(self):
+        if self.stream.active:
+            self.logger.info("Stream is active.")
+        else:
+            self.logger.info("Stream is inactive.")
 
-    # def find_device_index(device_name):
-    #     devices = sd.query_devices()
-    #     for index, device in enumerate(devices):
-    #         if device_name in device['name']:
-    #             return index
-    #     raise ValueError(f"Device {device_name} not found.")
+    def find_device_index(device_name):
+        devices = sd.query_devices()
+        for index, device in enumerate(devices):
+            if device_name in device['name']:
+                return index
+        raise ValueError(f"Device {device_name} not found.")
 
     def _audio_callback(self, indata, frames, time, status):
         """
@@ -86,7 +82,7 @@ class BotEars():
         """
         self.buffer.extend(indata.reshape(-1))
 
-    async def start_stream(self):
+    async def start_botears_audio_stream(self):
         """
         Starts the audio stream continuously.
         """
@@ -153,7 +149,7 @@ async def main():
         print(f"Error creating BotEars instance: {e}")
     
     # run asyncio loop
-    await ears.start_stream()
+    await ears.start_botears_audio_stream()
 
     # wait for 5 seconds
     print("...sleeping app.  This is not done in the class itself as the audio  \

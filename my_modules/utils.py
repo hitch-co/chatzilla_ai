@@ -14,7 +14,6 @@ logger = create_logger(
     )
 
 def load_json(
-        self,
         dir_path,
         file_name
         ):
@@ -41,6 +40,43 @@ def show_json(obj):
     json_data = json.loads(obj.model_dump_json())
     return json.dumps(json_data, indent=4)
 
+async def find_unique_to_new_list(
+        source_list, 
+        new_list
+        ) -> list:
+    set1 = set(source_list)
+    set2 = set(new_list)
+    unique_strings = set2 - set1
+    unique_list = list(unique_strings)
+
+    # print("_find_unique_to_new_list inputs/output:")
+    # print(f"source_list: {source_list}")
+    # print(f"new_list: {new_list}")
+    # print(f"unique_list: {unique_list}")
+    return unique_list
+
+async def find_unique_to_new_dict(
+        source_dict, 
+        new_dict
+        ) -> list:
+    # Assuming the first dictionary in list2 represents the key structure
+    keys = new_dict[0].keys()
+
+    # Convert list1 and list2 to sets of a primary key (assuming the first key is unique)
+    primary_key = next(iter(keys))
+    set1 = {user[primary_key] for user in source_dict}
+    set2 = {user[primary_key] for user in new_dict}
+
+    # Find the difference - users in list2 but not in list1
+    unique_user_ids = set2 - set1
+
+    # Convert the unique user_ids back to dictionary format
+    unique_users = [user for user in new_dict if user[primary_key] in unique_user_ids]
+    # print("This is the list of unique_users:")
+    # print(unique_users)
+    
+    return unique_users
+    
 def format_previous_messages_to_string(message_list):
     # message_list=[
     #     {'role':'bot','content':'hello there im eric'},

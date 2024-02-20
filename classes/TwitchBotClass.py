@@ -281,7 +281,7 @@ class Bot(twitch_commands.Bot):
                 raise ValueError("users_not_yet_sent_message is None, this should not happen")
             
             elif len(users_not_yet_sent_message) == 0:
-                self.logger.debug("No users found, starting chat for me...")
+                self.logger.debug("No users found...")
                 continue
             
             elif len(users_not_yet_sent_message) > 0:      

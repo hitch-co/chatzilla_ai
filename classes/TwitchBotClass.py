@@ -324,6 +324,12 @@ class Bot(twitch_commands.Bot):
             is_sender_mod = True
         return is_sender_mod
 
+    @twitch_commands.command(name='getstats')
+    async def get_command_stats(self, ctx):
+        table_id = self.config.talkzillaai_usertransactions_table_id
+        stats_text = self.bq_uploader.fetch_stats_as_text(table_id)
+        await self._send_channel_message_wrapper(stats_text)
+        
     @twitch_commands.command(name='what')
     async def what(self, ctx):
         #add format for concat with filename in trext format       

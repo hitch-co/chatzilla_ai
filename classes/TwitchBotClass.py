@@ -198,7 +198,11 @@ class Bot(twitch_commands.Bot):
 
         # 1. This is the control flow function for creating message histories
         self.message_handler.add_to_appropriate_message_history(message)
-        
+
+        # if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
+        if '@'+self.config.twitch_bot_username in message.content and "!chat" not in message.content:
+            await self._chatforme_main()
+
         # 2. Process the message through the vibecheck service         
         if hasattr(self, 'vibecheck_service') and self.vibecheck_service is not None:
             self.vibecheck_service.process_vibecheck_message(self.message_handler.message_history_raw[-1]['name'])
@@ -379,13 +383,7 @@ class Bot(twitch_commands.Bot):
             incl_voice='yes'
             )
 
-    @twitch_commands.command(name='chat')
-    async def chatforme(self, ctx):
-        """
-        A Twitch bot command that interacts with OpenAI's GPT API.
-        It takes in chat messages from the Twitch channel and forms a GPT prompt for a chat completion API call.
-        """
-
+    async def _chatforme_main(self):
         # Select random voice from the list of voices
         tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
 
@@ -413,6 +411,10 @@ class Bot(twitch_commands.Bot):
             return self.logger.info("chatforme has run successfully.")
         except Exception as e:
             return self.logger.error(f"error with chatforme in twitchbotclass: {e}")
+        
+    @twitch_commands.command(name='chat')
+    async def chatforme(self, ctx):
+        self._chatforme_main()
 
     @twitch_commands.command(name='vc')
     async def vc(self, message, *args):

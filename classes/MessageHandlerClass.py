@@ -83,29 +83,6 @@ class MessageHandler:
 
     #TODO: get_channel_viewers should probably be a separate helper
     # module/function/class to work with the twitch API directly
-    async def get_current_users_listdict(
-            self, 
-            bearer_token,
-            broadcaster_id,
-            moderator_id,
-            twitch_bot_client_id
-            ) -> list[dict]:
-
-            #Get response/data
-            response = await self._get_channel_viewers(
-                bearer_token=bearer_token,
-                broadcaster_id=broadcaster_id,
-                moderator_id=moderator_id,
-                twitch_bot_client_id=twitch_bot_client_id
-            )
-            response_json = response.json()
-            current_users_in_session = response_json['data']
-            
-            self.logger.info(f"current_users_in_session: {current_users_in_session}")
-            return current_users_in_session 
-
-    #TODO: get_channel_viewers should probably be a separate helper
-    # module/function/class to work with the twitch API directly
     async def get_current_user_names_list(
             self, 
             bearer_token,
@@ -125,7 +102,7 @@ class MessageHandler:
             current_users_in_session = response_json['data']
             
             current_user_names = [user['user_login'] for user in current_users_in_session]
-            self.logger.info(f"current_user_names: {current_user_names}")
+            self.logger.debug(f"current_user_names: {current_user_names}")
             return current_user_names 
 
     #TODO: get_channel_viewers should probably be a separate helper
@@ -133,7 +110,7 @@ class MessageHandler:
     def get_string_of_users(self, usernames_list) -> str:
         users_in_users_list = list(set([username for username in usernames_list]))
         users_in_users_list_text = "'"+", ".join(users_in_users_list)+"'"
-        self.logger.info(f"These are the users_in_message_list_text: {users_in_users_list_text}")
+        self.logger.debug(f"users_in_users_list_text: {users_in_users_list_text}")
         return users_in_users_list_text
 
     #TODO: get_channel_viewers should probably be a separate helper
@@ -249,14 +226,6 @@ class MessageHandler:
 
         #cleanup msg histories for GPT
         self._cleanup_message_history()
-
-        #log 
-        # self.logger.debug(f"message_history_raw:")
-        # self.logger.debug(self.message_history_raw)
-        # self.logger.debug(f"self.all_msg_history_gptdict:") 
-        # self.logger.debug(self.all_msg_history_gptdict)
-        # self.logger.debug("This is the gpt_ready_msg_dict")
-        # self.logger.debug(gpt_ready_msg_dict)
-
+ 
 if __name__ == '__main__':
     print("loaded MessageHandlerClass.py")

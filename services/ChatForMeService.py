@@ -6,7 +6,7 @@ from my_modules.my_logging import create_logger
 from my_modules import gpt
 from my_modules import utils
 
-runtime_logger_level = 'DEBUG'
+runtime_logger_level = 'INFO'
 class ChatForMeService:
     def __init__(
             self,
@@ -110,8 +110,7 @@ class ChatForMeService:
             voice_name=voice_name
         )
         
-        self.logger.debug(f"prompt_text (incl_voice: {incl_voice}): {prompt_text}")
-        self.logger.info(f"final prompt_text is: {prompt_text}")
+        self.logger.info(f"prompt_text (incl_voice: {incl_voice}): {prompt_text}")
         self.logger.info(f"final gpt_response (incl_voice: {incl_voice}): {gpt_response}")
         return gpt_response
 
@@ -164,7 +163,7 @@ class ChatForMeService:
             voice_name=voice_name
         )
 
-        self.logger.debug(f"prompt_text (incl_voice: {incl_voice}): {prompt_text}")
+        self.logger.debug(f"prompt_text (incl_voice: {incl_voice})")
         self.logger.debug(f"msg_history (most recent 2 messages): {msg_history[-2:]}")
         self.logger.info(f"final prompt_text is: {prompt_text}")
         self.logger.info(f"final gpt_response (incl_voice: {incl_voice}): {gpt_response}")
@@ -217,8 +216,7 @@ class ChatForMeService:
         else:
             msg_history_list_dict_temp.append(prompt_dict)
 
-        self.logger.debug(f"This is the most recent 2 messsages from msg_history_list_dict_temp:")
-        self.logger.debug(msg_history_list_dict_temp[-2:])
+        self.logger.debug(f"This is the most recent 2 messsages from msg_history_list_dict_temp: {msg_history_list_dict_temp[-2:]}")
 
         utils.write_json_to_file(
             data=msg_history_list_dict_temp, 

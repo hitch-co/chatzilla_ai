@@ -18,7 +18,7 @@ from services.VibecheckService import VibeCheckService
 from services.NewUsersService import NewUsersService
 from services.ChatForMeService import ChatForMeService
 from services.AudioService import AudioService
-from services.BotEars import BotEars
+from services.BotEarsService import BotEars
 from services.SpeechToTextService import SpeechToTextService
 
 runtime_logger_level = 'DEBUG'
@@ -140,6 +140,8 @@ class Bot(twitch_commands.Bot):
         #newusers params
         self.newusers_sleep_time = self.config.newusers_sleep_time 
 
+        self.logger.info("TwitchBotClass initialized")
+
     async def event_ready(self):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
         self.logger.info(f'TwitchBot ready | {self.config.twitch_bot_username} (nick:{self.nick})')
@@ -193,9 +195,7 @@ class Bot(twitch_commands.Bot):
         self.logger.info("-------------------------------------")
         self.logger.info("------ Msg received, processing -----")
         self.logger.info("-------------------------------------")
-        self.logger.debug(message)
-        self.logger.info(f"message.content: {message.content}")
-        
+
         # 1. This is the control flow function for creating message histories
         self.message_handler.add_to_appropriate_message_history(message)
         
@@ -213,15 +213,13 @@ class Bot(twitch_commands.Bot):
         if len(self.message_handler.message_history_raw)>=5:
             self.bq_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
             viewer_interaction_records = self.bq_uploader.generate_bq_user_interactions_records(records=self.message_handler.message_history_raw)
-            
+
             self.bq_uploader.send_recordsjob_to_bq(
                 table_id=self.usertransactions_table_id,
                 records=viewer_interaction_records
                 )
-            self.logger.debug("These are the viewer_interaction_records:")
-            self.logger.debug(viewer_interaction_records[0:2])
 
-            self.logger.info(f"Succesfully sent {len(viewer_interaction_records)} records to BQ.  Clearing message_history_raw and channel_viewers_queue.")
+            self.logger.info(f"Clearing message_history_raw and channel_viewers_queue.")
             self.message_handler.message_history_raw.clear()
             self.bq_uploader.channel_viewers_queue.clear()
 
@@ -256,7 +254,7 @@ class Bot(twitch_commands.Bot):
         while True:
             await asyncio.sleep(self.newusers_sleep_time)
 
-            #TODO: get_current_users_listdict should be a method of the 
+            #TODO: get_current_user_names_list should be a method of the 
             # NewUsersService or a twitch specific service
             current_users_list = await self.message_handler.get_current_user_names_list(
                 bearer_token = self.twitch_bot_access_token,
@@ -281,7 +279,7 @@ class Bot(twitch_commands.Bot):
                 raise ValueError("users_not_yet_sent_message is None, this should not happen")
             
             elif len(users_not_yet_sent_message) == 0:
-                self.logger.debug("No users found, starting chat for me...")
+                self.logger.debug("No users found...")
                 continue
             
             elif len(users_not_yet_sent_message) > 0:      
@@ -526,16 +524,19 @@ class Bot(twitch_commands.Bot):
                     output_new_list=False
                     )
                 
+                self.logger.debug("Starting GPT chat completion for 'new_plotline'...")
                 new_plotline = gpt.openai_gpt_chatcompletion(
                     max_characters=2000,
                     messages_dict_gpt=bullet_list_and_user_plotline_listdict
                     )
-                
+
+                self.logger.debug("Starting make_string_gptlistdict for 'new_plotline'...")                
                 new_plotline_gptlistdict = self.chatforme_service.make_string_gptlistdict(
                     prompt_text = new_plotline, 
                     prompt_text_role='user'
                     )
 
+                self.logger.debug("Starting GPT chat completion for 'self.random_article_content_plot_summary'...")
                 self.random_article_content_plot_summary = await self.chatforme_service.make_msghistory_gpt_response(
                     prompt_text=self.config.storyteller_storystarter_prompt,
                     replacements_dict=replacements_dict,
@@ -547,11 +548,11 @@ class Bot(twitch_commands.Bot):
                 self.logger.debug(f"This is the user_requested_plotline_str: {user_requested_plotline_str}")
                 self.logger.debug(f"This is the create_bullet_list_promp_text: {create_bullet_list_promp_text}")
                 self.logger.debug(f"This is the new_plotline: {new_plotline}")
-                self.logger.debug(f"This is the self.random_article_content_plot_summary: {self.random_article_content_plot_summary}")
+                self.logger.info(f"This is the self.random_article_content_plot_summary: {self.random_article_content_plot_summary}")
 
             ####################################
             ####################################
-            else:
+            elif not user_requested_plotline_str:
                 self.random_article_content = self.article_generator.fetch_random_article_content(article_char_trunc=500)                    
 
                 article_content_plotline_gptlistdict = self.chatforme_service.make_string_gptlistdict(
@@ -580,6 +581,7 @@ class Bot(twitch_commands.Bot):
                     )
                     
                 #TODO: Probably shouldn't be sending an output and maybe just generating a GPT message dictionary
+                self.logger.debug("Starting GPT chat completion for 'self.random_article_content_plot_summary'...")
                 self.random_article_content_plot_summary = await self.chatforme_service.make_msghistory_gpt_response(
                     prompt_text=self.config.storyteller_storystarter_prompt,
                     replacements_dict=replacements_dict,
@@ -667,6 +669,7 @@ class Bot(twitch_commands.Bot):
                 #storyender
                 elif self.ouat_counter == self.config.ouat_story_max_counter:
                     gpt_prompt_final = self.config.storyteller_storyender_prompt
+                    await self.stop_ouat_loop()
                                                     
                 elif self.ouat_counter > self.config.ouat_story_max_counter:
                     await self.stop_ouat_loop()
@@ -678,6 +681,7 @@ class Bot(twitch_commands.Bot):
                 self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (self.config.ouat_story_max_counter={self.config.ouat_story_max_counter})")
                 self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
                 self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
+                self.logger.info(f"This is the self.random_article_content_plot_summary: {self.random_article_content_plot_summary}")
 
                 replacements_dict = {
                     "wordcount_short":self.wordcount_short,

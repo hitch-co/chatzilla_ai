@@ -31,7 +31,11 @@ class BotEars():
             )
         
         self.config = config
-        
+
+        # Create the output directory if it doesn't exist
+        if not os.path.exists(self.config.botears_audio_path):
+            os.makedirs(self.config.botears_audio_path)
+            
         # Get the audio device details from the JSON file
         self.logger.debug("self.config.app_config_dirpath: " + self.config.app_config_dirpath)
         self.logger.debug("self.config.botears_devices_json_filepath: " + self.config.botears_devices_json_filepath)
@@ -133,10 +137,6 @@ async def main():
     audio_device = audio_devices['audioDevices']['mic'][device_name]
     print(f"These are the json audio device details for {device_name}:")
     print(json.dumps(audio_device, indent=4))
-
-    # Removed 2024-02-10      
-    # # Create an event loop
-    #event_loop = asyncio.get_event_loop()
 
     try:
         ears = BotEars(

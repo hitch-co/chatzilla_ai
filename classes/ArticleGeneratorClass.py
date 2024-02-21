@@ -44,7 +44,6 @@ class ArticleGenerator:
     def fetch_random_article_content(self, article_char_trunc=1200):
         found_article = False
         list_of_disallowed_terms = utils.load_json(
-            self,
             dir_path='config',
             file_name='disallowed_terms.json'
             )

@@ -5,7 +5,7 @@ from classes.ConfigManagerClass import ConfigManager
 
 from my_modules.my_logging import create_logger
 from my_modules import utils
-runtime_logger_level = 'INFO'
+runtime_logger_level = 'WARNING'
 
 class NewUsersService:
     def __init__(self):
@@ -62,8 +62,7 @@ class NewUsersService:
             source_list=self.users_sent_messages_list,
             new_list=current_new_usernames
             )
-        self.logger.debug(f"users_not_yet_sent_message (after find_unique_to_new_list(users_sent_messages_list, current_new_usernames)):")
-        self.logger.debug(f"{users_not_yet_sent_message}")   
+        self.logger.info(f"users_not_yet_sent_message: {users_not_yet_sent_message}")   
         return users_not_yet_sent_message
 
 if __name__ == "__main__":

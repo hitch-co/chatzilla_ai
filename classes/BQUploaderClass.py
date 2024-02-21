@@ -10,7 +10,7 @@ from classes.ConfigManagerClass import ConfigManager
 from my_modules import my_logging
 from my_modules import utils
 
-runtime_debug_level = 'WARNING'
+runtime_debug_level = 'INFO'
 
 class BQUploader:
     def __init__(self):
@@ -22,8 +22,6 @@ class BQUploader:
             mode='w',
             stream_logs=True
             )
-        self.logger.debug('BQUploader Logger initialized.')
-
         self.config = ConfigManager.get_instance()
 
         # env variables 
@@ -42,6 +40,8 @@ class BQUploader:
         #Users lists
         self.channel_viewers_list_dict_temp = []
         self.channel_viewers_queue = []
+
+        self.logger.info("BQUploader initialized.")
 
     #TODO: get_channel_viewers should probably be a separate helper
     # module/function/class to work with the twitch API directly
@@ -104,7 +104,7 @@ class BQUploader:
         df = pd.DataFrame(updated_channel_viewers_queue)
         df = df.sort_values(['user_id', 'timestamp'])
         df = df.drop_duplicates(subset='user_id', keep='last')
-        self.logger.info(f'channel_viewers_queue deduplicated has {len(df)} rows')
+        self.logger.debug(f'channel_viewers_queue deduplicated has {len(df)} rows')
 
         self.channel_viewers_queue = df.to_dict('records')
 
@@ -140,7 +140,7 @@ class BQUploader:
                             dirname='log/queries',
                             queryname='channelviewers_query_final')
         
-        self.logger.info("The users table query was generated")
+        self.logger.debug("The users table query was generated")
         self.logger.debug("This is the users table merge query:")
         self.logger.debug(merge_query)
         return merge_query
@@ -230,6 +230,7 @@ class BQUploader:
         return rows_to_insert   
 
     def send_recordsjob_to_bq(self, table_id, records:list[dict]) -> None:
+        self.logger.info("Starting BigQuery send_recordsjob_to_bq() job...")
         table = self.bq_client.get_table(table_id)
         errors = self.bq_client.insert_rows_json(table, records)     
         if errors:
@@ -237,35 +238,32 @@ class BQUploader:
             self.logger.error("These are the records:")
             self.logger.error(records)
         else:
-            self.logger.info(f"Rows successfully inserted into table_id: {table_id}")
+            self.logger.info(f"{len(records)} successfully inserted into table_id: {table_id}")
             self.logger.debug("These are the records:")
             self.logger.debug(records)
+            #log number of records
+
             
     def send_queryjob_to_bq(self, query):
         try:
-            # Start the query job
-            self.logger.info("Starting BigQuery job...")
+            self.logger.info("Starting BigQuery send_queryjob_to_bq() job...")
             query_job = self.bq_client.query(query)
 
-            # Wait for the job to complete (this will block until the job is done)
-            self.logger.info(f"Executing query...")
+            self.logger.debug(f"Executing query...")
             query_job.result()
 
-            # Log job completion
             self.logger.info(f"Query job {query_job.job_id} completed successfully.")
 
         except GoogleAPIError as e:
-            # Log any API errors
             self.logger.error(f"BigQuery job failed: {e}")
 
         except Exception as e:
-            # Log any other exceptions
             self.logger.error(f"An unexpected error occurred: {e}")
 
         else:
             # Optionally, get and log job statistics
             job_stats = query_job.query_plan
-            self.logger.info(f"Query plan: {job_stats}")
+            self.logger.debug(f"Query plan: {job_stats}")
 
 if __name__ == '__main__':
     chatdataclass = BQUploader()

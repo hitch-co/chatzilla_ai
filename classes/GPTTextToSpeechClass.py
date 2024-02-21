@@ -6,9 +6,7 @@ from classes.ConfigManagerClass import ConfigManager
 
 runtime_logger_level = 'WARNING'
 
-#TODO: SHould take a client as an argument
 class GPTTextToSpeech:
-    # TODO (48):
     def __init__(self, openai_client):
         self.logger = my_logging.create_logger(
             debug_level=runtime_logger_level, 
@@ -18,14 +16,15 @@ class GPTTextToSpeech:
             )
 
         self.config = ConfigManager.get_instance()
-
         self.tts_client = openai_client
 
-        # Set other class vars
         self.tts_model=self.config.tts_model
         self.tts_volume = self.config.tts_volume
         self.tts_data_folder = self.config.tts_data_folder
         self.tts_file_name = self.config.tts_file_name
+
+        if not os.path.exists(self.config.tts_data_folder):
+            os.makedirs(self.config.tts_data_folder)
 
     def _get_speech_response(
             self, 
@@ -86,7 +85,6 @@ class GPTTextToSpeech:
         pygame.mixer.music.set_volume(self.tts_volume)
         pygame.mixer.music.play()
 
-        # Wait for the music to finish playing
         while pygame.mixer.music.get_busy():
             continue
         

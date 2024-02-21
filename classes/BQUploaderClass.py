@@ -147,7 +147,7 @@ class BQUploader:
 
     def fetch_users_details_as_dict(self, table_id) -> list[dict]:
         query = f"""
-        SELECT user_id, user_login, user_name
+        SELECT DISTINCT user_id, user_login, user_name
         FROM `{table_id}`
         """
 
@@ -165,9 +165,41 @@ class BQUploader:
 
         return results
     
+    def fetch_stats_as_text(self, table_id):
+        # Construct a query to count occurrences of specific commands in a case-insensitive manner
+        query = f"""
+        SELECT
+            SUM(CASE WHEN LOWER(content) LIKE '!chat%' THEN 1 ELSE 0 END) as chat_count,
+            SUM(CASE WHEN LOWER(content) LIKE '!startstory%' THEN 1 ELSE 0 END) as startstory_count,
+            SUM(CASE WHEN LOWER(content) LIKE '!addtostory%' THEN 1 ELSE 0 END) as addtostory_count,
+            SUM(CASE WHEN LOWER(content) LIKE '!what%' THEN 1 ELSE 0 END) as what_count,
+            SUM(CASE WHEN LOWER(content) LIKE '@chatzilla_ai%' THEN 1 ELSE 0 END) as chatzilla_shoutouts            
+        FROM `{table_id}`
+        """
+
+        # Execute the query and fetch the result
+        result = self.bq_client.query(query).result()
+        self.logger.debug(f"Result (type: {type(result)}): {result}")
+
+        # Convert RowIterator to a list and get the first row
+        result_list = list(result)[0]  # 'result' is the RowIterator from BQ query
+        if result_list:
+            stats_text = f"""
+            Historic !commands Stats:
+            \n!chat: {result_list.chat_count}
+            !startstory: {result_list.startstory_count}
+            !addtostory: {result_list.addtostory_count}
+            !what: {result_list.what_count}
+            """
+
+        # Log the formatted stats
+        self.logger.debug(f"Formatted Stats: {stats_text}")
+
+        return stats_text
+
     def fetch_usernames_as_list(self, table_id) -> list[str]:
         query = f"""
-        SELECT user_name FROM `{table_id}`
+        SELECT DISTINCT user_name FROM `{table_id}`
         """
 
         # Execute the query

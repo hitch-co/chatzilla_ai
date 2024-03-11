@@ -1,0 +1,65 @@
+{
+    "Cultural Movements": [
+      "Renaissance",
+      "Enlightenment",
+      "Romanticism",
+      "Modernism",
+      "Postmodernism"
+    ],
+    "Fields of Science": [
+      "Biology",
+      "Physics",
+      "Chemistry",
+      "Astronomy",
+      "Earth Science"
+    ],
+    "Technological Advances": [
+      "The Internet",
+      "Renewable Energy",
+      "Space Exploration",
+      "Artificial Intelligence",
+      "Biotechnology"
+    ],
+    "Global Issues": [
+      "Climate Change",
+      "Human Rights",
+      "Global Health",
+      "Economic Inequality",
+      "Biodiversity Conservation"
+    ],
+    "Historical Periods": [
+      "Ancient Civilizations",
+      "Middle Ages",
+      "Industrial Revolution",
+      "World War Era",
+      "Digital Age"
+    ],
+    "Artistic Disciplines": [
+      "Literature",
+      "Visual Arts",
+      "Performing Arts",
+      "Cinematography",
+      "Digital Media"
+    ],
+    "Societal Structures": [
+      "Political Systems",
+      "Economic Systems",
+      "Social Norms",
+      "Educational Systems",
+      "Legal Systems"
+    ],
+    "Human Achievements": [
+      "Great Inventions",
+      "Scientific Discoveries",
+      "Architectural Wonders",
+      "Literary Masterpieces",
+      "Historical Expeditions"
+    ],
+    "Natural Phenomena": [
+      "Weather Patterns",
+      "Geological Formations",
+      "Astronomical Events",
+      "Ecological Systems",
+      "Evolutionary Processes"
+    ]
+  }

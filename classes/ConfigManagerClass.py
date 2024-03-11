@@ -64,6 +64,8 @@ class ConfigManager:
                 self.yaml_depinjector_config(yaml_config)
                 self.update_config_from_yaml(yaml_config)
 
+                self.update_spellcheck_config(yaml_config)
+
                 self.yaml_gcp_config(yaml_config)
                 
                 self.yaml_botears_config(yaml_config)
@@ -233,6 +235,18 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Error in yaml_depinjector_config(): {e}")
 
+
+    def update_spellcheck_config(self, yaml_config):
+        self.command_spellcheck_terms_filename = yaml_config['command_spellcheck_terms_filename']
+        
+        #Load spellcheck terms
+        spellcheck_terms_path = os.path.join(
+            self.config_dirpath, 
+            self.command_spellcheck_terms_filename
+            )
+        with open(spellcheck_terms_path, 'r') as file:
+            self.command_spellcheck_terms = yaml.safe_load(file)
+
     def update_config_from_yaml(self, yaml_config):
         try:
             # Update instance variables with YAML configurations
@@ -244,8 +258,8 @@ class ConfigManager:
 
             self.config_dirpath = yaml_config['config_dirpath']
             self.keys_dirpath = yaml_config['keys_dirpath']
-            self.command_spellcheck_terms_filename = yaml_config['command_spellcheck_terms_filename']
-            
+
+
             self.google_application_credentials_file = yaml_config['twitch-ouat']['google_service_account_credentials_file']
             self.talkzillaai_userdata_table_id = yaml_config['twitch-ouat']['talkzillaai_userdata_table_id']
             self.talkzillaai_usertransactions_table_id = yaml_config['twitch-ouat']['talkzillaai_usertransactions_table_id']

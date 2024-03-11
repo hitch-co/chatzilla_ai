@@ -1,4 +1,3 @@
-import os
 import requests
 from google.cloud import bigquery
 from google.api_core.exceptions import GoogleAPIError
@@ -25,7 +24,7 @@ class BQUploader:
         self.config = ConfigManager.get_instance()
 
         # env variables 
-        #TODO: get_channel_viewers should probably be a separate helper
+        #TODO: _get_channel_viewers should probably be a separate helper
         # module/function/class to work with the twitch API directly
         self.twitch_broadcaster_author_id = self.config.twitch_broadcaster_author_id
         self.twitch_bot_moderator_id = self.config.twitch_bot_moderator_id
@@ -43,10 +42,10 @@ class BQUploader:
 
         self.logger.info("BQUploader initialized.")
 
-    #TODO: get_channel_viewers should probably be a separate helper
+    #TODO: _get_channel_viewers should probably be a separate helper
     # module/function/class to work with the twitch API directly
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
-    def get_channel_viewers(
+    def _get_channel_viewers(
         self,
         bearer_token=None
         ) -> object:
@@ -79,7 +78,7 @@ class BQUploader:
 
         return response
 
-    def process_channel_viewers(self, response) -> list[dict]:
+    def _process_channel_viewers(self, response) -> list[dict]:
         self.logger.debug('Processing channel viewers response')
         timestamp = utils.get_datetime_formats()['sql_format']
         
@@ -97,7 +96,7 @@ class BQUploader:
         
         return channel_viewers_list_dict
 
-    def queue_channel_viewers(self, records: list[dict]) -> None:
+    def _queue_channel_viewers(self, records: list[dict]) -> None:
         updated_channel_viewers_queue = self.channel_viewers_queue
         updated_channel_viewers_queue.extend(records)
 
@@ -108,7 +107,7 @@ class BQUploader:
 
         self.channel_viewers_queue = df.to_dict('records')
 
-    def generate_bq_users_query(self, table_id, records: list[dict]) -> str:
+    def _generate_bq_users_query(self, table_id, records: list[dict]) -> str:
 
         # Build the UNION ALL part of the query
         union_all_query = " UNION ALL ".join([
@@ -144,28 +143,8 @@ class BQUploader:
         self.logger.debug("This is the users table merge query:")
         self.logger.debug(merge_query)
         return merge_query
-
-    def fetch_users_details_as_dict(self, table_id) -> list[dict]:
-        query = f"""
-        SELECT DISTINCT user_id, user_login, user_name
-        FROM `{table_id}`
-        """
-
-        # Execute the query
-        query_job = self.bq_client.query(query)
-
-        # Process the results
-        results = []
-        for row in query_job:
-            results.append({
-                "user_id": row.user_id,
-                "user_login": row.user_login,
-                "user_name": row.user_name
-            })
-
-        return results
     
-    def fetch_stats_as_text(self, table_id):
+    def fetch_interaction_stats_as_text(self, table_id):
         # Construct a query to count occurrences of specific commands in a case-insensitive manner
         query = f"""
         SELECT
@@ -173,6 +152,8 @@ class BQUploader:
             SUM(CASE WHEN LOWER(content) LIKE '!startstory%' THEN 1 ELSE 0 END) as startstory_count,
             SUM(CASE WHEN LOWER(content) LIKE '!addtostory%' THEN 1 ELSE 0 END) as addtostory_count,
             SUM(CASE WHEN LOWER(content) LIKE '!what%' THEN 1 ELSE 0 END) as what_count,
+            SUM(CASE WHEN LOWER(content) LIKE '!factcheck%' THEN 1 ELSE 0 END) as factcheck_count,
+            SUM(CASE WHEN LOWER(content) LIKE '!vc%' THEN 1 ELSE 0 END) as vibecheck_count,
             SUM(CASE WHEN LOWER(content) LIKE '@chatzilla_ai%' THEN 1 ELSE 0 END) as chatzilla_shoutouts            
         FROM `{table_id}`
         """
@@ -185,7 +166,7 @@ class BQUploader:
         result_list = list(result)[0]  # 'result' is the RowIterator from BQ query
         if result_list:
             stats_text = f"""
-            Historic !commands Stats:
+            Historic !commands usage:\n
             \n!chat: {result_list.chat_count}
             !startstory: {result_list.startstory_count}
             !addtostory: {result_list.addtostory_count}
@@ -197,7 +178,9 @@ class BQUploader:
 
         return stats_text
 
-    def fetch_usernames_as_list(self, table_id) -> list[str]:
+    def fetch_unique_usernames_from_bq_as_list(self) -> list[str]:
+        table_id = self.config.talkzillaai_userdata_table_id
+        
         query = f"""
         SELECT DISTINCT user_name FROM `{table_id}`
         """
@@ -210,7 +193,8 @@ class BQUploader:
 
         return results
 
-    #TODO: get_channel_viewers should probably be a separate helper
+    # LAST STEP: RUNNNER
+    #TODO: _get_channel_viewers should probably be a separate helper
     # module/function/class to work with the twitch API directly
     def get_process_queue_create_channel_viewers_query(
             self, 
@@ -221,23 +205,23 @@ class BQUploader:
         
         #Response from twitch API
         if response == None:
-            response = self.get_channel_viewers(bearer_token=bearer_token)
+            response = self._get_channel_viewers(bearer_token=bearer_token)
         
         #retrieves list of dicts
-        channel_viewers_records = self.process_channel_viewers(response=response)
+        channel_viewers_records = self._process_channel_viewers(response=response)
         
         #queues/updates the self.channel_viewers_queue
-        self.queue_channel_viewers(records=channel_viewers_records)
+        self._queue_channel_viewers(records=channel_viewers_records)
 
         #generates a query based on the queued viewers
-        channel_viewers_query = self.generate_bq_users_query(
+        channel_viewers_query = self._generate_bq_users_query(
             table_id=table_id,
             records=self.channel_viewers_queue
             )
 
         return channel_viewers_query
 
-    def generate_bq_user_interactions_records(self, records: list[dict]) -> list[dict]:
+    def generate_twitch_user_interactions_records_for_bq(self, records: list[dict]) -> list[dict]:
         rows_to_insert = []
         for record in records:
             user_id = record.get('user_id')
@@ -274,8 +258,7 @@ class BQUploader:
             self.logger.debug("These are the records:")
             self.logger.debug(records)
             #log number of records
-
-            
+          
     def send_queryjob_to_bq(self, query):
         try:
             self.logger.info("Starting BigQuery send_queryjob_to_bq() job...")
@@ -299,4 +282,4 @@ class BQUploader:
 
 if __name__ == '__main__':
     chatdataclass = BQUploader()
-    chatdataclass.get_channel_viewers()
+    chatdataclass._get_channel_viewers()

@@ -80,8 +80,14 @@ class MessageHandler:
     def _add_user_to_users_in_messages_list(self, message_metadata: dict) -> None:
         self.users_in_messages_list.append(message_metadata['name'])
         self.users_in_messages_list = list(set(self.users_in_messages_list))
+        self.logger.debug(f"users_in_messages_list: {self.users_in_messages_list}")
 
-    #TODO: get_channel_viewers should probably be a separate helper
+        #String version of users_in_messages_list
+        user_list = list(set([username for username in self.users_in_messages_list]))
+        users_in_messages_list_text = "'"+", ".join(user_list)+"'"
+        self.users_in_messages_list_text = users_in_messages_list_text
+
+    #TODO: _get_channel_viewers should probably be a separate helper
     # module/function/class to work with the twitch API directly
     async def get_current_user_names_list(
             self, 
@@ -105,15 +111,7 @@ class MessageHandler:
             self.logger.debug(f"current_user_names: {current_user_names}")
             return current_user_names 
 
-    #TODO: get_channel_viewers should probably be a separate helper
-    # module/function/class to work with the twitch API directly
-    def get_string_of_users(self, usernames_list) -> str:
-        users_in_users_list = list(set([username for username in usernames_list]))
-        users_in_users_list_text = "'"+", ".join(users_in_users_list)+"'"
-        self.logger.debug(f"users_in_users_list_text: {users_in_users_list_text}")
-        return users_in_users_list_text
-
-    #TODO: get_channel_viewers should probably be a separate helper
+    #TODO: _get_channel_viewers should probably be a separate helper
     # module/function/class to work with the twitch API directly
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
     async def _get_channel_viewers(
@@ -213,7 +211,7 @@ class MessageHandler:
             role=message_role,
             name=message_username,
             content=message_content
-            )            
+            )
 
         #Apply message dict to msg histories
         self.chatforme_msg_history.append(gpt_ready_msg_dict)

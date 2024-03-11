@@ -30,5 +30,12 @@
     ],
     "!what": [
         "!hwat", "!whta", "!awth", "!waht", "!wha", "!wath", "!wht"
+    ],
+    "!factcheck": [
+        "!factchek", "!factchec", "!factchekc", "!factchecj",
+        "!factchekj", "!factchekk", "!factchekc", "!factchekj",
+        "!factchekk", "!factchekc", "!factchekj", "!factchekk",
+        "!factchekc", "!factchekj", "!factchekk", "!factchekc",
+        "!factchekj", "!factchekk", "!factchekc", "!factchekj"
     ]
 }

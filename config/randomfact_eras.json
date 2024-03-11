@@ -1,0 +1,8 @@
+{
+    "Prehistoric": ["Before 3000 BC", "3000 BC - 2000 BC", "2000 BC - 1000 BC", "1000 BC - 1 BC"],
+    "Ancient History": ["1 AD - 500 AD", "500 AD - 1000 AD"],
+    "Medieval Period": ["1000 AD - 1100 AD", "1100 AD - 1200 AD", "1200 AD - 1300 AD", "1300 AD - 1400 AD", "1400 AD - 1500 AD"],
+    "Early Modern Period": ["1500 AD - 1600 AD", "1600 AD - 1700 AD", "1700 AD - 1800 AD", "1800 AD - 1899 AD"],
+    "20th Century": ["1900s", "1910s", "1920s", "1930s", "1940s", "1950s", "1960s", "1970s", "1980s", "1990s"],
+    "21st Century": ["2000s", "2010s", "2020s"]
+}

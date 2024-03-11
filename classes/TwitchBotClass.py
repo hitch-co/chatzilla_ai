@@ -92,19 +92,11 @@ class Bot(twitch_commands.Bot):
         #Taken from app authentication class()
         self.twitch_auth = twitch_auth
 
-        # required config/files
-        self.command_spellecheck_terms = utils.load_json(
-            dir_path=self.config.config_dirpath,
-            file_name=self.config.command_spellcheck_terms_filename
-            )
-        
         #Google Service Account Credentials & BQ Table IDs
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = self.config.google_application_credentials_file
         
-        #Get historic stream viewers
-        self.historic_users_at_start_of_session = self.bq_uploader.fetch_usernames_as_list(
-            self.config.talkzillaai_userdata_table_id
-            )
+        #Get historic stream viewers (TODO: Should mb be refreshed more frequently)
+        self.historic_users_at_start_of_session = self.bq_uploader.fetch_unique_usernames_from_bq_as_list()
 
         #Set default loop state
         self.is_ouat_loop_active = False
@@ -149,23 +141,7 @@ class Bot(twitch_commands.Bot):
         # initialize the event loop
         self.logger.debug(f"Initializing event loop")
         self.loop = asyncio.get_event_loop()
-
-        # start OUAT loop
-        self.logger.debug(f"Starting OUAT service")
-        self.loop.create_task(self.ouat_storyteller_task())
-
-        # Start bot ears streaming
-        self.logger.debug(f"Starting bot ears streaming")
-        self.loop.create_task(self.bot_ears.start_botears_audio_stream())
-
-        # start newusers loop
-        self.logger.debug(f"Starting newusers service")
-        self.loop.create_task(self._send_message_to_new_users_task())
-
-        # start authentication refresh loop
-        self.logger.debug('Starting the refresh token service')
-        self.loop.create_task(self._token_refresh_task())
-
+ 
         # Say hello to the chat 
         if self.config.twitch_bot_gpt_hello_world == True:
             replacements_dict = {
@@ -183,14 +159,40 @@ class Bot(twitch_commands.Bot):
                 )
             self.logger.debug(f"This is the final gpt response for the hello_world: {gpt_response}")
 
+        # start OUAT loop
+        self.logger.debug(f"Starting OUAT service")
+        self.loop.create_task(self.ouat_storyteller_task())
+
+        # Start bot ears streaming
+        self.logger.debug(f"Starting bot ears streaming")
+        self.loop.create_task(self.bot_ears.start_botears_audio_stream())
+
+        # start newusers loop
+        self.logger.debug(f"Starting newusers service")
+        self.loop.create_task(self._send_message_to_new_users_task())
+
+        # start authentication refresh loop
+        self.logger.debug('Starting the refresh token service')
+        self.loop.create_task(self._token_refresh_task())
+
+        # start randomfact loop
+        self.logger.debug('Starting the randomfact service')
+        self.loop.create_task(self.randomfact_task())
+
     async def event_message(self, message):
         def clean_message_content(content, command_spellings):
+            content_temp = content
+            if content.startswith('!'):
+                words = content.split(' ')
+                words[0] = words[0].lower()
+                content_temp = ' '.join(words)
+
             for correct_command, misspellings in command_spellings.items():
                 for misspelled in misspellings:
                     # Using a regular expression to match whole commands only
                     pattern = r'(^|\s)' + re.escape(misspelled) + r'(\s|$)'
-                    content = re.sub(pattern, r'\1' + correct_command + r'\2', content)
-            return content
+                    content_temp = re.sub(pattern, r'\1' + correct_command + r'\2', content_temp)
+            return content_temp
 
         self.logger.info("-------------------------------------")
         self.logger.info("------ Msg received, processing -----")
@@ -231,7 +233,7 @@ class Bot(twitch_commands.Bot):
         if message.author is not None:
             message.content = clean_message_content(
                 message.content,
-                self.command_spellecheck_terms
+                self.config.command_spellcheck_terms
                 )
             await self.handle_commands(message)
 
@@ -315,21 +317,22 @@ class Bot(twitch_commands.Bot):
     async def _send_channel_message_wrapper(self, message):
         await self.channel.send(message)
 
-    async def _check_mod(self, ctx, command) -> bool:
+    async def _check_mod(self, ctx) -> bool:
         is_sender_mod = False
         command_name = inspect.currentframe().f_back.f_code.co_name
-        if not ctx.author.is_mod:
+        self.logger.info(f"ctx.message.author.is_mod???: {ctx.message.author.is_mod}")
+        if not ctx.message.author.is_mod:
             await ctx.send(f"Oops, the {command_name} is for mods...")
-        else:
+        elif ctx.message.author.is_mod:
             is_sender_mod = True
         return is_sender_mod
 
     @twitch_commands.command(name='getstats')
     async def get_command_stats(self, ctx):
         table_id = self.config.talkzillaai_usertransactions_table_id
-        stats_text = self.bq_uploader.fetch_stats_as_text(table_id)
+        stats_text = self.bq_uploader.fetch_interaction_stats_as_text(table_id)
         await self._send_channel_message_wrapper(stats_text)
-        
+
     @twitch_commands.command(name='what')
     async def what(self, ctx):
         #add format for concat with filename in trext format       
@@ -355,7 +358,7 @@ class Bot(twitch_commands.Bot):
             prompt_text=prompt_text,
             replacements_dict=replacements_dict,
             msg_history=self.message_handler.chatforme_msg_history,
-            incl_voice='yes'
+            incl_voice=self.config.tts_include_voice
         )
 
     @twitch_commands.command(name='commands')
@@ -364,11 +367,11 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='discord')
     async def discord(self, ctx):
-        await self._send_channel_message_wrapper("ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")
+        await self._send_channel_message_wrapper("This is the discord channel, come say hello but, ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")
 
     @twitch_commands.command(name='updatetodo')
     async def updatetodo(self, ctx, *args):
-            is_sender_mod = self._check_mod(ctx)
+            is_sender_mod = await self._check_mod(ctx)
 
             if is_sender_mod == True:
                 updated_string = ' '.join(args)
@@ -393,15 +396,12 @@ class Bot(twitch_commands.Bot):
         # Select random voice from the list of voices
         tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
 
-        # Extract usernames from previous chat messages stored in chatforme_msg_history.
-        users_in_messages_list_text = self.message_handler.get_string_of_users(usernames_list=self.message_handler.users_in_messages_list)
-
         #Select prompt from argument, build the final prompt textand format replacements
         chatforme_prompt = self.config.chatforme_prompt
         replacements_dict = {
             "twitch_bot_display_name":self.config.twitch_bot_display_name,
             "num_bot_responses":self.config.num_bot_responses,
-            "users_in_messages_list_text":users_in_messages_list_text,
+            "users_in_messages_list_text":self.message_handler.users_in_messages_list_text,
             "wordcount_medium":self.config.wordcount_medium,
             "bot_operatorname":self.config.twitch_bot_operatorname,
             "twitch_bot_channel_name":self.config.twitch_bot_channel_name
@@ -412,7 +412,8 @@ class Bot(twitch_commands.Bot):
                 prompt_text=chatforme_prompt,
                 replacements_dict=replacements_dict,
                 msg_history=self.message_handler.chatforme_msg_history,
-                voice_name=tts_voice
+                voice_name=tts_voice,
+                incl_voice=self.config.tts_include_voice
             )
             return self.logger.info("chatforme has run successfully.")
         except Exception as e:
@@ -483,8 +484,8 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='startstory')
     async def startstory(self, message, *args):
+        self.logger.info(f"self.ouat_counter={self.ouat_counter}")
         if self.ouat_counter == 0:
-            self.ouat_counter += 1
             self.message_handler.ouat_msg_history.clear()
             user_requested_plotline_str = ' '.join(args)
             self.current_story_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
@@ -549,7 +550,7 @@ class Bot(twitch_commands.Bot):
                     prompt_text=self.config.storyteller_storystarter_prompt,
                     replacements_dict=replacements_dict,
                     msg_history=new_plotline_gptlistdict,
-                    incl_voice='yes',
+                    incl_voice=self.config.tts_include_voice,
                     voice_name=self.current_story_voice
                     )  
 
@@ -594,7 +595,7 @@ class Bot(twitch_commands.Bot):
                     prompt_text=self.config.storyteller_storystarter_prompt,
                     replacements_dict=replacements_dict,
                     msg_history = self.story_bulleted_plotline,
-                    incl_voice='yes',
+                    incl_voice=self.config.tts_include_voice,
                     voice_name=self.current_story_voice
                 )      
                 self.logger.debug(f"This is the article_content_plotline_gptlistdict: {article_content_plotline_gptlistdict}")
@@ -640,6 +641,7 @@ class Bot(twitch_commands.Bot):
     async def stop_ouat_loop(self) -> None:
         self.is_ouat_loop_active = False
         self.ouat_counter = 0
+        self.logger.info(f"OUAT loop has been stopped, self.ouat_counter has been reset to {self.ouat_counter}")
 
         utils.write_msg_history_to_file(
             logger=self.logger,
@@ -660,6 +662,7 @@ class Bot(twitch_commands.Bot):
                 continue
                       
             else:
+                self.ouat_counter += 1
                 self.logger.info(f"OUAT details: Starting cycle #{self.ouat_counter} of the OUAT Storyteller") 
 
                 #storystarter
@@ -706,10 +709,10 @@ class Bot(twitch_commands.Bot):
                     prompt_text = gpt_prompt_final, 
                     replacements_dict=replacements_dict,
                     msg_history=self.message_handler.ouat_msg_history,
-                    incl_voice='yes',
+                    incl_voice=self.config.tts_include_voice,
                     voice_name=self.current_story_voice
                     )
                 self.logger.info(f"OUAT gpt_response for iteration #{self.ouat_counter} of the OUAT Storyteller has been generated successfully: '{gpt_response}'")
-                self.ouat_counter += 1
+            
 
             await asyncio.sleep(int(self.config.ouat_message_recurrence_seconds))

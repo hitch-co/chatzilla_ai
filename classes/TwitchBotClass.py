@@ -423,8 +423,7 @@ class Bot(twitch_commands.Bot):
         
     @twitch_commands.command(name='chat')
     async def chatforme(self, ctx):
-        self._chatforme_main()
-        #self.loop.create_task(self._chatforme_main()) #does a task really need to be created here?
+        self.loop.create_task(self._chatforme_main()) #does a task really need to be created here?
 
     @twitch_commands.command(name='vc')
     async def vc(self, message, *args):

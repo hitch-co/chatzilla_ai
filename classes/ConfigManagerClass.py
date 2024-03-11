@@ -78,6 +78,7 @@ class ConfigManager:
                 self.yaml_todo_config(yaml_config)
 
                 self.yaml_randomfact_json(yaml_config)
+                self.yaml_factchecker_config(yaml_config)
 
                 self.yaml_tts_config(yaml_config)
                 

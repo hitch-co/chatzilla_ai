@@ -422,6 +422,7 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='chat')
     async def chatforme(self, ctx):
         self._chatforme_main()
+        #self.loop.create_task(self._chatforme_main()) #does a task really need to be created here?
 
     @twitch_commands.command(name='vc')
     async def vc(self, message, *args):
@@ -650,6 +651,126 @@ class Bot(twitch_commands.Bot):
             dirname='log/ouat_story_history'
             )
         self.message_handler.ouat_msg_history.clear()
+
+    async def _factcheck_main(self):
+        # Select random voice from the list of voices
+        tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
+
+        # # Extract usernames from previous chat messages stored in chatforme_msg_history.
+        # users_in_messages_list_text = self.message_handler.get_users_in_message_list_as_string(usernames_list=self.message_handler.users_in_messages_list)
+
+        # select a random number/item based on the number of items inside of self.config.factchecker_prompts.values()
+        random_number = random.randint(0, len(self.config.factchecker_prompts.values())-1)
+        chatforme_factcheck_prompt = list(self.config.factchecker_prompts.values())[random_number]
+
+        replacements_dict = {
+            "twitch_bot_display_name":self.config.twitch_bot_display_name,
+            "num_bot_responses":self.config.num_bot_responses,
+            "users_in_messages_list_text":self.message_handler.users_in_messages_list_text,
+            "wordcount":self.config.wordcount_short,
+            "bot_operatorname":self.config.twitch_bot_operatorname,
+            "twitch_bot_channel_name":self.config.twitch_bot_channel_name
+        }
+
+        try:
+            await self.chatforme_service.make_msghistory_gpt_response(
+                prompt_text=chatforme_factcheck_prompt,
+                replacements_dict=replacements_dict,
+                msg_history=self.message_handler.chatforme_msg_history,
+                voice_name=tts_voice,
+                incl_voice=self.config.tts_include_voice
+            )
+            return self.logger.info(f"chatforme has run successfully. Selected the {random_number} item from the list of self.config.factchecker_prompts.values().  The prompt is: {chatforme_factcheck_prompt[:15]} ")
+        except Exception as e:
+            return self.logger.error(f"error with chatforme in twitchbotclass: {e}")
+
+    @twitch_commands.command(name='factcheck')
+    async def factcheck(self, ctx):
+        self.loop.create_task(self._factcheck_main())
+
+    @twitch_commands.command(name='tts')
+    async def tts(self, ctx, *args):
+        is_sender_mod = await self._check_mod(ctx)
+
+        try:
+            if is_sender_mod == True:
+                if args[0].lower() in ['off', 'false']:
+                    self.config.tts_include_voice = 'no'
+                    response = "TTS OFF."
+                elif args[0].lower() in ['on', 'true']:
+                    self.config.tts_include_voice = 'yes'
+                    response = "TTS ON."
+                else:
+                    response = "Invalid option for tts command. Use 'on' or 'off'"
+                
+                await self.channel.send(response)
+        
+            else: 
+                self.logger.debug = "Requester was not a mod... nothing happened"
+
+        except Exception as e:
+            response = f"no change made, see log"
+            self.logger.error(f"Error occurred in !tts: {e}")
+
+    @twitch_commands.command(name='randomfact_sleeptime')
+    async def randomfact_sleeptime(self, ctx, *args):
+        try:
+            #Grab *args from text and make sure that it is an integer
+            self.config.randomfact_sleep_time = int(args[0])
+            response = f"randomfact sleep time set to {self.config.randomfact_sleep_time} seconds."
+        except Exception as e:
+            response = f"no change made, see log"
+        await self.channel.send(response)
+
+    def _randomfact_category_picker(self, data):
+        # Pick a random category (like 'historicalContexts', 'categories', etc.)
+        topic = random.choice(list(data.keys()))
+        
+        # Pick a random item within the selected category
+        subtopic = random.choice(data[topic])
+        
+        return topic, subtopic
+
+    async def randomfact_task(self):
+        self.logger.info("Starting the randomfact_task. This is the randomfact_prompts.")
+        self.logger.debug(self.config.randomfact_prompts)
+        while True:
+            await asyncio.sleep(self.config.randomfact_sleep_time)   
+
+            # Select a random prompt from the randomfact_prompts dictionary
+            selected_key = random.choice(list(self.config.randomfact_prompts.keys()))
+            selected_prompt = self.config.randomfact_prompts[selected_key]
+            self.logger.debug(f"Selected prompt: {selected_prompt}")
+
+            # Correctly pass the topics data structure to _randomfact_category_picker
+            topic, subtopic = self._randomfact_category_picker(data=self.config.randomfact_topics)
+            era, timeperiod = self._randomfact_category_picker(data=self.config.randomfact_eras)
+            self.logger.debug(f"Selected topic: {topic}, Selected subtopic: {subtopic}")
+            self.logger.debug(f"Selected era: {era}, Selected timeperiod: {timeperiod}")
+
+            #Generate random character from a to z
+            random_character_a_to_z = random.choice('abcdefghijklmnopqrstuvwxyz')
+
+            replacements_dict = {
+                "wordcount":self.wordcount_short,
+                'twitch_bot_display_name':self.config.twitch_bot_display_name,
+                'randomfact_topic':topic,
+                'randomfact_subtopic':subtopic,
+                'randomfact_era':era,
+                'randomfact_timeperiod':timeperiod,
+                'random_character_a_to_z':random_character_a_to_z,
+                'param_in_text':'variable_from_scope'
+                }
+
+            randomvoice = random.choice(random.choice(list(self.config.tts_voices.values())))
+            gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
+                prompt_text = selected_prompt, 
+                replacements_dict=replacements_dict,
+                msg_history=self.message_handler.ouat_msg_history,
+                incl_voice=self.config.tts_include_voice,
+                voice_name=randomvoice
+                )
+            self.logger.debug(f"gpt_response generated successfully: '{gpt_response}'")
 
     async def ouat_storyteller_task(self):
         self.article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.config.newsarticle_rss_feed)

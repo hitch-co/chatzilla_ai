@@ -76,6 +76,10 @@ class ConfigManager:
 
                 self.yaml_helloworld_config(yaml_config)
                 self.yaml_todo_config(yaml_config)
+
+                self.yaml_randomfact_json(yaml_config)
+
+                self.yaml_tts_config(yaml_config)
                 
         except FileNotFoundError:
             self.logger.error(f"YAML configuration file not found at {yaml_full_path}")
@@ -113,6 +117,12 @@ class ConfigManager:
                     
         except Exception as e:
             self.logger.error(f"Error in update_config_from_env(): {e}")
+
+    def yaml_tts_config(self, yaml_config):
+        try:
+            self.tts_include_voice = yaml_config['openai-api']['tts_include_voice']
+        except Exception as e:
+            self.logger.error(f"Error in yaml_tts_config(): {e}")
 
     def yaml_gcp_config(self, yaml_config):
         try:
@@ -235,6 +245,29 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Error in yaml_depinjector_config(): {e}")
 
+    def yaml_randomfact_json(self, yaml_config):
+        try:
+            self.randomfact_sleep_time = yaml_config['chatforme_randomfacts']['randomfact_sleep_time']
+            self.randomfact_prompts = yaml_config['chatforme_randomfacts']['randomfact_prompts']
+
+            #load json file
+            self.randomfact_topics_json = yaml_config['chatforme_randomfacts']['randomfact_topics_json_filepath']
+            with open(self.randomfact_topics_json, 'r') as file:
+                self.randomfact_topics = yaml.safe_load(file)
+
+            #load json file
+            self.randomfact_json = yaml_config['chatforme_randomfacts']['randomfact_eras_json_filepath']
+            with open(self.randomfact_json, 'r') as file:
+                self.randomfact_eras = yaml.safe_load(file)
+
+        except Exception as e:
+            self.logger.error(f"Error in yaml_randomfact_json(): {e}")
+
+    def yaml_factchecker_config(self, yaml_config):
+        try:
+            self.factchecker_prompts = yaml_config['chatforme_factcheck']['chatforme_factcheck_prompts']
+        except Exception as e:
+            self.logger.error(f"Error in yaml_factchecker_config(): {e}")
 
     def update_spellcheck_config(self, yaml_config):
         self.command_spellcheck_terms_filename = yaml_config['command_spellcheck_terms_filename']

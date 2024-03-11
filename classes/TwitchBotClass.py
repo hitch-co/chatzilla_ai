@@ -208,17 +208,19 @@ class Bot(twitch_commands.Bot):
         # 2. Process the message through the vibecheck service         
         if hasattr(self, 'vibecheck_service') and self.vibecheck_service is not None:
             self.vibecheck_service.process_vibecheck_message(self.message_handler.message_history_raw[-1]['name'])
-        
+
+        #TODO: Steps 3 and 4 should probably be added to a task so they can run on a separate thread
         # 3. Get chatter data, store in queue, generate query for sending to BQ
         channel_viewers_queue_query = self.bq_uploader.get_process_queue_create_channel_viewers_query(
             table_id=self.userdata_table_id,
             bearer_token=self.twitch_bot_access_token
             )
 
+        #TODO: Steps 3 and 4 should probably be added to a task so they can run on a separate thread
         # 4. Send the data to BQ when queue is full.  Clear queue when done
         if len(self.message_handler.message_history_raw)>=5:
             self.bq_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
-            viewer_interaction_records = self.bq_uploader.generate_bq_user_interactions_records(records=self.message_handler.message_history_raw)
+            viewer_interaction_records = self.bq_uploader.generate_twitch_user_interactions_records_for_bq(records=self.message_handler.message_history_raw)
 
             self.bq_uploader.send_recordsjob_to_bq(
                 table_id=self.usertransactions_table_id,

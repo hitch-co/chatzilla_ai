@@ -85,8 +85,8 @@ def openai_gpt_chatcompletion(
     counter=0
     try:
         while _count_tokens_in_messages(messages=messages_dict_gpt) > 2000:
-            if counter > 5:
-                error_message = f"Error: Too many tokens {token_count} even after 3 attempts to reduce count"
+            if counter > 10:
+                error_message = f"Error: Too many tokens {token_count} even after 10 attempts to reduce count"
                 logger.error(error_message)
                 raise ValueError(error_message)
             logger.debug("Entered _count_tokens_in_messages() > ____")
@@ -299,7 +299,7 @@ if __name__ == '__main__':
     print("GPT Models:")
     print(json.dumps(gpt_models, indent=4))
 
-     # test3 -- call to chatgpt chatcompletion
+    # test3 -- call to chatgpt chatcompletion
     # openai_gpt_chatcompletion(messages_dict_gpt=[{'role':'user', 'content':'Whats a tall buildings name?'}],
     #                           max_characters=250,
     #                           max_attempts=5,

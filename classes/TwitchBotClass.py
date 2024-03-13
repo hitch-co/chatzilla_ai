@@ -10,6 +10,7 @@ import time
 from my_modules.my_logging import create_logger
 from my_modules import utils
 from my_modules import gpt
+from my_modules.twitch_api import TwitchAPI
 
 from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
@@ -89,6 +90,10 @@ class Bot(twitch_commands.Bot):
         # Instantiate the speech to text service
         self.s2t_service = SpeechToTextService()
         
+        # Grab the TwitchAPI class
+        self.twitch_api = TwitchAPI()
+
+
         #Taken from app authentication class()
         self.twitch_auth = twitch_auth
 
@@ -194,33 +199,35 @@ class Bot(twitch_commands.Bot):
                     content_temp = re.sub(pattern, r'\1' + correct_command + r'\2', content_temp)
             return content_temp
 
-        self.logger.info("-------------------------------------")
-        self.logger.info("------ Msg received, processing -----")
-        self.logger.info("-------------------------------------")
+        self.logger.info("MESSAGE RECEIVED: Processing message...")
 
         # 1. This is the control flow function for creating message histories
+        # NOTE: SHould this be awaited to ensure accurate response from GPT in #1b?
         self.message_handler.add_to_appropriate_message_history(message)
 
-        # if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
+        # 1b. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
         if '@'+self.config.twitch_bot_username in message.content and "!chat" not in message.content:
             await self._chatforme_main()
 
-        # 2. Process the message through the vibecheck service         
+        # 2. Process the message through the vibecheck service.
+            #NOTE: Should this be a separate task?     
         if hasattr(self, 'vibecheck_service') and self.vibecheck_service is not None:
             self.vibecheck_service.process_vibecheck_message(self.message_handler.message_history_raw[-1]['name'])
 
         #TODO: Steps 3 and 4 should probably be added to a task so they can run on a separate thread
         # 3. Get chatter data, store in queue, generate query for sending to BQ
-        channel_viewers_queue_query = self.bq_uploader.get_process_queue_create_channel_viewers_query(
-            table_id=self.userdata_table_id,
-            bearer_token=self.twitch_bot_access_token
-            )
-
-        #TODO: Steps 3 and 4 should probably be added to a task so they can run on a separate thread
         # 4. Send the data to BQ when queue is full.  Clear queue when done
-        if len(self.message_handler.message_history_raw)>=5:
+        if len(self.message_handler.message_history_raw)>=2:
+
+            channel_viewers_queue_query = await self.twitch_api.process_viewers_for_bigquery(
+                table_id=self.userdata_table_id,
+                bearer_token=self.twitch_bot_access_token
+                )
+
             self.bq_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
             viewer_interaction_records = self.bq_uploader.generate_twitch_user_interactions_records_for_bq(records=self.message_handler.message_history_raw)
+
+            self.logger.info(f"viewer_interaction_records: {viewer_interaction_records}")
 
             self.bq_uploader.send_recordsjob_to_bq(
                 table_id=self.usertransactions_table_id,
@@ -229,7 +236,9 @@ class Bot(twitch_commands.Bot):
 
             self.logger.info(f"Clearing message_history_raw and channel_viewers_queue.")
             self.message_handler.message_history_raw.clear()
-            self.bq_uploader.channel_viewers_queue.clear()
+            
+            self.logger.debug(f"CHANNEL VIEWERS QUEUE PRE-CLEAR: {self.twitch_api.channel_viewers_queue}")
+            self.twitch_api.channel_viewers_queue.clear()
 
         # 5. self.handle_commands runs through bot commands
         if message.author is not None:
@@ -239,9 +248,7 @@ class Bot(twitch_commands.Bot):
                 )
             await self.handle_commands(message)
 
-        self.logger.info("-------------------------------------") 
-        self.logger.info("----- ...finished processing msg ----")
-        self.logger.info("-------------------------------------\n")        
+        self.logger.info("MESSAGE PROCESSED: Message processing complete.")      
 
     async def _token_refresh_task(self):
         while True:
@@ -262,21 +269,10 @@ class Bot(twitch_commands.Bot):
         while True:
             await asyncio.sleep(self.newusers_sleep_time)
 
-            #TODO: get_current_user_names_list should be a method of the 
-            # NewUsersService or a twitch specific service
-            current_users_list = await self.message_handler.get_current_user_names_list(
-                bearer_token = self.twitch_bot_access_token,
-                broadcaster_id = self.broadcaster_id,
-                moderator_id = self.moderator_id,
-                twitch_bot_client_id = self.twitch_bot_client_id
-                )
+            # Get the current users in the channel
+            current_users_list = await self.twitch_api.retrieve_active_usernames(bearer_token = self.twitch_bot_access_token)
             
-            # if no current_users_list is returned, return a list of value test_user
-            if current_users_list is None:
-                current_users_list = ['test_user']
-                self.logger.warning(f"current_users_list is None, using test_user: {current_users_list}")
-            
-            #Generate Message to new users
+            # Identify list of users who are new to the channel and have not yet been sent a message
             users_not_yet_sent_message = await self.newusers_service.get_users_not_yet_sent_message(
                 historic_users_list = self.historic_users_at_start_of_session,
                 current_users_list = current_users_list
@@ -287,7 +283,7 @@ class Bot(twitch_commands.Bot):
                 raise ValueError("users_not_yet_sent_message is None, this should not happen")
             
             elif len(users_not_yet_sent_message) == 0:
-                self.logger.debug("No users found...")
+                self.logger.debug("No new users found...")
                 continue
             
             elif len(users_not_yet_sent_message) > 0:      

@@ -41,7 +41,7 @@ class NewUsersService:
         #make lowercase prior to comparison
         historic_users_list = [user.lower() for user in historic_users_list]
         current_users_list = [user.lower() for user in current_users_list]
-        
+
         #set diff from current_user_names and historic_users_list, remove known bots
         current_users_list_excluding_bots = [user for user in current_users_list if user not in self.known_bots]
         current_new_usernames = await utils.find_unique_to_new_list(

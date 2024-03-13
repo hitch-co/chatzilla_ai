@@ -18,12 +18,8 @@ class MessageHandler:
             )
         self.msg_history_limit = msg_history_limit
 
-        # Chatters endpoint
-        self.twitch_get_chatters_endpoint = 'https://api.twitch.tv/helix/chat/chatters'
-
         #Users in message history
         self.users_in_messages_list = []
-        self.current_users_in_session = []
 
         #message_history_raw
         self.message_history_raw = []
@@ -87,75 +83,6 @@ class MessageHandler:
         users_in_messages_list_text = "'"+", ".join(user_list)+"'"
         self.users_in_messages_list_text = users_in_messages_list_text
 
-    #TODO: _get_channel_viewers should probably be a separate helper
-    # module/function/class to work with the twitch API directly
-    async def get_current_user_names_list(
-            self, 
-            bearer_token,
-            broadcaster_id,
-            moderator_id,
-            twitch_bot_client_id
-            ) -> list[str]:
-
-            #Get response/data
-            response = await self._get_channel_viewers(
-                bearer_token=bearer_token,
-                broadcaster_id=broadcaster_id,
-                moderator_id=moderator_id,
-                twitch_bot_client_id=twitch_bot_client_id
-            )
-            response_json = response.json()
-            current_users_in_session = response_json['data']
-            
-            current_user_names = [user['user_login'] for user in current_users_in_session]
-            self.logger.debug(f"current_user_names: {current_user_names}")
-            return current_user_names 
-
-    #TODO: _get_channel_viewers should probably be a separate helper
-    # module/function/class to work with the twitch API directly
-    @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
-    async def _get_channel_viewers(
-        self,
-        bearer_token,
-        broadcaster_id,
-        moderator_id,
-        twitch_bot_client_id
-        ) -> object:
-        try:
-            self.logger.debug(f'Getting channel viewers with bearer_token')
-            base_url=self.twitch_get_chatters_endpoint
-            params = {
-                'broadcaster_id': broadcaster_id,
-                'moderator_id': moderator_id
-            }
-            headers = {
-                'Authorization': f'Bearer {bearer_token}',
-                'Client-Id': twitch_bot_client_id
-            }
-            response = requests.get(base_url, params=params, headers=headers)
-            self.logger.debug(f'Received response: {response}')
-
-            utils.write_json_to_file(
-                response.json(), 
-                variable_name_text='channel_viewers', 
-                dirname='log/get_chatters_data'
-                )
-            self.logger.debug('Wrote response.json() to file...')
-
-            if response.status_code == 200:
-                self.logger.debug("Response.json(): %s", response.json())
-            else:
-                self.logger.error("Failed: %s, %s", response.status_code, response.text)
-                response.raise_for_status()
-
-            return response
-        
-        except Exception as e:
-            self.logger.error(f"An exception occurred: {e}")
-            traceback_details = traceback.format_exc()
-            self.logger.error(traceback_details)
-            raise
-    
     def _extract_name_from_message(self, message):
         message_rawdata = message.raw_data
 

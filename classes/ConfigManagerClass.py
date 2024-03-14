@@ -288,7 +288,7 @@ class ConfigManager:
             self.env_file_name = yaml_config['env_filename']
             self.app_config_dirpath = yaml_config['app_config_dirpath']
             
-            self.shorten_response_length = yaml_config['gpt_thread_options']['shorten_response_length']
+            self.shorten_response_length = yaml_config['gpt_thread_prompts']['shorten_response_length']
 
             self.config_dirpath = yaml_config['config_dirpath']
             self.keys_dirpath = yaml_config['keys_dirpath']

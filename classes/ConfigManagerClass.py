@@ -81,6 +81,8 @@ class ConfigManager:
                 self.yaml_factchecker_config(yaml_config)
 
                 self.yaml_tts_config(yaml_config)
+
+                self.yaml_gpt_assistants_config(yaml_config)
                 
         except FileNotFoundError:
             self.logger.error(f"YAML configuration file not found at {yaml_full_path}")
@@ -270,6 +272,20 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Error in yaml_factchecker_config(): {e}")
 
+    def yaml_gpt_assistants_config(self, yaml_config):
+        try:
+            #Config
+            self.gpt_assistant_type = yaml_config['gpt_assistant_config']['assistant_type']
+
+            #Prompts
+            self.gpt_assistants_prompts = yaml_config['gpt_assistant_prompts']
+            self.gpt_assistants_prompt_shorten_response = yaml_config['gpt_thread_prompts']['shorten_response_length']
+            self.gpt_assistants_prompt_article_summarizer = yaml_config['gpt_assistant_prompts']['article_summarizer']
+            # self.gpt_assistants_prompt_storyteller = yaml_config['gpt_assistant_prompts']['storyteller']
+            # self.gpt_assistants_chatforme = yaml_config['gpt_assistant_prompts']['chatforme']
+        except Exception as e:
+            self.logger.error(f"Error in yaml_gpt_assistants_config(): {e}")
+            
     def update_spellcheck_config(self, yaml_config):
         self.command_spellcheck_terms_filename = yaml_config['command_spellcheck_terms_filename']
         
@@ -288,7 +304,7 @@ class ConfigManager:
             self.env_file_name = yaml_config['env_filename']
             self.app_config_dirpath = yaml_config['app_config_dirpath']
             
-            self.shorten_response_length = yaml_config['gpt_thread_options']['shorten_response_length']
+            self.shorten_response_length = yaml_config['gpt_thread_prompts']['shorten_response_length']
 
             self.config_dirpath = yaml_config['config_dirpath']
             self.keys_dirpath = yaml_config['keys_dirpath']
@@ -325,6 +341,6 @@ if __name__ == "__main__":
     print(f"yaml_filepath_type: {type(yaml_filepath)}")
 
     config = main(yaml_filepath)
-
     print(config.tts_data_folder)
     print(config.tts_file_name)
+    print(config.gpt_assistants_prompt_article_summarizer)

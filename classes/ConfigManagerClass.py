@@ -157,6 +157,7 @@ class ConfigManager:
             self.wordcount_short = str(yaml_config['wordcounts']['short'])
             self.wordcount_medium = str(yaml_config['wordcounts']['medium'])
             self.wordcount_long = str(yaml_config['wordcounts']['long'])
+            self.assistant_response_max_length = yaml_config['openai-api']['assistant_response_max_length']
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_config(): {e}")
 

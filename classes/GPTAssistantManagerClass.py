@@ -47,6 +47,15 @@ root_logger = create_logger(
 #         raise ValueError(f"No ID found for thread '{thread_name}'")
 #     return thread_id
 
+def prompt_text_replacement(logger, gpt_prompt_text, replacements_dict=None):
+    if replacements_dict:
+        prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
+    else:
+        prompt_text_replaced = gpt_prompt_text
+
+    logger.debug(f"prompt_text_replaced: {prompt_text_replaced}")
+    return prompt_text_replaced
+
 class GPTAssistantManager:
     """
     Initializes the GPT Assistant Manager.
@@ -76,6 +85,7 @@ class GPTAssistantManager:
             self, 
             assistant_name='default', 
             assistant_instructions="you're a question answering machine", 
+            replacements_dict: dict=None,
             assistant_type=None, 
             assistant_model=None
             ):
@@ -91,10 +101,14 @@ class GPTAssistantManager:
         Returns:
             The created assistant object.
         """
-        self.logger.debug(f"Config data for assistant creation: {self.config_data}")
         assistant_type = assistant_type or self.config_data.gpt_assistant_type
         assistant_model = assistant_model or self.config_data.gpt_model
-
+        assistant_instructions = prompt_text_replacement(
+            logger=self.logger, 
+            gpt_prompt_text=assistant_instructions,
+            replacements_dict=replacements_dict
+            )
+        
         assistant = self.gpt_client.beta.assistants.create(
             name=assistant_name,
             instructions=assistant_instructions,
@@ -210,7 +224,7 @@ class GPTAssistantResponseManager:
             )
         self.gpt_client = gpt_client
         self.yaml_data = yaml_data
-
+    
     async def _get_response(self, thread_id, run_id, polling_seconds=1):
         """
         Asynchronously retrieves the response for a given thread and run ID.
@@ -242,7 +256,8 @@ class GPTAssistantResponseManager:
             self, 
             thread_id, 
             assistant_id, 
-            thread_instructions='Answer the question using clear and concise language'
+            thread_instructions='Answer the question using clear and concise language',
+            replacements_dict=None
             ):
         """
         Asynchronously runs the assistant on a specified thread and retrieves the thread messages.
@@ -255,6 +270,12 @@ class GPTAssistantResponseManager:
         Returns:
             A list of response thread messages.
         """
+        thread_instructions = prompt_text_replacement(
+            logger=self.logger, 
+            gpt_prompt_text=thread_instructions,
+            replacements_dict=replacements_dict
+            )
+        
         run = self.gpt_client.beta.threads.runs.create(
             thread_id=thread_id,
             assistant_id=assistant_id,
@@ -328,9 +349,8 @@ if __name__ == "__main__":
     config = ConfigManager().get_instance()
     config.gpt_assistants_prompt_article_summarizer
 
-    openai.api_key = os.getenv('OPENAI_API_KEY')
-
     # Create client and manager instances
+    openai.api_key = os.getenv('OPENAI_API_KEY')
     gpt_client = openai.OpenAI()
     gpt_clast_mgr = GPTAssistantManager(yaml_data=config, gpt_client=gpt_client)
     gpt_thrd_mgr = GPTThreadManager(gpt_client=gpt_client)

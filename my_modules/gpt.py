@@ -154,93 +154,93 @@ def openai_gpt_chatcompletion(
     
     return gpt_response_text
 
-def prompt_text_replacement(gpt_prompt_text,
-                            replacements_dict=None):
-    if replacements_dict:
-        prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
-    else:
-        prompt_text_replaced = gpt_prompt_text
+# def prompt_text_replacement(gpt_prompt_text,
+#                             replacements_dict=None):
+#     if replacements_dict:
+#         prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
+#     else:
+#         prompt_text_replaced = gpt_prompt_text
 
-    logger.debug(f"prompt_text_replaced: {prompt_text_replaced}")
-    return prompt_text_replaced
+#     logger.debug(f"prompt_text_replaced: {prompt_text_replaced}")
+#     return prompt_text_replaced
 
-def combine_msghistory_and_prompttext(
-        prompt_text,
-        prompt_text_role='user',
-        prompt_text_name='unknown',
-        msg_history_list_dict=None,
-        combine_messages=False,
-        output_new_list=False
-        ) -> list[dict]:
-    """
-    Merges a given prompt text with an existing message history.
+# def combine_msghistory_and_prompttext(
+#         prompt_text,
+#         prompt_text_role='user',
+#         prompt_text_name='unknown',
+#         msg_history_list_dict=None,
+#         combine_messages=False,
+#         output_new_list=False
+#         ) -> list[dict]:
+#     """
+#     Merges a given prompt text with an existing message history.
 
-    This function integrates a new prompt text into a provided message history list. It supports different roles for the prompt (e.g., user, assistant), and can either combine all user and assistant messages into a single message or keep them separate.
+#     This function integrates a new prompt text into a provided message history list. It supports different roles for the prompt (e.g., user, assistant), and can either combine all user and assistant messages into a single message or keep them separate.
 
-    Parameters:
-    - prompt_text (str): The text of the new prompt to be merged.
-    - prompt_text_role (str): The role associated with the prompt text ('user', 'assistant', or 'system'). Default is 'user'.
-    - prompt_text_name (str): The name associated with the prompt text, used if role is 'user' or 'assistant'. Default is 'unknown'.
-    - msg_history_list_dict (list[dict], optional): The existing list of message dictionaries to merge with. Default is None.
-    - combine_messages (bool): If True, combines all user and assistant messages into a single message. Default is False.
-    - output_new_list (bool): If True, outputs a new list instead of modifying the existing one. Default is False.
+#     Parameters:
+#     - prompt_text (str): The text of the new prompt to be merged.
+#     - prompt_text_role (str): The role associated with the prompt text ('user', 'assistant', or 'system'). Default is 'user'.
+#     - prompt_text_name (str): The name associated with the prompt text, used if role is 'user' or 'assistant'. Default is 'unknown'.
+#     - msg_history_list_dict (list[dict], optional): The existing list of message dictionaries to merge with. Default is None.
+#     - combine_messages (bool): If True, combines all user and assistant messages into a single message. Default is False.
+#     - output_new_list (bool): If True, outputs a new list instead of modifying the existing one. Default is False.
 
-    Returns:
-    - list[dict]: A list of dictionaries representing the merged message history and prompt.
+#     Returns:
+#     - list[dict]: A list of dictionaries representing the merged message history and prompt.
 
-    """
+#     """
     
-    if output_new_list == True:
-        msg_history_list_dict_temp = copy.deepcopy(msg_history_list_dict)
-    else:
-        msg_history_list_dict_temp = msg_history_list_dict
+#     if output_new_list == True:
+#         msg_history_list_dict_temp = copy.deepcopy(msg_history_list_dict)
+#     else:
+#         msg_history_list_dict_temp = msg_history_list_dict
 
-    if prompt_text_role == 'system':
-        prompt_dict = {'role': prompt_text_role, 'content': f'{prompt_text}'}
-    elif prompt_text_role in ['user', 'assistant']:
-        prompt_dict = {'role': prompt_text_role, 'content': f'<<<{prompt_text_name}>>>: {prompt_text}'}
+#     if prompt_text_role == 'system':
+#         prompt_dict = {'role': prompt_text_role, 'content': f'{prompt_text}'}
+#     elif prompt_text_role in ['user', 'assistant']:
+#         prompt_dict = {'role': prompt_text_role, 'content': f'<<<{prompt_text_name}>>>: {prompt_text}'}
 
-    if combine_messages == True:
-        msg_history_string = " ".join(item["content"] for item in msg_history_list_dict_temp if item['role'] != 'system')
-        reformatted_msg_history_list_dict = [{
-            'role': prompt_text_role, 
-            'content': msg_history_string
-        }]
-        reformatted_msg_history_list_dict.append(prompt_dict)
-        msg_history_list_dict_temp = reformatted_msg_history_list_dict
-    else:
-        msg_history_list_dict_temp.append(prompt_dict)
+#     if combine_messages == True:
+#         msg_history_string = " ".join(item["content"] for item in msg_history_list_dict_temp if item['role'] != 'system')
+#         reformatted_msg_history_list_dict = [{
+#             'role': prompt_text_role, 
+#             'content': msg_history_string
+#         }]
+#         reformatted_msg_history_list_dict.append(prompt_dict)
+#         msg_history_list_dict_temp = reformatted_msg_history_list_dict
+#     else:
+#         msg_history_list_dict_temp.append(prompt_dict)
 
-    logger.debug(f"This is the 2 most recent messages in msg_history_list_dict_temp:")
-    logger.debug(msg_history_list_dict_temp[-2:])
+#     logger.debug(f"This is the 2 most recent messages in msg_history_list_dict_temp:")
+#     logger.debug(msg_history_list_dict_temp[-2:])
 
-    utils.write_json_to_file(
-        data=msg_history_list_dict_temp, 
-        variable_name_text='msg_history_list_dict_temp', 
-        dirname='log/get_combine_msghistory_and_prompttext_combined', 
-        include_datetime=False
-    )
-    return msg_history_list_dict_temp
+#     utils.write_json_to_file(
+#         data=msg_history_list_dict_temp, 
+#         variable_name_text='msg_history_list_dict_temp', 
+#         dirname='log/get_combine_msghistory_and_prompttext_combined', 
+#         include_datetime=False
+#     )
+#     return msg_history_list_dict_temp
 
-def make_string_gptlistdict(
-        prompt_text, 
-        prompt_text_role='user'
-        ) -> list[dict]:
-    """
-    Creates a list dictionary format from a single message string.
+# def make_string_gptlistdict(
+#         prompt_text, 
+#         prompt_text_role='user'
+#         ) -> list[dict]:
+#     """
+#     Creates a list dictionary format from a single message string.
 
-    This function is used to convert a single message string into a list containing a dictionary, formatted for use with GPT-like models. It is particularly useful for initializing conversation histories or adding new messages to an existing list.
+#     This function is used to convert a single message string into a list containing a dictionary, formatted for use with GPT-like models. It is particularly useful for initializing conversation histories or adding new messages to an existing list.
 
-    Parameters:
-    - prompt_text (str): The text of the message to be converted.
-    - prompt_text_role (str): The role associated with the message ('user' or 'assistant'). Default is 'user'.
+#     Parameters:
+#     - prompt_text (str): The text of the message to be converted.
+#     - prompt_text_role (str): The role associated with the message ('user' or 'assistant'). Default is 'user'.
 
-    Returns:
-    - list[dict]: A list containing a single dictionary with the message text and role.
+#     Returns:
+#     - list[dict]: A list containing a single dictionary with the message text and role.
 
-    """    
-    prompt_listdict = [{'role': prompt_text_role, 'content': f'{prompt_text}'}]
-    return prompt_listdict
+#     """    
+#     prompt_listdict = [{'role': prompt_text_role, 'content': f'{prompt_text}'}]
+#     return prompt_listdict
 
 def _count_tokens(text:str, model="gpt-3.5-turbo") -> int:
     try:
@@ -266,25 +266,25 @@ def _count_tokens_in_messages(messages: List[dict]) -> int:
     except:
         raise ValueError("_count_tokens_in_messages() failed")
     
-def get_models(api_key=None):
-    """
-    Function to fetch the available models from the OpenAI API.
+# def get_models(api_key=None):
+#     """
+#     Function to fetch the available models from the OpenAI API.
 
-    Args:
-        api_key (str): The API key for the OpenAI API.
+#     Args:
+#         api_key (str): The API key for the OpenAI API.
 
-    Returns:
-        dict: The JSON response from the API containing the available models.
-    """
-    url = 'https://api.openai.com/v1/models'
+#     Returns:
+#         dict: The JSON response from the API containing the available models.
+#     """
+#     url = 'https://api.openai.com/v1/models'
 
-    headers = {
-        'Authorization': f'Bearer {api_key}'
-    }
+#     headers = {
+#         'Authorization': f'Bearer {api_key}'
+#     }
 
-    response = requests.get(url, headers=headers)
+#     response = requests.get(url, headers=headers)
 
-    return response.json()
+#     return response.json()
 
 if __name__ == '__main__':
     
@@ -292,18 +292,23 @@ if __name__ == '__main__':
     config = ConfigManager.get_instance()
     OPENAI_API_KEY = config.openai_api_key
 
-    #test2 -- Get models
-    gpt_models = get_models(
-        api_key=config.openai_api_key
-        )
-    print("GPT Models:")
-    print(json.dumps(gpt_models, indent=4))
+    # #test2 -- Get models
+    # gpt_models = get_models(
+    #     api_key=config.openai_api_key
+    #     )
+    # print("GPT Models:")
+    # print(json.dumps(gpt_models, indent=4))
 
     # test3 -- call to chatgpt chatcompletion
-    # openai_gpt_chatcompletion(messages_dict_gpt=[{'role':'user', 'content':'Whats a tall buildings name?'}],
-    #                           max_characters=250,
-    #                           max_attempts=5,
-    #                           model=gpt_model,
-    #                           frequency_penalty=1,
-    #                           presence_penalty=1,
-    #                           temperature=0.7)
+    openai_gpt_chatcompletion(
+        messages_dict_gpt=[
+            {'role':'user', 'content':'Whats a tall buildings name?'}, 
+            {'role':'user', 'content':'Whats a tall Statues name?'}
+            ],
+        max_characters=250,
+        max_attempts=5,
+        model=gpt_model,
+        frequency_penalty=1,
+        presence_penalty=1,
+        temperature=0.7
+        )

@@ -93,7 +93,6 @@ class Bot(twitch_commands.Bot):
         # Grab the TwitchAPI class
         self.twitch_api = TwitchAPI()
 
-
         #Taken from app authentication class()
         self.twitch_auth = twitch_auth
 
@@ -624,7 +623,7 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='extendstory')
     async def extend_story(self, ctx, *args) -> None:
         self.ouat_counter = self.config.ouat_story_progression_number
-        self.logger.info(f"Story extension requested by {ctx.message.author.name} ({ctx.message.author.id}), self.ouat_counter has been set to {self.ouat_counter}", bcolors.WARNING)
+        self.logger.info(f"Story extension requested by {ctx.message.author.name} ({ctx.message.author.id}), self.ouat_counter has been set to {self.ouat_counter}")
 
     @twitch_commands.command(name='stopstory')
     async def stop_story(self, ctx):

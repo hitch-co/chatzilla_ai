@@ -249,17 +249,29 @@ class ConfigManager:
     def yaml_randomfact_json(self, yaml_config):
         try:
             self.randomfact_sleep_time = yaml_config['chatforme_randomfacts']['randomfact_sleep_time']
-            self.randomfact_prompts = yaml_config['chatforme_randomfacts']['randomfact_prompts']
+            selected_type = os.getenv('selected_game')
+            self.randomfact_selected_game =os.getenv('selected_game', '')
+                            
+            #conditionals from below combined
+            #If os.environ['selected_game'] is None, read one thing, else read another
+            if selected_type is not None:
+                if selected_type == '':
+                    selected_type = 'standard'
+                else:
+                    selected_type = 'game'
+            else:
+                self.logger.warning("WARNING: selected_game is None. Assigning selected_type to 'standard'")
+                selected_type = 'standard'
 
-            #load json file
-            self.randomfact_topics_json = yaml_config['chatforme_randomfacts']['randomfact_topics_json_filepath']
+            # Get random fact topics and areas json file paths
+            self.randomfact_topics_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['topics_injection_file_path']
+            self.randomfact_areas_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['areas_injection_file_path']
+            self.randomfact_prompt = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_prompt']
+
             with open(self.randomfact_topics_json, 'r') as file:
                 self.randomfact_topics = yaml.safe_load(file)
-
-            #load json file
-            self.randomfact_json = yaml_config['chatforme_randomfacts']['randomfact_eras_json_filepath']
-            with open(self.randomfact_json, 'r') as file:
-                self.randomfact_eras = yaml.safe_load(file)
+            with open(self.randomfact_areas_json, 'r') as file:
+                self.randomfact_areas = yaml.safe_load(file)
 
         except Exception as e:
             self.logger.error(f"Error in yaml_randomfact_json(): {e}")

@@ -1,10 +1,7 @@
 {
     "Cultural Movements": [
-      "Renaissance",
       "Enlightenment",
-      "Romanticism",
-      "Modernism",
-      "Postmodernism"
+      "Romanticism"
     ],
     "Fields of Science": [
       "Biology",
@@ -14,11 +11,11 @@
       "Earth Science"
     ],
     "Technological Advances": [
-      "The Internet",
+      "The Internet or other communication technologies",
       "Renewable Energy",
-      "Space Exploration",
-      "Artificial Intelligence",
-      "Biotechnology"
+      "Space Exploration or other exploration feats",
+      "Artificial Intelligence or other computing technologies",
+      "Biotechnology or other medical technologies"
     ],
     "Global Issues": [
       "Climate Change",
@@ -26,13 +23,6 @@
       "Global Health",
       "Economic Inequality",
       "Biodiversity Conservation"
-    ],
-    "Historical Periods": [
-      "Ancient Civilizations",
-      "Middle Ages",
-      "Industrial Revolution",
-      "World War Era",
-      "Digital Age"
     ],
     "Artistic Disciplines": [
       "Literature",

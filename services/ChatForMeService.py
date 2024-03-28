@@ -6,14 +6,21 @@ from my_modules.my_logging import create_logger
 from my_modules import gpt
 from my_modules import utils
 
+# from classes.GPTAssistantManagerClass import GPTAssistantManager, GPTThreadManager, GPTResponseManager
+from classes.ConfigManagerClass import ConfigManager
+
 runtime_logger_level = 'INFO'
 class ChatForMeService:
     def __init__(
             self,
-            tts_client,
+            tts_client, # Check where this comes from, may be duplicative of gpt_client
             send_channel_message
             ):
         
+        # Get Instance of Config
+        self.config = ConfigManager.get_instance()
+
+        # Set the send_channel_message method
         self.send_channel_message = send_channel_message
 
         self.logger = create_logger(
@@ -28,7 +35,7 @@ class ChatForMeService:
         # tts client
         self.tts_client = tts_client
 
-    async def _send_output_message_and_voice(
+    async def send_output_message_and_voice(
             self,
             text,
             incl_voice,
@@ -104,7 +111,7 @@ class ChatForMeService:
     #     except Exception as e:
     #         self.logger.error(f"Error occurred in 'make_singleprompt_gpt_response': {e}")
 
-    #     await self._send_output_message_and_voice(
+    #     await self.send_output_message_and_voice(
     #         text=gpt_response,
     #         incl_voice=incl_voice,
     #         voice_name=voice_name
@@ -114,126 +121,126 @@ class ChatForMeService:
     #     self.logger.info(f"final gpt_response (incl_voice: {incl_voice}): {gpt_response}")
     #     return gpt_response
 
-    # async def make_msghistory_gpt_response(
-    #         self,
-    #         prompt_text, 
-    #         replacements_dict=None,
-    #         msg_history=None,
-    #         incl_voice='yes',
-    #         voice_name='nova'
-    #         ) -> str: 
-    #     """
-    #     Asynchronously generates a GPT response considering message history.
+    async def make_msghistory_gpt_response(
+            self,
+            prompt_text, 
+            replacements_dict=None,
+            msg_history=None,
+            incl_voice='yes',
+            voice_name='nova'
+            ) -> str: 
+        """
+        Asynchronously generates a GPT response considering message history.
 
-    #     This method processes a prompt and an existing message history to generate a GPT response. It handles replacements in the prompt, merges the prompt with the message history, and manages the response and voice message output.
+        This method processes a prompt and an existing message history to generate a GPT response. It handles replacements in the prompt, merges the prompt with the message history, and manages the response and voice message output.
 
-    #     Parameters:
-    #     - prompt_text (str): The text prompt to generate a response for.
-    #     - replacements_dict (dict, optional): A dictionary of replacements to apply to the prompt text.
-    #     - msg_history (list[dict], optional): The existing message history to consider in response generation.
-    #     - incl_voice (str): Specifies whether to include voice output ('yes' or 'no'). Default is 'yes'.
-    #     - voice_name (str): The name of the voice to be used in the text-to-speech service. Default is 'nova'.
+        Parameters:
+        - prompt_text (str): The text prompt to generate a response for.
+        - replacements_dict (dict, optional): A dictionary of replacements to apply to the prompt text.
+        - msg_history (list[dict], optional): The existing message history to consider in response generation.
+        - incl_voice (str): Specifies whether to include voice output ('yes' or 'no'). Default is 'yes'.
+        - voice_name (str): The name of the voice to be used in the text-to-speech service. Default is 'nova'.
 
-    #     Returns:
-    #     - str: The generated GPT response.
+        Returns:
+        - str: The generated GPT response.
         
-    #     """
-    #     try:
-    #         prompt_text = gpt.prompt_text_replacement(
-    #             gpt_prompt_text=prompt_text,
-    #             replacements_dict = replacements_dict
-    #             )
-    #         prompt_listdict = self.combine_msghistory_and_prompttext(
-    #             prompt_text = prompt_text,
-    #             prompt_text_role = 'user',
-    #             msg_history_list_dict = msg_history,
-    #             output_new_list=True
-    #         )
-    #         try:
-    #             gpt_response = gpt.openai_gpt_chatcompletion(messages_dict_gpt=prompt_listdict)
-    #         except Exception as e:
-    #             self.logger.error(f"Error occurred in 'chatforme': {e}")
+        """
+        try:
+            prompt_text = gpt.prompt_text_replacement(
+                gpt_prompt_text=prompt_text,
+                replacements_dict = replacements_dict
+                )
+            prompt_listdict = self.combine_msghistory_and_prompttext(
+                prompt_text = prompt_text,
+                prompt_text_role = 'user',
+                msg_history_list_dict = msg_history,
+                output_new_list=True
+            )
+            try:
+                gpt_response = gpt.openai_gpt_chatcompletion(messages_dict_gpt=prompt_listdict)
+            except Exception as e:
+                self.logger.error(f"Error occurred in 'chatforme': {e}")
 
-    #     except Exception as e:
-    #         self.logger.error(f"Error occurred in 'chatforme': {e}")    
+        except Exception as e:
+            self.logger.error(f"Error occurred in 'chatforme': {e}")    
 
-    #     await self._send_output_message_and_voice(
-    #         text=gpt_response,
-    #         incl_voice=incl_voice,
-    #         voice_name=voice_name
-    #     )
+        await self.send_output_message_and_voice(
+            text=gpt_response,
+            incl_voice=incl_voice,
+            voice_name=voice_name
+        )
 
-    #     self.logger.debug(f"prompt_text (incl_voice: {incl_voice})")
-    #     self.logger.debug(f"msg_history (most recent 2 messages): {msg_history[-2:]}")
-    #     self.logger.info(f"final prompt_text is: {prompt_text}")
-    #     self.logger.info(f"final gpt_response (incl_voice: {incl_voice}): {gpt_response}")
-    #     return gpt_response
+        self.logger.debug(f"prompt_text (incl_voice: {incl_voice})")
+        self.logger.debug(f"msg_history (most recent 2 messages): {msg_history[-2:]}")
+        self.logger.info(f"final prompt_text is: {prompt_text}")
+        self.logger.info(f"final gpt_response (incl_voice: {incl_voice}): {gpt_response}")
+        return gpt_response
 
-    # def combine_msghistory_and_prompttext(
-    #         self,
-    #         prompt_text,
-    #         prompt_text_role='user',
-    #         prompt_text_name='unknown',
-    #         msg_history_list_dict=None,
-    #         combine_messages=False,
-    #         output_new_list=False
-    #         ) -> list[dict]:
-    #     """
-    #     Combines message history with a new prompt text.
+    def combine_msghistory_and_prompttext(
+            self,
+            prompt_text,
+            prompt_text_role='user',
+            prompt_text_name='unknown',
+            msg_history_list_dict=None,
+            combine_messages=False,
+            output_new_list=False
+            ) -> list[dict]:
+        """
+        Combines message history with a new prompt text.
 
-    #     This method merges a given prompt text with an existing message history. It supports customization of the prompt's role and can combine all messages into a single entry or keep them separate.
+        This method merges a given prompt text with an existing message history. It supports customization of the prompt's role and can combine all messages into a single entry or keep them separate.
 
-    #     Parameters:
-    #     - prompt_text (str): The text of the new prompt to be merged.
-    #     - prompt_text_role (str): The role associated with the prompt text ('user', 'assistant', or 'system'). Default is 'user'.
-    #     - prompt_text_name (str): The name associated with the prompt text. Default is 'unknown'.
-    #     - msg_history_list_dict (list[dict], optional): The existing message history list to merge with. Default is None.
-    #     - combine_messages (bool): If True, combines all messages into a single entry. Default is False.
-    #     - output_new_list (bool): If True, outputs a new list instead of modifying the existing one. Default is False.
+        Parameters:
+        - prompt_text (str): The text of the new prompt to be merged.
+        - prompt_text_role (str): The role associated with the prompt text ('user', 'assistant', or 'system'). Default is 'user'.
+        - prompt_text_name (str): The name associated with the prompt text. Default is 'unknown'.
+        - msg_history_list_dict (list[dict], optional): The existing message history list to merge with. Default is None.
+        - combine_messages (bool): If True, combines all messages into a single entry. Default is False.
+        - output_new_list (bool): If True, outputs a new list instead of modifying the existing one. Default is False.
 
-    #     Returns:
-    #     - list[dict]: A list of dictionaries representing the merged message history and prompt.
+        Returns:
+        - list[dict]: A list of dictionaries representing the merged message history and prompt.
 
-    #     """
-    #     if output_new_list == True:
-    #         msg_history_list_dict_temp = copy.deepcopy(msg_history_list_dict)
-    #     else:
-    #         msg_history_list_dict_temp = msg_history_list_dict
+        """
+        if output_new_list == True:
+            msg_history_list_dict_temp = copy.deepcopy(msg_history_list_dict)
+        else:
+            msg_history_list_dict_temp = msg_history_list_dict
 
-    #     if prompt_text_role == 'system':
-    #         prompt_dict = {'role': prompt_text_role, 'content': f'{prompt_text}'}
-    #     elif prompt_text_role in ['user', 'assistant']:
-    #         prompt_dict = {'role': prompt_text_role, 'content': f'<<<{prompt_text_name}>>>: {prompt_text}'}
+        if prompt_text_role == 'system':
+            prompt_dict = {'role': prompt_text_role, 'content': f'{prompt_text}'}
+        elif prompt_text_role in ['user', 'assistant']:
+            prompt_dict = {'role': prompt_text_role, 'content': f'<<<{prompt_text_name}>>>: {prompt_text}'}
 
-    #     if combine_messages == True:
-    #         msg_history_string = " ".join(item["content"] for item in msg_history_list_dict_temp if item['role'] != 'system')
-    #         reformatted_msg_history_list_dict = [{
-    #             'role': prompt_text_role, 
-    #             'content': msg_history_string
-    #         }]
-    #         reformatted_msg_history_list_dict.append(prompt_dict)
-    #         msg_history_list_dict_temp = reformatted_msg_history_list_dict
-    #     else:
-    #         msg_history_list_dict_temp.append(prompt_dict)
+        if combine_messages == True:
+            msg_history_string = " ".join(item["content"] for item in msg_history_list_dict_temp if item['role'] != 'system')
+            reformatted_msg_history_list_dict = [{
+                'role': prompt_text_role, 
+                'content': msg_history_string
+            }]
+            reformatted_msg_history_list_dict.append(prompt_dict)
+            msg_history_list_dict_temp = reformatted_msg_history_list_dict
+        else:
+            msg_history_list_dict_temp.append(prompt_dict)
 
-    #     self.logger.debug(f"This is the most recent 2 messsages from msg_history_list_dict_temp: {msg_history_list_dict_temp[-2:]}")
+        self.logger.debug(f"This is the most recent 2 messsages from msg_history_list_dict_temp: {msg_history_list_dict_temp[-2:]}")
 
-    #     utils.write_json_to_file(
-    #         data=msg_history_list_dict_temp, 
-    #         variable_name_text='msg_history_list_dict_temp', 
-    #         dirname='log/get_combine_msghistory_and_prompttext_combined', 
-    #         include_datetime=False
-    #     )
-    #     return msg_history_list_dict_temp
+        utils.write_json_to_file(
+            data=msg_history_list_dict_temp, 
+            variable_name_text='msg_history_list_dict_temp', 
+            dirname='log/get_combine_msghistory_and_prompttext_combined', 
+            include_datetime=False
+        )
+        return msg_history_list_dict_temp
 
-    # def make_string_gptlistdict(
-    #         self,
-    #         prompt_text, 
-    #         prompt_text_role='user'
-    #         ) -> list[dict]:
+    def make_string_gptlistdict(
+            self,
+            prompt_text, 
+            prompt_text_role='user'
+            ) -> list[dict]:
         
-    #     prompt_listdict = [{'role': prompt_text_role, 'content': f'{prompt_text}'}]
-    #     return prompt_listdict
+        prompt_listdict = [{'role': prompt_text_role, 'content': f'{prompt_text}'}]
+        return prompt_listdict
 
 # async def main(yaml_filepath):
 #     print("main function")

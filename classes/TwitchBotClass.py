@@ -14,6 +14,8 @@ from my_modules.twitch_api import TwitchAPI
 
 from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
+from classes.GPTAssistantManagerClass import GPTAssistantManager, GPTThreadManager, GPTResponseManager
+from classes.GPTChatCompletionClass import GPTChatCompletion
 
 from services.VibecheckService import VibeCheckService
 from services.NewUsersService import NewUsersService
@@ -31,7 +33,8 @@ class Bot(twitch_commands.Bot):
             config, 
             gpt_client, 
             bq_uploader, 
-            tts_client,  
+            tts_client, 
+            gpt_thread_manager, 
             message_handler,
             twitch_auth
             ):
@@ -64,10 +67,27 @@ class Bot(twitch_commands.Bot):
         self.tts_client = tts_client
         self.message_handler = message_handler
 
+        # Initialize the GPTChatCompletion class
+        self.gpt_chatcompletion = GPTChatCompletion(
+            gpt_client=self.gpt_client,
+            yaml_data=self.config
+            )
+        
+        # Initialize the GPTAssistantManager Classes
+        self.gpt_assistant_manager = GPTAssistantManager(
+            gpt_client=self.gpt_client
+            )
+        
+        self.gpt_thread_manager = gpt_thread_manager #NOTE: This is dependency injected for Message Handler.  Could do this for the other two gpt assistnat instances
+        
+        self.gpt_response_manager = GPTResponseManager(
+            gpt_client=self.gpt_client
+            )
+
         # TODO: Could be a good idea to inject these dependencies into the services
         # instantiate the ChatForMeService
         self.chatforme_service = ChatForMeService(
-            tts_client=self.tts_client,
+            tts_client=self.tts_client, #NOTE: Might also be able to use the self.gpt_client here
             send_channel_message=self._send_channel_message_wrapper
             )
 
@@ -93,7 +113,7 @@ class Bot(twitch_commands.Bot):
         # Grab the TwitchAPI class
         self.twitch_api = TwitchAPI()
 
-        #Taken from app authentication class()
+        #Taken from app authentication class() #TODO: Reudndant with twitchAPI?
         self.twitch_auth = twitch_auth
 
         #Google Service Account Credentials & BQ Table IDs
@@ -146,22 +166,8 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(f"Initializing event loop")
         self.loop = asyncio.get_event_loop()
  
-        # Say hello to the chat 
-        if self.config.twitch_bot_gpt_hello_world == True:
-            replacements_dict = {
-                "helloworld_message_wordcount":self.config.helloworld_message_wordcount,
-                'twitch_bot_display_name':self.config.twitch_bot_display_name,
-                'twitch_bot_channel_name':self.config.twitch_bot_channel_name,
-                'param_in_text':'variable_from_scope'
-                }
-            prompt_text = self.config.hello_assistant_prompt
-
-            gpt_response = await self.chatforme_service.make_singleprompt_gpt_response(
-                prompt_text=prompt_text, 
-                replacements_dict=replacements_dict,
-                incl_voice='yes'
-                )
-            self.logger.debug(f"This is the final gpt response for the hello_world: {gpt_response}")
+        # send hello world message
+        self._send_hello_world()
 
         # start OUAT loop
         self.logger.debug(f"Starting OUAT service")
@@ -183,6 +189,13 @@ class Bot(twitch_commands.Bot):
         self.logger.debug('Starting the randomfact service')
         self.loop.create_task(self.randomfact_task())
 
+        # Create Assistants
+        self.assistants = self.gpt_assistant_manager.create_assistants()
+
+        # Create Threads
+        self.threads_config = ['rawmsgs','chatformemsgs','allmsghistory','nonbotmsgs','ouatmsgs']
+        self.threads = self.gpt_thread_manager.create_threads(threads_config=self.threads_config)
+        
     async def event_message(self, message):
         def clean_message_content(content, command_spellings):
             content_temp = content
@@ -202,9 +215,16 @@ class Bot(twitch_commands.Bot):
 
         # 1. This is the control flow function for creating message histories
         # NOTE: SHould this be awaited to ensure accurate response from GPT in #1b?
+        message.content = clean_message_content(
+            message.content,
+            self.config.command_spellcheck_terms
+            )
+        
+        # 1b. Add the message to the appropriate thread history
         self.message_handler.add_to_appropriate_message_history(message)
+        self.message_handler.add_to_appropriate_thread_history(message)
 
-        # 1b. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
+        # 1c. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
         if '@'+self.config.twitch_bot_username in message.content and "!chat" not in message.content:
             await self._chatforme_main()
 
@@ -241,10 +261,6 @@ class Bot(twitch_commands.Bot):
 
         # 5. self.handle_commands runs through bot commands
         if message.author is not None:
-            message.content = clean_message_content(
-                message.content,
-                self.config.command_spellcheck_terms
-                )
             await self.handle_commands(message)
 
         self.logger.info("MESSAGE PROCESSED: Message processing complete.")      
@@ -269,8 +285,12 @@ class Bot(twitch_commands.Bot):
             await asyncio.sleep(self.newusers_sleep_time)
 
             # Get the current users in the channel
-            current_users_list = await self.twitch_api.retrieve_active_usernames(bearer_token = self.twitch_bot_access_token)
-            
+            try:
+                current_users_list = await self.twitch_api.retrieve_active_usernames(bearer_token = self.twitch_bot_access_token)
+            except Exception as e:
+                self.logger.error(f"Failed to retrieve active users from Twitch API: {e}")
+                current_users_list = None
+
             # Identify list of users who are new to the channel and have not yet been sent a message
             users_not_yet_sent_message = await self.newusers_service.get_users_not_yet_sent_message(
                 historic_users_list = self.historic_users_at_start_of_session,
@@ -323,6 +343,24 @@ class Bot(twitch_commands.Bot):
         elif ctx.message.author.is_mod:
             is_sender_mod = True
         return is_sender_mod
+
+    async def _send_hello_world(self):
+        # Say hello to the chat 
+        if self.config.twitch_bot_gpt_hello_world == True:
+            prompt_text = self.config.hello_assistant_prompt
+            replacements_dict = {
+                "helloworld_message_wordcount":self.config.helloworld_message_wordcount,
+                'twitch_bot_display_name':self.config.twitch_bot_display_name,
+                'twitch_bot_channel_name':self.config.twitch_bot_channel_name,
+                'param_in_text':'variable_from_scope'
+                }
+
+            gpt_response = await self.gpt_chatcompletion.make_singleprompt_gpt_response(
+                prompt_text=prompt_text, 
+                replacements_dict=replacements_dict,
+                incl_voice='yes'
+                )
+            self.logger.debug(f"This is the final gpt response for the hello_world: {gpt_response}")
 
     @twitch_commands.command(name='getstats')
     async def get_command_stats(self, ctx):
@@ -405,16 +443,39 @@ class Bot(twitch_commands.Bot):
         }
 
         try:
-            await self.chatforme_service.make_msghistory_gpt_response(
-                prompt_text=chatforme_prompt,
-                replacements_dict=replacements_dict,
-                msg_history=self.message_handler.chatforme_msg_history,
-                voice_name=tts_voice,
-                incl_voice=self.config.tts_include_voice
+            # Get the GPT response
+            self.logger.debug(f"Starting GPT chat completion for 'chatforme'...")
+            gpt_response = await self.gpt_response_manager.make_gpt_response_from_msghistory( 
+                thread_id = self.gpt_thread_manager.threads['chatformemsgs']['id'], 
+                assistant_id = self.gpt_assistant_manager.assistants['chatforme']['id'], 
+                thread_instructions=chatforme_prompt,
+                replacements_dict=replacements_dict
+            )
+            self.logger.debug(f"This is the gpt_response: {gpt_response}")
+
+            # gpt_response = await self.gpt_response_manager.make_gpt_response_from_msghistory(
+            #     assistant_id=self.gpt_assistant_manager.assistants['chatforme']['id'],
+            #     thread_id=self.gpt_thread_manager.threads['chatformemsgs']['id'],
+            #     thread_instructions=chatforme_prompt,
+            #     replacements_dict=replacements_dict
+            # )
+
+        except Exception as e:
+            self.logger.error(f"error with chatforme in twitchbotclass: {e}")
+            raise e
+        try:    
+            # Send the GPT response to the channel
+            self.logger.debug(f"Sending GPT response to the channel: {gpt_response}")
+            await self.chatforme_service.send_output_message_and_voice(
+                text=gpt_response,
+                incl_voice=self.config.tts_include_voice,
+                voice_name=tts_voice
             )
             return self.logger.info("chatforme has run successfully.")
         except Exception as e:
-            return self.logger.error(f"error with chatforme in twitchbotclass: {e}")
+            self.logger.error(f"error with chatforme in twitchbotclass: {e}")
+            raise e
+        
         
     @twitch_commands.command(name='chat')
     async def chatforme(self, ctx):

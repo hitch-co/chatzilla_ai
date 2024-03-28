@@ -3,7 +3,6 @@ import os
 import asyncio
 
 from my_modules.my_logging import create_logger
-from my_modules.config import run_config
 
 from classes.ConfigManagerClass import ConfigManager
 
@@ -56,7 +55,33 @@ def prompt_text_replacement(logger, gpt_prompt_text, replacements_dict=None):
     logger.debug(f"prompt_text_replaced: {prompt_text_replaced}")
     return prompt_text_replaced
 
-class GPTAssistantManager:
+class GPTBaseClass:
+    """
+    Initializes the GPT Base Class.
+
+    Args:
+        gpt_client: An instance of the OpenAI client.
+
+    Attributes:
+        logger (Logger): A logger for this class.
+        gpt_client: The OpenAI client instance.
+    """
+    def __init__(self, gpt_client):
+        self.logger = create_logger(
+            dirname='log', 
+            debug_level=debug_level,
+            logger_name='GPTBaseClass',
+            stream_logs=True
+            )
+        self.gpt_client = gpt_client
+        self.yaml_data = ConfigManager.get_instance()
+
+        def create():
+            print("did a create")
+        def delete():
+            print("did a delete")
+
+class GPTAssistantManager(GPTBaseClass):
     """
     Initializes the GPT Assistant Manager.
 
@@ -66,22 +91,28 @@ class GPTAssistantManager:
 
     Attributes:
         logger (Logger): A logger for this class.
-        config_data (dict): Configuration data extracted from yaml_data.
+        yaml_data (dict): Configuration data extracted from yaml_data.
         gpt_client: The OpenAI client instance.
         assistants (dict): A dictionary to store assistant objects and their IDs.
     """
-    def __init__(self, yaml_data, gpt_client):
+    def __init__(self, gpt_client):
+        super().__init__(gpt_client)
         self.logger = create_logger(
             dirname='log', 
             debug_level=debug_level,
             logger_name='GPTAssistantManager',
             stream_logs=True
             )
-        self.config_data = yaml_data
-        self.gpt_client = gpt_client
         self.assistants = {}
 
-    def create_assistant(
+        self.assistants_config = {
+            'article_summarizer':self.yaml_data.gpt_assistants_prompt_article_summarizer,
+            'chatforme':self.yaml_data.gpt_assistants_chatforme,
+            'ouat':self.yaml_data.gpt_assistants_prompt_storyteller,
+            'vibecheck':self.yaml_data.formatted_gpt_vibecheck_prompt
+        }
+
+    def _create_assistant(
             self, 
             assistant_name='default', 
             assistant_instructions="you're a question answering machine", 
@@ -101,8 +132,8 @@ class GPTAssistantManager:
         Returns:
             The created assistant object.
         """
-        assistant_type = assistant_type or self.config_data.gpt_assistant_type
-        assistant_model = assistant_model or self.config_data.gpt_model
+        assistant_type = assistant_type or self.yaml_data.gpt_assistant_type
+        assistant_model = assistant_model or self.yaml_data.gpt_model
         assistant_instructions = prompt_text_replacement(
             logger=self.logger, 
             gpt_prompt_text=assistant_instructions,
@@ -120,8 +151,30 @@ class GPTAssistantManager:
         self.logger.debug(f"This is the assistant object for '{assistant_name}' with instructions: {assistant_instructions}")
         self.logger.debug(assistant)
         return assistant
-    
-class GPTThreadManager:
+
+    def create_assistants(self):
+        # Create Assistants
+        replacements_dict = {
+            "wordcount_short":self.yaml_data.wordcount_short,
+            "wordcount_medium":self.yaml_data.wordcount_medium,
+            "wordcount_long":self.yaml_data.wordcount_long,
+            "vibecheckee_username": 'chad',
+            "vibecheck_message_wordcount": self.yaml_data.vibechecker_message_wordcount,
+
+        }
+
+        self.logger.debug('Creating GPT Assistants')
+        for assistant_name, prompt in self.assistants_config.items():
+            self._create_assistant(
+                assistant_name=assistant_name,
+                assistant_instructions=prompt,
+                replacements_dict=replacements_dict,
+                assistant_type='code_interpreter',
+                assistant_model=self.yaml_data.gpt_model
+            )        
+        return self.assistants
+
+class GPTThreadManager(GPTBaseClass):
     """
     Initializes the GPT Thread Manager.
 
@@ -135,37 +188,40 @@ class GPTThreadManager:
         thread_to_assistant (dict): A mapping of threads to their corresponding assistants.
     """
     def __init__(self, gpt_client):
+        super().__init__(gpt_client=gpt_client)
         self.logger = create_logger(
             dirname='log', 
             debug_level=debug_level,
             logger_name='logger_GPTThreadManager',
             stream_logs=True
-            )
-        self.gpt_client = gpt_client
+        )
         self.threads = {}
-        self.thread_to_assistant = {}
 
-    def create_thread(self, thread_name): 
+    def _create_thread(self, thread_name):
         """
-        Creates a new thread with the given name.
+        Creates a new thread with the given name and optionally associates it with an assistant.
 
         Args:
             thread_name (str): The name of the thread to be created.
+            assistant_name (str, optional): The name of the assistant to be associated with this thread.
 
         Returns:
             The created thread object.
-        """    
+        """
         thread = self.gpt_client.beta.threads.create()
-        
-        #store and link the thread
-        self.threads[thread_name] = {'object':thread, 'id':thread.id}
+        self.threads[thread_name] = {'object': thread, 'id': thread.id}
 
-        self.logger.debug(f"returned self.threads id/object for {thread_name}:")
-        self.logger.debug(thread.id)
-        self.logger.debug(thread)
+        self.logger.debug(f"Created thread '{thread_name}' with ID: {thread.id}")
+
         return thread
 
-    def get_thread_assistant(self, thread_name):
+    def create_threads(self, threads_config):
+        self.logger.debug('Creating GPT Threads')
+        for thread_name in threads_config:
+            self._create_thread(thread_name)
+        return self.threads
+  
+    def ____get_thread_assistant(self, thread_name):
         """
         Retrieves the assistant name associated with a given thread.
 
@@ -175,35 +231,49 @@ class GPTThreadManager:
         Returns:
             The name of the assistant associated with the specified thread, or None if no association exists.
         """
-        return self.thread_to_assistant.get(thread_name, None)
-    
-    def add_message_to_thread(
-            self,
-            message_content, 
-            thread_id,
-            role='user'
-            ):
+        return self.thread_to_assistant.get(thread_name)
+
+    def ____associate_thread_with_assistant(self, thread_name, assistant_name):
         """
-        Adds a message to a specified thread.
+        Associates a thread with an assistant.
+
+        Args:
+            thread_name (str): The name of the thread.
+            assistant_name (str): The name of the assistant to be associated with the thread.
+        """
+        if thread_name in self.threads:
+            self.thread_to_assistant[thread_name] = assistant_name
+            self.logger.debug(f"Thread '{thread_name}' associated with assistant '{assistant_name}'")
+        else:
+            self.logger.warning(f"Attempted to associate non-existent thread '{thread_name}' with assistant '{assistant_name}'")
+
+    def add_message_to_thread(self, message_content, thread_name, role='user'):
+        """
+        Adds a message to a specified thread by its name.
 
         Args:
             message_content (str): The content of the message to be added.
-            thread_id (str): The ID of the thread to which the message is to be added.
+            thread_name (str): The name of the thread to which the message is to be added.
             role (str): The role of the sender ('user' or 'assistant'). Defaults to 'user'.
 
         Returns:
-            The created message object.
+            The created message object or None if the thread does not exist.
         """
-        message_object = self.gpt_client.beta.threads.messages.create(
-            thread_id=thread_id,
-            role=role,
-            content=message_content
+        if thread_name in self.threads:
+            thread_id = self.threads[thread_name]['id']
+            message_object = self.gpt_client.beta.threads.messages.create(
+                thread_id=thread_id, 
+                #role=role
+                role='user', 
+                content=message_content
             )
-        self.logger.debug(f"message_object (thread_id: {thread_id}) (type: {type(message_object)})")
-        self.logger.debug(message_object)
-        self.logger.debug(f"The content added to the thread: {message_content}")
-
-class GPTAssistantResponseManager:
+            self.logger.debug(f"Added message to thread '{thread_name}' (ID: {thread_id})")
+            return message_object
+        else:
+            self.logger.warning(f"Thread '{thread_name}' not found.")
+            return None
+  
+class GPTResponseManager(GPTBaseClass):
     """
     Initializes the GPT Assistant Response Manager.
 
@@ -215,16 +285,15 @@ class GPTAssistantResponseManager:
         gpt_client: The OpenAI client instance.
         yaml_data: Configuration data loaded from a YAML file.
     """
-    def __init__(self, gpt_client, yaml_data):
+    def __init__(self, gpt_client):
+        super().__init__(gpt_client=gpt_client)
         self.logger = create_logger(
             dirname='log', 
             debug_level=debug_level,
             logger_name='logger_GPTAssistantResponseManager',
             stream_logs=True
             )
-        self.gpt_client = gpt_client
-        self.yaml_data = yaml_data
-    
+
     async def _get_response(self, thread_id, run_id, polling_seconds=1):
         """
         Asynchronously retrieves the response for a given thread and run ID.
@@ -238,7 +307,7 @@ class GPTAssistantResponseManager:
             The response object once the status is 'completed'.
         """
         counter=1
-        while True:
+        while counter < 15:
             response = self.gpt_client.beta.threads.runs.retrieve(
                 thread_id=thread_id,
                 run_id=run_id
@@ -251,13 +320,14 @@ class GPTAssistantResponseManager:
                 self.logger.debug(f"The 'response' object is not completed yet. Polling time: {counter*polling_seconds} seconds...")
                 counter+=1
             await asyncio.sleep(polling_seconds)
+        raise ValueError(f"Response not completed after {counter*polling_seconds} seconds")
 
     async def _run_and_get_assistant_response_thread_messages(
             self, 
             thread_id, 
-            assistant_id, 
-            thread_instructions='Answer the question using clear and concise language',
-            replacements_dict=None
+            assistant_id,
+            thread_instructions:str='Answer the question using clear and concise language',
+            replacements_dict:dict=None
             ):
         """
         Asynchronously runs the assistant on a specified thread and retrieves the thread messages.
@@ -270,17 +340,31 @@ class GPTAssistantResponseManager:
         Returns:
             A list of response thread messages.
         """
-        thread_instructions = prompt_text_replacement(
-            logger=self.logger, 
-            gpt_prompt_text=thread_instructions,
-            replacements_dict=replacements_dict
+        try:
+            thread_instructions = prompt_text_replacement(
+                logger=self.logger, 
+                gpt_prompt_text=thread_instructions,
+                replacements_dict=replacements_dict
+                )
+            self.logger.debug(f"This is the thread_instructions: {thread_instructions}")
+        except Exception as e:
+            self.logger.error(f"Error replacing prompt text with replacements_dict")
+            self.logger.error(e)
+            raise ValueError(f"Error replacing prompt text with replacements_dict")   
+        try:
+            run = self.gpt_client.beta.threads.runs.create(
+                thread_id=thread_id,
+                assistant_id=assistant_id,
+                instructions=thread_instructions
             )
+            self.logger.debug("This is the 'run' object:")
+            self.logger.debug(run)
+
+        except Exception as e:
+            self.logger.error(f"Error running assistant on thread")
+            self.logger.error(e)
+            raise ValueError(f"Error running assistant on thread")
         
-        run = self.gpt_client.beta.threads.runs.create(
-            thread_id=thread_id,
-            assistant_id=assistant_id,
-            instructions=thread_instructions
-        )
         await self._get_response(thread_id, run.id)
         response_thread_messages = self.gpt_client.beta.threads.messages.list(thread_id=thread_id)
 
@@ -298,17 +382,37 @@ class GPTAssistantResponseManager:
         Returns:
             The latest response message from the assistant, or None if no response is found.
         """
-        sorted_response_thread_messages = sorted(response_thread_messages.data, key=lambda msg: msg.created_at, reverse=True)
-        for message in sorted_response_thread_messages:
-            if message.role == 'assistant':
-                for content in message.content:
-                    if content.type == 'text':
-                        self.logger.debug("This is the content.text.value")
-                        self.logger.debug(content.text.value)
-                        return content.text.value
-        return None
+        try:
+            sorted_response_thread_messages = sorted(response_thread_messages.data, key=lambda msg: msg.created_at, reverse=True)
+            self.logger.debug("This is the sorted_response_thread_messages:")
+            self.logger.debug(sorted_response_thread_messages)
 
-    async def workflow_gpt(self, assistant_id, thread_id, thread_instructions):
+            for message in sorted_response_thread_messages:
+                self.logger.debug(f"This is the message.role: {message.role}")
+                # self.logger.debug(f"This is the message.content: {message.type}")
+                
+                if message.role == 'assistant':
+                    for content in message.content:
+                        if content.type == 'text':
+                            self.logger.debug("This is the content.text.value")
+                            self.logger.debug(content.text.value)
+                            return content.text.value
+                else:
+                    self.logger.error("No response found in thread messages")
+                    raise ValueError("No response found in thread messages")    
+            return None
+        except Exception as e:
+            self.logger.error(f"Error extracting latest response from thread messages")
+            self.logger.error(e)
+            raise ValueError(f"Error extracting latest response from thread messages")
+        
+    async def make_gpt_response_from_msghistory(
+        self, 
+        assistant_id, 
+        thread_id, 
+        thread_instructions, 
+        replacements_dict=None
+        ):
         """
         Executes the workflow to get the GPT assistant's response to a thread.
 
@@ -320,68 +424,92 @@ class GPTAssistantResponseManager:
         Returns:
             The final response message from the assistant.
         """
-        response_thread_messages = await self._run_and_get_assistant_response_thread_messages(
-            assistant_id=assistant_id,
-            thread_id=thread_id,
-            thread_instructions=thread_instructions
-        )
-        extracted_message = self._extract_latest_response_from_thread_messages(response_thread_messages)
 
-        #Check length of output
-        if len(extracted_message) > 400:
-            self.logger.warning("Message exceeded character length, processing the gpt thread again")
+        self.logger.debug(f"Starting make_gpt_response_from_msghistory() with thread_instructions: {thread_instructions[0:25]}...")
+        try:
             response_thread_messages = await self._run_and_get_assistant_response_thread_messages(
-               assistant_id=assistant_id,
+                assistant_id=assistant_id,
                 thread_id=thread_id,
-                thread_instructions=self.yaml_data.gpt_assistants_prompt_shorten_response
-            )
+                thread_instructions=thread_instructions,
+                replacements_dict=replacements_dict
+            )        
+            self.logger.debug(f"Starting _extract_latest_response_from_thread_messages() with response_thread_messages: {response_thread_messages}...")
+            extracted_message = self._extract_latest_response_from_thread_messages(response_thread_messages)
+            self.logger.debug(f"Extracted message and length: {len(extracted_message)} chars, {extracted_message}")
+        except Exception as e:
+            self.logger.error(f"Error running assistant on thread")
+            self.logger.error(e)
+            raise ValueError(f"Error running assistant on thread")
+        
+        #Check length of output
+        if len(extracted_message) > self.yaml_data.assistant_response_max_length:
+            self.logger.warning(f"Message exceeded character length ({self.yaml_data.assistant_response_max_length}), processing the gpt thread again")
+            self.logger.debug(f"This is the gpt_assistants_prompt_shorten_response: {self.yaml_data.gpt_assistants_prompt_shorten_response}")
+            
+            # Add {message_to_shorten} to replacements_dict
+            replacements_dict['message_to_shorten'] = extracted_message
+            replacements_dict['original_thread_instructions'] = thread_instructions
+
+            # Add original response #NOTE: FORMAT
+            self.logger.debug(f"This is the extracted_message_incl_shorten_prompt: {self.yaml_data.gpt_assistants_prompt_shorten_response}")  
+            try:
+                response_thread_messages = await self._run_and_get_assistant_response_thread_messages(
+                    assistant_id=assistant_id,
+                    thread_id=thread_id,
+                    thread_instructions=self.yaml_data.gpt_assistants_prompt_shorten_response,
+                    replacements_dict=replacements_dict
+                )
+            except Exception as e:
+                self.logger.error(f"Error running assistant on thread")
+                self.logger.error(e)
+                raise ValueError(f"Error running assistant on thread")
+                        
             # Extract the latest response from the messages
             extracted_message = self._extract_latest_response_from_thread_messages(response_thread_messages)
 
         self.logger.debug("This is the response_thread_messages object:")
         self.logger.debug(response_thread_messages)
-        self.logger.info(f"This is the final response from workflow_gpt(): '{extracted_message}'")
+        self.logger.info(f"This is the final response from make_gpt_response_from_msghistory(): '{extracted_message}'")
         return extracted_message
 
 if __name__ == "__main__":
     # Configuration and API key setup
     ConfigManager().initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
-    config = ConfigManager().get_instance()
-    config.gpt_assistants_prompt_article_summarizer
+    # config.gpt_assistants_prompt_article_summarizer
 
-    # Create client and manager instances
-    openai.api_key = os.getenv('OPENAI_API_KEY')
-    gpt_client = openai.OpenAI()
-    gpt_clast_mgr = GPTAssistantManager(yaml_data=config, gpt_client=gpt_client)
-    gpt_thrd_mgr = GPTThreadManager(gpt_client=gpt_client)
-    gpt_resp_mgr = GPTAssistantResponseManager(gpt_client=gpt_client, yaml_data=config)
+    # # Create client and manager instances
+    # gpt_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    # gpt_base = GPTBaseClass(gpt_client=gpt_client)
+    # gpt_clast_mgr = GPTAssistantManager(gpt_client=gpt_client, yaml_data=config)
+    # gpt_thrd_mgr = GPTThreadManager(gpt_client=gpt_client, yaml_data=config)
+    # gpt_resp_mgr = GPTResponseManager(gpt_client=gpt_client, yaml_data=config)
+    
+    # # article_summarizer - Create assistant
+    # article_summarizer_assistant = gpt_clast_mgr.create_assistant(
+    #     assistant_name='article_summarizer',
+    #     assistant_instructions=config.gpt_assistants_prompt_article_summarizer
+    # )
 
-    # article_summarizer - Create assistant
-    article_summarizer_assistant = gpt_clast_mgr.create_assistant(
-        assistant_name='article_summarizer',
-        assistant_instructions=config.gpt_assistants_prompt_article_summarizer
-    )
+    # # article_summarizer - Create thread
+    # article_summarizer_thread = gpt_thrd_mgr._create_thread(thread_name='article_summarizer')
+    # article_summarizer_thread_id = gpt_thrd_mgr.threads['article_summarizer']['id']
 
-    # article_summarizer - Create thread
-    article_summarizer_thread = gpt_thrd_mgr.create_thread(thread_name='article_summarizer')
-    article_summarizer_thread_id = gpt_thrd_mgr.threads['article_summarizer']['id']
+    # random_article_content = "CNN — Wreaths, candles and calendars. These are sure signs of Advent for many Christian groups around the world. But what is Advent exactly? The word Advent derives from the Latin adventus, which means an arrival or visit. Advent is the beginning of the spiritual year for these churches, and it’s ob"
 
-    random_article_content = "CNN — Wreaths, candles and calendars. These are sure signs of Advent for many Christian groups around the world. But what is Advent exactly? The word Advent derives from the Latin adventus, which means an arrival or visit. Advent is the beginning of the spiritual year for these churches, and it’s ob"
+    # # article_summarizer - Add message to thread
+    # gpt_thrd_mgr.add_message_to_thread(
+    #     thread_id=article_summarizer_thread_id, 
+    #     role='user', 
+    #     message_content=random_article_content
+    # )
 
-    # article_summarizer - Add message to thread
-    gpt_thrd_mgr.add_message_to_thread(
-        thread_id=article_summarizer_thread_id, 
-        role='user', 
-        message_content=random_article_content
-    )
+    # # article_summarizer assistant+thread - Run workflow and retrieve response
+    # gpt_response_text = asyncio.run(gpt_resp_mgr.make_gpt_response_from_msghistory(
+    #     assistant_id=article_summarizer_assistant.id,
+    #     thread_id=article_summarizer_thread_id,
+    #     thread_instructions=config.gpt_assistants_prompt_article_summarizer
+    # ))
 
-    # article_summarizer assistant+thread - Run workflow and retrieve response
-    gpt_response_text = asyncio.run(gpt_resp_mgr.workflow_gpt(
-        assistant_id=article_summarizer_assistant.id,
-        thread_id=article_summarizer_thread_id,
-        thread_instructions=config.gpt_assistants_prompt_article_summarizer
-    ))
+    # article_summary_plotline = gpt_response_text
 
-    article_summary_plotline = gpt_response_text
-
-    print(article_summary_plotline)
+    # print(article_summary_plotline)

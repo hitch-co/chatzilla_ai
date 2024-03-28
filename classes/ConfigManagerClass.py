@@ -207,9 +207,10 @@ class ConfigManager:
     def yaml_todo_config(self, yaml_config):
         try:
             # GPT todo command prompts:
-            self.gpt_todo_prompt = yaml_config['gpt_todo_prompt']
+            self.gpt_todo_prompt = os.getenv('gpt_todo_prompt') if os.getenv('gpt_todo_prompt') is not None else yaml_config['gpt_todo_prompt']
             self.gpt_todo_prompt_prefix = yaml_config['gpt_todo_prompt_prefix']
             self.gpt_todo_prompt_suffix = yaml_config['gpt_todo_prompt_suffix']
+
         except Exception as e:
             self.logger.error(f"Error in yaml_todo_config(): {e}")
 
@@ -237,6 +238,21 @@ class ConfigManager:
             self.writing_tone = yaml_config.get('ouat-writing-parameters', {}).get('writing_tone', 'no specified writing tone')
             self.writing_style = yaml_config.get('ouat-writing-parameters', {}).get('writing_style', 'no specified writing tone')
             self.writing_theme = yaml_config.get('ouat-writing-parameters', {}).get('writing_theme', 'no specified writing tone')
+
+            # DEV
+            # DEV News Article Feed/Prompts
+            self.story_article_bullet_list_summary_prompt_dev = yaml_config['gpt_thread_prompts_dev']['story_article_bullet_list_summary_prompt'] 
+            self.story_user_bullet_list_summary_prompt_dev = yaml_config['gpt_thread_prompts_dev']['story_user_bullet_list_summary_prompt']
+
+            # DEV
+            # DEV GPT Thread Prompts
+            self.storyteller_storysuffix_prompt_dev = yaml_config['gpt_thread_prompts_dev']['story_suffix']
+            self.storyteller_storystarter_prompt_dev = yaml_config['gpt_thread_prompts']['story_starter']
+            self.storyteller_storyprogressor_prompt_dev = yaml_config['gpt_thread_prompts_dev']['story_progressor']
+            self.storyteller_storyfinisher_prompt_dev = yaml_config['gpt_thread_prompts_dev']['story_finisher']
+            self.storyteller_storyender_prompt_dev = yaml_config['gpt_thread_prompts_dev']['story_ender']
+            self.ouat_prompt_addtostory_prefix_dev = yaml_config['gpt_thread_prompts_dev']['story_addtostory_prefix']
+            
         except Exception as e:
             self.logger.error(f"Error in yaml_ouat_config(): {e}")
 
@@ -275,6 +291,8 @@ class ConfigManager:
                 self.randomfact_topics = yaml.safe_load(file)
             with open(self.randomfact_areas_json, 'r') as file:
                 self.randomfact_areas = yaml.safe_load(file)
+            with open(self.randomfact_areas_json, 'r') as file:
+                self.randomfact_areas = yaml.safe_load(file)
 
         except Exception as e:
             self.logger.error(f"Error in yaml_randomfact_json(): {e}")
@@ -294,8 +312,12 @@ class ConfigManager:
             self.gpt_assistants_prompts = yaml_config['gpt_assistant_prompts']
             self.gpt_assistants_prompt_shorten_response = yaml_config['gpt_thread_prompts']['shorten_response_length']
             self.gpt_assistants_prompt_article_summarizer = yaml_config['gpt_assistant_prompts']['article_summarizer']
-            # self.gpt_assistants_prompt_storyteller = yaml_config['gpt_assistant_prompts']['storyteller']
-            # self.gpt_assistants_chatforme = yaml_config['gpt_assistant_prompts']['chatforme']
+            self.gpt_assistants_prompt_storyteller = yaml_config['gpt_assistant_prompts']['storyteller']
+            self.gpt_assistants_chatforme = yaml_config['gpt_assistant_prompts']['chatforme']
+            
+            #New GPT Assistant Prompts:
+            self.gpt_assistants_prompt_shorten_response_dev = yaml_config['gpt_thread_prompts_dev']['shorten_response_length']
+
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_assistants_config(): {e}")
             

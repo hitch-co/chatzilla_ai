@@ -60,7 +60,7 @@ class TwitchAPI:
             return current_user_names
         else:
             self.logger.warning("Failed to retrieve viewer data or data is empty.")
-            return ['test_user']
+            return None
 
     def _transform_viewer_data(self, viewer_data_json) -> list[dict]:
         self.logger.debug('Processing channel viewers data')

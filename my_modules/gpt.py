@@ -154,8 +154,10 @@ def openai_gpt_chatcompletion(
     
     return gpt_response_text
 
-def prompt_text_replacement(gpt_prompt_text,
-                            replacements_dict=None):
+def prompt_text_replacement(
+        gpt_prompt_text,
+        replacements_dict=None
+        ) -> str:
     if replacements_dict:
         prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
     else:

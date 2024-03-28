@@ -6,7 +6,7 @@ from my_modules.my_logging import create_logger
 
 from classes.ConfigManagerClass import ConfigManager
 
-debug_level = 'DEBUG'
+debug_level = 'INFO'
 
 root_logger = create_logger(
     dirname='log', 
@@ -220,7 +220,19 @@ class GPTThreadManager(GPTBaseClass):
         for thread_name in threads_config:
             self._create_thread(thread_name)
         return self.threads
-  
+
+    def create_new_thread(self, thread_name):
+        """
+        Adds a new thread to the thread manager.
+
+        Args:
+            thread_name (str): The name of the thread to be added.
+
+        Returns:
+            The created thread object.
+        """
+        return self._create_thread(thread_name)
+    
     def ____get_thread_assistant(self, thread_name):
         """
         Retrieves the assistant name associated with a given thread.
@@ -263,7 +275,6 @@ class GPTThreadManager(GPTBaseClass):
             thread_id = self.threads[thread_name]['id']
             message_object = self.gpt_client.beta.threads.messages.create(
                 thread_id=thread_id, 
-                #role=role
                 role='user', 
                 content=message_content
             )

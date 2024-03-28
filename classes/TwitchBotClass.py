@@ -514,7 +514,9 @@ class Bot(twitch_commands.Bot):
 
                 replacements_dict = {
                     "user_requested_plotline":user_requested_plotline_str,
-                    "wordcount_short":self.wordcount_short
+                    "wordcount_short":self.wordcount_short,
+                    "wordcount_medium":self.wordcount_medium,
+                    "wordcount_long":self.wordcount_long
                     }
                 
                 create_bullet_list_promp_text = gpt.prompt_text_replacement(
@@ -729,33 +731,29 @@ class Bot(twitch_commands.Bot):
         return topic, subtopic
 
     async def randomfact_task(self):
-        self.logger.info("Starting the randomfact_task. This is the randomfact_prompts.")
-        self.logger.debug(self.config.randomfact_prompts)
         while True:
             await asyncio.sleep(self.config.randomfact_sleep_time)   
 
-            # Select a random prompt from the randomfact_prompts dictionary
-            selected_key = random.choice(list(self.config.randomfact_prompts.keys()))
-            selected_prompt = self.config.randomfact_prompts[selected_key]
-            self.logger.debug(f"Selected prompt: {selected_prompt}")
+            # Prompt set in os.env on .bat file run
+            selected_prompt = self.config.randomfact_prompt
 
             # Correctly pass the topics data structure to _randomfact_category_picker
             topic, subtopic = self._randomfact_category_picker(data=self.config.randomfact_topics)
-            era, timeperiod = self._randomfact_category_picker(data=self.config.randomfact_eras)
-            self.logger.debug(f"Selected topic: {topic}, Selected subtopic: {subtopic}")
-            self.logger.debug(f"Selected era: {era}, Selected timeperiod: {timeperiod}")
+            area, subarea = self._randomfact_category_picker(data=self.config.randomfact_areas)
 
             #Generate random character from a to z
             random_character_a_to_z = random.choice('abcdefghijklmnopqrstuvwxyz')
+
 
             replacements_dict = {
                 "wordcount":self.wordcount_short,
                 'twitch_bot_display_name':self.config.twitch_bot_display_name,
                 'randomfact_topic':topic,
                 'randomfact_subtopic':subtopic,
-                'randomfact_era':era,
-                'randomfact_timeperiod':timeperiod,
+                'area':area,
+                'subarea':subarea,
                 'random_character_a_to_z':random_character_a_to_z,
+                'selected_game':self.config.randomfact_selected_game,
                 'param_in_text':'variable_from_scope'
                 }
 
@@ -767,6 +765,12 @@ class Bot(twitch_commands.Bot):
                 incl_voice=self.config.tts_include_voice,
                 voice_name=randomvoice
                 )
+            
+            self.logger.debug(f"Selected topic: {topic}, Selected subtopic: {subtopic}")
+            self.logger.debug(f"Selected area: {area}, Selected subarea: {subarea}")
+            self.logger.debug(f"Selected random_character_a_to_z: {random_character_a_to_z}")
+            self.logger.debug(f"Selected random voice: {randomvoice}")
+            self.logger.debug(f"Selected prompt: {selected_prompt}")
             self.logger.debug(f"gpt_response generated successfully: '{gpt_response}'")
 
     async def ouat_storyteller_task(self):

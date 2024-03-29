@@ -1,6 +1,6 @@
-import openai
-import os 
 import asyncio
+from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed, retry_if_exception_type
+
 
 from my_modules.my_logging import create_logger
 
@@ -265,13 +265,16 @@ class GPTThreadManager(GPTBaseClass):
         """
         if thread_name in self.threads:
             thread_id = self.threads[thread_name]['id']
-            message_object = self.gpt_client.beta.threads.messages.create(
-                thread_id=thread_id, 
-                role='user', 
-                content=message_content
-            )
-            self.logger.debug(f"Added message to thread '{thread_name}' (ID: {thread_id})")
-            return message_object
+            
+            async for attempt in AsyncRetrying(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True):
+                with attempt:
+                    message_object = self.gpt_client.beta.threads.messages.create(
+                        thread_id=thread_id, 
+                        role='user', 
+                        content=message_content
+                    )
+                    self.logger.debug(f"Added message to thread '{thread_name}' (ID: {thread_id})")
+                    return message_object
         else:
             self.logger.warning(f"Thread '{thread_name}' not found.")
             return None

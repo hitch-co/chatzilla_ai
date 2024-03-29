@@ -105,13 +105,6 @@ class GPTAssistantManager(GPTBaseClass):
             )
         self.assistants = {}
 
-        self.assistants_config = {
-            'article_summarizer':self.yaml_data.gpt_assistants_prompt_article_summarizer,
-            'chatforme':self.yaml_data.gpt_assistants_chatforme,
-            'ouat':self.yaml_data.gpt_assistants_prompt_storyteller,
-            'vibecheck':self.yaml_data.formatted_gpt_vibecheck_prompt
-        }
-
     def _create_assistant(
             self, 
             assistant_name='default', 
@@ -152,7 +145,7 @@ class GPTAssistantManager(GPTBaseClass):
         self.logger.debug(assistant)
         return assistant
 
-    def create_assistants(self):
+    def create_assistants(self, assistants_config) -> dict:
         # Create Assistants
         replacements_dict = {
             "wordcount_short":self.yaml_data.wordcount_short,
@@ -160,11 +153,10 @@ class GPTAssistantManager(GPTBaseClass):
             "wordcount_long":self.yaml_data.wordcount_long,
             "vibecheckee_username": 'chad',
             "vibecheck_message_wordcount": self.yaml_data.vibechecker_message_wordcount,
-
         }
 
         self.logger.debug('Creating GPT Assistants')
-        for assistant_name, prompt in self.assistants_config.items():
+        for assistant_name, prompt in assistants_config.items():
             self._create_assistant(
                 assistant_name=assistant_name,
                 assistant_instructions=prompt,
@@ -259,7 +251,7 @@ class GPTThreadManager(GPTBaseClass):
         else:
             self.logger.warning(f"Attempted to associate non-existent thread '{thread_name}' with assistant '{assistant_name}'")
 
-    def add_message_to_thread(self, message_content, thread_name, role='user'):
+    async def add_message_to_thread(self, message_content, thread_name, role='user'):
         """
         Adds a message to a specified thread by its name.
 

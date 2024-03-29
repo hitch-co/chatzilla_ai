@@ -15,6 +15,7 @@ from my_modules.twitch_api import TwitchAPI
 from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
 from classes.GPTAssistantManagerClass import GPTAssistantManager, GPTThreadManager, GPTResponseManager
+from classes import GPTAssistantManagerClass
 from classes.GPTChatCompletionClass import GPTChatCompletion
 
 from services.VibecheckService import VibeCheckService
@@ -34,7 +35,7 @@ class Bot(twitch_commands.Bot):
             gpt_client, 
             bq_uploader, 
             tts_client, 
-            gpt_thread_manager, 
+            gpt_thread_mgr, 
             message_handler,
             twitch_auth
             ):
@@ -78,7 +79,7 @@ class Bot(twitch_commands.Bot):
             gpt_client=self.gpt_client
             )
         
-        self.gpt_thread_manager = gpt_thread_manager #NOTE: This is dependency injected for Message Handler.  Could do this for the other two gpt assistnat instances
+        self.gpt_thread_mgr = gpt_thread_mgr #NOTE: This is dependency injected for Message Handler.  Could do this for the other two gpt assistnat instances
         
         self.gpt_response_manager = GPTResponseManager(
             gpt_client=self.gpt_client
@@ -102,7 +103,6 @@ class Bot(twitch_commands.Bot):
         self.bot_ears = BotEars(
             config=self.config,
             device_name=device_name,
-            #event_loop=self.loop, # Removed 2024-02-10
             buffer_length_seconds=self.config.botears_buffer_length_seconds
             )
 
@@ -190,11 +190,30 @@ class Bot(twitch_commands.Bot):
         self.loop.create_task(self.randomfact_task())
 
         # Create Assistants
-        self.assistants = self.gpt_assistant_manager.create_assistants()
+        self.assistants_config = {
+            'article_summarizer':self.config.gpt_assistants_prompt_article_summarizer,
+            'chatforme':self.config.gpt_assistants_chatforme,
+            'ouat':self.config.gpt_assistants_prompt_storyteller,
+            'vibechecker':self.config.formatted_gpt_vibecheck_prompt,
+            'factchecker':self.config.gpt_assistants_prompt_factchecker,
+            'random_fact':self.config.gpt_assistants_prompt_random_fact,
+        }
+        self.assistants = self.gpt_assistant_manager.create_assistants(
+            assistants_config=self.assistants_config
+        )
 
         # Create Threads
-        self.threads_config = ['rawmsgs','chatformemsgs','allmsghistory','nonbotmsgs','ouatmsgs']
-        self.threads = self.gpt_thread_manager.create_threads(threads_config=self.threads_config)
+        self.threads_config = [
+            'rawmsgs',
+            'chatformemsgs',
+            'allmsghistory',
+            'nonbotmsgs',
+            'ouatmsgs',
+            'randomfactmsgs',
+            'factcheckmsgs',
+            'vibecheckmsgs'
+            ]
+        self.threads = self.gpt_thread_mgr.create_threads(threads_config=self.threads_config)
         
     async def event_message(self, message):
         def clean_message_content(content, command_spellings):
@@ -212,6 +231,8 @@ class Bot(twitch_commands.Bot):
             return content_temp
 
         self.logger.info("MESSAGE RECEIVED: Processing message...")
+        self.logger.info(f"This is the message object:")
+        self.logger.info(message)
 
         # 1. This is the control flow function for creating message histories
         # NOTE: SHould this be awaited to ensure accurate response from GPT in #1b?
@@ -221,17 +242,24 @@ class Bot(twitch_commands.Bot):
             )
         
         # 1b. Add the message to the appropriate thread history
-        self.message_handler.add_to_appropriate_message_history(message)
-        self.message_handler.add_to_appropriate_thread_history(message)
+        await self.message_handler.add_to_appropriate_message_history(message)
+        await self.message_handler.add_to_appropriate_thread_history(message)
 
         # 1c. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
         if '@'+self.config.twitch_bot_username in message.content and "!chat" not in message.content:
             await self._chatforme_main()
 
         # 2. Process the message through the vibecheck service.
-            #NOTE: Should this be a separate task?     
+            #NOTE: Should this be a separate task?    
+        self.logger.info("Processing message through the vibecheck service...")
+
+        self.logger.info(f"These are the name and content of the message: {message.author} - {message.content}") 
+
         if hasattr(self, 'vibecheck_service') and self.vibecheck_service is not None:
-            self.vibecheck_service.process_vibecheck_message(self.message_handler.message_history_raw[-1]['name'])
+            await self.vibecheck_service.process_vibecheck_message(
+                message_username=getattr(message.author, 'name', '_unknown'),
+                message_content=getattr(message, "content", "")
+                )
 
         #TODO: Steps 3 and 4 should probably be added to a task so they can run on a separate thread
         # 3. Get chatter data, store in queue, generate query for sending to BQ
@@ -392,7 +420,7 @@ class Bot(twitch_commands.Bot):
         # Get the GPT response
         self.logger.debug(f"Starting GPT Response Manager for 'chatforme'...")
         gpt_response = await self.gpt_response_manager.make_gpt_response_from_msghistory( 
-            thread_id = self.gpt_thread_manager.threads['chatformemsgs']['id'], 
+            thread_id = self.gpt_thread_mgr.threads['chatformemsgs']['id'], 
             assistant_id = self.gpt_assistant_manager.assistants['chatforme']['id'], 
             thread_instructions=prompt_text,
             replacements_dict=replacements_dict
@@ -450,7 +478,7 @@ class Bot(twitch_commands.Bot):
             # Get the GPT response
             self.logger.debug(f"Starting GPT Response Manager for 'chatforme'...")
             gpt_response = await self.gpt_response_manager.make_gpt_response_from_msghistory( 
-                thread_id = self.gpt_thread_manager.threads['chatformemsgs']['id'], 
+                thread_id = self.gpt_thread_mgr.threads['chatformemsgs']['id'], 
                 assistant_id = self.gpt_assistant_manager.assistants['chatforme']['id'], 
                 thread_instructions=chatforme_prompt,
                 replacements_dict=replacements_dict
@@ -523,6 +551,10 @@ class Bot(twitch_commands.Bot):
         # Start the vibecheck service and then the session
         self.vibecheck_service = VibeCheckService(
             message_handler=self.message_handler,
+            gpt_assistant_mgr=self.gpt_assistant_manager,
+            gpt_thread_mgr=self.gpt_thread_mgr,
+            gpt_response_mgr=self.gpt_response_manager,
+            chatforme_service=self.chatforme_service,
             vibechecker_players=self.vibechecker_players,
             send_channel_message=self._send_channel_message_wrapper
             )
@@ -564,7 +596,7 @@ class Bot(twitch_commands.Bot):
             if user_requested_plotline_str:
                 
                 # Add the bullet list to the 'ouatmsgs' thread
-                self.gpt_thread_manager.add_message_to_thread(
+                await self.gpt_thread_mgr.add_message_to_thread(
                     user_requested_plotline_str, 
                     'ouatmsgs', 
                     role='user'
@@ -575,10 +607,13 @@ class Bot(twitch_commands.Bot):
                     "user_requested_plotline":user_requested_plotline_str,
                     "wordcount_short":self.wordcount_short,
                     "wordcount_medium":self.wordcount_medium,
-                    "wordcount_long":self.wordcount_long
+                    "wordcount_long":self.wordcount_long,
+                    "ouat_counter":self.ouat_counter,
+                    "max_ouat_counter":self.config.ouat_story_max_counter,
                     }
 
-                create_bullet_list_promp_text = gpt.prompt_text_replacement(
+                create_bullet_list_promp_text = GPTAssistantManagerClass.prompt_text_replacement(
+                    self.logger,
                     gpt_prompt_text=self.config.story_user_bullet_list_summary_prompt + self.config.storyteller_storysuffix_prompt,
                     replacements_dict = replacements_dict
                     )
@@ -586,7 +621,7 @@ class Bot(twitch_commands.Bot):
                 self.logger.info(f"2: This is the create_bullet_list_promp_text: {create_bullet_list_promp_text}")
 
                 # Add the bullet list to the 'ouatmsgs' thread
-                self.gpt_thread_manager.add_message_to_thread(
+                await self.gpt_thread_mgr.add_message_to_thread(
                     create_bullet_list_promp_text, 
                     'ouatmsgs', 
                     role='user'
@@ -598,7 +633,7 @@ class Bot(twitch_commands.Bot):
                 self.random_article_content = self.article_generator.fetch_random_article_content(article_char_trunc=1000)                    
 
                 # Add the bullet list to the 'ouatmsgs' thread
-                self.gpt_thread_manager.add_message_to_thread(
+                await self.gpt_thread_mgr.add_message_to_thread(
                     self.random_article_content, 
                     'ouatmsgs', 
                     role='user'
@@ -663,20 +698,27 @@ class Bot(twitch_commands.Bot):
             "twitch_bot_display_name":self.config.twitch_bot_display_name,
             "num_bot_responses":self.config.num_bot_responses,
             "users_in_messages_list_text":self.message_handler.users_in_messages_list_text,
-            "wordcount":self.config.wordcount_short,
+            "wordcount_short":self.config.wordcount_short,
             "bot_operatorname":self.config.twitch_bot_operatorname,
             "twitch_bot_channel_name":self.config.twitch_bot_channel_name
         }
 
         try:
-            await self.chatforme_service.make_msghistory_gpt_response(
-                prompt_text=chatforme_factcheck_prompt,
-                replacements_dict=replacements_dict,
-                msg_history=self.message_handler.chatforme_msg_history,
-                voice_name=tts_voice,
-                incl_voice=self.config.tts_include_voice
+            # Call the thread with the instructions
+            gpt_response = await self.gpt_response_manager.make_gpt_response_from_msghistory( 
+                thread_id = self.gpt_thread_mgr.threads['factcheckmsgs']['id'], 
+                assistant_id = self.gpt_assistant_manager.assistants['factchecker']['id'], 
+                thread_instructions=chatforme_factcheck_prompt,
+                replacements_dict=replacements_dict
             )
-            return self.logger.info(f"chatforme has run successfully. Selected the {random_number} item from the list of self.config.factchecker_prompts.values().  The prompt is: {chatforme_factcheck_prompt[:15]} ")
+
+            # Send the GPT response to the channel
+            await self.chatforme_service.send_output_message_and_voice(
+                text=gpt_response,
+                incl_voice=self.config.tts_include_voice,
+                voice_name=tts_voice
+            )
+
         except Exception as e:
             return self.logger.error(f"error with chatforme in twitchbotclass: {e}")
 
@@ -741,9 +783,8 @@ class Bot(twitch_commands.Bot):
             #Generate random character from a to z
             random_character_a_to_z = random.choice('abcdefghijklmnopqrstuvwxyz')
 
-
             replacements_dict = {
-                "wordcount":self.wordcount_short,
+                "wordcount_short":self.wordcount_short,
                 'twitch_bot_display_name':self.config.twitch_bot_display_name,
                 'randomfact_topic':topic,
                 'randomfact_subtopic':subtopic,
@@ -755,14 +796,22 @@ class Bot(twitch_commands.Bot):
                 }
 
             randomvoice = random.choice(random.choice(list(self.config.tts_voices.values())))
-            gpt_response = await self.chatforme_service.make_msghistory_gpt_response(
-                prompt_text = selected_prompt, 
-                replacements_dict=replacements_dict,
-                msg_history=self.message_handler.ouat_msg_history,
+
+            # Call the thread with the instructions
+            gpt_response = await self.gpt_response_manager.make_gpt_response_from_msghistory( 
+                thread_id = self.gpt_thread_mgr.threads['randomfactmsgs']['id'], 
+                assistant_id = self.gpt_assistant_manager.assistants['random_fact']['id'], 
+                thread_instructions=selected_prompt,
+                replacements_dict=replacements_dict
+            )
+
+            # Send the GPT response to the channel
+            await self.chatforme_service.send_output_message_and_voice(
+                text=gpt_response,
                 incl_voice=self.config.tts_include_voice,
                 voice_name=randomvoice
-                )
-            
+            )
+
             self.logger.debug(f"Selected topic: {topic}, Selected subtopic: {subtopic}")
             self.logger.debug(f"Selected area: {area}, Selected subarea: {subarea}")
             self.logger.debug(f"Selected random_character_a_to_z: {random_character_a_to_z}")
@@ -820,19 +869,24 @@ class Bot(twitch_commands.Bot):
                     'writing_style': self.selected_writing_style,
                     'writing_tone': self.selected_writing_tone,
                     'writing_theme': self.selected_theme,
-                    'param_in_text':'variable_from_scope' #for future use
+                    "ouat_counter":self.ouat_counter,
+                    "max_ouat_counter":self.config.ouat_story_max_counter,
+                    'param_in_text':'variable_from_scope'
                     }
-                gpt_prompt_final = gpt.prompt_text_replacement(
-                    gpt_prompt_text=gpt_prompt_final,
-                    replacements_dict = replacements_dict
-                    )
-                
+
                 # Call the thread with the instructions
                 gpt_response = await self.gpt_response_manager.make_gpt_response_from_msghistory( 
-                    thread_id = self.gpt_thread_manager.threads['ouatmsgs']['id'], 
+                    thread_id = self.gpt_thread_mgr.threads['ouatmsgs']['id'], 
                     assistant_id = self.gpt_assistant_manager.assistants['ouat']['id'], 
                     thread_instructions=gpt_prompt_final,
                     replacements_dict=replacements_dict
+                )
+
+                # Add the message to the 'ouatmsgs' thread
+                await self.gpt_thread_mgr.add_message_to_thread(
+                    message_content=gpt_response, 
+                    thread_name='ouatmsgs',
+                    role='user'
                 )
 
                 # Send the output
@@ -844,5 +898,4 @@ class Bot(twitch_commands.Bot):
 
                 self.logger.info(f"OUAT gpt_response for iteration #{self.ouat_counter} of the OUAT Storyteller has been generated successfully: '{gpt_response}'")
             
-
             await asyncio.sleep(int(self.config.ouat_message_recurrence_seconds))

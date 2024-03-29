@@ -1,8 +1,8 @@
 import asyncio
+import random 
 
 from classes.ConfigManagerClass import ConfigManager
 
-from my_modules.gpt import openai_gpt_chatcompletion, prompt_text_replacement, combine_msghistory_and_prompttext
 from my_modules.my_logging import create_logger
 
 runtime_logger_level = 'DEBUG'
@@ -10,7 +10,11 @@ runtime_logger_level = 'DEBUG'
 class VibeCheckService:
     def __init__(
             self,
-            message_handler, 
+            message_handler,
+            gpt_assistant_mgr,
+            gpt_thread_mgr,
+            gpt_response_mgr,
+            chatforme_service,
             vibechecker_players,
             send_channel_message
             ):
@@ -35,7 +39,14 @@ class VibeCheckService:
 
         #message handler
         self.message_handler = message_handler
-        
+
+        #gpt manager
+        self.gpt_assistant_mgr = gpt_assistant_mgr
+        self.gpt_thread_mgr = gpt_thread_mgr
+        self.gpt_response_mgr = gpt_response_mgr
+
+        #ChatForMeService
+        self.chatforme_service = chatforme_service
         #constants
         self.is_vibecheck_loop_active = False
         self.vibechecker_interactions_counter = 0
@@ -60,9 +71,15 @@ class VibeCheckService:
         self.loop = asyncio.get_event_loop()
         self.vibechecker_task = self.loop.create_task(self._vibechecker_question_session())
 
-    def process_vibecheck_message(self, message_username):
-        if self.is_vibecheck_loop_active and message_username == self.vibecheckee_username:
-            # 1. Set the event if the criteria is met
+    async def process_vibecheck_message(self, message_username, message_content):
+        if self.is_vibecheck_loop_active and message_username == self.vibecheckee_username: 
+            # Set the event if the criteria is met
+            await self.gpt_thread_mgr.add_message_to_thread(
+                message_content, 
+                'vibecheckmsgs', 
+                role='user'
+            )       
+
             self.vibecheck_ready_event.set()
             pass
 
@@ -76,10 +93,6 @@ class VibeCheckService:
         self.vibecheckee_username = None
         self.is_vibecheck_loop_active = False
 
-        # NOTE: Unsure why this is needed, removed it so an instance of botclass
-        #  doesn't need to be passed  
-        # if hasattr(self.botclass, 'vibecheck_service'):
-        #     self.botclass.vibecheck_service = None
         self.logger.debug("General cleanup of vibecheckee_username/loop status and vibecheck service completed")
 
     async def _vibechecker_question_session(self):
@@ -118,49 +131,34 @@ class VibeCheckService:
                         vibechecker_prompt = self.formatted_gpt_viberesult_prompt 
 
                     #Prompt text replacement
+                    self.logger.debug(f"This is the vibechecker_prompt: {vibechecker_prompt}")
                     replacements_dict = {
                             "vibecheckee_username":self.vibecheckee_username,
                             "vibechecker_username":self.vibechecker_username,
                             "vibecheck_message_wordcount":self.vibecheck_message_wordcount
                         }
-                    vibechecker_prompt = prompt_text_replacement(
-                        gpt_prompt_text=vibechecker_prompt,
-                        replacements_dict = replacements_dict
-                        )  
-                    self.logger.info(f"vibechecker_prompt: {vibechecker_prompt}")
-
-                    # TODO: This comes from my_modules.gpt -- Should change this
-                    #  to come from ChatForMeService.combine_msghistory_and_prompttext
-                    #  instead.
-                    #Create message_dict from prompt and add the prompt to the message history
-                    vibecheckee_message_dict = combine_msghistory_and_prompttext(
-                        prompt_text=vibechecker_prompt,
-                        prompt_text_role='user',
-                        prompt_text_name='',
-                        msg_history_list_dict=self.message_handler.all_msg_history_gptdict,
-                        output_new_list=True
+                    # Call the thread with the instructions
+                    try:
+                        gpt_response = await self.gpt_response_mgr.make_gpt_response_from_msghistory( 
+                            thread_id = self.gpt_thread_mgr.threads['vibecheckmsgs']['id'], 
+                            assistant_id = self.gpt_assistant_mgr.assistants['vibechecker']['id'], 
+                            thread_instructions=vibechecker_prompt,
+                            replacements_dict=replacements_dict
                         )
-                    
-                    self.logger.debug(f"vibecheckee_message_dict (TEMPORARY):")
-                    self.logger.debug(vibecheckee_message_dict)
+                        self.logger.debug(f"This is the gpt_response: {gpt_response}")
+                    except Exception as e:
+                        self.logger.error(f"Error in make_gpt_response_from_msghistory: {e}")
+                        raise Exception(f"Error in make_gpt_response_from_msghistory: {e}")
 
-                    gpt_response = openai_gpt_chatcompletion(
-                        messages_dict_gpt=vibecheckee_message_dict
-                        )  
-                    gpt_response_dict = self.message_handler.create_gpt_message_dict_from_strings(
-                        content = gpt_response,
-                        role = 'system',
-                        name = self.vibecheckbot_username
-                        )
-                    self.logger.debug(f"THIS IS THE gpt_response: {gpt_response}")
-                    self.logger.debug("THIS IS THE gpt_response_dict")
-                    self.logger.debug(gpt_response_dict)
+                    # Send the GPT response to the channel
+                    tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
+                    await self.chatforme_service.send_output_message_and_voice(
+                        text=gpt_response,
+                        incl_voice=self.config.tts_include_voice,
+                        voice_name=tts_voice
+                    )
+                    self.logger.debug(f"This is the tts_voice: {tts_voice}")
 
-                    self.message_handler.all_msg_history_gptdict.append(gpt_response_dict)
-
-                    #Send the nth response to vibechecker_question_session
-                    await self.send_channel_message(gpt_response)
-                    
                     # Wait for either the event to be set or the timer to run out
                     try:
                         await asyncio.wait_for(self.vibecheck_ready_event.wait(), self.vibechecker_question_session_sleep_time)

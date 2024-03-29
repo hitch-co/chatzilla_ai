@@ -32,15 +32,15 @@ class DependencyInjector:
             )
         return tts_client
 
-    def create_gpt_thread_manager(self):
-        gpt_thread_manager = GPTThreadManager(
+    def create_gpt_thread_mgr(self):
+        gpt_thread_mgr = GPTThreadManager(
             gpt_client=self.gpt_client
         )
-        return gpt_thread_manager
+        return gpt_thread_mgr
       
-    def create_message_handler(self, gpt_thread_manager):
+    def create_message_handler(self, gpt_thread_mgr):
         message_handler = MessageHandler(
-            gpt_thread_mgr=gpt_thread_manager,
+            gpt_thread_mgr=gpt_thread_mgr,
             msg_history_limit=self.config.msg_history_limit
         )
         return message_handler
@@ -49,8 +49,8 @@ class DependencyInjector:
         self.gpt_client = self.create_gpt_client()
         self.bq_uploader = self.create_bq_uploader()
         self.tts_client = self.create_tts_client()
-        self.gpt_thread_manager = self.create_gpt_thread_manager()
-        self.message_handler = self.create_message_handler(gpt_thread_manager=self.gpt_thread_manager)
+        self.gpt_thread_mgr = self.create_gpt_thread_mgr()
+        self.message_handler = self.create_message_handler(gpt_thread_mgr=self.gpt_thread_mgr)
 
 def main(yaml_filepath):
     from classes.ConfigManagerClass import ConfigManager

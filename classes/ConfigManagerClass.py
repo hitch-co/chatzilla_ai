@@ -165,6 +165,8 @@ class ConfigManager:
         try:
             self.vibechecker_max_interaction_count = yaml_config['vibechecker_max_interaction_count']
             self.formatted_gpt_vibecheck_prompt = yaml_config['formatted_gpt_vibecheck_prompt']
+            self.gpt_assistants_prompt_factchecker = yaml_config['gpt_assistant_prompts']['factchecker']
+            self.gpt_assistants_prompt_random_fact = yaml_config['gpt_assistant_prompts']['random_fact']
             self.formatted_gpt_viberesult_prompt = yaml_config['formatted_gpt_viberesult_prompt']
             self.newusers_sleep_time = yaml_config['newusers_sleep_time']
             self.newusers_nonewusers_prompt = yaml_config['newusers_nonewusers_prompt']

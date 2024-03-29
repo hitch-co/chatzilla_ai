@@ -143,7 +143,7 @@ class MessageHandler:
         }
         return message_metadata
     
-    def add_to_appropriate_thread_history(self, message):        
+    async def add_to_appropriate_thread_history(self, message):        
         # Grab and write metadata, add users to users list
         message_metadata = self._get_message_metadata(message)
 
@@ -155,33 +155,36 @@ class MessageHandler:
 
         # Apply message dict to msg histories using thread names
         # Note: Thread names should be meaningful identifiers (strings) recognized by GPTThreadManager
-        self.gpt_thread_mgr.add_message_to_thread(
+        await self.gpt_thread_mgr.add_message_to_thread(
             message_content=message_content, 
-            thread_name='rawmsgs',  # Replace 'rawmsgs_thread_id' with the thread name
+            thread_name='rawmsgs', 
             role=message_role
         )
-        
-        self.gpt_thread_mgr.add_message_to_thread(
+        await self.gpt_thread_mgr.add_message_to_thread(
             message_content=message_content, 
-            thread_name='chatformemsgs',  # Replace 'chatformemsgs_thread_id' with the thread name
+            thread_name='chatformemsgs',
             role=message_role
         )
-        self.gpt_thread_mgr.add_message_to_thread(
+        await self.gpt_thread_mgr.add_message_to_thread(
             message_content=message_content, 
-            thread_name='allmsghistory',  # Replace 'allmsghistory_thread_id' with the thread name
+            thread_name='randomfactmsgs',
+            role=message_role
+        )
+        await self.gpt_thread_mgr.add_message_to_thread(
+            message_content=message_content, 
+            thread_name='factcheckmsgs',
+            role=message_role
+        )
+        await self.gpt_thread_mgr.add_message_to_thread(
+            message_content=message_content, 
+            thread_name='allmsghistory',
             role=message_role
         )
 
         if message.author is not None:
-            self.gpt_thread_mgr.add_message_to_thread(
+            await self.gpt_thread_mgr.add_message_to_thread(
                 message_content=message_content, 
-                thread_name='nonbotmsgs',  # Replace 'nonbotmsgs_thread_id' with the thread name
-                role=message_role
-            )
-        elif message.author is None: 
-            self.gpt_thread_mgr.add_message_to_thread(
-                message_content=message_content, 
-                thread_name='ouatmsgs',  # Replace 'ouatmsgs_thread_id' with the thread name
+                thread_name='nonbotmsgs',
                 role=message_role
             )
         
@@ -190,7 +193,7 @@ class MessageHandler:
         self.logger.info(f"message_username: {message_username}")
         self.logger.info(f"message content: {message_content}")
 
-    def add_to_appropriate_message_history(self, message):
+    async def add_to_appropriate_message_history(self, message):
         #Grab and write metadata, add users to users list
         message_metadata = self._get_message_metadata(message)
 

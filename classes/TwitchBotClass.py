@@ -9,7 +9,6 @@ import time
 
 from my_modules.my_logging import create_logger
 from my_modules import utils
-from my_modules import gpt
 from my_modules.twitch_api import TwitchAPI
 
 from classes.ConsoleColoursClass import bcolors, printc

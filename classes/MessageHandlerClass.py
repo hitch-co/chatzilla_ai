@@ -151,9 +151,11 @@ class MessageHandler:
         message_username = message_metadata['name']
         message_content = message_metadata['content']
 
+        self.logger.debug(f"Adding message to threads...")
+
         # Create tasks for adding messages to threads
         for thread_name in thread_names:
-            self.logger.info(f"Adding message to thread: {thread_name}")
+            self.logger.debug(f"Adding message to thread: {thread_name}")
             task = AddMessageTask(thread_name, message_content, message_role).to_dict()
             if message.author is not None and thread_name == 'nonbotmsgs':
                 await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
@@ -162,8 +164,7 @@ class MessageHandler:
 
         # Logging message metadata and content
         self.logger.debug("This is the message_metadata: {}".format(message_metadata))
-        self.logger.info(f"message_username: {message_username}")
-        self.logger.info(f"message content: {message_content}")
+        self.logger.info(f"Message added to threads")
 
     async def add_to_appropriate_message_history(self, message):
         #Grab and write metadata, add users to users list
@@ -199,6 +200,7 @@ class MessageHandler:
 
         #cleanup msg histories for GPT
         self._cleanup_message_history()
- 
+        self.logger.info("Message added to message histories")
+
 if __name__ == '__main__':
     print("loaded MessageHandlerClass.py")

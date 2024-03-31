@@ -26,7 +26,7 @@ from services.AudioService import AudioService
 from services.BotEarsService import BotEars
 from services.SpeechToTextService import SpeechToTextService
 
-runtime_logger_level = 'DEBUG'
+runtime_logger_level = 'INFO'
 class Bot(twitch_commands.Bot):
     loop_sleep_time = 4
 
@@ -162,21 +162,19 @@ class Bot(twitch_commands.Bot):
         self.logger.info("TwitchBotClass initialized")
 
     async def handle_tasks(self, task: dict):
-        self.logger.debug(f"Starting handle_tasks() execution:")
-        self.logger.debug(f"Task: {task}")
-
         if task["type"] == "add_message":
-            self.logger.info(f"Handling task type 'add_message' for thread: {task['thread_name']}")
+            self.logger.debug(f"Handling task type 'add_message' for thread: {task['thread_name']}")
             try:
                 await self.gpt_response_manager.add_message_to_thread(
                     message_content = task["content"], 
                     thread_name = task["thread_name"]
                     )
+                self.logger.debug("Message added to thread")
             except Exception as e: 
                 self.logger.error(f"Error occurred in 'add_message_to_thread': {e}")
             
         elif task["type"] == "execute_thread":
-            self.logger.info(f"Handling task type 'execute_thread' for Assistant/Thread: {task['assistant_name']}, {task['thread_name']}")
+            self.logger.debug(f"Handling task type 'execute_thread' for Assistant/Thread: {task['assistant_name']}, {task['thread_name']}")
             try:
                 gpt_response = await self.gpt_response_manager.execute_thread( 
                     thread_name = task['thread_name'], 
@@ -198,8 +196,10 @@ class Bot(twitch_commands.Bot):
                     )
                 except Exception as e:
                     self.logger.error(f"Error occurred in 'send_output_message_and_voice': {e}")
+                self.logger.debug("Thread executed...")
             else:
-                self.logger.error(f"Gpt response is None, this should not happen.  Task: {task}")            
+                self.logger.error(f"Gpt response is None, this should not happen.  Task: {task}")
+            self.logger.debug(f"'{task['type']}' task handled for thread: {task['thread_name']}")           
 
     async def event_ready(self):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
@@ -273,9 +273,12 @@ class Bot(twitch_commands.Bot):
                     content_temp = re.sub(pattern, r'\1' + correct_command + r'\2', content_temp)
             return content_temp
 
+        self.logger.info("---------------------------------------")
         self.logger.info("MESSAGE RECEIVED: Processing message...")
-        self.logger.info(f"This is the message object:")
-        self.logger.info(message)
+        self.logger.info(f"Message from: {message.author}")
+        self.logger.info(f"Message content: '{message.content}'")
+        self.logger.debug(f"This is the message object:")
+        self.logger.debug(message)
 
         # 1. This is the control flow function for creating message histories
         # NOTE: SHould this be awaited to ensure accurate response from GPT in #1b?
@@ -297,9 +300,7 @@ class Bot(twitch_commands.Bot):
 
         # 2. Process the message through the vibecheck service.
             #NOTE: Should this be a separate task?    
-        self.logger.info("Processing message through the vibecheck service...")
-
-        self.logger.info(f"These are the name and content of the message: {message.author} - {message.content}") 
+        self.logger.debug("Processing message through the vibecheck service...")
 
         if hasattr(self, 'vibecheck_service') and self.vibecheck_service is not None:
             await self.vibecheck_service.process_vibecheck_message(
@@ -337,9 +338,9 @@ class Bot(twitch_commands.Bot):
         if message.author is not None:
             await self.handle_commands(message)
         
-        self.logger.info("THIS IS THE TASK QUEUE:")
-        self.logger.info(self.gpt_thread_mgr.task_queues)
-        self.logger.info("MESSAGE PROCESSED: Message processing complete.")      
+        self.logger.debug("THIS IS THE TASK QUEUE:")
+        self.logger.debug(self.gpt_thread_mgr.task_queues)
+        self.logger.info("Message processing complete.")      
 
     async def _token_refresh_task(self):
         while True:
@@ -420,22 +421,22 @@ class Bot(twitch_commands.Bot):
             is_sender_mod = True
         return is_sender_mod
 
-    async def _send_hello_world(self):
-        # Say hello to the chat 
-        if self.config.twitch_bot_gpt_hello_world == True:
-            prompt_text = self.config.hello_assistant_prompt
-            replacements_dict = {
-                "helloworld_message_wordcount":self.config.helloworld_message_wordcount,
-                'twitch_bot_display_name':self.config.twitch_bot_display_name,
-                'twitch_bot_channel_name':self.config.twitch_bot_channel_name,
-                'param_in_text':'variable_from_scope'
-                }
+    # async def _send_hello_world(self):
+    #     # Say hello to the chat 
+    #     if self.config.twitch_bot_gpt_hello_world == True:
+    #         prompt_text = self.config.hello_assistant_prompt
+    #         replacements_dict = {
+    #             "helloworld_message_wordcount":self.config.helloworld_message_wordcount,
+    #             'twitch_bot_display_name':self.config.twitch_bot_display_name,
+    #             'twitch_bot_channel_name':self.config.twitch_bot_channel_name,
+    #             'param_in_text':'variable_from_scope'
+    #             }
 
-            gpt_response = await self.gpt_chatcompletion.make_singleprompt_gpt_response(
-                prompt_text=prompt_text, 
-                replacements_dict=replacements_dict
-                )
-            self.logger.debug(f"This is the final gpt response for the hello_world: {gpt_response}")
+    #         gpt_response = await self.gpt_chatcompletion.make_singleprompt_gpt_response(
+    #             prompt_text=prompt_text, 
+    #             replacements_dict=replacements_dict
+    #             )
+    #         self.logger.debug(f"This is the final gpt response for the hello_world: {gpt_response}")
 
     @twitch_commands.command(name='getstats')
     async def get_command_stats(self, ctx):

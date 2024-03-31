@@ -1,7 +1,7 @@
 import asyncio
 from my_modules.my_logging import create_logger
 
-runtime_logger_level = 'DEBUG'
+runtime_logger_level = 'INFO'
 class BaseTask:
     def __init__(self, thread_name: str):
         self.thread_name = thread_name

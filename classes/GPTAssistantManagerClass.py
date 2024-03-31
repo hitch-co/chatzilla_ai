@@ -11,7 +11,6 @@ from classes.ConfigManagerClass import ConfigManager
 
 debug_level = 'INFO'
 
-
 def prompt_text_replacement(logger, gpt_prompt_text, replacements_dict=None):
     if replacements_dict:
         prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
@@ -175,11 +174,11 @@ class GPTThreadManager(GPTBaseClass):
     async def task_scheduler(self):
         self.logger.debug("Starting task scheduler...")
         while True:
-            self.logger.info("Checking task queues...")
+            self.logger.debug("Checking task queues...")
             for thread_name, queue in self.task_queues.items():
                 if not queue.empty():
                     task = await queue.get()
-                    self.logger.info(f"Task found...")
+                    self.logger.debug(f"'{task['type']}' Task found for thread '{task['thread_name']}'")
                     await self.process_task(task)
             await asyncio.sleep(1)
 
@@ -188,7 +187,7 @@ class GPTThreadManager(GPTBaseClass):
         Process the task before executing. This method includes logging, validation,
         and any other pre-processing steps needed before the task is handled.
         """
-        self.logger.info(f"Starting to process task for thread '{task.get('thread_name')}...'")
+        self.logger.debug(f"Starting to process task for thread '{task.get('thread_name')}...'")
         self.logger.debug(f"Task details: {task}")
 
         # Basic validation to ensure necessary fields are present
@@ -361,7 +360,7 @@ class GPTResponseManager(GPTBaseClass):
         """
         assistant_id = self.gpt_assistant_manager.assistants[assistant_name]['id']
         thread_id = self.gpt_thread_manager.threads[thread_name]['id']
-        self.logger.info(f"Executing thread: Assistant: {assistant_id}, Thread: {thread_id}")
+        self.logger.info(f"Executing Assistant/Thread: {assistant_id}, Thread: {thread_id}")
         self.logger.debug(f"Thread_instructions: {thread_instructions[0:25]}...")
 
         try:

@@ -573,6 +573,7 @@ class Bot(twitch_commands.Bot):
                     "random_article_content":self.random_article_content,
                     "user_requested_plotline":article_content_plotline_gptlistdict,
                     "wordcount_short":self.wordcount_short,
+                    "wordcount_medium":self.wordcount_medium
                     }
                 create_bullet_list_promp_text = gpt.prompt_text_replacement(
                     gpt_prompt_text=self.config.story_article_bullet_list_summary_prompt,

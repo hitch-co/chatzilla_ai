@@ -3,7 +3,7 @@
 from classes.MessageHandlerClass import MessageHandler
 from classes.BQUploaderClass import BQUploader
 from classes.GPTTextToSpeechClass import GPTTextToSpeech
-from classes.GPTAssistantManagerClass import GPTBaseClass, GPTThreadManager
+from classes.GPTAssistantManagerClass import GPTBaseClass, GPTThreadManager, GPTResponseManager, GPTAssistantManager
 
 import openai
 
@@ -37,6 +37,20 @@ class DependencyInjector:
             gpt_client=self.gpt_client
         )
         return gpt_thread_mgr
+
+    def create_gpt_assistant_mgr(self):
+        gpt_assistant_mgr = GPTAssistantManager(
+            gpt_client=self.gpt_client
+        )
+        return gpt_assistant_mgr    
+    
+    def create_gpt_response_mgr(self, gpt_thread_manager, gpt_assistant_manager):
+        gpt_thread_mgr = GPTResponseManager(
+            gpt_client=self.gpt_client,
+            gpt_thread_manager=gpt_thread_manager,
+            gpt_assistant_manager=gpt_assistant_manager
+        )
+        return gpt_thread_mgr
       
     def create_message_handler(self, gpt_thread_mgr):
         message_handler = MessageHandler(
@@ -50,6 +64,8 @@ class DependencyInjector:
         self.bq_uploader = self.create_bq_uploader()
         self.tts_client = self.create_tts_client()
         self.gpt_thread_mgr = self.create_gpt_thread_mgr()
+        self.gpt_assistant_mgr = self.create_gpt_assistant_mgr()
+        self.gpt_response_mgr = self.create_gpt_response_mgr(gpt_thread_manager=self.gpt_thread_mgr, gpt_assistant_manager = self.gpt_assistant_mgr)
         self.message_handler = self.create_message_handler(gpt_thread_mgr=self.gpt_thread_mgr)
 
 def main(yaml_filepath):
@@ -70,3 +86,6 @@ if __name__ == '__main__':
     print(dependencies.message_handler)
     print(dependencies.bq_uploader)
     print(dependencies.tts_client)
+    print(dependencies.gpt_thread_mgr)
+    print(dependencies.gpt_response_mgr)
+    print(dependencies.gpt_assistant_mgr)

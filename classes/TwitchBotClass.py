@@ -7,13 +7,15 @@ import os
 import inspect
 import time
 
+from models.task import AddMessageTask, ExecuteThreadTask
+
 from my_modules.my_logging import create_logger
 from my_modules import utils
 from my_modules.twitch_api import TwitchAPI
 
 from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
-from classes.GPTAssistantManagerClass import GPTAssistantManager, GPTThreadManager, GPTResponseManager
+from classes.GPTAssistantManagerClass import GPTAssistantManager
 from classes import GPTAssistantManagerClass
 from classes.GPTChatCompletionClass import GPTChatCompletion
 
@@ -24,7 +26,7 @@ from services.AudioService import AudioService
 from services.BotEarsService import BotEars
 from services.SpeechToTextService import SpeechToTextService
 
-runtime_logger_level = 'INFO'
+runtime_logger_level = 'DEBUG'
 class Bot(twitch_commands.Bot):
     loop_sleep_time = 4
 
@@ -35,6 +37,8 @@ class Bot(twitch_commands.Bot):
             bq_uploader, 
             tts_client, 
             gpt_thread_mgr, 
+            gpt_assistant_mgr,
+            gpt_response_mgr,
             message_handler,
             twitch_auth
             ):
@@ -74,15 +78,15 @@ class Bot(twitch_commands.Bot):
             )
         
         # Initialize the GPTAssistantManager Classes
-        self.gpt_assistant_manager = GPTAssistantManager(
-            gpt_client=self.gpt_client
-            )
+        self.gpt_assistant_manager = gpt_assistant_mgr
         
+        # Create thread manager, Assigning handle_tasks as the callback for when a task is ready
         self.gpt_thread_mgr = gpt_thread_mgr #NOTE: This is dependency injected for Message Handler.  Could do this for the other two gpt assistnat instances
-        
-        self.gpt_response_manager = GPTResponseManager(
-            gpt_client=self.gpt_client
-            )
+        self.gpt_thread_mgr.on_task_ready = self.handle_tasks
+        self.loop.create_task(self.gpt_thread_mgr.task_scheduler())
+
+        # Create response manager
+        self.gpt_response_manager = gpt_response_mgr
 
         # TODO: Could be a good idea to inject these dependencies into the services
         # instantiate the ChatForMeService
@@ -157,6 +161,46 @@ class Bot(twitch_commands.Bot):
 
         self.logger.info("TwitchBotClass initialized")
 
+    async def handle_tasks(self, task: dict):
+        self.logger.debug(f"Starting handle_tasks() execution:")
+        self.logger.debug(f"Task: {task}")
+
+        if task["type"] == "add_message":
+            self.logger.info(f"Handling task type 'add_message' for thread: {task['thread_name']}")
+            try:
+                await self.gpt_response_manager.add_message_to_thread(
+                    message_content = task["content"], 
+                    thread_name = task["thread_name"]
+                    )
+            except Exception as e: 
+                self.logger.error(f"Error occurred in 'add_message_to_thread': {e}")
+            
+        elif task["type"] == "execute_thread":
+            self.logger.info(f"Handling task type 'execute_thread' for Assistant/Thread: {task['assistant_name']}, {task['thread_name']}")
+            try:
+                gpt_response = await self.gpt_response_manager.execute_thread( 
+                    thread_name = task['thread_name'], 
+                    assistant_name = task['assistant_name'], 
+                    thread_instructions= task['thread_instructions'],
+                    replacements_dict=task['replacements_dict']
+                )
+            except Exception as e:
+                self.logger.error(f"Error occurred in 'execute_thread': {e}")
+                gpt_response = None
+
+            if gpt_response is not None:
+                try:
+                    # Send the GPT response to the channel
+                    await self.chatforme_service.send_output_message_and_voice(
+                        text=gpt_response,
+                        incl_voice=self.config.tts_include_voice,
+                        voice_name=task['tts_voice']
+                    )
+                except Exception as e:
+                    self.logger.error(f"Error occurred in 'send_output_message_and_voice': {e}")
+            else:
+                self.logger.error(f"Gpt response is None, this should not happen.  Task: {task}")            
+
     async def event_ready(self):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
         self.logger.info(f'TwitchBot ready | {self.config.twitch_bot_username} (nick:{self.nick})')
@@ -202,7 +246,7 @@ class Bot(twitch_commands.Bot):
         )
 
         # Create Threads
-        self.threads_config = [
+        self.thread_names = [
             'rawmsgs',
             'chatformemsgs',
             'allmsghistory',
@@ -212,7 +256,7 @@ class Bot(twitch_commands.Bot):
             'factcheckmsgs',
             'vibecheckmsgs'
             ]
-        self.threads = self.gpt_thread_mgr.create_threads(threads_config=self.threads_config)
+        self.threads = self.gpt_thread_mgr.create_threads(thread_names=self.thread_names)
         
     async def event_message(self, message):
         def clean_message_content(content, command_spellings):
@@ -242,7 +286,10 @@ class Bot(twitch_commands.Bot):
         
         # 1b. Add the message to the appropriate thread history
         await self.message_handler.add_to_appropriate_message_history(message)
-        await self.message_handler.add_to_appropriate_thread_history(message)
+        await self.message_handler.add_to_appropriate_thread_history(
+            thread_names=self.thread_names, 
+            message=message
+            )
 
         # 1c. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
         if '@'+self.config.twitch_bot_username in message.content and "!chat" not in message.content:
@@ -289,7 +336,9 @@ class Bot(twitch_commands.Bot):
         # 5. self.handle_commands runs through bot commands
         if message.author is not None:
             await self.handle_commands(message)
-
+        
+        self.logger.info("THIS IS THE TASK QUEUE:")
+        self.logger.info(self.gpt_thread_mgr.task_queues)
         self.logger.info("MESSAGE PROCESSED: Message processing complete.")      
 
     async def _token_refresh_task(self):
@@ -593,13 +642,13 @@ class Bot(twitch_commands.Bot):
             ####################################
             ####################################
             if user_requested_plotline_str:
-                
-                # Add the bullet list to the 'ouatmsgs' thread
-                await self.gpt_thread_mgr.add_message_to_thread(
-                    user_requested_plotline_str, 
-                    'ouatmsgs', 
-                    role='user'
-                    )
+
+                # # NOTE: Temporary removal, could be redundant given the addition 
+                # #  of the bullet list as it includes the user requested plotline as well             
+                # # Add the bullet list to the 'ouatmsgs' thread via queue
+                # thread_name = 'ouatmsgs'
+                # task = AddMessageTask(thread_name, user_requested_plotline_str).to_dict()
+                # await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
                 # Create the bullet list: Set replacements dictionary for the GPT prompt and then create the prompt
                 replacements_dict = {
@@ -619,43 +668,45 @@ class Bot(twitch_commands.Bot):
                 # self.random_article_content_plot_summary = create_bullet_list_promp_text
                 self.logger.info(f"2: This is the create_bullet_list_promp_text: {create_bullet_list_promp_text}")
 
-                # Add the bullet list to the 'ouatmsgs' thread
-                await self.gpt_thread_mgr.add_message_to_thread(
-                    create_bullet_list_promp_text, 
-                    'ouatmsgs', 
-                    role='user'
-                    )
+                # Add the bullet list to the 'ouatmsgs' thread via queue
+                thread_name = 'ouatmsgs'
+                task = AddMessageTask(thread_name, create_bullet_list_promp_text).to_dict()
+                await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
             ####################################
             ####################################
             elif not user_requested_plotline_str:
                 self.random_article_content = self.article_generator.fetch_random_article_content(article_char_trunc=1000)                    
 
-                # Add the bullet list to the 'ouatmsgs' thread
-                await self.gpt_thread_mgr.add_message_to_thread(
-                    self.random_article_content, 
-                    'ouatmsgs', 
-                    role='user'
-                    )
+                # Add the bullet list to the 'ouatmsgs' thread via queue
+                thread_name = 'ouatmsgs'
+                task = AddMessageTask(thread_name, self.random_article_content).to_dict()
+                await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
             self.is_ouat_loop_active = True
 
-    @twitch_commands.command(name='addtostory')
-    async def add_to_story_ouat(self, ctx,  *args):
-        self.ouat_counter = self.config.ouat_story_progression_number
-        author=ctx.message.author.name
-        prompt_text = ' '.join(args)
-        prompt_text_prefix = f"{self.config.ouat_prompt_addtostory_prefix}:'{prompt_text}'"
+    # @twitch_commands.command(name='addtostory')
+    # async def add_to_story_ouat(self, ctx,  *args):
+    #     self.ouat_counter = self.config.ouat_story_progression_number
+    #     author=ctx.message.author.name
+    #     prompt_text = ' '.join(args)
+    #     prompt_text_prefix = f"{self.config.ouat_prompt_addtostory_prefix}:'{prompt_text}'"
         
-        #workflow1: get gpt_ready_msg_dict and add message to message history        
-        gpt_ready_msg_dict = self.message_handler.create_gpt_message_dict_from_strings(
-            content=prompt_text_prefix,
-            role='user',
-            name=author
-            )
-        self.message_handler.ouat_msg_history.append(gpt_ready_msg_dict)
+    #     #workflow1: get gpt_ready_msg_dict and add message to message history        
+    #     gpt_ready_msg_dict = self.message_handler.create_gpt_message_dict_from_strings(
+    #         content=prompt_text_prefix,
+    #         role='user',
+    #         name=author
+    #         )
+    #     self.message_handler.ouat_msg_history.append(gpt_ready_msg_dict)
 
-        self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'")
+    #     # NOTE: This should use AddMessageTask() instead of directly adding to the thread
+    #     # Add to ouat thread
+    #     # Add the bullet list to the 'ouatmsgs' thread via queue
+    #     thread_name = 'ouatmsgs'
+    #     task = AddMessageTask(thread_name, user_requested_plotline_str).to_dict()
+    #     self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+    #     self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'")
 
     @twitch_commands.command(name='extendstory')
     async def extend_story(self, ctx, *args) -> None:
@@ -686,7 +737,8 @@ class Bot(twitch_commands.Bot):
         self.message_handler.ouat_msg_history.clear()
 
     async def _factcheck_main(self):
-        # Select random voice from the list of voices
+
+        assistant_name = 'factchecker'
         tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
 
         # select a random number/item based on the number of items inside of self.config.factchecker_prompts.values()
@@ -703,20 +755,17 @@ class Bot(twitch_commands.Bot):
         }
 
         try:
-            # Call the thread with the instructions
-            gpt_response = await self.gpt_response_manager.make_gpt_response_from_msghistory( 
-                thread_id = self.gpt_thread_mgr.threads['factcheckmsgs']['id'], 
-                assistant_id = self.gpt_assistant_manager.assistants['factchecker']['id'], 
+            
+            # Add a executeTask to the queue
+            thread_name = 'factcheckmsgs'
+            task = ExecuteThreadTask(
+                thread_name=thread_name,
+                assistant_name=assistant_name,
                 thread_instructions=chatforme_factcheck_prompt,
-                replacements_dict=replacements_dict
-            )
-
-            # Send the GPT response to the channel
-            await self.chatforme_service.send_output_message_and_voice(
-                text=gpt_response,
-                incl_voice=self.config.tts_include_voice,
-                voice_name=tts_voice
-            )
+                replacements_dict=replacements_dict,
+                tts_voice=tts_voice
+            ).to_dict()
+            await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
         except Exception as e:
             return self.logger.error(f"error with chatforme in twitchbotclass: {e}")
@@ -881,12 +930,11 @@ class Bot(twitch_commands.Bot):
                     replacements_dict=replacements_dict
                 )
 
-                # Add the message to the 'ouatmsgs' thread
-                await self.gpt_thread_mgr.add_message_to_thread(
-                    message_content=gpt_response, 
-                    thread_name='ouatmsgs',
-                    role='user'
-                )
+                # NOTE: This might be redundant as the message is added to the thread in the message_handler on twitch_bot_class.event_message()
+                # # Add the bullet list to the 'ouatmsgs' thread via queue
+                # thread_name = 'ouatmsgs'
+                # task = AddMessageTask(tnread_name, gpt_response).to_dict()
+                # await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
                 # Send the output
                 await self.chatforme_service.send_output_message_and_voice(

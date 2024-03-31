@@ -34,6 +34,8 @@ class TwitchBotManager:
             bq_uploader=self.dependencies.bq_uploader,
             tts_client=self.dependencies.tts_client,
             gpt_thread_mgr=self.dependencies.gpt_thread_mgr,
+            gpt_assistant_mgr=self.dependencies.gpt_assistant_mgr,
+            gpt_response_mgr=self.dependencies.gpt_response_mgr,
             message_handler=self.dependencies.message_handler,
             twitch_auth=twitch_auth
         ).run()

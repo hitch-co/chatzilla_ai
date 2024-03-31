@@ -1,6 +1,9 @@
 import asyncio
-from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed, retry_if_exception_type
-
+import os
+import openai
+from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed
+from collections import defaultdict
+from typing import Dict, List, Callable
 
 from my_modules.my_logging import create_logger
 
@@ -8,43 +11,6 @@ from classes.ConfigManagerClass import ConfigManager
 
 debug_level = 'INFO'
 
-root_logger = create_logger(
-    dirname='log', 
-    debug_level=debug_level,
-    logger_name='logger_root_GPTAssistantManager',
-    stream_logs=True
-    ) 
-
-# def get_thread_ids(assistant_name, client_manager):
-#     assistant_id = client_manager.assistants.get(assistant_name, {}).get('id')
-#     if assistant_id is None:
-#         raise ValueError(f"No ID found for assistant '{assistant_name}'")
-        
-# def get_thread_and_assistant_ids(thread_name, thread_manager, client_manager):
-#     # This function takes a thread_name and the manager instances
-#     # Returns the thread_id and assistant_id
-
-#     assistant_name = thread_manager._get_thread_assistant(thread_name)
-#     if assistant_name is None:
-#         raise ValueError(f"No assistant found for thread '{thread_name}'")
-
-#     assistant_id = client_manager.assistants.get(assistant_name, {}).get('id')
-#     if assistant_id is None:
-#         raise ValueError(f"No ID found for assistant '{assistant_name}'")
-
-#     thread_id = thread_manager.beta.threads.get(thread_name, {}).get('id')
-#     if thread_id is None:
-#         raise ValueError(f"No ID found for thread '{thread_name}'")
-
-#     root_logger.info("thread_id and assistant_id:")
-#     root_logger.info(f"assistant_id:{assistant_id}, thread_id:{thread_id}")
-#     return thread_id, assistant_id
-
-# def get_thread_id(thread_name, gpt_client):
-#     thread_id = gpt_client.beta.threads.get(thread_name, {}).get('id')
-#     if thread_id is None:
-#         raise ValueError(f"No ID found for thread '{thread_name}'")
-#     return thread_id
 
 def prompt_text_replacement(logger, gpt_prompt_text, replacements_dict=None):
     if replacements_dict:
@@ -167,118 +133,79 @@ class GPTAssistantManager(GPTBaseClass):
         return self.assistants
 
 class GPTThreadManager(GPTBaseClass):
-    """
-    Initializes the GPT Thread Manager.
-
-    Args:
-        gpt_client: An instance of the OpenAI client.
-
-    Attributes:
-        logger (Logger): A logger for this class.
-        gpt_client: The OpenAI client instance.
-        threads (dict): A dictionary to store thread objects and their IDs.
-        thread_to_assistant (dict): A mapping of threads to their corresponding assistants.
-    """
     def __init__(self, gpt_client):
         super().__init__(gpt_client=gpt_client)
         self.logger = create_logger(
             dirname='log', 
             debug_level=debug_level,
-            logger_name='logger_GPTThreadManager',
+            logger_name='GPTThreadManager',
             stream_logs=True
         )
-        self.threads = {}
+        self.threads: Dict[str, dict] = {}  # Thread name to thread info mapping
+        self.task_queues: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)
+        self.on_task_ready: Callable[[Dict], None] = None
+        self.loop = asyncio.get_event_loop()
 
-    def _create_thread(self, thread_name):
+    def _create_thread(self, thread_name: str):
         """
-        Creates a new thread with the given name and optionally associates it with an assistant.
+        Creates a new thread with the given name.
 
         Args:
             thread_name (str): The name of the thread to be created.
-            assistant_name (str, optional): The name of the assistant to be associated with this thread.
 
         Returns:
             The created thread object.
         """
+        # Store the thread object and its ID in the 'threads' dictionary using 'thread_name' as the key
         thread = self.gpt_client.beta.threads.create()
-        self.threads[thread_name] = {'object': thread, 'id': thread.id}
+        self.threads[thread_name] = {'id': thread.id}
 
         self.logger.debug(f"Created thread '{thread_name}' with ID: {thread.id}")
 
-        return thread
-
-    def create_threads(self, threads_config):
+    def create_threads(self, thread_names):
         self.logger.debug('Creating GPT Threads')
-        for thread_name in threads_config:
+        for thread_name in thread_names:
             self._create_thread(thread_name)
         return self.threads
 
-    def create_new_thread(self, thread_name):
-        """
-        Adds a new thread to the thread manager.
+    async def add_task_to_queue(self, thread_name: str, task: dict):
+        await self.task_queues[thread_name].put(task)
+        self.logger.debug(f"Added task to queue for thread '{thread_name}': {task}")
 
-        Args:
-            thread_name (str): The name of the thread to be added.
+    async def task_scheduler(self):
+        self.logger.debug("Starting task scheduler...")
+        while True:
+            self.logger.info("Checking task queues...")
+            for thread_name, queue in self.task_queues.items():
+                if not queue.empty():
+                    task = await queue.get()
+                    self.logger.info(f"Task found...")
+                    await self.process_task(task)
+            await asyncio.sleep(1)
 
-        Returns:
-            The created thread object.
+    async def process_task(self, task: dict):
         """
-        return self._create_thread(thread_name)
-    
-    def ____get_thread_assistant(self, thread_name):
+        Process the task before executing. This method includes logging, validation,
+        and any other pre-processing steps needed before the task is handled.
         """
-        Retrieves the assistant name associated with a given thread.
+        self.logger.info(f"Starting to process task for thread '{task.get('thread_name')}...'")
+        self.logger.debug(f"Task details: {task}")
 
-        Args:
-            thread_name (str): The name of the thread whose assistant needs to be retrieved.
+        # Basic validation to ensure necessary fields are present
+        if not task.get('type') or not task.get('thread_name'):
+            self.logger.error("Task missing required fields. Task will be skipped.")
+            self.logger.error(f"Invalid task: {task}")
+            raise ValueError("Task missing required fields. Task will be skipped.")
 
-        Returns:
-            The name of the assistant associated with the specified thread, or None if no association exists.
-        """
-        return self.thread_to_assistant.get(thread_name)
+        self.logger.debug(f"Task validated successfully. Proceeding to handle task for thread '{task['thread_name']}'.")
 
-    def ____associate_thread_with_assistant(self, thread_name, assistant_name):
-        """
-        Associates a thread with an assistant.
-
-        Args:
-            thread_name (str): The name of the thread.
-            assistant_name (str): The name of the assistant to be associated with the thread.
-        """
-        if thread_name in self.threads:
-            self.thread_to_assistant[thread_name] = assistant_name
-            self.logger.debug(f"Thread '{thread_name}' associated with assistant '{assistant_name}'")
+        # Check if the on_task_ready callback is set and invoke it to handle the task execution
+        if self.on_task_ready:
+            self.logger.debug(f"Invoking task handler for task associated with thread name, execution type: {task['thread_name']}, {task['type']}")
+            await self.on_task_ready(task)
         else:
-            self.logger.warning(f"Attempted to associate non-existent thread '{thread_name}' with assistant '{assistant_name}'")
+            self.logger.warning("No task handler has been set. Unable to execute task.")
 
-    async def add_message_to_thread(self, message_content, thread_name, role='user'):
-        """
-        Adds a message to a specified thread by its name.
-
-        Args:
-            message_content (str): The content of the message to be added.
-            thread_name (str): The name of the thread to which the message is to be added.
-            role (str): The role of the sender ('user' or 'assistant'). Defaults to 'user'.
-
-        Returns:
-            The created message object or None if the thread does not exist.
-        """
-        if thread_name in self.threads:
-            thread_id = self.threads[thread_name]['id']
-            
-            async for attempt in AsyncRetrying(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True):
-                with attempt:
-                    message_object = self.gpt_client.beta.threads.messages.create(
-                        thread_id=thread_id, 
-                        role='user', 
-                        content=message_content
-                    )
-                    self.logger.debug(f"Added message to thread '{thread_name}' (ID: {thread_id})")
-                    return message_object
-        else:
-            self.logger.warning(f"Thread '{thread_name}' not found.")
-            return None
-  
 class GPTResponseManager(GPTBaseClass):
     """
     Initializes the GPT Assistant Response Manager.
@@ -291,14 +218,16 @@ class GPTResponseManager(GPTBaseClass):
         gpt_client: The OpenAI client instance.
         yaml_data: Configuration data loaded from a YAML file.
     """
-    def __init__(self, gpt_client):
+    def __init__(self, gpt_client, gpt_thread_manager, gpt_assistant_manager):
         super().__init__(gpt_client=gpt_client)
         self.logger = create_logger(
             dirname='log', 
             debug_level=debug_level,
-            logger_name='logger_GPTAssistantResponseManager',
+            logger_name='GPTResponseManager',
             stream_logs=True
             )
+        self.gpt_thread_manager = gpt_thread_manager
+        self.gpt_assistant_manager = gpt_assistant_manager
 
     async def _get_response(self, thread_id, run_id, polling_seconds=1):
         """
@@ -330,8 +259,8 @@ class GPTResponseManager(GPTBaseClass):
 
     async def _run_and_get_assistant_response_thread_messages(
             self, 
-            thread_id, 
-            assistant_id,
+            thread_id: str, 
+            assistant_id: str,
             thread_instructions:str='Answer the question using clear and concise language',
             replacements_dict:dict=None
             ):
@@ -412,13 +341,13 @@ class GPTResponseManager(GPTBaseClass):
             self.logger.error(e)
             raise ValueError(f"Error extracting latest response from thread messages")
         
-    async def make_gpt_response_from_msghistory(
+    async def execute_thread(
         self, 
-        assistant_id, 
-        thread_id, 
-        thread_instructions, 
+        assistant_name: str, 
+        thread_name: str, 
+        thread_instructions: str, 
         replacements_dict=None
-        ):
+        ) -> str:
         """
         Executes the workflow to get the GPT assistant's response to a thread.
 
@@ -430,8 +359,11 @@ class GPTResponseManager(GPTBaseClass):
         Returns:
             The final response message from the assistant.
         """
+        assistant_id = self.gpt_assistant_manager.assistants[assistant_name]['id']
+        thread_id = self.gpt_thread_manager.threads[thread_name]['id']
+        self.logger.info(f"Executing thread: Assistant: {assistant_id}, Thread: {thread_id}")
+        self.logger.debug(f"Thread_instructions: {thread_instructions[0:25]}...")
 
-        self.logger.debug(f"Starting make_gpt_response_from_msghistory() with thread_instructions: {thread_instructions[0:25]}...")
         try:
             response_thread_messages = await self._run_and_get_assistant_response_thread_messages(
                 assistant_id=assistant_id,
@@ -439,9 +371,8 @@ class GPTResponseManager(GPTBaseClass):
                 thread_instructions=thread_instructions,
                 replacements_dict=replacements_dict
             )        
-            self.logger.debug(f"Starting _extract_latest_response_from_thread_messages() with response_thread_messages: {response_thread_messages}...")
             extracted_message = self._extract_latest_response_from_thread_messages(response_thread_messages)
-            self.logger.debug(f"Extracted message and length: {len(extracted_message)} chars, {extracted_message}")
+            self.logger.debug(f"Extracted message and length: ({len(extracted_message)}) Message: {extracted_message}")
         except Exception as e:
             self.logger.error(f"Error running assistant on thread")
             self.logger.error(e)
@@ -478,18 +409,80 @@ class GPTResponseManager(GPTBaseClass):
         self.logger.info(f"This is the final response from make_gpt_response_from_msghistory(): '{extracted_message}'")
         return extracted_message
 
+    async def add_message_to_thread(
+            self, 
+            message_content: str, 
+            thread_name: str, 
+            role='user'
+            ) -> object:
+        """
+        Asynchronously adds a message to a specified thread identified by its name, using the OpenAI GPT Assistants API.
+        Retries the operation up to 3 times in case of failures, with a 1-second wait between retries.
+
+        Args:
+            message_content (str): The textual content of the message to be added to the thread.
+            thread_name (str): The name of the thread to which the message will be added. The thread must be previously created and registered.
+            role (str): Specifies the role of the entity sending the message. Must be either 'user' or 'assistant'.
+                        The default role is 'user'.
+
+        Returns:
+            The response object representing the created message, or None if the specified thread does not exist or if the message could not be added after retries.
+
+        Raises:
+            ValueError: If the 'role' parameter is not 'user' or 'assistant'.
+        """
+        #NOTE: could use a thread registry to share self.threads between classes 
+        
+        # Validate the role
+        if role not in ['user', 'assistant']:
+            raise ValueError(f"Invalid role: {role}. Role must be 'user' or 'assistant'.")
+
+        self.logger.debug(f"Adding message to thread '{thread_name}'")
+        self.logger.debug(f"Adding content to thread '{message_content}'")
+        if thread_name in self.gpt_thread_manager.threads:
+            thread_id = self.gpt_thread_manager.threads[thread_name]['id']
+            self.logger.debug(f"Thread '{thread_name}' found with ID: {thread_id}")
+            self.logger.debug(f"Role: {role}, Content: '{message_content[0:25]}...'")
+            async for attempt in AsyncRetrying(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True):
+                with attempt:
+                    message_object = self.gpt_client.beta.threads.messages.create(
+                        thread_id=thread_id, 
+                        role=role, 
+                        content=message_content
+                    )
+                    self.logger.debug(f"Finished adding message to thread '{thread_name}' (ID: {thread_id})")
+                    return message_object
+        else:
+            self.logger.warning(f"Thread '{thread_name}' not found.")
+            return None
+
 if __name__ == "__main__":
+        
+    root_logger = create_logger(
+        dirname='log', 
+        debug_level=debug_level,
+        logger_name='GPTAssistantManagerClass',
+        stream_logs=True
+        ) 
+    
     # Configuration and API key setup
     ConfigManager().initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
-    # config.gpt_assistants_prompt_article_summarizer
+    config = ConfigManager.get_instance()
+    config.gpt_assistants_prompt_article_summarizer
 
-    # # Create client and manager instances
-    # gpt_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    # Create client and manager instances
+    gpt_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     # gpt_base = GPTBaseClass(gpt_client=gpt_client)
     # gpt_clast_mgr = GPTAssistantManager(gpt_client=gpt_client, yaml_data=config)
     # gpt_thrd_mgr = GPTThreadManager(gpt_client=gpt_client, yaml_data=config)
     # gpt_resp_mgr = GPTResponseManager(gpt_client=gpt_client, yaml_data=config)
     
+    # Set up your GPTThreadManager and other components
+    gpt_thread_manager = GPTThreadManager(gpt_client=gpt_client)
+
+    # Start the event loop and run the task scheduler
+    asyncio.run(gpt_thread_manager.task_scheduler())
+
     # # article_summarizer - Create assistant
     # article_summarizer_assistant = gpt_clast_mgr.create_assistant(
     #     assistant_name='article_summarizer',

@@ -74,11 +74,11 @@ class VibeCheckService:
     async def process_vibecheck_message(self, message_username, message_content):
         if self.is_vibecheck_loop_active and message_username == self.vibecheckee_username: 
             # Set the event if the criteria is met
-            await self.gpt_thread_mgr.add_message_to_thread(
-                message_content, 
-                'vibecheckmsgs', 
-                role='user'
-            )       
+
+            # Add the bullet list to the 'ouatmsgs' thread via queue
+            thread_name = 'vibecheckmsgs'
+            task = self.message_handler.AddMessageTask(thread_name, message_content).to_dict()
+            await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
             self.vibecheck_ready_event.set()
             pass

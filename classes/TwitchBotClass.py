@@ -132,11 +132,6 @@ class Bot(twitch_commands.Bot):
         #counters
         self.ouat_counter = 0
 
-        #NOTE: ARGUABLY DO NOT NEED TO INITIALIZE THESE HERE   
-        #vibecheck params
-        self.vibechecker_max_interaction_count = self.config.vibechecker_max_interaction_count
-        self.vibechecker_max_interaction_count = self.config.vibechecker_max_interaction_count
-
         #NOTE: ARGUABLY DO NOT NEED TO INITIALIZE THESE HERE
         # BQ Table IDs
         self.userdata_table_id=self.config.talkzillaai_userdata_table_id
@@ -232,13 +227,15 @@ class Bot(twitch_commands.Bot):
         self.loop.create_task(self.randomfact_task())
 
         # Create Assistants
-        self.assistants_config = self.config.gpt_assistants_prompts
+        self.assistants_config = self.config.gpt_assistant_prompts
         self.assistants = self.gpt_assistant_manager.create_assistants(
             assistants_config=self.assistants_config
-        )
+            )
 
         thread_names = self.config.gpt_thread_names
-        self.threads = self.gpt_thread_mgr.create_threads(thread_names=thread_names)
+        self.threads = self.gpt_thread_mgr.create_threads(
+            thread_names=thread_names
+            )
         
     async def event_message(self, message):
         def clean_message_content(content, command_spellings):

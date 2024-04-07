@@ -69,7 +69,11 @@ class ConfigManager:
                 self.yaml_gcp_config(yaml_config)
                 
                 self.yaml_botears_config(yaml_config)
+
                 self.yaml_gpt_config(yaml_config)
+                self.yaml_gpt_thread_config(yaml_config)
+                self.yaml_gpt_assistant_config(yaml_config)
+                
                 self.yaml_chatforme_config(yaml_config)
                 self.yaml_ouat_config(yaml_config)
                 self.yaml_vibecheck_config(yaml_config)
@@ -157,6 +161,13 @@ class ConfigManager:
             self.wordcount_long = str(yaml_config['wordcounts']['long'])
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_config(): {e}")
+
+    def yaml_gpt_assistant_config(self, yaml_config):
+        self.gpt_assistant_prompts = yaml_config['gpt_assistant_prompts']
+        self.assistant_response_max_length = yaml_config['openai-api']['assistant_response_max_length']
+
+    def yaml_gpt_thread_config(self, yaml_config):
+        self.gpt_thread_names = yaml_config['gpt_thread_names']
 
     def yaml_vibecheck_config(self, yaml_config):
         try:
@@ -305,7 +316,6 @@ class ConfigManager:
             self.config_dirpath = yaml_config['config_dirpath']
             self.keys_dirpath = yaml_config['keys_dirpath']
 
-
             self.google_application_credentials_file = yaml_config['twitch-ouat']['google_service_account_credentials_file']
             self.talkzillaai_userdata_table_id = yaml_config['twitch-ouat']['talkzillaai_userdata_table_id']
             self.talkzillaai_usertransactions_table_id = yaml_config['twitch-ouat']['talkzillaai_usertransactions_table_id']
@@ -313,7 +323,6 @@ class ConfigManager:
             self.twitch_bot_redirect_path = yaml_config['twitch-app']['twitch_bot_redirect_path']
             self.twitch_bot_scope = yaml_config['twitch-app']['twitch_bot_scope']
 
-            # openai t2s, models, prompt
             self.gpt_model = yaml_config.get('openai-api',{}).get('assistant_model', 'gpt-3.5-turbo') 
             self.tts_model = yaml_config.get('openai-api', {}).get('tts_model','tts-1')
         except Exception as e:
@@ -340,3 +349,5 @@ if __name__ == "__main__":
 
     print(config.tts_data_folder)
     print(config.tts_file_name)
+    print(config.gpt_assistant_prompts)
+    print(config.newusers_sleep_time)

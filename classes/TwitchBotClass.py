@@ -354,8 +354,7 @@ class Bot(twitch_commands.Bot):
 
             # Identify list of users who are new to the channel and have not yet been sent a message
             users_not_yet_sent_message = await self.newusers_service.get_users_not_yet_sent_message(
-                # historic_users_list = self.historic_users_at_start_of_session,
-                historic_users_list = [],
+                historic_users_list = self.historic_users_at_start_of_session,
                 current_users_list = current_users_list
             )
 

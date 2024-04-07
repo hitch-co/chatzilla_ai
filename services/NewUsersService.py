@@ -63,6 +63,10 @@ class NewUsersService:
             new_list=current_new_usernames
             )
         self.logger.info(f"users_not_yet_sent_message: {users_not_yet_sent_message}")   
+
+        if users_not_yet_sent_message is None:
+            self.logger.error("users_not_yet_sent_message is None, this should not happen")
+            
         return users_not_yet_sent_message
 
 if __name__ == "__main__":

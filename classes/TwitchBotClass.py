@@ -340,8 +340,10 @@ class Bot(twitch_commands.Bot):
             await asyncio.sleep(1800)
 
     async def _send_message_to_new_users_task(self):
+        tts_voice_selected = random.choice(random.choice(list(self.config.tts_voices.values())))
         while True:
             await asyncio.sleep(self.newusers_sleep_time)
+            self.logger.info("Checking for new users...")
 
             # Get the current users in the channel
             try:
@@ -352,15 +354,12 @@ class Bot(twitch_commands.Bot):
 
             # Identify list of users who are new to the channel and have not yet been sent a message
             users_not_yet_sent_message = await self.newusers_service.get_users_not_yet_sent_message(
-                historic_users_list = self.historic_users_at_start_of_session,
+                # historic_users_list = self.historic_users_at_start_of_session,
+                historic_users_list = [],
                 current_users_list = current_users_list
             )
 
-            if users_not_yet_sent_message is None:
-                self.logger.error("users_not_yet_sent_message is None, this should not happen")
-                raise ValueError("users_not_yet_sent_message is None, this should not happen")
-            
-            elif len(users_not_yet_sent_message) == 0:
+            if len(users_not_yet_sent_message) == 0:
                 self.logger.debug("No new users found...")
                 continue
             
@@ -374,11 +373,17 @@ class Bot(twitch_commands.Bot):
                     replacements_dict = {
                         "random_new_user":random_new_user,
                         "wordcount_medium":self.config.wordcount_medium
-                    }
+                    }  
                     gpt_response = await self.gpt_chatcompletion.make_singleprompt_gpt_response(
                         prompt_text=self.config.newusers_msg_prompt,
                         replacements_dict=replacements_dict
                         )
+                    
+                    await self.chatforme_service.send_output_message_and_voice(
+                        text=gpt_response,
+                        incl_voice=self.config.tts_include_voice,
+                        voice_name=tts_voice_selected
+                    )
                     
                     self.logger.debug(f"self.newusers_service.users_sent_messages_list: {self.newusers_service.users_sent_messages_list}")
                     self.logger.debug(f"users_not_yet_sent_message: {users_not_yet_sent_message}")
@@ -403,22 +408,30 @@ class Bot(twitch_commands.Bot):
             is_sender_mod = True
         return is_sender_mod
 
-    # async def _send_hello_world(self):
-    #     # Say hello to the chat 
-    #     if self.config.twitch_bot_gpt_hello_world == True:
-    #         prompt_text = self.config.hello_assistant_prompt
-    #         replacements_dict = {
-    #             "helloworld_message_wordcount":self.config.helloworld_message_wordcount,
-    #             'twitch_bot_display_name':self.config.twitch_bot_display_name,
-    #             'twitch_bot_channel_name':self.config.twitch_bot_channel_name,
-    #             'param_in_text':'variable_from_scope'
-    #             }
+    async def _send_hello_world(self):
+        # Say hello to the chat 
+        if self.config.twitch_bot_gpt_hello_world == True:
+            prompt_text = self.config.hello_assistant_prompt
+            assistant_name = 'chatforme'
+            thread_name = 'chatformemsgs'
+            tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
 
-    #         gpt_response = await self.gpt_chatcompletion.make_singleprompt_gpt_response(
-    #             prompt_text=prompt_text, 
-    #             replacements_dict=replacements_dict
-    #             )
-    #         self.logger.debug(f"This is the final gpt response for the hello_world: {gpt_response}")
+            replacements_dict = {
+                "helloworld_message_wordcount":self.config.helloworld_message_wordcount,
+                'twitch_bot_display_name':self.config.twitch_bot_display_name,
+                'twitch_bot_channel_name':self.config.twitch_bot_channel_name,
+                'param_in_text':'variable_from_scope'
+                }
+
+            # Add a executeTask to the queue
+            task = ExecuteThreadTask(
+                thread_name=thread_name,
+                assistant_name=assistant_name,
+                thread_instructions=prompt_text,
+                replacements_dict=replacements_dict,
+                tts_voice=tts_voice
+            ).to_dict()
+            await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
     @twitch_commands.command(name='getstats')
     async def get_command_stats(self, ctx):
@@ -596,10 +609,15 @@ class Bot(twitch_commands.Bot):
         self.logger.info(f"self.ouat_counter={self.ouat_counter}")
         if self.ouat_counter == 0:
             self.message_handler.ouat_msg_history.clear()
+
+            # Extract the user requested plotline and if '' or ' ', etc. then set to None
             user_requested_plotline_str = ' '.join(args)
+            if user_requested_plotline_str in ['', ' ', None]:
+                user_requested_plotline_str = None
+
+            # Randomly select voice/tone/style/theme from list, set replacements dictionary
             self.current_story_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
-            
-            # Randomly select tone/style/theme from list, set replacements dictionary
+
             writing_tone_values = list(self.config.writing_tone.values())
             self.selected_writing_tone = random.choice(writing_tone_values)
 
@@ -610,6 +628,8 @@ class Bot(twitch_commands.Bot):
             self.selected_theme = random.choice(theme_values)
 
             self.logger.info(f"A story was started by {message.author.name} ({message.author.id})")
+            self.logger.info(f"user_requested_plotline_str: {user_requested_plotline_str}")
+            self.logger.info(f"current_story_voice: {self.current_story_voice}")
             self.logger.info(f"selected_writing_tone: {self.selected_writing_tone}")
             self.logger.info(f"selected_writing_style: {self.selected_writing_style}")
             self.logger.info(f"selected_theme: {self.selected_theme}")
@@ -635,10 +655,11 @@ class Bot(twitch_commands.Bot):
                     "max_ouat_counter":self.config.ouat_story_max_counter,
                     }
 
+                gpt_prompt_text = self.config.story_user_bullet_list_summary_prompt + self.config.storyteller_storysuffix_prompt
                 create_bullet_list_promp_text = GPTAssistantManagerClass.prompt_text_replacement(
                     self.logger,
-                    gpt_prompt_text=self.config.story_user_bullet_list_summary_prompt + self.config.storyteller_storysuffix_prompt,
-                    replacements_dict = replacements_dict
+                    gpt_prompt_text=gpt_prompt_text,
+                    replacements_dict=replacements_dict
                     )
                 # self.random_article_content_plot_summary = create_bullet_list_promp_text
                 self.logger.info(f"2: This is the create_bullet_list_promp_text: {create_bullet_list_promp_text}")
@@ -660,28 +681,29 @@ class Bot(twitch_commands.Bot):
 
             self.is_ouat_loop_active = True
 
-    # @twitch_commands.command(name='addtostory')
-    # async def add_to_story_ouat(self, ctx,  *args):
-    #     self.ouat_counter = self.config.ouat_story_progression_number
-    #     author=ctx.message.author.name
-    #     prompt_text = ' '.join(args)
-    #     prompt_text_prefix = f"{self.config.ouat_prompt_addtostory_prefix}:'{prompt_text}'"
+    @twitch_commands.command(name='addtostory')
+    async def add_to_story_ouat(self, ctx,  *args):
+        self.ouat_counter = self.config.ouat_story_progression_number
         
-    #     #workflow1: get gpt_ready_msg_dict and add message to message history        
-    #     gpt_ready_msg_dict = self.message_handler.create_gpt_message_dict_from_strings(
-    #         content=prompt_text_prefix,
-    #         role='user',
-    #         name=author
-    #         )
-    #     self.message_handler.ouat_msg_history.append(gpt_ready_msg_dict)
+        author=ctx.message.author.name
+        prompt_text = ' '.join(args)
+        prompt_text_with_prefix = f"{self.config.ouat_prompt_addtostory_prefix}:'{prompt_text}'"
+        
+        #workflow1: get gpt_ready_msg_dict and add message to message history        
+        gpt_ready_msg_dict = self.message_handler.create_gpt_message_dict_from_strings(
+            content=prompt_text_with_prefix,
+            role='user',
+            name=author
+            )
+        self.message_handler.ouat_msg_history.append(gpt_ready_msg_dict)
 
-    #     # NOTE: This should use AddMessageTask() instead of directly adding to the thread
-    #     # Add to ouat thread
-    #     # Add the bullet list to the 'ouatmsgs' thread via queue
-    #     thread_name = 'ouatmsgs'
-    #     task = AddMessageTask(thread_name, user_requested_plotline_str).to_dict()
-    #     self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-    #     self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'")
+        # NOTE: This should use AddMessageTask() instead of directly adding to the thread
+        # Add to ouat thread
+        # Add the bullet list to the 'ouatmsgs' thread via queue
+        thread_name = 'ouatmsgs'
+        task = AddMessageTask(thread_name, prompt_text).to_dict()
+        await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+        self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'")
 
     @twitch_commands.command(name='extendstory')
     async def extend_story(self, ctx, *args) -> None:
@@ -875,7 +897,7 @@ class Bot(twitch_commands.Bot):
 
                 # Combine prefix and meat
                 gpt_prompt_final = self.config.storyteller_storysuffix_prompt + " " + gpt_prompt_final
-                assistant_name = 'ouat'
+                assistant_name = 'storyteller'
                 thread_name = 'ouatmsgs'
                 tts_voice = self.current_story_voice
 

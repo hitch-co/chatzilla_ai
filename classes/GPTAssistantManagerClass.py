@@ -1,11 +1,8 @@
 import asyncio
-import os
-import openai
+
 from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed
 from collections import defaultdict
 from typing import Dict, List, Callable
-
-from models.task import AddMessageTask, ExecuteThreadTask
 
 from my_modules.my_logging import create_logger
 
@@ -115,7 +112,7 @@ class GPTAssistantManager(GPTBaseClass):
         self.logger.debug(assistant)
         return assistant
 
-    def create_assistants(self, assistants_config) -> dict:
+    def create_assistants(self, assistants_config: dict) -> dict:
         # Create Assistants
         replacements_dict = {
             "wordcount_short":self.yaml_data.wordcount_short,
@@ -445,7 +442,7 @@ class GPTResponseManager(GPTBaseClass):
             self.logger.debug(f"Role: {role}, Content: '{message_content[0:25]}...'")
             async for attempt in AsyncRetrying(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True):
                 with attempt:
-                    message_object = await self.gpt_client.beta.threads.messages.create(
+                    message_object = self.gpt_client.beta.threads.messages.create(
                         thread_id=thread_id, 
                         role=role, 
                         content=message_content
@@ -456,103 +453,108 @@ class GPTResponseManager(GPTBaseClass):
             self.logger.warning(f"Thread '{thread_name}' not found.")
             return None
 
-async def main():
-    async def handle_tasks(self, task: dict):
-        if task["type"] == "add_message":
-            self.logger.debug(f"Handling task type 'add_message' for thread: {task['thread_name']}")
-            try:
-                await self.gpt_response_manager.add_message_to_thread(
-                    message_content = task["content"], 
-                    thread_name = task["thread_name"]
-                    )
-                self.logger.debug("Message added to thread")
-            except Exception as e: 
-                self.logger.error(f"Error occurred in 'add_message_to_thread': {e}")
+# async def main():
+#     async def handle_tasks(self, task: dict):
+#         if task["type"] == "add_message":
+#             self.logger.debug(f"Handling task type 'add_message' for thread: {task['thread_name']}")
+#             try:
+#                 await self.gpt_response_manager.add_message_to_thread(
+#                     message_content = task["content"], 
+#                     thread_name = task["thread_name"]
+#                     )
+#                 self.logger.debug("Message added to thread")
+#             except Exception as e: 
+#                 self.logger.error(f"Error occurred in 'add_message_to_thread': {e}")
             
-        elif task["type"] == "execute_thread":
-            self.logger.debug(f"Handling task type 'execute_thread' for Assistant/Thread: {task['assistant_name']}, {task['thread_name']}")
-            try:
-                gpt_response = await self.gpt_response_manager.execute_thread( 
-                    thread_name = task['thread_name'], 
-                    assistant_name = task['assistant_name'], 
-                    thread_instructions= task['thread_instructions'],
-                    replacements_dict=task['replacements_dict']
-                )
-            except Exception as e:
-                self.logger.error(f"Error occurred in 'execute_thread': {e}")
-                gpt_response = None
+#         elif task["type"] == "execute_thread":
+#             self.logger.debug(f"Handling task type 'execute_thread' for Assistant/Thread: {task['assistant_name']}, {task['thread_name']}")
+#             try:
+#                 gpt_response = await self.gpt_response_manager.execute_thread( 
+#                     thread_name = task['thread_name'], 
+#                     assistant_name = task['assistant_name'], 
+#                     thread_instructions= task['thread_instructions'],
+#                     replacements_dict=task['replacements_dict']
+#                 )
+#             except Exception as e:
+#                 self.logger.error(f"Error occurred in 'execute_thread': {e}")
+#                 gpt_response = None
 
-            if gpt_response is not None:
-                try:
-                    # Send the GPT response to the channel
-                    await self.chatforme_service.send_output_message_and_voice(
-                        text=gpt_response,
-                        incl_voice=self.config.tts_include_voice,
-                        voice_name=task['tts_voice']
-                    )
-                except Exception as e:
-                    self.logger.error(f"Error occurred in 'send_output_message_and_voice': {e}")
-                self.logger.debug("Thread executed...")
-            else:
-                self.logger.error(f"Gpt response is None, this should not happen.  Task: {task}")
-            self.logger.debug(f"'{task['type']}' task handled for thread: {task['thread_name']}")           
+#             if gpt_response is not None:
+#                 try:
+#                     # Send the GPT response to the channel
+#                     await self.chatforme_service.send_output_message_and_voice(
+#                         text=gpt_response,
+#                         incl_voice=self.config.tts_include_voice,
+#                         voice_name=task['tts_voice']
+#                     )
+#                 except Exception as e:
+#                     self.logger.error(f"Error occurred in 'send_output_message_and_voice': {e}")
+#                 self.logger.debug("Thread executed...")
+#             else:
+#                 self.logger.error(f"Gpt response is None, this should not happen.  Task: {task}")
+#             self.logger.debug(f"'{task['type']}' task handled for thread: {task['thread_name']}")           
 
-    root_logger = create_logger(
-        dirname='log', 
-        debug_level=gpt_response_mgr_debug_level,
-        logger_name='GPTAssistantManagerClass',
-        stream_logs=True
-        ) 
-    # Create an event loop
-    loop = asyncio.get_event_loop()
+#     root_logger = create_logger(
+#         dirname='log', 
+#         debug_level=gpt_response_mgr_debug_level,
+#         logger_name='GPTAssistantManagerClass',
+#         stream_logs=True
+#         ) 
+#     # Create an event loop
+#     loop = asyncio.get_event_loop()
 
-    # Configuration and API key setup
-    ConfigManager().initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
-    config = ConfigManager.get_instance()
-    assistants_config = config.gpt_assistant_prompts
-    thread_names = config.gpt_thread_names
+#     # Configuration and API key setup
+#     ConfigManager().initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
+#     config = ConfigManager.get_instance()
+#     assistants_config = config.gpt_assistant_prompts
+#     thread_names = config.gpt_thread_names
 
-    # Set up your GPTThreadManager and other components
-    gpt_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+#     # Set up your GPTThreadManager and other components
+#     gpt_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-    gpt_thread_manager = GPTThreadManager(gpt_client=gpt_client)
-    loop.create_task(gpt_thread_manager.task_scheduler())
-    gpt_thread_manager.create_threads(thread_names)
-    gpt_thread_manager.on_task_ready = handle_tasks
+#     gpt_thread_manager = GPTThreadManager(gpt_client=gpt_client)
+#     loop.create_task(gpt_thread_manager.task_scheduler())
+#     gpt_thread_manager.create_threads(thread_names)
+#     gpt_thread_manager.on_task_ready = handle_tasks
     
-    gpt_assistant_manager = GPTAssistantManager(gpt_client=gpt_client)
-    gpt_assistant_manager.create_assistants(assistants_config)
+#     gpt_assistant_manager = GPTAssistantManager(gpt_client=gpt_client)
+#     gpt_assistant_manager.create_assistants(assistants_config)
 
-    gpt_response_manager = GPTResponseManager(
-        gpt_client=gpt_client, 
-        gpt_thread_manager=gpt_thread_manager,
-        gpt_assistant_manager=gpt_assistant_manager
-        )
+#     gpt_response_manager = GPTResponseManager(
+#         gpt_client=gpt_client, 
+#         gpt_thread_manager=gpt_thread_manager,
+#         gpt_assistant_manager=gpt_assistant_manager
+#         )
 
-    # Get the thread id for 'article_summarizer'
-    # article_summarizer_thread_id = gpt_thread_manager.threads['article_summarizer']['id']
-    random_article_content = "CNN — Wreaths, candles and calendars. These are sure signs of Advent for many Christian groups around the world. But what is Advent exactly? The word Advent derives from the Latin adventus, which means an arrival or visit. Advent is the beginning of the spiritual year for these churches, and it’s ob"
+#     # Get the thread id for 'article_summarizer'
+#     # article_summarizer_thread_id = gpt_thread_manager.threads['article_summarizer']['id']
+#     random_article_content = "CNN — Wreaths, candles and calendars. These are sure signs of Advent for many Christian groups around the world. But what is Advent exactly? The word Advent derives from the Latin adventus, which means an arrival or visit. Advent is the beginning of the spiritual year for these churches, and it’s ob"
 
-    replacements_dict = {
-        "wordcount_short":config.wordcount_short,
-        "wordcount_medium":config.wordcount_medium,
-        "wordcount_long":config.wordcount_long
-    }
+#     replacements_dict = {
+#         "wordcount_short":config.wordcount_short,
+#         "wordcount_medium":config.wordcount_medium,
+#         "wordcount_long":config.wordcount_long
+#     }
 
-    # get thread id
-    article_summarizer_thread_id = gpt_thread_manager.threads['article_summarizer']['id']
+#     # get thread id
+#     article_summarizer_thread_id = gpt_thread_manager.threads['article_summarizer']['id']
 
-    # article_summarizer - Add message to thread
-    message_object = await gpt_response_manager.add_message_to_thread(
-        thread_name='article_summarizer', 
-        role='user', 
-        message_content=random_article_content
-    )
-    print("Message object: ")
-    print(message_object)
+#     # article_summarizer - Add message to thread
+#     message_object = await gpt_response_manager.add_message_to_thread(
+#         thread_name='article_summarizer', 
+#         role='user', 
+#         message_content=random_article_content
+#     )
+#     print("Message object: ")
+#     print(message_object)
 
-if __name__ == "__main__":
-    # get loop
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+# if __name__ == "__main__":
+
+#     import os
+#     import openai
+#     from models.task import AddMessageTask, ExecuteThreadTask
+
+#     # get loop
+#     loop = asyncio.get_event_loop()
+#     loop.run_until_complete(main())
 

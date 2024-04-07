@@ -4,6 +4,8 @@ import random
 from classes.ConfigManagerClass import ConfigManager
 
 from my_modules.my_logging import create_logger
+from models.task import AddMessageTask, ExecuteThreadTask
+from models.task import ExecuteThreadTask
 
 runtime_logger_level = 'DEBUG'
 
@@ -47,6 +49,7 @@ class VibeCheckService:
 
         #ChatForMeService
         self.chatforme_service = chatforme_service
+        
         #constants
         self.is_vibecheck_loop_active = False
         self.vibechecker_interactions_counter = 0
@@ -58,11 +61,6 @@ class VibeCheckService:
         self.vibechecker_max_interaction_count = self.config.vibechecker_max_interaction_count
         self.vibechecker_question_session_sleep_time = self.config.vibechecker_question_session_sleep_time
         self.vibechecker_listener_sleep_time = self.config.vibechecker_listener_sleep_time
-
-        #prompts
-        self.formatted_gpt_vibecheck_prompt = self.config.formatted_gpt_vibecheck_prompt
-        self.formatted_gpt_viberesult_prompt =  self.config.formatted_gpt_viberesult_prompt
-        self.formatted_gpt_vibecheck_alert = self.config.formatted_gpt_vibecheck_alert
 
     def start_vibecheck_session(self):
         self.is_vibecheck_loop_active = True
@@ -77,7 +75,7 @@ class VibeCheckService:
 
             # Add the bullet list to the 'ouatmsgs' thread via queue
             thread_name = 'vibecheckmsgs'
-            task = self.message_handler.AddMessageTask(thread_name, message_content).to_dict()
+            task = AddMessageTask(thread_name, message_content).to_dict()
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
             self.vibecheck_ready_event.set()
@@ -122,13 +120,17 @@ class VibeCheckService:
                         break
                     
                     elif self.vibechecker_interactions_counter == 1:
-                        vibechecker_prompt = self.formatted_gpt_vibecheck_alert
+                        vibechecker_prompt = self.config.formatted_gpt_vibecheck_alert
 
                     elif self.vibechecker_interactions_counter < self.vibechecker_max_interaction_count:
-                        vibechecker_prompt = self.formatted_gpt_vibecheck_prompt
+                        vibechecker_prompt = self.config.formatted_gpt_vibecheck_prompt
 
                     elif self.vibechecker_interactions_counter == self.vibechecker_max_interaction_count:                    
-                        vibechecker_prompt = self.formatted_gpt_viberesult_prompt 
+                        vibechecker_prompt = self.config.formatted_gpt_viberesult_prompt 
+
+                    assistant_name = 'vibechecker'
+                    thread_name = 'vibecheckmsgs'
+                    tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
 
                     #Prompt text replacement
                     self.logger.debug(f"This is the vibechecker_prompt: {vibechecker_prompt}")
@@ -137,27 +139,16 @@ class VibeCheckService:
                             "vibechecker_username":self.vibechecker_username,
                             "vibecheck_message_wordcount":self.vibecheck_message_wordcount
                         }
-                    # Call the thread with the instructions
-                    try:
-                        gpt_response = await self.gpt_response_mgr.make_gpt_response_from_msghistory( 
-                            thread_id = self.gpt_thread_mgr.threads['vibecheckmsgs']['id'], 
-                            assistant_id = self.gpt_assistant_mgr.assistants['vibechecker']['id'], 
-                            thread_instructions=vibechecker_prompt,
-                            replacements_dict=replacements_dict
-                        )
-                        self.logger.debug(f"This is the gpt_response: {gpt_response}")
-                    except Exception as e:
-                        self.logger.error(f"Error in make_gpt_response_from_msghistory: {e}")
-                        raise Exception(f"Error in make_gpt_response_from_msghistory: {e}")
 
-                    # Send the GPT response to the channel
-                    tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
-                    await self.chatforme_service.send_output_message_and_voice(
-                        text=gpt_response,
-                        incl_voice=self.config.tts_include_voice,
-                        voice_name=tts_voice
-                    )
-                    self.logger.debug(f"This is the tts_voice: {tts_voice}")
+                    # Add a executeTask to the queue
+                    task = ExecuteThreadTask(
+                        thread_name=thread_name,
+                        assistant_name=assistant_name,
+                        thread_instructions=vibechecker_prompt,
+                        replacements_dict=replacements_dict,
+                        tts_voice=tts_voice
+                    ).to_dict()
+                    await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
                     # Wait for either the event to be set or the timer to run out
                     try:

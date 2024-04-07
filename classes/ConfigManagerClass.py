@@ -83,6 +83,7 @@ class ConfigManager:
                 self.yaml_tts_config(yaml_config)
 
                 self.yaml_gpt_assistants_config(yaml_config)
+                self.yaml_gpt_threads_config(yaml_config)
                 
         except FileNotFoundError:
             self.logger.error(f"YAML configuration file not found at {yaml_full_path}")
@@ -164,9 +165,6 @@ class ConfigManager:
     def yaml_vibecheck_config(self, yaml_config):
         try:
             self.vibechecker_max_interaction_count = yaml_config['vibechecker_max_interaction_count']
-            self.formatted_gpt_vibecheck_prompt = yaml_config['formatted_gpt_vibecheck_prompt']
-            self.gpt_assistants_prompt_factchecker = yaml_config['gpt_assistant_prompts']['factchecker']
-            self.gpt_assistants_prompt_random_fact = yaml_config['gpt_assistant_prompts']['random_fact']
             self.formatted_gpt_viberesult_prompt = yaml_config['formatted_gpt_viberesult_prompt']
             self.newusers_sleep_time = yaml_config['newusers_sleep_time']
             self.newusers_nonewusers_prompt = yaml_config['newusers_nonewusers_prompt']
@@ -310,19 +308,22 @@ class ConfigManager:
             #Config
             self.gpt_assistant_type = yaml_config['gpt_assistant_config']['assistant_type']
 
-            #Prompts
+            #Prompts list
             self.gpt_assistants_prompts = yaml_config['gpt_assistant_prompts']
+
+            #Prompts
+            self.formatted_gpt_vibecheck_prompt = yaml_config['formatted_gpt_vibecheck_prompt']
             self.gpt_assistants_prompt_shorten_response = yaml_config['gpt_thread_prompts']['shorten_response_length']
-            self.gpt_assistants_prompt_article_summarizer = yaml_config['gpt_assistant_prompts']['article_summarizer']
-            self.gpt_assistants_prompt_storyteller = yaml_config['gpt_assistant_prompts']['storyteller']
-            self.gpt_assistants_chatforme = yaml_config['gpt_assistant_prompts']['chatforme']
             
             #New GPT Assistant Prompts:
             self.gpt_assistants_prompt_shorten_response_dev = yaml_config['gpt_thread_prompts_dev']['shorten_response_length']
 
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_assistants_config(): {e}")
-            
+
+    def yaml_gpt_threads_config(self, yaml_config):
+        self.gpt_thread_names = yaml_config['gpt_thread_names']
+
     def update_spellcheck_config(self, yaml_config):
         self.command_spellcheck_terms_filename = yaml_config['command_spellcheck_terms_filename']
         
@@ -380,4 +381,3 @@ if __name__ == "__main__":
     config = main(yaml_filepath)
     print(config.tts_data_folder)
     print(config.tts_file_name)
-    print(config.gpt_assistants_prompt_article_summarizer)

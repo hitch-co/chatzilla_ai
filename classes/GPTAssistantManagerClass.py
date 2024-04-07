@@ -509,25 +509,8 @@ async def main():
     # Configuration and API key setup
     ConfigManager().initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
     config = ConfigManager.get_instance()
-    assistants_config = {
-        'article_summarizer':config.gpt_assistants_prompt_article_summarizer,
-        'chatforme':config.gpt_assistants_chatforme,
-        'ouat':config.gpt_assistants_prompt_storyteller,
-        'vibechecker':config.formatted_gpt_vibecheck_prompt,
-        'factchecker':config.gpt_assistants_prompt_factchecker,
-        'random_fact':config.gpt_assistants_prompt_random_fact,
-    }    
-    thread_names = [
-        'rawmsgs',
-        'chatformemsgs',
-        'allmsghistory',
-        'nonbotmsgs',
-        'ouatmsgs',
-        'randomfactmsgs',
-        'factcheckmsgs',
-        'vibecheckmsgs',
-        'article_summarizer' #
-        ]
+    assistants_config = config.gpt_assistant_prompts
+    thread_names = config.gpt_thread_names
 
     # Set up your GPTThreadManager and other components
     gpt_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))

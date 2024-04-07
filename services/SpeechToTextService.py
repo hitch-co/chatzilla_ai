@@ -12,7 +12,7 @@ class SpeechToTextService:
             stream_logs=True
         )
 
-    def convert_audio_to_text(self, file_path):
+    async def convert_audio_to_text(self, file_path):
         # Ensure the file is a .wav file
         if not file_path.endswith('.wav'):
             raise ValueError("This class only processes .wav files")

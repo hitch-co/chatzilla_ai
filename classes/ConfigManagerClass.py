@@ -81,9 +81,6 @@ class ConfigManager:
                 self.yaml_factchecker_config(yaml_config)
 
                 self.yaml_tts_config(yaml_config)
-
-                self.yaml_gpt_assistants_config(yaml_config)
-                self.yaml_gpt_threads_config(yaml_config)
                 
         except FileNotFoundError:
             self.logger.error(f"YAML configuration file not found at {yaml_full_path}")
@@ -158,13 +155,13 @@ class ConfigManager:
             self.wordcount_short = str(yaml_config['wordcounts']['short'])
             self.wordcount_medium = str(yaml_config['wordcounts']['medium'])
             self.wordcount_long = str(yaml_config['wordcounts']['long'])
-            self.assistant_response_max_length = yaml_config['openai-api']['assistant_response_max_length']
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_config(): {e}")
 
     def yaml_vibecheck_config(self, yaml_config):
         try:
             self.vibechecker_max_interaction_count = yaml_config['vibechecker_max_interaction_count']
+            self.formatted_gpt_vibecheck_prompt = yaml_config['formatted_gpt_vibecheck_prompt']
             self.formatted_gpt_viberesult_prompt = yaml_config['formatted_gpt_viberesult_prompt']
             self.newusers_sleep_time = yaml_config['newusers_sleep_time']
             self.newusers_nonewusers_prompt = yaml_config['newusers_nonewusers_prompt']
@@ -207,10 +204,9 @@ class ConfigManager:
     def yaml_todo_config(self, yaml_config):
         try:
             # GPT todo command prompts:
-            self.gpt_todo_prompt = os.getenv('gpt_todo_prompt') if os.getenv('gpt_todo_prompt') is not None else yaml_config['gpt_todo_prompt']
+            self.gpt_todo_prompt = yaml_config['gpt_todo_prompt']
             self.gpt_todo_prompt_prefix = yaml_config['gpt_todo_prompt_prefix']
             self.gpt_todo_prompt_suffix = yaml_config['gpt_todo_prompt_suffix']
-
         except Exception as e:
             self.logger.error(f"Error in yaml_todo_config(): {e}")
 
@@ -238,21 +234,6 @@ class ConfigManager:
             self.writing_tone = yaml_config.get('ouat-writing-parameters', {}).get('writing_tone', 'no specified writing tone')
             self.writing_style = yaml_config.get('ouat-writing-parameters', {}).get('writing_style', 'no specified writing tone')
             self.writing_theme = yaml_config.get('ouat-writing-parameters', {}).get('writing_theme', 'no specified writing tone')
-
-            # DEV
-            # DEV News Article Feed/Prompts
-            self.story_article_bullet_list_summary_prompt_dev = yaml_config['gpt_thread_prompts_dev']['story_article_bullet_list_summary_prompt'] 
-            self.story_user_bullet_list_summary_prompt_dev = yaml_config['gpt_thread_prompts_dev']['story_user_bullet_list_summary_prompt']
-
-            # DEV
-            # DEV GPT Thread Prompts
-            self.storyteller_storysuffix_prompt_dev = yaml_config['gpt_thread_prompts_dev']['story_suffix']
-            self.storyteller_storystarter_prompt_dev = yaml_config['gpt_thread_prompts']['story_starter']
-            self.storyteller_storyprogressor_prompt_dev = yaml_config['gpt_thread_prompts_dev']['story_progressor']
-            self.storyteller_storyfinisher_prompt_dev = yaml_config['gpt_thread_prompts_dev']['story_finisher']
-            self.storyteller_storyender_prompt_dev = yaml_config['gpt_thread_prompts_dev']['story_ender']
-            self.ouat_prompt_addtostory_prefix_dev = yaml_config['gpt_thread_prompts_dev']['story_addtostory_prefix']
-            
         except Exception as e:
             self.logger.error(f"Error in yaml_ouat_config(): {e}")
 
@@ -291,8 +272,6 @@ class ConfigManager:
                 self.randomfact_topics = yaml.safe_load(file)
             with open(self.randomfact_areas_json, 'r') as file:
                 self.randomfact_areas = yaml.safe_load(file)
-            with open(self.randomfact_areas_json, 'r') as file:
-                self.randomfact_areas = yaml.safe_load(file)
 
         except Exception as e:
             self.logger.error(f"Error in yaml_randomfact_json(): {e}")
@@ -302,27 +281,6 @@ class ConfigManager:
             self.factchecker_prompts = yaml_config['chatforme_factcheck']['chatforme_factcheck_prompts']
         except Exception as e:
             self.logger.error(f"Error in yaml_factchecker_config(): {e}")
-
-    def yaml_gpt_assistants_config(self, yaml_config):
-        try:
-            #Config
-            self.gpt_assistant_type = yaml_config['gpt_assistant_config']['assistant_type']
-
-            #Prompts list
-            self.gpt_assistants_prompts = yaml_config['gpt_assistant_prompts']
-
-            #Prompts
-            self.formatted_gpt_vibecheck_prompt = yaml_config['formatted_gpt_vibecheck_prompt']
-            self.gpt_assistants_prompt_shorten_response = yaml_config['gpt_thread_prompts']['shorten_response_length']
-            
-            #New GPT Assistant Prompts:
-            self.gpt_assistants_prompt_shorten_response_dev = yaml_config['gpt_thread_prompts_dev']['shorten_response_length']
-
-        except Exception as e:
-            self.logger.error(f"Error in yaml_gpt_assistants_config(): {e}")
-
-    def yaml_gpt_threads_config(self, yaml_config):
-        self.gpt_thread_names = yaml_config['gpt_thread_names']
 
     def update_spellcheck_config(self, yaml_config):
         self.command_spellcheck_terms_filename = yaml_config['command_spellcheck_terms_filename']
@@ -379,5 +337,6 @@ if __name__ == "__main__":
     print(f"yaml_filepath_type: {type(yaml_filepath)}")
 
     config = main(yaml_filepath)
+
     print(config.tts_data_folder)
     print(config.tts_file_name)

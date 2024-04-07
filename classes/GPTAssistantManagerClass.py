@@ -456,59 +456,120 @@ class GPTResponseManager(GPTBaseClass):
             self.logger.warning(f"Thread '{thread_name}' not found.")
             return None
 
-if __name__ == "__main__":
-        
+async def main():
+    async def handle_tasks(self, task: dict):
+        if task["type"] == "add_message":
+            self.logger.debug(f"Handling task type 'add_message' for thread: {task['thread_name']}")
+            try:
+                await self.gpt_response_manager.add_message_to_thread(
+                    message_content = task["content"], 
+                    thread_name = task["thread_name"]
+                    )
+                self.logger.debug("Message added to thread")
+            except Exception as e: 
+                self.logger.error(f"Error occurred in 'add_message_to_thread': {e}")
+            
+        elif task["type"] == "execute_thread":
+            self.logger.debug(f"Handling task type 'execute_thread' for Assistant/Thread: {task['assistant_name']}, {task['thread_name']}")
+            try:
+                gpt_response = await self.gpt_response_manager.execute_thread( 
+                    thread_name = task['thread_name'], 
+                    assistant_name = task['assistant_name'], 
+                    thread_instructions= task['thread_instructions'],
+                    replacements_dict=task['replacements_dict']
+                )
+            except Exception as e:
+                self.logger.error(f"Error occurred in 'execute_thread': {e}")
+                gpt_response = None
+
+            if gpt_response is not None:
+                try:
+                    # Send the GPT response to the channel
+                    await self.chatforme_service.send_output_message_and_voice(
+                        text=gpt_response,
+                        incl_voice=self.config.tts_include_voice,
+                        voice_name=task['tts_voice']
+                    )
+                except Exception as e:
+                    self.logger.error(f"Error occurred in 'send_output_message_and_voice': {e}")
+                self.logger.debug("Thread executed...")
+            else:
+                self.logger.error(f"Gpt response is None, this should not happen.  Task: {task}")
+            self.logger.debug(f"'{task['type']}' task handled for thread: {task['thread_name']}")           
+
     root_logger = create_logger(
         dirname='log', 
-        debug_level=debug_level,
+        debug_level=gpt_response_mgr_debug_level,
         logger_name='GPTAssistantManagerClass',
         stream_logs=True
         ) 
-    
+    # Create an event loop
+    loop = asyncio.get_event_loop()
+
     # Configuration and API key setup
     ConfigManager().initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
     config = ConfigManager.get_instance()
-    config.gpt_assistants_prompt_article_summarizer
+    assistants_config = {
+        'article_summarizer':config.gpt_assistants_prompt_article_summarizer,
+        'chatforme':config.gpt_assistants_chatforme,
+        'ouat':config.gpt_assistants_prompt_storyteller,
+        'vibechecker':config.formatted_gpt_vibecheck_prompt,
+        'factchecker':config.gpt_assistants_prompt_factchecker,
+        'random_fact':config.gpt_assistants_prompt_random_fact,
+    }    
+    thread_names = [
+        'rawmsgs',
+        'chatformemsgs',
+        'allmsghistory',
+        'nonbotmsgs',
+        'ouatmsgs',
+        'randomfactmsgs',
+        'factcheckmsgs',
+        'vibecheckmsgs',
+        'article_summarizer' #
+        ]
 
-    # Create client and manager instances
-    gpt_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-    # gpt_base = GPTBaseClass(gpt_client=gpt_client)
-    # gpt_clast_mgr = GPTAssistantManager(gpt_client=gpt_client, yaml_data=config)
-    # gpt_thrd_mgr = GPTThreadManager(gpt_client=gpt_client, yaml_data=config)
-    # gpt_resp_mgr = GPTResponseManager(gpt_client=gpt_client, yaml_data=config)
-    
     # Set up your GPTThreadManager and other components
+    gpt_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
     gpt_thread_manager = GPTThreadManager(gpt_client=gpt_client)
+    loop.create_task(gpt_thread_manager.task_scheduler())
+    gpt_thread_manager.create_threads(thread_names)
+    gpt_thread_manager.on_task_ready = handle_tasks
+    
+    gpt_assistant_manager = GPTAssistantManager(gpt_client=gpt_client)
+    gpt_assistant_manager.create_assistants(assistants_config)
 
-    # Start the event loop and run the task scheduler
-    asyncio.run(gpt_thread_manager.task_scheduler())
+    gpt_response_manager = GPTResponseManager(
+        gpt_client=gpt_client, 
+        gpt_thread_manager=gpt_thread_manager,
+        gpt_assistant_manager=gpt_assistant_manager
+        )
 
-    # # article_summarizer - Create assistant
-    # article_summarizer_assistant = gpt_clast_mgr.create_assistant(
-    #     assistant_name='article_summarizer',
-    #     assistant_instructions=config.gpt_assistants_prompt_article_summarizer
-    # )
+    # Get the thread id for 'article_summarizer'
+    # article_summarizer_thread_id = gpt_thread_manager.threads['article_summarizer']['id']
+    random_article_content = "CNN — Wreaths, candles and calendars. These are sure signs of Advent for many Christian groups around the world. But what is Advent exactly? The word Advent derives from the Latin adventus, which means an arrival or visit. Advent is the beginning of the spiritual year for these churches, and it’s ob"
 
-    # # article_summarizer - Create thread
-    # article_summarizer_thread = gpt_thrd_mgr._create_thread(thread_name='article_summarizer')
-    # article_summarizer_thread_id = gpt_thrd_mgr.threads['article_summarizer']['id']
+    replacements_dict = {
+        "wordcount_short":config.wordcount_short,
+        "wordcount_medium":config.wordcount_medium,
+        "wordcount_long":config.wordcount_long
+    }
 
-    # random_article_content = "CNN — Wreaths, candles and calendars. These are sure signs of Advent for many Christian groups around the world. But what is Advent exactly? The word Advent derives from the Latin adventus, which means an arrival or visit. Advent is the beginning of the spiritual year for these churches, and it’s ob"
+    # get thread id
+    article_summarizer_thread_id = gpt_thread_manager.threads['article_summarizer']['id']
 
-    # # article_summarizer - Add message to thread
-    # gpt_thrd_mgr.add_message_to_thread(
-    #     thread_id=article_summarizer_thread_id, 
-    #     role='user', 
-    #     message_content=random_article_content
-    # )
+    # article_summarizer - Add message to thread
+    message_object = await gpt_response_manager.add_message_to_thread(
+        thread_name='article_summarizer', 
+        role='user', 
+        message_content=random_article_content
+    )
+    print("Message object: ")
+    print(message_object)
 
-    # # article_summarizer assistant+thread - Run workflow and retrieve response
-    # gpt_response_text = asyncio.run(gpt_resp_mgr.make_gpt_response_from_msghistory(
-    #     assistant_id=article_summarizer_assistant.id,
-    #     thread_id=article_summarizer_thread_id,
-    #     thread_instructions=config.gpt_assistants_prompt_article_summarizer
-    # ))
+if __name__ == "__main__":
+    # get loop
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
 
-    # article_summary_plotline = gpt_response_text
-
-    # print(article_summary_plotline)

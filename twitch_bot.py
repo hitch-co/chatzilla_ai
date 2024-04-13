@@ -1,8 +1,5 @@
 
 from classes.ConfigManagerClass import ConfigManager
-yaml_filepath=r'.\config\config.yaml'
-ConfigManager.initialize(yaml_filepath=yaml_filepath)
-
 from flask import Flask, redirect, request, url_for
 
 from classes.TwitchAuth import TwitchAuth
@@ -16,7 +13,10 @@ runtime_logger_level = 'DEBUG'
 app = Flask(__name__)
 
 # Load configuration
+yaml_filepath=r'config\config.yaml'
+ConfigManager.initialize(yaml_filepath=yaml_filepath)
 config = ConfigManager.get_instance()
+config.tts_model
 
 # Setup logger
 logger = create_logger(

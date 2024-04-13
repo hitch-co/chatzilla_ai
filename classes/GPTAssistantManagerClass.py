@@ -454,46 +454,6 @@ class GPTResponseManager(GPTBaseClass):
             return None
 
 # async def main():
-#     async def handle_tasks(self, task: dict):
-#         if task["type"] == "add_message":
-#             self.logger.debug(f"Handling task type 'add_message' for thread: {task['thread_name']}")
-#             try:
-#                 await self.gpt_response_manager.add_message_to_thread(
-#                     message_content = task["content"], 
-#                     thread_name = task["thread_name"]
-#                     )
-#                 self.logger.debug("Message added to thread")
-#             except Exception as e: 
-#                 self.logger.error(f"Error occurred in 'add_message_to_thread': {e}")
-            
-#         elif task["type"] == "execute_thread":
-#             self.logger.debug(f"Handling task type 'execute_thread' for Assistant/Thread: {task['assistant_name']}, {task['thread_name']}")
-#             try:
-#                 gpt_response = await self.gpt_response_manager.execute_thread( 
-#                     thread_name = task['thread_name'], 
-#                     assistant_name = task['assistant_name'], 
-#                     thread_instructions= task['thread_instructions'],
-#                     replacements_dict=task['replacements_dict']
-#                 )
-#             except Exception as e:
-#                 self.logger.error(f"Error occurred in 'execute_thread': {e}")
-#                 gpt_response = None
-
-#             if gpt_response is not None:
-#                 try:
-#                     # Send the GPT response to the channel
-#                     await self.chatforme_service.send_output_message_and_voice(
-#                         text=gpt_response,
-#                         incl_voice=self.config.tts_include_voice,
-#                         voice_name=task['tts_voice']
-#                     )
-#                 except Exception as e:
-#                     self.logger.error(f"Error occurred in 'send_output_message_and_voice': {e}")
-#                 self.logger.debug("Thread executed...")
-#             else:
-#                 self.logger.error(f"Gpt response is None, this should not happen.  Task: {task}")
-#             self.logger.debug(f"'{task['type']}' task handled for thread: {task['thread_name']}")           
-
 #     root_logger = create_logger(
 #         dirname='log', 
 #         debug_level=gpt_response_mgr_debug_level,

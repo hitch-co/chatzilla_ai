@@ -11,6 +11,10 @@ class ConfigManager:
 
     @classmethod
     def initialize(cls, yaml_filepath):
+
+        #full path to the yaml file
+        yaml_filepath = os.path.abspath(yaml_filepath)
+
         if cls._instance is None:
             try:
                 cls._instance = object.__new__(cls)
@@ -58,11 +62,13 @@ class ConfigManager:
             with open(yaml_full_path, 'r') as file:
                 self.logger.debug("loading individual configs...")
                 yaml_config = yaml.safe_load(file)
-                
+
+                self.update_config_from_yaml(yaml_config)
+
                 self.yaml_twitchbot_config(yaml_config)
                 
                 self.yaml_depinjector_config(yaml_config)
-                self.update_config_from_yaml(yaml_config)
+
 
                 self.update_spellcheck_config(yaml_config)
 
@@ -86,8 +92,8 @@ class ConfigManager:
 
                 self.yaml_tts_config(yaml_config)
                 
-        except FileNotFoundError:
-            self.logger.error(f"YAML configuration file not found at {yaml_full_path}")
+        except FileNotFoundError as e:
+            self.logger.error(f"Error setting YAML configuration: {e}")
         except yaml.YAMLError as e:
             self.logger.error(f"Error parsing YAML configuration: {e}")
         except Exception as e:
@@ -294,11 +300,10 @@ class ConfigManager:
             self.logger.error(f"Error in yaml_factchecker_config(): {e}")
 
     def update_spellcheck_config(self, yaml_config):
-        self.command_spellcheck_terms_filename = yaml_config['command_spellcheck_terms_filename']
+        self.command_spellcheck_terms_filename = yaml_config['spellcheck_commands_filename']
         
         #Load spellcheck terms
         spellcheck_terms_path = os.path.join(
-            self.config_dirpath, 
             self.command_spellcheck_terms_filename
             )
         with open(spellcheck_terms_path, 'r') as file:
@@ -313,7 +318,6 @@ class ConfigManager:
             
             self.shorten_response_length = yaml_config['gpt_thread_prompts']['shorten_response_length']
 
-            self.config_dirpath = yaml_config['config_dirpath']
             self.keys_dirpath = yaml_config['keys_dirpath']
 
             self.google_application_credentials_file = yaml_config['twitch-ouat']['google_service_account_credentials_file']
@@ -347,6 +351,7 @@ if __name__ == "__main__":
 
     config = main(yaml_filepath)
 
+    print(config.env_file_directory)
     print(config.tts_data_folder)
     print(config.tts_file_name)
     print(config.gpt_assistant_prompts)

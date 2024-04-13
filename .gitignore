@@ -12,7 +12,6 @@ chatzilla_ai.code-workspace
 config.env
 env.py
 pyvenv.cfg
-config.yaml
 notes and docs/
 _draft*
 _archives/

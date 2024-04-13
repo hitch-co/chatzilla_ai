@@ -1,10 +1,11 @@
 #########################
 #########################
+
 #Flask App
 twitch-app:
   twitch_bot_gpt_hello_world: True
-  twitch_bot_username: 'cirenexus'
-  twitch_bot_display_name: 'cirenexus'
+  twitch_bot_username: 'chatzilla_ai'
+  twitch_bot_display_name: 'chatzilla_ai'
   twitch_bot_operatorname: 'ehitch'
   twitch_bot_channel_name: 'ehitch'
   twitch_bot_redirect_path: 'callback'
@@ -22,8 +23,8 @@ env_dirname: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____C
 app_config_dirpath: '.\config'
 keys_dirpath: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\keys'
 is_gpt_testing: True
-spellcheck_filepath: 'config\command_spellcheck_terms.json'
-spellcheck_commands_filename: 'config\command_spellcheck_terms.json\command_spellcheck_terms.json' 
+spellcheck_commands_filename: 'config\command_spellcheck_terms.json' 
+
 #########################
 #########################
 #OpenAI
@@ -50,7 +51,7 @@ openai-api:
 chatforme_randomfacts:
   randomfact_topics_json_filepath: 'C:\_repos\chatzilla_ai\config\randomfact_topics.json'
   randomfact_eras_json_filepath: 'C:\_repos\chatzilla_ai\config\randomfact_eras.json'
-  randomfact_sleep_time: 60
+  randomfact_sleep_time: 600
   randomfact_types:
     game:
       # randomfact_prompt: "Share an engaging fact in roughly {wordcount_short} words about the topic {selected_game} or any of its related genres, etc.  Let's explorle {randomfact_topic} or {randomfact_subtopic} within categories like {area} and/or {subarea} in this random fact/opinion.  If you can, make the topic start with the letter '{random_character_a_to_z}'.  Ensure a wide expanse of knowledge is covered.  Start your message with 'fact:'"
@@ -79,8 +80,8 @@ chatforme_randomfacts:
       randomfact_prompt: "your only job is to participate in the conversation.  If there is no conversation, just share a random fact about a game or game genre.  Keep it to {wordcount_short} words max.  If you can, make the topic start with the letter '{random_character_a_to_z}'.  Ensure a wide expanse of knowledge is covered.  Start your message with 'fact:' if it's a fact, otherwise jsut participate in the conversation"
       topics_injection_file_path: 'C:\_repos\chatzilla_ai\config\data_injection\random_topics_and_subtopics.json'
       areas_injection_file_path: 'C:\_repos\chatzilla_ai\config\data_injection\random_eras_and_timeperiods.json'
-  randomfact_prompts: #This is legacy and not in use
-    randomfact_prompt_standard: "Share an engaging fact in roughly {wordcount_short} words. If our recent discussions have highlighted a particular theme or topic, let's relate the fact to that. Otherwise, let's explore a random topic taking place in the {randomfact_era} era in the timeperiod {randomfact_timeperiod}, beginning with the letter {random_character_a_to_z}, from broad categories such as {randomfact_subtopic} within the realm of {randomfact_topic}. We're aiming for unique insights and wish to steer clear of overly familiar topics. The fact can be about any aspect within these categories, ensuring a wide expanse of knowledge is covered. Prefix your response with something like 'fact:' to make it clear that it's a fact."
+  # randomfact_prompts: #This is legacy and not in use
+  #   randomfact_prompt_standard: "Share an engaging fact in roughly {wordcount_short} words. If our recent discussions have highlighted a particular theme or topic, let's relate the fact to that. Otherwise, let's explore a random topic taking place in the {randomfact_era} era in the timeperiod {randomfact_timeperiod}, beginning with the letter {random_character_a_to_z}, from broad categories such as {randomfact_subtopic} within the realm of {randomfact_topic}. We're aiming for unique insights and wish to steer clear of overly familiar topics. The fact can be about any aspect within these categories, ensuring a wide expanse of knowledge is covered. Prefix your response with something like 'fact:' to make it clear that it's a fact."
 
 chatforme_factcheck:
   chatforme_factcheck_prompts:

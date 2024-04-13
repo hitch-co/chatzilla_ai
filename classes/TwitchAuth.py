@@ -7,6 +7,8 @@ from urllib.parse import urlencode
 
 from my_modules.my_logging import create_logger
 
+from classes.ConfigManagerClass import ConfigManager
+
 class TwitchAuth:
     def __init__(self, config):
         self.config = config
@@ -18,7 +20,8 @@ class TwitchAuth:
             stream_logs = False,
             encoding='UTF-8'
             )
-        self.access_token_expiry = 0
+        self.access_token_expiry = None
+        config = ConfigManager.get_instance()
 
     def get_auth_url(self):
         params = {

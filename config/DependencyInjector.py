@@ -45,12 +45,12 @@ class DependencyInjector:
         return gpt_assistant_mgr    
     
     def create_gpt_response_mgr(self, gpt_thread_manager, gpt_assistant_manager):
-        gpt_thread_mgr = GPTResponseManager(
+        gpt_response_mgr = GPTResponseManager(
             gpt_client=self.gpt_client,
             gpt_thread_manager=gpt_thread_manager,
             gpt_assistant_manager=gpt_assistant_manager
         )
-        return gpt_thread_mgr
+        return gpt_response_mgr
       
     def create_message_handler(self, gpt_thread_mgr):
         message_handler = MessageHandler(

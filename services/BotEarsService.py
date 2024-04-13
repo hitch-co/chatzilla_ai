@@ -122,7 +122,7 @@ class BotEars():
 async def main():
 
     from classes.ConfigManagerClass import ConfigManager
-    ConfigManager.initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
+    ConfigManager.initialize(yaml_filepath=r'C:\_repos\chatzilla_ai\config\config.yaml')
     config = ConfigManager.get_instance()
 
     # Get the audio device details from the JSON file

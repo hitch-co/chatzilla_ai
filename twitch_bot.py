@@ -1,6 +1,6 @@
 
 from classes.ConfigManagerClass import ConfigManager
-yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml'
+yaml_filepath=r'.\config\config.yaml'
 ConfigManager.initialize(yaml_filepath=yaml_filepath)
 
 from flask import Flask, redirect, request, url_for

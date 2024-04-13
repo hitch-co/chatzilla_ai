@@ -109,9 +109,6 @@ class TwitchAPI:
             f"'{viewer['user_name']}' as user_name, PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{viewer['timestamp']}') as last_seen"
             for viewer in records
         ])
-        utils.write_query_to_file(formatted_query=union_all_query, 
-                            dirname='log/queries',
-                            queryname='channelviewers_query')
         
         # Add the union all query to our final query to be sent to BQ jobs
         merge_query = f"""
@@ -129,10 +126,7 @@ class TwitchAPI:
                 INSERT (user_id, user_login, user_name, last_seen)
                 VALUES(source.user_id, source.user_login, source.user_name, source.last_seen);
         """
-        utils.write_query_to_file(formatted_query=merge_query, 
-                            dirname='log/queries',
-                            queryname='channelviewers_query_final')
-        
+
         self.logger.debug("The users table query was generated")
         self.logger.debug("This is the users table merge query:")
         self.logger.debug(merge_query)
@@ -151,8 +145,6 @@ class TwitchAPI:
             self.logger.error("Failed to process viewers for BigQuery due to data retrieval failure.")
             return
     
-# if __name__ == "__main__":
-#     twitch_api = TwitchAPI()
-#     twitch_api.logger.info('TwitchAPI initialized.')
-#     twitch_api._fetch_channel_viewers(
-#         bearer_token='
+if __name__ == "__main__":
+    twitch_api = TwitchAPI()
+    twitch_api.logger.info('TwitchAPI initialized.')

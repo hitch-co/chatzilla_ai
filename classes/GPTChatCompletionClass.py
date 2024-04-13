@@ -250,7 +250,7 @@ class GPTChatCompletion:
 
 if __name__ == '__main__':
     import time
-    ConfigManager.initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
+    ConfigManager.initialize(yaml_filepath=r'C:\_repos\chatzilla_ai\config\config.yaml')
     config = ConfigManager.get_instance()
 
     gpt_client = openai.OpenAI(api_key = config.openai_api_key)

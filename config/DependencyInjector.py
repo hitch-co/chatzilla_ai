@@ -80,7 +80,7 @@ def main(yaml_filepath):
     return dependencies
 
 if __name__ == '__main__':
-    yaml_filepath = r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml'
+    yaml_filepath = r'C:\_repos\chatzilla_ai\config\config.yaml'
     dependencies = main(yaml_filepath)
     print(dependencies.gpt_client)
     print(dependencies.message_handler)

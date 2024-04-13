@@ -504,7 +504,7 @@ class GPTResponseManager(GPTBaseClass):
 #     loop = asyncio.get_event_loop()
 
 #     # Configuration and API key setup
-#     ConfigManager().initialize(yaml_filepath=r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml')
+#     ConfigManager().initialize(yaml_filepath=r'C:\_repos\chatzilla_ai\config\config.yaml')
 #     config = ConfigManager.get_instance()
 #     assistants_config = config.gpt_assistant_prompts
 #     thread_names = config.gpt_thread_names

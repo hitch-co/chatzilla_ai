@@ -342,7 +342,7 @@ def main(yaml_filepath):
     return config
 
 if __name__ == "__main__":
-    yaml_filepath = r'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\config.yaml'
+    yaml_filepath = r'C:\_repos\chatzilla_ai\config\config.yaml'
     print(f"yaml_filepath_type: {type(yaml_filepath)}")
 
     config = main(yaml_filepath)

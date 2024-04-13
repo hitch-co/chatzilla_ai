@@ -11,11 +11,10 @@ from models.task import AddMessageTask, ExecuteThreadTask
 
 from my_modules.my_logging import create_logger
 from my_modules import utils
-from my_modules.twitch_api import TwitchAPI
+from classes.TwitchAPI import TwitchAPI
 
 from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
-from classes.GPTAssistantManagerClass import GPTAssistantManager
 from classes import GPTAssistantManagerClass
 from classes.GPTChatCompletionClass import GPTChatCompletion
 
@@ -720,13 +719,6 @@ class Bot(twitch_commands.Bot):
         self.is_ouat_loop_active = False
         self.ouat_counter = 0
         self.logger.info(f"OUAT loop has been stopped, self.ouat_counter has been reset to {self.ouat_counter}")
-
-        utils.write_msg_history_to_file(
-            logger=self.logger,
-            msg_history=self.message_handler.ouat_msg_history, 
-            variable_name_text='ouat_msg_history',
-            dirname='log/ouat_story_history'
-            )
         self.message_handler.ouat_msg_history.clear()
 
     async def _factcheck_main(self):
@@ -796,12 +788,12 @@ class Bot(twitch_commands.Bot):
         try:
             #Grab *args from text and make sure that it is an integer
             self.config.randomfact_sleep_time = int(args[0])
-            response = f"randomfact sleep time set to {self.config.randomfact_sleep_time} seconds."
         except Exception as e:
             response = f"no change made, see log"
-        await self.channel.send(response)
+            await self.channel.send(response)
+            self.logger.error(f"Error occurred in !randomfact_sleeptime: {e}")        
 
-    def _randomfact_category_picker(self, data):
+    def _randomfact_category_picker(self, data: dict):
         # Pick a random category (like 'historicalContexts', 'categories', etc.)
         topic = random.choice(list(data.keys()))
         

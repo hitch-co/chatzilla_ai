@@ -180,8 +180,8 @@ class GPTThreadManager(GPTBaseClass):
             for thread_name, queue in self.task_queues.items():
                 if not queue.empty():
                     task = await queue.get()
-                    self.logger.info("Task found in queue... executing process_task() with task definition")
-                    self.logger.debug(f"'{task['type']}' Task found for thread '{task['thread_name']}'")
+                    self.logger.info(f"1. Task (type: {task['type']}) found in queue...")
+                    self.logger.debug(f"...executing process_task() with task for thread '{task['thread_name']}'")
                     await self.process_task(task)
             await asyncio.sleep(1)
 
@@ -190,7 +190,7 @@ class GPTThreadManager(GPTBaseClass):
         Process the task before executing. This method includes logging, validation,
         and any other pre-processing steps needed before the task is handled.
         """
-        self.logger.info(f"Starting to process task type: {task['type']} for thread '{task['thread_name']}'")
+        self.logger.info(f"2. Starting to process task: '{task['type']}' for thread: '{task['thread_name']}'")
         self.logger.debug(f"Task details: {task}")
 
         # Basic validation to ensure necessary fields are present
@@ -431,6 +431,9 @@ class GPTResponseManager(GPTBaseClass):
             ValueError: If the 'role' parameter is not 'user' or 'assistant'.
         """
         #NOTE: could use a thread registry to share self.threads between classes 
+        self.logger.debug(f"Message content: {message_content}")
+        self.logger.debug(f"Message content: {thread_name}")
+        self.logger.debug(f"Message role: {role}")
         
         # Validate the role
         if role not in ['user', 'assistant']:
@@ -440,6 +443,7 @@ class GPTResponseManager(GPTBaseClass):
             thread_id = self.gpt_thread_manager.threads[thread_name]['id']
             self.logger.debug(f"Thread '{thread_name}' found with ID: {thread_id}")
             self.logger.debug(f"Role: {role}, Content: '{message_content[0:25]}...'")
+
             async for attempt in AsyncRetrying(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True):
                 with attempt:
                     message_object = self.gpt_client.beta.threads.messages.create(

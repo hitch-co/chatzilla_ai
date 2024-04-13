@@ -38,7 +38,9 @@ class BQUploader:
             SUM(CASE WHEN LOWER(content) LIKE '!what%' THEN 1 ELSE 0 END) as what_count,
             SUM(CASE WHEN LOWER(content) LIKE '!factcheck%' THEN 1 ELSE 0 END) as factcheck_count,
             SUM(CASE WHEN LOWER(content) LIKE '!vc%' THEN 1 ELSE 0 END) as vibecheck_count,
-            SUM(CASE WHEN LOWER(content) LIKE '@chatzilla_ai%' THEN 1 ELSE 0 END) as chatzilla_shoutouts            
+            SUM(CASE WHEN LOWER(content) LIKE '@chatzilla_ai%' THEN 1 ELSE 0 END) as chatzilla_shoutouts,
+            COUNT(*) as total_messages              
+        
         FROM `{table_id}`
         """
 
@@ -50,11 +52,14 @@ class BQUploader:
         result_list = list(result)[0]  # 'result' is the RowIterator from BQ query
         if result_list:
             stats_text = f"""
-            Historic !commands usage:\n
-            \n!chat: {result_list.chat_count}
-            !startstory: {result_list.startstory_count}
-            !addtostory: {result_list.addtostory_count}
-            !what: {result_list.what_count}
+            Historic !commands usage and mentions:
+            Total messages received: {result_list.total_messages} ||
+            @chatzilla_ai mentions: {result_list.chatzilla_shoutouts}\n ||
+            !chat: {result_list.chat_count}\n ||
+            !startstory: {result_list.startstory_count}\n ||
+            !what: {result_list.what_count}\n ||
+            !factcheck: {result_list.factcheck_count}\n ||
+            !vc (vibe check): {result_list.vibecheck_count}\n
             """
 
         # Log the formatted stats

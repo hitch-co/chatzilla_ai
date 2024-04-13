@@ -155,19 +155,19 @@ class Bot(twitch_commands.Bot):
 
     async def handle_tasks(self, task: dict):
         if task["type"] == "add_message":
-            self.logger.debug(f"Handling task type 'add_message' for thread: {task['thread_name']}")
+            self.logger.debug(f"3. Handling task type 'add_message' for thread: {task['thread_name']}")
             try:
                 message_object = await self.gpt_response_manager.add_message_to_thread(
                     message_content = task["content"], 
-                    thread_name = task["thread_name"]
+                    thread_name = task["thread_name"],
+                    role = task["role"]
                     )
-                self.logger.debug("Message added to thread")
                 self.logger.debug(f"Message object: {message_object}")
             except Exception as e: 
-                self.logger.error(f"Error occurred in 'add_message_to_thread': {e}")
+                self.logger.error(f"Error occurred in 'add_message_to_thread': {e}", exc_info=True)
             
         elif task["type"] == "execute_thread":
-            self.logger.debug(f"Handling task type 'execute_thread' for Assistant/Thread: {task['assistant_name']}, {task['thread_name']}")
+            self.logger.debug(f"3. Handling task type 'execute_thread' for Assistant/Thread: {task['assistant_name']}, {task['thread_name']}")
             try:
                 gpt_response = await self.gpt_response_manager.execute_thread( 
                     thread_name = task['thread_name'], 
@@ -176,7 +176,7 @@ class Bot(twitch_commands.Bot):
                     replacements_dict=task['replacements_dict']
                 )
             except Exception as e:
-                self.logger.error(f"Error occurred in 'execute_thread': {e}")
+                self.logger.error(f"Error occurred in 'execute_thread': {e}", exc_info=True)
                 gpt_response = None
 
             if gpt_response is not None:

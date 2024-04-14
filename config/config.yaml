@@ -4,13 +4,13 @@
 #Flask App
 twitch-app:
   twitch_bot_gpt_hello_world: False
-  twitch_bot_username: 'chatzilla_ai'
-  twitch_bot_display_name: 'chatzilla_ai'
+  twitch_bot_username: 'cirenexus'
+  twitch_bot_display_name: 'cirenexus'
   twitch_bot_operatorname: 'ehitch'
   twitch_bot_channel_name: 'ehitch'
   twitch_bot_redirect_path: 'callback'
   twitch_bot_redirect_auth: ''
-  twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters'
+  twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read' #user:read:email moderation:read channel:moderate'
 
 twitch-bots:
   chatforme: ['chatzilla_ai', 'cirenexus']

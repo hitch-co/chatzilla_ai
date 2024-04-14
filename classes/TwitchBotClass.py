@@ -41,10 +41,12 @@ class Bot(twitch_commands.Bot):
             message_handler,
             twitch_auth
             ):
-        self.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
         
+        self.config = config
+        self.config.twitch_bot_access_token = os.getenv('TWITCH_BOT_ACCESS_TOKEN')
+
         super().__init__(
-            token=self.twitch_bot_access_token,
+            token=self.config.twitch_bot_access_token,
             name=config.twitch_bot_username,
             prefix='!',
             initial_channels=[config.twitch_bot_channel_name],
@@ -60,9 +62,6 @@ class Bot(twitch_commands.Bot):
             stream_logs=True,
             encoding='UTF-8'
             )
-
-        #TODO: Next up, make this work...
-        self.config = config
         
         # dependencies instances
         self.gpt_client = gpt_client
@@ -111,12 +110,12 @@ class Bot(twitch_commands.Bot):
         # TODO: Could be a good idea to inject these dependencies into the services
         # Instantiate the speech to text service
         self.s2t_service = SpeechToTextService()
-        
-        # Grab the TwitchAPI class
-        self.twitch_api = TwitchAPI()
 
         #Taken from app authentication class() #TODO: Reudndant with twitchAPI?
         self.twitch_auth = twitch_auth
+
+        # Grab the TwitchAPI class and set the bot/broadcaster/moderator IDs
+        self.twitch_api = TwitchAPI()
 
         #Google Service Account Credentials & BQ Table IDs
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = self.config.google_application_credentials_file
@@ -142,9 +141,6 @@ class Bot(twitch_commands.Bot):
         self.wordcount_medium = self.config.wordcount_medium
         self.wordcount_long = self.config.wordcount_long
 
-        #NOTE: ARGUABLY DO NOT NEED TO INITIALIZE THESE HERE
-        self.broadcaster_id = self.config.twitch_broadcaster_author_id
-        self.moderator_id = self.config.twitch_bot_moderator_id
         self.twitch_bot_client_id = self.config.twitch_bot_client_id
 
         #NOTE: ARGUABLY DO NOT NEED TO INITIALIZE THESE HERE
@@ -293,7 +289,7 @@ class Bot(twitch_commands.Bot):
 
             channel_viewers_queue_query = await self.twitch_api.process_viewers_for_bigquery(
                 table_id=self.userdata_table_id,
-                bearer_token=self.twitch_bot_access_token
+                bearer_token=self.config.twitch_bot_client_id
                 )
 
             self.bq_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
@@ -343,7 +339,8 @@ class Bot(twitch_commands.Bot):
 
             # Get the current users in the channel
             try:
-                current_users_list = await self.twitch_api.retrieve_active_usernames(bearer_token = self.twitch_bot_access_token)
+                current_users_list = await self.twitch_api.retrieve_active_usernames(
+                    bearer_token = self.config.twitch_bot_access_token)
             except Exception as e:
                 self.logger.error(f"Failed to retrieve active users from Twitch API: {e}")
                 current_users_list = None

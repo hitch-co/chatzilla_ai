@@ -21,7 +21,7 @@ def create_logger(
         raise ValueError(f"Invalid debug_level: {debug_level}. Must be one of: {', '.join(level_mapping.keys())}")
 
     logger = logging.getLogger(logger_name if logger_name else __name__)
-    
+
     # Clear existing handlers
     for handler in logger.handlers[:]:
         handler.close()
@@ -29,7 +29,10 @@ def create_logger(
 
     logger.setLevel(level_mapping[debug_level.upper()])
 
-    formatter = logging.Formatter('%(asctime)s - %(module)s - %(levelname)s - Name: %(funcName)s - Line: %(lineno)d - %(message)s')
+    formatter = logging.Formatter(
+        '%(asctime)s - %(module)s - %(levelname)s - Name: %(funcName)s - Line: %(lineno)d - %(message)s',
+        datefmt='%H:%M:%S'
+        )
 
     file_handler = logging.FileHandler(f'{dirname}/{logger_name}.log', mode=mode, encoding=encoding)
     file_handler.setLevel(level_mapping[debug_level.upper()])
@@ -41,5 +44,5 @@ def create_logger(
         stream_handler.setLevel(level_mapping[debug_level.upper()])
         stream_handler.setFormatter(formatter)
         logger.addHandler(stream_handler)
-    
+
     return logger

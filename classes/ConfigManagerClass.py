@@ -122,7 +122,7 @@ class ConfigManager:
 
             # Load twitch bot and mod identifiers
             self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
-            self.twitch_bot_moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
+            # self.twitch_bot_moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
             self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
             self.twitch_bot_client_secret = os.getenv('TWITCH_BOT_CLIENT_SECRET')
                     

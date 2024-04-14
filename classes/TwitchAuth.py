@@ -64,6 +64,8 @@ class TwitchAuth:
             tokens = response.json()
             os.environ["TWITCH_BOT_ACCESS_TOKEN"] = tokens['access_token']
             os.environ["TWITCH_BOT_REFRESH_TOKEN"] = tokens['refresh_token']
+            self.config.twitch_bot_access_token = tokens['access_token']
+            self.config.twitch_bot_refresh_token = tokens['refresh_token']
 
             # Create expiration time for access token (expirs_in is in seconds)
             self.access_token_expiry = time.time() + int(tokens['expires_in'])

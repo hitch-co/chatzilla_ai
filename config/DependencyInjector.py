@@ -1,4 +1,5 @@
 # dependency_injector.py
+from google.cloud import bigquery
 
 from classes.MessageHandlerClass import MessageHandler
 from classes.BQUploaderClass import BQUploader
@@ -18,13 +19,12 @@ class DependencyInjector:
             )
         return gpt_client
 
-    # # NiU: Optoinal instaed of creating client inside of BQUploader()
-    # def create_bq_client(self)
-    #     bq_client = bigquery.Client()
-    #     return bq_client
+    def create_bq_client(self):
+        bq_client = bigquery.Client()
+        return bq_client
     
-    def create_bq_uploader(self):
-        return BQUploader()
+    def create_bq_uploader(self, bq_client):
+        return BQUploader(bq_client)
 
     def create_tts_client(self,):
         tts_client = GPTTextToSpeech(
@@ -61,7 +61,8 @@ class DependencyInjector:
     
     def create_dependencies(self):
         self.gpt_client = self.create_gpt_client()
-        self.bq_uploader = self.create_bq_uploader()
+        self.bq_client = self.create_bq_client()
+        self.bq_uploader = self.create_bq_uploader(bq_client=self.bq_client)
         self.tts_client = self.create_tts_client()
         self.gpt_thread_mgr = self.create_gpt_thread_mgr()
         self.gpt_assistant_mgr = self.create_gpt_assistant_mgr()

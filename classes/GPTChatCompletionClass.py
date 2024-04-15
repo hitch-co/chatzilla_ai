@@ -206,7 +206,7 @@ class GPTChatCompletion:
                 break
             else: # Did not get a msg < n chars, try again.
                 self.logger.warning(f'gpt_response_text_len: >{max_characters} characters, retrying call to _openai_gpt_chatcompletion')
-                messages_dict_gpt_updated = [{'role':'user', 'content':f"{self.config.gpt_assistants_prompt_shorten_response}: '{gpt_response_text}'"}]
+                messages_dict_gpt_updated = [{'role':'user', 'content':f"{self.config.shorten_response_length_prompt}: '{gpt_response_text}'"}]
                 generated_response = self.gpt_client.chat.completions.create(
                     model=self.config.gpt_model,
                     messages=messages_dict_gpt_updated,

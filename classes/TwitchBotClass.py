@@ -289,7 +289,7 @@ class Bot(twitch_commands.Bot):
 
             channel_viewers_queue_query = await self.twitch_api.process_viewers_for_bigquery(
                 table_id=self.userdata_table_id,
-                bearer_token=self.config.twitch_bot_client_id
+                bearer_token=self.config.twitch_bot_access_token
                 )
 
             self.bq_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
@@ -319,16 +319,23 @@ class Bot(twitch_commands.Bot):
     async def _token_refresh_task(self):
         while True:
             try:
-                if self.twitch_auth.access_token_expiry <= time.time():
-                    self.logger.warning(f"Access Token near expiry, generating new access token using the refresh token...")
+                current_time = time.time()
+                if self.twitch_auth.access_token_expiry <= current_time:
+                    self.logger.warning("Access Token near expiry, generating new access token using the refresh token...")
                     response = await self.twitch_auth.refresh_access_token()
                     tokens = response.json()
-                    self.twitch_auth.access_token_expiry = time.time() (int(tokens['expires_in'])-3600)
+                    
+                    # Calculate the new expiry time for the access token
+                    new_expiry_time = current_time + int(tokens['expires_in']) - 3600
+                    
+                    self.twitch_auth.access_token_expiry = new_expiry_time
                     self.twitch_auth.handle_auth_callback(response)
                 else:
-                    self.logger.debug("Access token not nearing expiry. No need to refresh")
+                    self.logger.debug("Access token not nearing expiry. No need to refresh.")
             except Exception as e:
                 self.logger.error(f"Failed to refresh Twitch access token: {e}")
+            
+            # Wait for 30 minutes before checking again
             await asyncio.sleep(1800)
 
     async def _send_message_to_new_users_task(self):

@@ -307,7 +307,7 @@ gpt_thread_names:
 gpt_aboutme: "this is the stuff about me"
 
 gpt_thread_prompts:
-  shorten_response_length_prompt: "shorten this message to 25 words.  Make no 
+  shorten_response_length: "shorten this message to 25 words.  Make no 
     message by itself mention that you have shortened the message, just output  
     the shortened message.
     "
@@ -357,68 +357,6 @@ gpt_thread_prompts:
     
     Keep your newly created bullet-point summary less than {wordcount_medium} 
     words in length.
-
-    [user_requested_plotline] -- Leave this mostly as is in the updated bullet 
-    list:
-    '{user_requested_plotline}'
-
-    [Article] -- Make replacements in the article when you summarize it into 
-    bullets. Be sure to erase mentions of news outlets, and replace person, 
-    country, location names with made up names and places in the bullet-list: 
-    '{random_article_content}'
-    "
-# DEV
-# DEV
-
-gpt_thread_prompts_dev:
-  shorten_response_length: "Following these [instructions], shorten the [message] below to {wordcount_medium} words max.  Make no 
-    mention that you have shortened the message, ONLY output the shortened message itselt, and not in quotes.  
-
-    This is the [message]: '{message_to_shorten}'
-    
-    This is the original [prompt]: '{original_thread_instructions}'
-    "
-  story_suffix: "This should be a single message response directly without any 
-    prefix. Be succinct; {wordcount_short} words max.
-    "
-  story_starter: "As a mystery/scifi storyteller, take the plot received and   
-    weave a unique beginning.  Don't assume the reader knows anything about the   
-    plot. Try to introduce the main characters and setting in a way that is
-    engaging and intriguing.
-    "
-  story_progressor: "Your job is to start to progress the story without 
-    repeating or reiterating known facts.  Develop the story.
-    "
-  story_finisher: "Your job is to start to wrap up the story without repeating 
-    or reiterating known facts.  Create some closure on existing plotlines.
-    "
-  story_ender: "This is the last line of the story, close out any plotlines. No 
-    sequels, this is the end of the story. Include your story response and then 
-    after it the sentence 'The end.'
-    "
-  story_addtostory_prefix: >
-    "Ensure to include this new addition to the plot as a main part of the story:"
-  story_user_bullet_list_summary_prompt: >
-    "Create a new bullet-pointed summary based on the text thus far.  Spice up 
-    the bullet list with additional points to make the story more exciting, for 
-    example introducing intriguing characters or compelling dilemmas, ensuring 
-    each point is unique.  
-
-    Keep your newly created bullet-point summary less than 200 characters in 
-    length.
-    "
-  story_article_bullet_list_summary_prompt: >
-    "Create a new bullet-pointed summary based on primarily the the 
-    [user_requested_plotline] and spice it up with [Article] content including 
-    some additional points to make the story more exciting, for example 
-    Introducing intriguing characters or compelling dilemmas, ensuring each 
-    point is unique.  
-
-    In the new bullet pointed list, make sure to erase mentions of news outlets, 
-    and peoples names with made up names. 
-    
-    Keep your newly created bullet-point summary less than 200 characters in 
-    length.
 
     [user_requested_plotline] -- Leave this mostly as is in the updated bullet 
     list:

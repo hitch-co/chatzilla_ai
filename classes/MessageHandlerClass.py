@@ -37,8 +37,6 @@ class MessageHandler:
         self.chatforme_msg_history = []
         self.nonbot_temp_msg_history = []
 
-        self.logger.info('MessageHandler initialized.')
-
     def _get_message_metadata(self, message) -> None:
 
         self.logger.debug(f"Getting message metadata for message.author: {message.author}")

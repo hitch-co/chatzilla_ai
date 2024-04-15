@@ -1,19 +1,20 @@
 from tenacity import retry, stop_after_attempt, wait_fixed
 import requests
 import pandas as pd
+import os
 
 from classes.ConfigManagerClass import ConfigManager
 
 from my_modules import my_logging
 from my_modules import utils
 
-runtime_debug_level = 'DEBUG'
+runtime_debug_level = 'INFO'
 
 class TwitchAPI:
     def __init__(self):
         self.logger = my_logging.create_logger(
             dirname='log', 
-            logger_name='logger_TwitchAPI',
+            logger_name='TwitchAPI',
             debug_level=runtime_debug_level,
             mode='w',
             stream_logs=True
@@ -25,14 +26,28 @@ class TwitchAPI:
         self.MODERATORS_ENDPOINT = "/moderation/moderators"
         self.CHATTERS_ENDPOINT = "/chat/chatters"
 
-        self.config.twitch_bot_user_id = self._get_and_set_user_id(
-            bearer_token=self.config.twitch_bot_access_token, 
-            login_name=self.config.twitch_bot_username
-            )
-        self.config.twitch_broadcaster_user_id = self._get_and_set_user_id(
-            bearer_token=self.config.twitch_bot_access_token,
-            login_name=self.config.twitch_bot_channel_name
-            )
+        try:
+            self.config.twitch_bot_user_id = self._get_and_set_user_id(
+                #bearer_token=self.config.twitch_bot_access_token,
+                bearer_token=os.getenv("TWITCH_BOT_ACCESS_TOKEN"), 
+                login_name=self.config.twitch_bot_username
+                )
+            self.logger.debug(f"Login Name: {self.config.twitch_bot_username}")
+            self.logger.debug(f"Resulting Bot User ID: {self.config.twitch_bot_user_id}")
+        except Exception as e:
+            self.logger.error(f"Failed to retrieve bot's user ID: {e}")
+            self.config.twitch_bot_user_id = None
+
+        try:
+            self.config.twitch_broadcaster_user_id = self._get_and_set_user_id(
+                #bearer_token=self.config.twitch_bot_access_token,
+                bearer_token=os.getenv("TWITCH_BOT_ACCESS_TOKEN"),
+                login_name=self.config.twitch_bot_channel_name
+                )
+            self.logger.debug(f"Broadcasters User ID: {self.config.twitch_broadcaster_user_id}")    
+        except Exception as e:
+            self.logger.error(f"Failed to retrieve broadcaster's user ID: {e}")
+            self.config.twitch_broadcaster_user_id = None
 
     def _get_and_set_user_id(self, bearer_token, login_name):
         self.logger.info(f"Getting bot's user ID using token: {bearer_token}")
@@ -45,7 +60,7 @@ class TwitchAPI:
 
         # Get the user ID of the bot
         url = f"{self.TWITCH_API_BASE_URL}{self.USERS_ENDPOINT}?login={login_name}"
-        
+        self.logger.debug(f"Users Endpoint: {url}")
         try:
             response = requests.get(url, headers=HEADERS)
             user_data = response.json()
@@ -237,7 +252,7 @@ class TwitchAPI:
             return channel_viewers_query
         else:
             self.logger.error("Failed to process viewers for BigQuery due to data retrieval failure.")
-            return
+            return None
     
 if __name__ == "__main__":
     twitch_api = TwitchAPI()

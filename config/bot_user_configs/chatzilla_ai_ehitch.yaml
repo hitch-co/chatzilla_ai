@@ -4,8 +4,8 @@
 #Flask App
 twitch-app:
   twitch_bot_gpt_hello_world: False
-  twitch_bot_username: 'cirenexus'
-  twitch_bot_display_name: 'cirenexus'
+  twitch_bot_username: 'chatzilla_ai'
+  twitch_bot_display_name: 'chatzilla_ai'
   twitch_bot_operatorname: 'ehitch'
   twitch_bot_channel_name: 'ehitch'
   twitch_bot_redirect_path: 'callback'
@@ -307,7 +307,7 @@ gpt_thread_names:
 gpt_aboutme: "this is the stuff about me"
 
 gpt_thread_prompts:
-  shorten_response_length_prompt: "shorten this message to 25 words.  Make no 
+  shorten_response_length: "shorten this message to 25 words.  Make no 
     message by itself mention that you have shortened the message, just output  
     the shortened message.
     "
@@ -371,7 +371,7 @@ gpt_thread_prompts:
 # DEV
 
 gpt_thread_prompts_dev:
-  shorten_response_length: "Following these [instructions], shorten the [message] below to {wordcount_medium} words max.  Make no 
+  shorten_response_length_prompt: "Following these [instructions], shorten the [message] below to {wordcount_medium} words max.  Make no 
     mention that you have shortened the message, ONLY output the shortened message itselt, and not in quotes.  
 
     This is the [message]: '{message_to_shorten}'

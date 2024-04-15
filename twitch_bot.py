@@ -1,3 +1,4 @@
+import os
 
 from classes.ConfigManagerClass import ConfigManager
 from flask import Flask, redirect, request, url_for
@@ -7,13 +8,13 @@ from classes.TwitchBotManager import TwitchBotManager
 from my_modules.my_logging import create_logger
 
 use_reloader_bool = False
-runtime_logger_level = 'DEBUG'
+runtime_logger_level = 'INFO'
 
 # Initialize the Flask application
 app = Flask(__name__)
 
 # Load configuration
-yaml_filepath=r'config\config.yaml'
+yaml_filepath= os.getenv('BOT_USER_CONFIG_PATH')
 ConfigManager.initialize(yaml_filepath=yaml_filepath)
 config = ConfigManager.get_instance()
 config.tts_model
@@ -51,6 +52,8 @@ def callback():
 
     # Exchange code for tokens and start bot thread
     response = twitch_auth.get_response_object(code)
+    logger.debug(f"Response from Twitch: {response}")
+
     success, message = twitch_auth.handle_auth_callback(response)
 
     if success:

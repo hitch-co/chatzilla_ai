@@ -2,6 +2,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 import requests
 import traceback
 
+from classes.ConfigManagerClass import ConfigManager
 from models.task import AddMessageTask, ExecuteThreadTask
 
 from my_modules import my_logging
@@ -19,6 +20,9 @@ class MessageHandler:
             stream_logs=True
             )
         
+        # Initialize config
+        self.config = ConfigManager.get_instance()
+
         # GPT Thread Manager
         self.gpt_thread_mgr = gpt_thread_mgr
 
@@ -147,21 +151,16 @@ class MessageHandler:
         message_metadata = self._get_message_metadata(message)
         message_role = message_metadata['role']
         message_username = message_metadata['name']
-        #message_content = message_username+": "+message_metadata['content']
+        message_content = message_username+": "+message_metadata['content']
         message_content = message_metadata['content']
 
         self.logger.info(f"Adding message to threads...")
 
-        # Create tasks for adding messages to threads
-        for thread_name in thread_names:
-            self.logger.debug(f"Adding message to thread: {thread_name}")
+        # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY)
+        if message.author is not None and message_metadata['name'] is not self.config.twitch_bot_username:
+            thread_name = 'chatformemsgs'
             task = AddMessageTask(thread_name, message_content, message_role).to_dict()
-            
-            if message.author is not None and thread_name == 'nonbotmsgs':
-                await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-            else: 
-                await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-            
+            await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
             self.logger.debug(f"Task added to thread: {thread_name}")
 
         # Logging message metadata and content

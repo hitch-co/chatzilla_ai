@@ -227,7 +227,7 @@ class GPTResponseManager(GPTBaseClass):
         gpt_client: The OpenAI client instance.
         yaml_data: Configuration data loaded from a YAML file.
     """
-    def __init__(self, gpt_client, gpt_thread_manager, gpt_assistant_manager):
+    def __init__(self, gpt_client, gpt_thread_manager, gpt_assistant_manager, max_waittime_for_gpt_response):
         super().__init__(gpt_client=gpt_client)
         self.logger = create_logger(
             dirname='log', 
@@ -237,6 +237,7 @@ class GPTResponseManager(GPTBaseClass):
             )
         self.gpt_thread_manager = gpt_thread_manager
         self.gpt_assistant_manager = gpt_assistant_manager
+        self.max_waittime_for_gpt_response = max_waittime_for_gpt_response
 
     async def _get_response(self, thread_id, run_id, polling_seconds=1):
         """
@@ -251,7 +252,7 @@ class GPTResponseManager(GPTBaseClass):
             The response object once the status is 'completed'.
         """
         counter=1
-        while counter < 15:
+        while counter < self.max_waittime_for_gpt_response:
             response = self.gpt_client.beta.threads.runs.retrieve(
                 thread_id=thread_id,
                 run_id=run_id
@@ -494,7 +495,8 @@ class GPTResponseManager(GPTBaseClass):
 #     gpt_response_manager = GPTResponseManager(
 #         gpt_client=gpt_client, 
 #         gpt_thread_manager=gpt_thread_manager,
-#         gpt_assistant_manager=gpt_assistant_manager
+#         gpt_assistant_manager=gpt_assistant_manager,
+#@        max_waittime_for_gpt_response=config.max_waittime_for_gpt_response
 #         )
 
 #     # Get the thread id for 'article_summarizer'

@@ -178,6 +178,7 @@ class ConfigManager:
             self.wordcount_short = str(yaml_config['wordcounts']['short'])
             self.wordcount_medium = str(yaml_config['wordcounts']['medium'])
             self.wordcount_long = str(yaml_config['wordcounts']['long'])
+            self.magic_max_waittime_for_gpt_response = int(yaml_config['openai-api']['magic_max_waittime_for_gpt_response'])
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_config(): {e}")
 

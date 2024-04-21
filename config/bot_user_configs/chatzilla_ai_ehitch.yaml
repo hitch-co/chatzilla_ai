@@ -46,6 +46,7 @@ openai-api:
       - nova
       - shimmer
       - alloy
+  magic_max_waittime_for_gpt_response: 60
 
 #########################
 #########################
@@ -218,13 +219,10 @@ gpt_assistant_config:
 
 # gpt thread_names
 gpt_thread_names:
-  - "rawmsgs"
   - "chatformemsgs"
-  - "allmsghistory"
-  - "nonbotmsgs"
+
   - "ouatmsgs"
-  - "randomfactmsgs"
-  - "factcheckmsgs"
+
   - "vibecheckmsgs"
 
 ## GPT Assistant Manager Prompts
@@ -235,7 +233,8 @@ gpt_assistant_prompts:
   botthot: "You are a bot designed to provide a response to the users last question or comment. Be confrontational, respond briefly. Do not repeat yourself. Responses have a maximum length of 20 words."
   factchecker: "You are a bot designed to factcheck the users last question or comment. Be confrontational, respond briefly. Responses have a maximum length of 20 words."
   random_fact: "You are a bot designed to provide a random fact. Be confrontational, respond briefly. Do not repeat yourself. Responses have a maximum length of 20 words."
-
+  vibechecker: "You are a bot designed to vibecheck the users last question or comment. Be confrontational, respond briefly. Responses have a maximum length of 20 words."
+  
 gpt_aboutme: "this is the stuff about me"
 
 gpt_thread_prompts:
@@ -244,13 +243,15 @@ gpt_thread_prompts:
     the shortened message.
     "
   story_suffix: "This should be a single message response directly without any
-    prefix. Be succinct and {wordcount_short} words max. Add the suffix
-    '({ouat_counter} of {max_ouat_counter})' to the message.
+    prefix. Be succinct and {wordcount_short} words max. Add the suffix exactly 
+    as it is written: '({ouat_counter} of {max_ouat_counter})' to the end of the 
+    message.
     "
-  story_starter: "As a fiction storyteller, take the plot received and   
-    weave a unique beginning.  Don't assume the reader knows anything about the   
-    plot. Try to introduce the main characters and setting in a way that is
-    engaging and intriguing.
+  story_starter: "As a fiction storyteller, take the plot last seen (or 
+    as seen below) and weave a unique beginning.  Don't assume the reader knows 
+    anything about the plot.  You're telling a new story to new people. Try to 
+    introduce the main characters and setting in a way that is engaging and 
+    intriguing. Be quirky.
     "
   story_progressor: "Your job is to start to progress the story without 
     repeating or reiterating known facts.  Develop the story/characters/etc.
@@ -299,69 +300,6 @@ gpt_thread_prompts:
     country, location names with made up names and places in the bullet-list: 
     '{random_article_content}'
     "
-# # DEV
-# # DEV
-# gpt_thread_prompts_dev:
-#   shorten_response_length_prompt: "Following these [instructions], shorten the [message] below to {wordcount_medium} words max.  Make no 
-#     mention that you have shortened the message, ONLY output the shortened message itselt, and not in quotes.  
-
-#     This is the [message]: '{message_to_shorten}'
-    
-#     This is the original [prompt]: '{original_thread_instructions}'
-#     "
-#   story_suffix: "This should be a single message response directly without any 
-#     prefix. Be succinct; {wordcount_short} words max.
-#     "
-#   story_starter: "As a mystery/scifi storyteller, take the plot received and   
-#     weave a unique beginning.  Don't assume the reader knows anything about the   
-#     plot. Try to introduce the main characters and setting in a way that is
-#     engaging and intriguing.
-#     "
-#   story_progressor: "Your job is to start to progress the story without 
-#     repeating or reiterating known facts.  Develop the story.
-#     "
-#   story_finisher: "Your job is to start to wrap up the story without repeating 
-#     or reiterating known facts.  Create some closure on existing plotlines.
-#     "
-#   story_ender: "This is the last line of the story, close out any plotlines. No 
-#     sequels, this is the end of the story. Include your story response and then 
-#     after it the sentence 'The end.'
-#     "
-#   story_addtostory_prefix: >
-#     "Ensure to include this new addition to the plot as a main part of the story:"
-#   story_user_bullet_list_summary_prompt: >
-#     "Create a new bullet-pointed summary based on the text thus far.  Spice up 
-#     the bullet list with additional points to make the story more exciting, for 
-#     example introducing intriguing characters or compelling dilemmas, ensuring 
-#     each point is unique.  
-
-#     Keep your newly created bullet-point summary less than 200 characters in 
-#     length.
-#     "
-#   story_article_bullet_list_summary_prompt: >
-#     "Create a new bullet-pointed summary based on primarily the the 
-#     [user_requested_plotline] and spice it up with [Article] content including 
-#     some additional points to make the story more exciting, for example 
-#     Introducing intriguing characters or compelling dilemmas, ensuring each 
-#     point is unique.  
-
-#     In the new bullet pointed list, make sure to erase mentions of news outlets, 
-#     and peoples names with made up names. 
-    
-#     Keep your newly created bullet-point summary less than 200 characters in 
-#     length.
-
-#     [user_requested_plotline] -- Leave this mostly as is in the updated bullet 
-#     list:
-#     '{user_requested_plotline}'
-
-#     [Article] -- Make replacements in the article when you summarize it into 
-#     bullets. Be sure to erase mentions of news outlets, and replace person, 
-#     country, location names with made up names and places in the bullet-list: 
-#     '{random_article_content}'
-#     "
-# DEV
-# DEV
 
 #########################
 #########################

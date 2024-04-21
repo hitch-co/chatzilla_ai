@@ -4,7 +4,7 @@ from classes.ConfigManagerClass import ConfigManager
 
 from my_modules import my_logging
 
-runtime_debug_level = 'INFO'
+runtime_debug_level = 'DEBUG'
 
 class BQUploader:
     def __init__(self, bq_client):

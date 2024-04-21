@@ -48,7 +48,8 @@ class DependencyInjector:
         gpt_response_mgr = GPTResponseManager(
             gpt_client=self.gpt_client,
             gpt_thread_manager=gpt_thread_manager,
-            gpt_assistant_manager=gpt_assistant_manager
+            gpt_assistant_manager=gpt_assistant_manager,
+            max_waittime_for_gpt_response=self.config.magic_max_waittime_for_gpt_response
         )
         return gpt_response_mgr
       

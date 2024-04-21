@@ -27,7 +27,7 @@ cd "%APP_DIRECTORY%"
 call ".\venv\Scripts\activate"
 
 :: Set configuration path
-set BOT_USER_CONFIG_PATH=config\bot_user_configs\%APP_BOT_USER_YAML%.yaml
+set BOT_USER_CONFIG_PATH=.\config\bot_user_configs\%APP_BOT_USER_YAML%
 
 :: Default prompt if not in interactive mode
 set gpt_todo_prompt="Just plugging away, ask for details if you want to know more"

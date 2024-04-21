@@ -132,7 +132,10 @@ class ConfigManager:
     def update_config_from_env(self):
         try:
             self.openai_api_key = os.getenv('OPENAI_API_KEY')
+            
+            # Maybe can automate this with the Twitch API
             self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
+            
             self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
             self.twitch_bot_client_secret = os.getenv('TWITCH_BOT_CLIENT_SECRET')
                     

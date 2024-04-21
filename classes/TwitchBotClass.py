@@ -173,7 +173,8 @@ class Bot(twitch_commands.Bot):
             assistant_name = task["assistant_name"]
             thread_instructions = task["thread_instructions"]
             replacements_dict = task["replacements_dict"]
-            tts_voice = task["tts_voice"]            
+            tts_voice = task["tts_voice"]
+            bool_send_channel_message = task["send_channel_message"]          
             
             # Execute the thread
             try:
@@ -197,7 +198,7 @@ class Bot(twitch_commands.Bot):
                 await self.gpt_thread_mgr.add_task_to_queue(thread_name, add_message_task)
             
             # Send the GPT response to the channel
-            if gpt_response is not None and task["send_channel_message"] is True:
+            if gpt_response is not None and bool_send_channel_message is True:
                 try:
                     # Send the GPT response to the channel
                     await self.chatforme_service.send_output_message_and_voice(

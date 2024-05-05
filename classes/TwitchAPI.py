@@ -176,13 +176,13 @@ class TwitchAPI:
 
         self.logger.debug(f'Enqueuing {len(records)} records to channel_viewers_queue')
 
-        if hasattr(self, 'channel_viewers_queue') and self.channel_viewers_queue is not None:
-            self.logger.debug(f'channel_viewers_queue has {len(self.channel_viewers_queue)} rows')
-
         # Initialize the queue if it doesn't exist
         if not hasattr(self, 'channel_viewers_queue') or self.channel_viewers_queue is None:
             self.channel_viewers_queue = []
             self.logger.debug(f'channel_viewers_queue initialized: {self.channel_viewers_queue}')
+            
+        if hasattr(self, 'channel_viewers_queue') and self.channel_viewers_queue is not None:
+            self.logger.debug(f'channel_viewers_queue has {len(self.channel_viewers_queue)} rows')
 
         # Extend the existing queue with new records
         self.channel_viewers_queue.extend(records)

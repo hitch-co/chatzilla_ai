@@ -150,13 +150,19 @@ class Bot(twitch_commands.Bot):
         self.logger.info("TwitchBotClass initialized")
 
     async def handle_tasks(self, task: dict):
+        
+        thread_name = task["thread_name"]
+        message_role = task["message_role"]
+
         if task["type"] == "add_message":
             self.logger.debug(f"3. Handling task type 'add_message' for thread: {task['thread_name']}")
+            content = task["content"]
+            
             try:
                 message_object = await self.gpt_response_manager.add_message_to_thread(
-                    message_content = task["content"], 
-                    thread_name = task["thread_name"],
-                    role = task["role"]
+                    message_content=content, 
+                    thread_name=thread_name,
+                    role=message_role
                     )
                 self.logger.debug(f"Message object: {message_object}")
             except Exception as e: 
@@ -164,31 +170,49 @@ class Bot(twitch_commands.Bot):
             
         elif task["type"] == "execute_thread":
             self.logger.debug(f"3. Handling task type 'execute_thread' for Assistant/Thread: {task['assistant_name']}, {task['thread_name']}")
+            assistant_name = task["assistant_name"]
+            thread_instructions = task["thread_instructions"]
+            replacements_dict = task["replacements_dict"]
+            tts_voice = task["tts_voice"]
+            bool_send_channel_message = task["send_channel_message"]          
+            
+            # Execute the thread
             try:
                 gpt_response = await self.gpt_response_manager.execute_thread( 
-                    thread_name = task['thread_name'], 
-                    assistant_name = task['assistant_name'], 
-                    thread_instructions= task['thread_instructions'],
-                    replacements_dict=task['replacements_dict']
+                    thread_name = thread_name, 
+                    assistant_name = assistant_name, 
+                    thread_instructions= thread_instructions,
+                    replacements_dict=replacements_dict
                 )
             except Exception as e:
                 self.logger.error(f"Error occurred in 'execute_thread': {e}", exc_info=True)
                 gpt_response = None
 
+            # Add the gpt_response to the appropriate thread
             if gpt_response is not None:
+                add_message_task = AddMessageTask(
+                    thread_name=thread_name, 
+                    content=gpt_response,
+                    message_role=message_role
+                    ).to_dict()
+                await self.gpt_thread_mgr.add_task_to_queue(thread_name, add_message_task)
+            
+            # Send the GPT response to the channel
+            if gpt_response is not None and bool_send_channel_message is True:
                 try:
                     # Send the GPT response to the channel
                     await self.chatforme_service.send_output_message_and_voice(
                         text=gpt_response,
                         incl_voice=self.config.tts_include_voice,
-                        voice_name=task['tts_voice']
+                        voice_name=tts_voice
                     )
                 except Exception as e:
                     self.logger.error(f"Error occurred in 'send_output_message_and_voice': {e}")
                 self.logger.debug("Thread executed...")
+
             else:
                 self.logger.error(f"Gpt response is None, this should not happen.  Task: {task}")
-            self.logger.debug(f"'{task['type']}' task handled for thread: {task['thread_name']}")           
+            self.logger.debug(f"'{task['type']}' task handled for thread: {thread_name}")           
 
     async def event_ready(self):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
@@ -289,7 +313,7 @@ class Bot(twitch_commands.Bot):
 
             channel_viewers_queue_query = await self.twitch_api.process_viewers_for_bigquery(
                 table_id=self.userdata_table_id,
-                bearer_token=self.config.twitch_bot_client_id
+                bearer_token=self.config.twitch_bot_access_token
                 )
 
             self.bq_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
@@ -319,16 +343,23 @@ class Bot(twitch_commands.Bot):
     async def _token_refresh_task(self):
         while True:
             try:
-                if self.twitch_auth.access_token_expiry <= time.time():
-                    self.logger.warning(f"Access Token near expiry, generating new access token using the refresh token...")
+                current_time = time.time()
+                if self.twitch_auth.access_token_expiry <= current_time:
+                    self.logger.warning("Access Token near expiry, generating new access token using the refresh token...")
                     response = await self.twitch_auth.refresh_access_token()
                     tokens = response.json()
-                    self.twitch_auth.access_token_expiry = time.time() (int(tokens['expires_in'])-3600)
+                    
+                    # Calculate the new expiry time for the access token
+                    new_expiry_time = current_time + int(tokens['expires_in']) - 3600
+                    
+                    self.twitch_auth.access_token_expiry = new_expiry_time
                     self.twitch_auth.handle_auth_callback(response)
                 else:
-                    self.logger.debug("Access token not nearing expiry. No need to refresh")
+                    self.logger.debug("Access token not nearing expiry. No need to refresh.")
             except Exception as e:
                 self.logger.error(f"Failed to refresh Twitch access token: {e}")
+            
+            # Wait for 30 minutes before checking again
             await asyncio.sleep(1800)
 
     async def _send_message_to_new_users_task(self):
@@ -452,7 +483,7 @@ class Bot(twitch_commands.Bot):
         text = await self.s2t_service.convert_audio_to_text(filepath)
         self.logger.info(f"Transcribed text: {text}")
 
-        # Add to thread
+        # Add to thread (This is done to send the voice message to the GPT thread)
         task = AddMessageTask(thread_name, text).to_dict()
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
@@ -611,6 +642,10 @@ class Bot(twitch_commands.Bot):
             if user_requested_plotline_str in ['', ' ', None]:
                 user_requested_plotline_str = None
 
+            # Set the thread name and assistant name
+            thread_name = 'ouatmsgs'
+            assistant_name = 'storyteller'
+
             # Randomly select voice/tone/style/theme from list, set replacements dictionary
             self.current_story_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
 
@@ -623,59 +658,116 @@ class Bot(twitch_commands.Bot):
             theme_values = list(self.config.writing_theme.values())
             self.selected_theme = random.choice(theme_values)
 
+            # Log the story details
             self.logger.info(f"A story was started by {message.author.name} ({message.author.id})")
+            self.logger.info(f"thread_name and assistant_name: {thread_name}, {assistant_name}")
             self.logger.info(f"user_requested_plotline_str: {user_requested_plotline_str}")
             self.logger.info(f"current_story_voice: {self.current_story_voice}")
             self.logger.info(f"selected_writing_tone: {self.selected_writing_tone}")
             self.logger.info(f"selected_writing_style: {self.selected_writing_style}")
             self.logger.info(f"selected_theme: {self.selected_theme}")
 
-            ####################################
-            ####################################
-            if user_requested_plotline_str:
+            if user_requested_plotline_str is not None:
+                submitted_plotline = user_requested_plotline_str      
+                self.logger.info(f"2: This is the submitted plotline: {submitted_plotline}")
 
-                # # NOTE: Temporary removal, could be redundant given the addition 
-                # #  of the bullet list as it includes the user requested plotline as well             
-                # # Add the bullet list to the 'ouatmsgs' thread via queue
-                # thread_name = 'ouatmsgs'
-                # task = AddMessageTask(thread_name, user_requested_plotline_str).to_dict()
-                # await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+            elif user_requested_plotline_str is None:
+                submitted_plotline = self.article_generator.fetch_random_article_content(article_char_trunc=1000)                    
+                self.logger.info(f"2: This is the random article plotline: {submitted_plotline}")
 
-                # Create the bullet list: Set replacements dictionary for the GPT prompt and then create the prompt
+            gpt_prompt_text = self.config.storyteller_storysuffix_prompt + " " + self.config.story_user_bullet_list_summary_prompt    
+            replacements_dict = {
+                "user_requested_plotline":submitted_plotline,
+                "wordcount_short":self.wordcount_short,
+                "wordcount_medium":self.wordcount_medium,
+                "wordcount_long":self.wordcount_long,
+                "ouat_counter":self.ouat_counter,
+                "max_ouat_counter":self.config.ouat_story_max_counter,
+                }
+
+            # Add executeTask to the queue
+            task = ExecuteThreadTask(
+                thread_name=thread_name,
+                assistant_name=assistant_name,
+                thread_instructions=gpt_prompt_text,
+                replacements_dict=replacements_dict,
+                tts_voice=self.current_story_voice,
+                send_channel_message=False
+                ).to_dict()
+
+            # Add the bullet list to the 'ouatmsgs' thread via queue
+            await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+            self.is_ouat_loop_active = True
+
+    async def ouat_storyteller_task(self):
+        self.article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.config.newsarticle_rss_feed)
+        self.article_generator.fetch_articles()
+
+        #This is the while loop that generates the occurring GPT response
+        while True:
+            if self.is_ouat_loop_active is False:
+                await asyncio.sleep(self.loop_sleep_time)
+                continue
+
+            else:
+                self.ouat_counter += 1
+                self.logger.info(f"OUAT details: Starting cycle #{self.ouat_counter} of the OUAT Storyteller") 
+
+                #storystarter
+                if self.ouat_counter == 1:
+                    gpt_prompt_final = self.config.storyteller_storystarter_prompt
+
+                #storyprogressor
+                if self.ouat_counter <= self.config.ouat_story_progression_number:
+                    gpt_prompt_final = self.config.storyteller_storyprogressor_prompt
+
+                #storyfinisher
+                elif self.ouat_counter < self.config.ouat_story_max_counter:
+                    gpt_prompt_final = self.config.storyteller_storyfinisher_prompt
+
+                #storyender
+                elif self.ouat_counter == self.config.ouat_story_max_counter:
+                    gpt_prompt_final = self.config.storyteller_storyender_prompt
+                    await self.stop_ouat_loop()
+                                                    
+                elif self.ouat_counter > self.config.ouat_story_max_counter:
+                    await self.stop_ouat_loop()
+                    continue
+
+                # Combine prefix and final article content
+                gpt_prompt_final = self.config.storyteller_storysuffix_prompt + " " + gpt_prompt_final
+                assistant_name = 'storyteller'
+                thread_name = 'ouatmsgs'
+                tts_voice = self.current_story_voice
+
+                self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (self.config.ouat_story_max_counter={self.config.ouat_story_max_counter})")
+                self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
+                self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
+
                 replacements_dict = {
-                    "user_requested_plotline":user_requested_plotline_str,
                     "wordcount_short":self.wordcount_short,
-                    "wordcount_medium":self.wordcount_medium,
                     "wordcount_long":self.wordcount_long,
+                    'twitch_bot_display_name':self.config.twitch_bot_display_name,
+                    'num_bot_responses':self.config.num_bot_responses,
+                    'writing_style': self.selected_writing_style,
+                    'writing_tone': self.selected_writing_tone,
+                    'writing_theme': self.selected_theme,
                     "ouat_counter":self.ouat_counter,
                     "max_ouat_counter":self.config.ouat_story_max_counter,
+                    'param_in_text':'variable_from_scope'
                     }
+                # Add a executeTask to the queue
+                task = ExecuteThreadTask(
+                    thread_name=thread_name,
+                    assistant_name=assistant_name,
+                    thread_instructions=gpt_prompt_final,
+                    replacements_dict=replacements_dict,
+                    tts_voice=tts_voice
+                ).to_dict()
 
-                gpt_prompt_text = self.config.story_user_bullet_list_summary_prompt + self.config.storyteller_storysuffix_prompt
-                create_bullet_list_promp_text = GPTAssistantManagerClass.prompt_text_replacement(
-                    self.logger,
-                    gpt_prompt_text=gpt_prompt_text,
-                    replacements_dict=replacements_dict
-                    )
-                # self.random_article_content_plot_summary = create_bullet_list_promp_text
-                self.logger.info(f"2: This is the create_bullet_list_promp_text: {create_bullet_list_promp_text}")
-
-                # Add the bullet list to the 'ouatmsgs' thread via queue
-                thread_name = 'ouatmsgs'
-                task = AddMessageTask(thread_name, create_bullet_list_promp_text).to_dict()
                 await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
-            ####################################
-            ####################################
-            elif not user_requested_plotline_str:
-                self.random_article_content = self.article_generator.fetch_random_article_content(article_char_trunc=1000)                    
-
-                # Add the bullet list to the 'ouatmsgs' thread via queue
-                thread_name = 'ouatmsgs'
-                task = AddMessageTask(thread_name, self.random_article_content).to_dict()
-                await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-
-            self.is_ouat_loop_active = True
+            await asyncio.sleep(int(self.config.ouat_message_recurrence_seconds))
 
     @twitch_commands.command(name='addtostory')
     async def add_to_story_ouat(self, ctx,  *args):
@@ -693,8 +785,6 @@ class Bot(twitch_commands.Bot):
             )
         self.message_handler.ouat_msg_history.append(gpt_ready_msg_dict)
 
-        # NOTE: This should use AddMessageTask() instead of directly adding to the thread
-        # Add to ouat thread
         # Add the bullet list to the 'ouatmsgs' thread via queue
         thread_name = 'ouatmsgs'
         task = AddMessageTask(thread_name, prompt_text).to_dict()
@@ -725,7 +815,7 @@ class Bot(twitch_commands.Bot):
     async def _factcheck_main(self):
 
         assistant_name = 'factchecker'
-        thread_name = 'factcheckmsgs'
+        thread_name = 'chatformemsgs'
         tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
 
         # select a random number/item based on the number of items inside of self.config.factchecker_prompts.values()
@@ -810,7 +900,7 @@ class Bot(twitch_commands.Bot):
             # Prompt set in os.env on .bat file run
             selected_prompt = self.config.randomfact_prompt
             assistant_name = 'random_fact'
-            thread_name = 'randomfactmsgs'
+            thread_name = 'chatformemsgs'
             tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
 
             # Correctly pass the topics data structure to _randomfact_category_picker
@@ -848,73 +938,3 @@ class Bot(twitch_commands.Bot):
             ).to_dict()
 
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-
-    async def ouat_storyteller_task(self):
-        self.article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.config.newsarticle_rss_feed)
-        self.article_generator.fetch_articles()
-
-        #This is the while loop that generates the occurring GPT response
-        while True:
-            if self.is_ouat_loop_active is False:
-                await asyncio.sleep(self.loop_sleep_time)
-                continue
-
-            else:
-                self.ouat_counter += 1
-                self.logger.info(f"OUAT details: Starting cycle #{self.ouat_counter} of the OUAT Storyteller") 
-
-                #storystarter
-                if self.ouat_counter == 1:
-                    gpt_prompt_final = self.config.storyteller_storystarter_prompt
-
-                #storyprogressor
-                if self.ouat_counter <= self.config.ouat_story_progression_number:
-                    gpt_prompt_final = self.config.storyteller_storyprogressor_prompt
-
-                #storyfinisher
-                elif self.ouat_counter < self.config.ouat_story_max_counter:
-                    gpt_prompt_final = self.config.storyteller_storyfinisher_prompt
-
-                #storyender
-                elif self.ouat_counter == self.config.ouat_story_max_counter:
-                    gpt_prompt_final = self.config.storyteller_storyender_prompt
-                    await self.stop_ouat_loop()
-                                                    
-                elif self.ouat_counter > self.config.ouat_story_max_counter:
-                    await self.stop_ouat_loop()
-                    continue
-
-                # Combine prefix and meat
-                gpt_prompt_final = self.config.storyteller_storysuffix_prompt + " " + gpt_prompt_final
-                assistant_name = 'storyteller'
-                thread_name = 'ouatmsgs'
-                tts_voice = self.current_story_voice
-
-                self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (self.config.ouat_story_max_counter={self.config.ouat_story_max_counter})")
-                self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
-                self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
-
-                replacements_dict = {
-                    "wordcount_short":self.wordcount_short,
-                    "wordcount_long":self.wordcount_long,
-                    'twitch_bot_display_name':self.config.twitch_bot_display_name,
-                    'num_bot_responses':self.config.num_bot_responses,
-                    'writing_style': self.selected_writing_style,
-                    'writing_tone': self.selected_writing_tone,
-                    'writing_theme': self.selected_theme,
-                    "ouat_counter":self.ouat_counter,
-                    "max_ouat_counter":self.config.ouat_story_max_counter,
-                    'param_in_text':'variable_from_scope'
-                    }
-                # Add a executeTask to the queue
-                task = ExecuteThreadTask(
-                    thread_name=thread_name,
-                    assistant_name=assistant_name,
-                    thread_instructions=gpt_prompt_final,
-                    replacements_dict=replacements_dict,
-                    tts_voice=tts_voice
-                ).to_dict()
-
-                await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-
-            await asyncio.sleep(int(self.config.ouat_message_recurrence_seconds))

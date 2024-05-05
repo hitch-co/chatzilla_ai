@@ -57,6 +57,18 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Error, exception in set_env_variables(): {e}", exc_info=True)
 
+    def print_config(self):
+        self.logger.debug(f"Bot: {self.twitch_bot_username}") 
+        self.logger.debug(f"Channel: {self.twitch_bot_channel_name}")
+        self.logger.debug(f"Port: {self.input_port_number}")
+        self.logger.debug(f".env filepath: {self.env_file_directory}/{self.env_file_name}")
+        self.logger.debug(f".yaml filepath: {self.app_config_dirpath}")
+        self.logger.debug(f"self.keys_dirpath: {self.keys_dirpath}")
+        self.logger.debug(f"self.google_application_credentials_file: {self.google_application_credentials_file}")
+        self.logger.debug(f"self.twitch_bot_redirect_path: {self.twitch_bot_redirect_path}")
+        self.logger.debug(f"self.twitch_bot_gpt_hello_world: {self.twitch_bot_gpt_hello_world}")
+
+
     def load_yaml_config(self, yaml_full_path):
         try:
             with open(yaml_full_path, 'r') as file:
@@ -68,7 +80,6 @@ class ConfigManager:
                 self.yaml_twitchbot_config(yaml_config)
                 
                 self.yaml_depinjector_config(yaml_config)
-
 
                 self.update_spellcheck_config(yaml_config)
 
@@ -91,7 +102,10 @@ class ConfigManager:
                 self.yaml_factchecker_config(yaml_config)
 
                 self.yaml_tts_config(yaml_config)
-                
+
+                # Print important configuration settings  
+                self.print_config()
+        
         except FileNotFoundError as e:
             self.logger.error(f"Error setting YAML configuration: {e}")
         except yaml.YAMLError as e:
@@ -106,7 +120,6 @@ class ConfigManager:
                 dotenv.load_dotenv(env_path)
                 self.update_config_from_env()
                 self.update_config_from_env_set_at_runtime()
-                #TODO: self.other_update_from_env()
             else:
                 self.logger.error(f".env file not found at {env_path}")
 
@@ -119,10 +132,10 @@ class ConfigManager:
     def update_config_from_env(self):
         try:
             self.openai_api_key = os.getenv('OPENAI_API_KEY')
-
-            # Load twitch bot and mod identifiers
+            
+            # Maybe can automate this with the Twitch API
             self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
-            # self.twitch_bot_moderator_id = os.getenv('TWITCH_BOT_MODERATOR_ID')
+            
             self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
             self.twitch_bot_client_secret = os.getenv('TWITCH_BOT_CLIENT_SECRET')
                     
@@ -165,6 +178,7 @@ class ConfigManager:
             self.wordcount_short = str(yaml_config['wordcounts']['short'])
             self.wordcount_medium = str(yaml_config['wordcounts']['medium'])
             self.wordcount_long = str(yaml_config['wordcounts']['long'])
+            self.magic_max_waittime_for_gpt_response = int(yaml_config['openai-api']['magic_max_waittime_for_gpt_response'])
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_config(): {e}")
 
@@ -269,15 +283,15 @@ class ConfigManager:
             selected_type = os.getenv('selected_game')
             self.randomfact_selected_game =os.getenv('selected_game', '')
                             
-            #conditionals from below combined
-            #If os.environ['selected_game'] is None, read one thing, else read another
+            # Set selected_type to 'standard' if selected_game is None
             if selected_type is not None:
                 if selected_type == '':
                     selected_type = 'standard'
                 else:
                     selected_type = 'game'
+                    self.logger.warning(f"WARNING: selected_type is 'game' and selected_game is {self.randomfact_selected_game}")
             else:
-                self.logger.warning("WARNING: selected_game is None. Assigning selected_type to 'standard'")
+                self.logger.warning("WARNING: selected_game is None and was set to 'standard'")
                 selected_type = 'standard'
 
             # Get random fact topics and areas json file paths
@@ -316,7 +330,7 @@ class ConfigManager:
             self.env_file_name = yaml_config['env_filename']
             self.app_config_dirpath = yaml_config['app_config_dirpath']
             
-            self.shorten_response_length = yaml_config['gpt_thread_prompts']['shorten_response_length']
+            self.shorten_response_length_prompt = yaml_config['gpt_thread_prompts']['shorten_response_length']
 
             self.keys_dirpath = yaml_config['keys_dirpath']
 

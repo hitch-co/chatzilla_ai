@@ -1,0 +1,408 @@
+#########################
+#########################
+
+#Flask App
+twitch-app:
+  twitch_bot_gpt_hello_world: False
+  twitch_bot_username: 'cirenexus'
+  twitch_bot_display_name: 'cirenexus'
+  twitch_bot_operatorname: 'ehitch'
+  twitch_bot_channel_name: 'ehitch'
+  twitch_bot_redirect_path: 'callback'
+  twitch_bot_redirect_auth: ''
+  twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read' #user:read:email moderation:read channel:moderate'
+
+twitch-bots:
+  chatforme: ['chatzilla_ai', 'cirenexus']
+  onceuponatime: ['chatzilla_ai', 'cirenexus']
+  vibecheck: ['chatzilla_ai', 'cirenexus']
+
+#CONFIG
+env_filename: 'config.env'
+env_dirname: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config'
+app_config_dirpath: '.\config'
+keys_dirpath: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\keys'
+is_gpt_testing: True
+spellcheck_commands_filename: 'config\command_spellcheck_terms.json'
+
+#########################
+#########################
+#OpenAI
+openai-api:
+  assistant_model: "gpt-4-1106-preview" #"gpt-4-0613" #"gpt-3.5-turbo"
+  assistant_response_max_length: 300
+  tts_include_voice: "yes"
+  tts_model: "tts-1" #tts-2 has higher latency
+  tts_voice: "nova"
+  tts_volume: .4
+  tts_data_folder: "data\\tts"
+  tts_file_name: "speech.mp3"
+  tts_voices:
+    male:
+      - fable
+      - onyx
+      - echo
+    female:
+      - nova
+      - shimmer
+      - alloy
+  magic_max_waittime_for_gpt_response: 60
+
+#########################
+#########################
+#ArticleGenerator/TwitchAPI/BiQuery details
+twitch-ouat:
+  newsarticle_rss_feed: 'http://rss.cnn.com/rss/cnn_latest.rss'
+  google_service_account_credentials_file: 'eh-talkzilla-ai-1bcb1963d5b4.json'
+  talkzillaai_userdata_table_id: 'eh-talkzilla-ai.TalkzillaAI_UserData.users'
+  talkzillaai_usertransactions_table_id: 'eh-talkzilla-ai.TalkzillaAI_UserData.user_interactions'
+  #twitch_get_chatters_endpoint: 'https://api.twitch.tv/helix/chat/chatters'
+
+
+#########################
+#########################
+#CHATFORME RANDOM FACTS & FACTCHECK
+chatforme_randomfacts:
+  randomfact_topics_json_filepath: 'C:\_repos\chatzilla_ai\config\randomfact_topics.json'
+  randomfact_eras_json_filepath: 'C:\_repos\chatzilla_ai\config\randomfact_eras.json'
+  randomfact_sleep_time: 600
+  randomfact_types:
+    game:
+      # randomfact_prompt: "Share an engaging fact in roughly {wordcount_short} words about the topic {selected_game} or any of its related genres, etc.  Let's explorle {randomfact_topic} or {randomfact_subtopic} within categories like {area} and/or {subarea} in this random fact/opinion.  If you can, make the topic start with the letter '{random_character_a_to_z}'.  Ensure a wide expanse of knowledge is covered.  Start your message with 'fact:'"
+      # randomfact_prompt: "Share an engaging fact in roughly {wordcount_short} 
+      #   words about the topic {selected_game} or any of its related genres, etc.
+      #   Lets explore a wide variety of topics, subtopics, and areas.  If you
+      #   can, make the topic start with the letter '{random_character_a_to_z}'.
+      #   Ensure a wide expanse of knowledge is covered.  Start your message with
+      #   'fact:'"
+      # randomfact_prompt: "your only job is to participate in the conversation.  If there is no conversation, just share a random fact about a game or game genre.  Keep it to {wordcount_short} words max.  If you can, make the topic start with the letter '{random_character_a_to_z}'.  Ensure a wide expanse of knowledge is covered.  Start your message with 'fact:' if it's a fact, otherwise jsut participate in the conversation"
+      randomfact_prompt: "your only job is to participate in the conversation.  If there is no conversation, just say 'yo, here to chat'.  Keep it to {wordcount_short} words max.  If you can, start with the letter '{random_character_a_to_z}'.  Ensure a wide expanse of engagement is covered.  Just participate in the conversation"
+      topics_injection_file_path: 'C:\_repos\chatzilla_ai\config\data_injection\game_topics_and_subtopics.json'
+      areas_injection_file_path: 'C:\_repos\chatzilla_ai\config\data_injection\game_categories_and_areas.json'
+    standard:
+      # randomfact_prompt: "Share an engaging fact in roughly {wordcount_short}
+      #   words. If our recent discussions have highlighted a particular theme or 
+      #   topic, let's relate the fact to that. Otherwise, let's explore a random
+      #   topic taking place in the area of {area} and the subarea {subarea},
+      #   beginning with the letter {random_character_a_to_z}, from broad
+      #   categories such as {randomfact_subtopic} within the realm of
+      #   {randomfact_topic}. We're aiming for unique insights and wish to steer
+      #   clear of overly familiar topics. The fact can be about any aspect within
+      #   these categories, ensuring a wide expanse of knowledge is covered.
+      #   Prefix your response with something like 'fact:' to make it clear that
+      #   it's a fact."
+      randomfact_prompt: "your only job is to participate in the conversation.  If there is no conversation, just share a random fact about a game or game genre.  Keep it to {wordcount_short} words max.  If you can, make the topic start with the letter '{random_character_a_to_z}'.  Ensure a wide expanse of knowledge is covered.  Start your message with 'fact:' if it's a fact, otherwise jsut participate in the conversation"
+      topics_injection_file_path: 'C:\_repos\chatzilla_ai\config\data_injection\random_topics_and_subtopics.json'
+      areas_injection_file_path: 'C:\_repos\chatzilla_ai\config\data_injection\random_eras_and_timeperiods.json'
+  # randomfact_prompts: #This is legacy and not in use
+  #   randomfact_prompt_standard: "Share an engaging fact in roughly {wordcount_short} words. If our recent discussions have highlighted a particular theme or topic, let's relate the fact to that. Otherwise, let's explore a random topic taking place in the {randomfact_era} era in the timeperiod {randomfact_timeperiod}, beginning with the letter {random_character_a_to_z}, from broad categories such as {randomfact_subtopic} within the realm of {randomfact_topic}. We're aiming for unique insights and wish to steer clear of overly familiar topics. The fact can be about any aspect within these categories, ensuring a wide expanse of knowledge is covered. Prefix your response with something like 'fact:' to make it clear that it's a fact."
+
+chatforme_factcheck:
+  chatforme_factcheck_prompts:
+    factcheck_prompt_standard: >
+      "As {twitch_bot_display_name}, the diligent assistant of {twitch_bot_channel_name}, I've been closely monitoring our recent conversations. In the flurry of exchanges among participants, it's important to uphold the accuracy of the information shared. My task now is to sift through the dialogue and identify the most recent statement that appears to be a factual claim. Once identified, I will conduct a thorough analysis to ascertain its veracity.
+
+      Factual Claim for Review:
+      [The model should extract and insert the most recent factual statement from the provided message history here]
+
+      Fact-Check Analysis:
+      In a detailed examination, approximately {wordcount_short} words in length, I will assess the accuracy of the claim based on my training data up until April 2023.
+
+      Please be mindful that while I aim to provide precise and reliable analyses, my assessments are limited to the extent of my training and should not be taken as absolute truth. For crucial matters, further confirmation from reliable sources or consultation with {bot_operatorname} is advisable.
+      "
+
+
+#################################################################
+#################################################################
+#CHATFORME PARAMS
+msg_history_limit: 50
+num_bot_responses: 1
+wordcounts:
+  short: 19
+  medium: 28
+  long: 45
+
+chatforme_prompts:
+  standard: >
+    "Your mission is to send a single reply (max {wordcount_medium} words) to 
+    the chat conversation (an audience on a twitch stream). You can either 
+    engage in the conversation by making insightful remarks, challenging 
+    opinions, answering the users questions, or if the conversation is stale 
+    posing a new question to the group.
+
+    Context:
+
+    - You are in a virtual chat scenario where '{bot_operatorname}'' is your 
+    owner, and you are in a stream hosted by '{twitch_bot_channel_name}''  
+    and your name is '{twitch_bot_display_name}''
+
+    Special Instructions:
+
+    - Pay close attention to the length of your responses. They must adhere to 
+      the specified word and character limits to ensure they fit well within the 
+      chat's flow and are easily digestible by the audience.
+
+    - You should try to match the style and tone of the conversations
+      you are participating in.
+
+    - Remember, the goal is to enrich the conversation, keeping in mind the 
+      stream's dynamic nature and the absence of responses from the 
+      streamer (whom you can't hear).  You'll notice this because the text
+      history may appear to be incomplete or disjointed.
+
+    - Strive to provide informative and engaging answers, even to speculative 
+      questions like 'what's the newest...' or 'what's the best...'
+
+    - Give a single response.
+
+    - Current people chatting: {users_in_messages_list_text}
+
+    - Be confrontational where appropriate
+
+    - Avoid repetition
+
+    - use boatloads of emojis
+    "
+
+
+#########################
+#########################
+#Bot Ears
+botears_buffer_length_seconds: 10
+botears_save_length_seconds: 18
+botears_audio_path: "./data/ears"
+botears_audio_filename: "latest_ears"
+botears_devices_json_filepath: "audio_devices.json" #Not in use
+botears_device_audio: "SteelSeries Sonar - Media"
+botears_device_mic: "Microphone (Yeti Classic), MME"
+botears_prompt: "Below is a question/comment from the user. You are to respond 
+  to themwith a short ({wordcount_medium} words max) response or comment based on 
+  their question/comment.  Be sure to keep your response to less than 
+  {wordcount_medium} words and be sure to respond to the user's message whether
+  you're sure or not.
+
+  This is the question/comment:
+  
+  '{botears_questioncomment}'"
+
+
+#########################
+#########################
+# HelloWorld BOT Prompts
+helloworld_message_wordcount: 22
+formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for 
+  {twitch_bot_channel_name} and your name is {twitch_bot_display_name} 
+  and you are of generation alpha. Your mission is to send a concise 'hello stream' 
+  message that welcomes viewers and says something interesting to get us started.
+  Suggest viewers checkout !commands for fun stuff the bot can do
+    Key Points
+    - Your only message should be a {helloworld_message_wordcount} word long message
+    - Minimize repetition
+    - Be sure to say, 'I'm {twitch_bot_display_name}'  in your message
+    - Say something that defies typical bot behavior
+  "
+
+#########################
+#########################
+#OUAT Params
+ouat_message_recurrence_seconds: 12
+ouat_story_progression_number: 2
+ouat_story_wrapup_number: 6
+ouat_story_max_counter: 8
+
+
+#########################
+#########################
+#GPT Assistant Manager
+gpt_assistant_config:
+  assistant_type: "code_interpreter"
+
+# gpt thread_names
+gpt_thread_names:
+  - "chatformemsgs"
+
+  - "ouatmsgs"
+
+  - "vibecheckmsgs"
+
+## GPT Assistant Manager Prompts
+gpt_assistant_prompts:
+  article_summarizer: "The user is going to share with you an article.  Create 5 short bullet points based on the artile summary shared with you.  Two of those bullet points should be designed to make the story more exciting, for example Introducing intriguing characters or compelling dilemmas, ensuring each point is unique. In the new bullet pointed list, make sure to erase mentions of news outlets, and replace sensitive topics related to person/country/location/religion names with made up names if necessary."
+  storyteller: "You are a bot designed to tell stories one line at a time.  Be succinct and clear, develop plotlines where possible.  Continue a previous thought if relevant.  Be confrontational, respond briefly. Responses have a maximum length of 20 words."  
+  chatforme: "You are a bot designed to provide a response to the users last question or comment. Be confrontational, respond briefly. Do not repeat yourself. Responses have a maximum length of 20 words. Be clear and succinct, always aim to answer the question"
+  botthot: "You are a bot designed to provide a response to the users last question or comment. Be confrontational, respond briefly. Do not repeat yourself. Responses have a maximum length of 20 words."
+  factchecker: "You are a bot designed to factcheck the users last question or comment. Be confrontational, respond briefly. Responses have a maximum length of 20 words."
+  random_fact: "You are a bot designed to provide a random fact. Be confrontational, respond briefly. Do not repeat yourself. Responses have a maximum length of 20 words."
+  vibechecker: "You are a bot designed to vibecheck the users last question or comment. Be confrontational, respond briefly. Responses have a maximum length of 20 words."
+  
+gpt_aboutme: "this is the stuff about me"
+
+gpt_thread_prompts:
+  shorten_response_length: "shorten this message to 25 words.  Make no 
+    message by itself mention that you have shortened the message, just output  
+    the shortened message.
+    "
+  story_suffix: "This should be a single message response directly without any
+    prefix. Be succinct and {wordcount_short} words max. Add the suffix exactly 
+    as it is written: '({ouat_counter} of {max_ouat_counter})' to the end of the 
+    message.
+    "
+  story_starter: "As a fiction storyteller, take the plot last seen (or 
+    as seen below) and weave a unique beginning.  Don't assume the reader knows 
+    anything about the plot.  You're telling a new story to new people. Try to 
+    introduce the main characters and setting in a way that is engaging and 
+    intriguing. Be quirky.
+    "
+  story_progressor: "Your job is to start to progress the story without 
+    repeating or reiterating known facts.  Develop the story/characters/etc.
+    "
+  story_finisher: "Your job is to start to wrap up the story without repeating 
+    or reiterating known facts.  Start to create some closure on existing plotlines.
+    "
+  story_ender: "This is the last line of the story, close out any plotlines. No 
+    sequels, this is the end of the story. Include your story response and then 
+    after it the sentence 'The end.'
+    "
+  story_addtostory_prefix: "Ensure to include this new addition to the plot as a 
+    main part of the story:
+    "
+  story_user_bullet_list_summary_prompt: >
+    "Create a new bullet-pointed summary based on the 
+    [user_requested_plotline]. Spice up the bullet list with additional points
+    to make the story more exciting, for example introducing intriguing 
+    characters or compelling dilemmas, ensuring each point is unique.  
+
+    Keep your newly created bullet-point summary less than {wordcount_long} 
+    words in length.
+
+    [user_requested_plotline]
+    '{user_requested_plotline}'
+    "
+  story_article_bullet_list_summary_prompt: >
+    "Create a new bullet-pointed summary based on primarily the the 
+    [user_requested_plotline] and spice it up with [Article] content including 
+    some additional points to make the story more exciting, for example 
+    Introducing intriguing characters or compelling dilemmas, ensuring each 
+    point is unique.  
+
+    In the new bullet pointed list, make sure to erase mentions of news outlets, 
+    and peoples names with made up names. 
+    
+    Keep your newly created bullet-point summary less than {wordcount_medium} 
+    words in length.
+
+    [user_requested_plotline] -- Leave this mostly as is in the updated bullet 
+    list:
+    '{user_requested_plotline}'
+
+    [Article] -- Make replacements in the article when you summarize it into 
+    bullets. Be sure to erase mentions of news outlets, and replace person, 
+    country, location names with made up names and places in the bullet-list: 
+    '{random_article_content}'
+    "
+
+#########################
+#########################
+#OUAT Writing Parameters
+ouat-writing-parameters:
+  writing_tone:
+    humor: "Incorporate humor through wit, irony, and clever punchlines."
+    dark: "Maintain a dark, ominous atmosphere."
+    adventurous: "Inject a sense of excitement and adventure."
+    dramatic: "Create a dramatic, emotional atmosphere."
+    lighthearted: "Keep the tone light and fun."
+  writing_style:
+    gonzo: "Utilize a gonzo journalism style, blending fact and fiction."
+    poetic: "Employ poetic devices like metaphor, simile, and vivid imagery."
+    archetypal: "Use archetypal storytelling elements for immediate understanding."
+    journalistic: "Stick to a factual tone, focusing on clarity and information." 
+  writing_theme:
+    love: "The central theme revolves around love or relationships."
+    existential: "The story should explore existential questions."
+    mystery: "Maintain an air of mystery or suspense."
+    technology: "Focus on the impact or role of ancient technology."
+    cowboy: "The story should be set in the Wild West."
+    underwater: "The story should be set underwater."
+    fantasy: "The story should be set in a fantasy world."
+    scifi: "The story should be set in a futuristic world."
+    horror: "The story should be set in a horror setting."
+    comedy: "The story should be set in a comedic setting."
+
+#########################
+#########################
+# NewUsersService vars
+newusers_sleep_time: 15
+newusers_msg_prompt: "Say hi and tag {random_new_user}, and welcome them to the chat
+  on behalf of ehitch.  Keep the message to {wordcount_medium} words max, ask them a question
+  if you feel it's appropriate.
+  "
+newusers_nonewusers_prompt: >
+  "Your primary objective is to respond with one and only one message that is 
+  {wordcount_medium} words max, and is a fact about a person place or thing.  
+  To help you say something relevant, I've added some rules you should consider 
+  when sending that message:
+   - Prefix your message with 'Fun fact:' if you're sharing a fact
+   - The noun, person, place, or thing that you share a fact about should start 
+     with the letter '{random_letter}'
+   - Make it relevant to the chat history if possible
+   - don't send multiple messages or include details about why you sent the 
+     message you sent
+   - Don't repeat what's already been said in the chat, but if relevant you can
+      build on what's already been said
+   - use boatloads of emojis
+  "
+
+#########################
+#########################
+#Vibechecker prompts
+vibechecker_max_interaction_count: 5
+vibechecker_message_wordcount: 20
+vibechecker_listener_sleep_time: 4
+vibechecker_question_session_sleep_time: 75
+formatted_gpt_vibecheck_alert: "let {vibecheckee_username} know that they have
+  been selected for vibecheck.  They should know that:
+  - They'll be asked a few short questions to see whether or not they are a bot.  
+  - They should try to give some clean/short answers to show they aren't a bots
+  " 
+
+gpt_assistants_prompt_factchecker: ""
+gpt_assistants_prompt_random_fact: ""
+
+formatted_gpt_vibecheck_prompt: "You are to decide wheether the messages from 
+  {vibecheckee_username} appear to be from a bot.  This is a pretend game, so 
+  play along.  First, tag {vibecheckee_username} and create your own question to 
+  see how they respond to help determine if they are a bot.
+  Conditions for your question:
+  - Be brief and use less than {vibecheck_message_wordcount} words in your 
+    question/response to the user
+  - You shouldn't repeat questions around the same theme/subject that are 
+    already asked in this thread
+  "
+formatted_gpt_viberesult_prompt: "You have been put in a decision makers role.  
+  You are to guess whether the user {vibechecker_username} is a bot and to reply
+  to the group with a shrot sentence with your guess to the question 'is 
+  {vibecheckee_username} a bot?'  Your response will look something like 'yo, 
+  appears to me that {vibechecker_username} might be a bot' if they appear to be 
+  a bot.  If htey don't seem like a bot based ont he conversation, you will say 
+  something like 'yo, {vibechecker_username}, {vibecheckee_username} passes the 
+  vibecheck if you ask me me.' if they seem more human-like.  This game is just
+  for fun, so play along and do your best to guess accurately, as the group may
+  try to fool you so don't be fooled by attempts like the person sayiung 'i am 
+  not a bot', or something like that.
+  Conditions:
+  - If {vibecheckee_username} hasn't answered any of your questions, they are a 
+    bot!
+  - Be brief and use less than {vibecheck_message_wordcount} words in your 
+    question/response to the use
+  "
+
+#########################
+#########################
+#TODO Prompt
+gpt_todo_prompt_prefix: "Summarize my todo list in a short sentence. Today I'm working on:"
+gpt_todo_prompt: "Ask and find out!"
+gpt_todo_prompt_suffix: "Be brief and less than {wordcount_short} words max.  Don't 
+  repeat yourself.  If there doesn't appear to be a task list, just say we're
+  plugging away on some fun things and to ask for more details if you're curious.
+  "
+

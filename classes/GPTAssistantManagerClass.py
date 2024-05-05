@@ -9,7 +9,7 @@ from my_modules.my_logging import create_logger
 from classes.ConfigManagerClass import ConfigManager
 
 gpt_base_debug_level = 'INFO'
-gpt_thread_mgr_debug_level = 'DEBUG'
+gpt_thread_mgr_debug_level = 'INFO'
 gpt_assistant_mgr_debug_level = 'INFO'
 gpt_response_mgr_debug_level = 'INFO'
 
@@ -166,7 +166,14 @@ class GPTThreadManager(GPTBaseClass):
     def create_threads(self, thread_names):
         self.logger.info('Creating GPT Threads')
         for thread_name in thread_names:
-            self._create_thread(thread_name)
+
+            #NOTE: Part of 'reusing threads' logic
+            #If thread does not exist, create it
+            if thread_name not in self.threads:
+                self._create_thread(thread_name)
+            else:
+                self.logger.warning(f"Thread '{thread_name}' already exists")
+                
         return self.threads
 
     async def add_task_to_queue(self, thread_name: str, task: dict):
@@ -220,7 +227,7 @@ class GPTResponseManager(GPTBaseClass):
         gpt_client: The OpenAI client instance.
         yaml_data: Configuration data loaded from a YAML file.
     """
-    def __init__(self, gpt_client, gpt_thread_manager, gpt_assistant_manager):
+    def __init__(self, gpt_client, gpt_thread_manager, gpt_assistant_manager, max_waittime_for_gpt_response):
         super().__init__(gpt_client=gpt_client)
         self.logger = create_logger(
             dirname='log', 
@@ -230,6 +237,7 @@ class GPTResponseManager(GPTBaseClass):
             )
         self.gpt_thread_manager = gpt_thread_manager
         self.gpt_assistant_manager = gpt_assistant_manager
+        self.max_waittime_for_gpt_response = max_waittime_for_gpt_response
 
     async def _get_response(self, thread_id, run_id, polling_seconds=1):
         """
@@ -244,7 +252,7 @@ class GPTResponseManager(GPTBaseClass):
             The response object once the status is 'completed'.
         """
         counter=1
-        while counter < 15:
+        while counter < self.max_waittime_for_gpt_response:
             response = self.gpt_client.beta.threads.runs.retrieve(
                 thread_id=thread_id,
                 run_id=run_id
@@ -380,19 +388,19 @@ class GPTResponseManager(GPTBaseClass):
         #Check length of output
         if len(extracted_message) > self.yaml_data.assistant_response_max_length:
             self.logger.warning(f"Message exceeded character length ({self.yaml_data.assistant_response_max_length}), processing the gpt thread again")
-            self.logger.debug(f"This is the gpt_assistants_prompt_shorten_response: {self.yaml_data.gpt_assistants_prompt_shorten_response}")
+            self.logger.debug(f"This is the shorten_response_length_prompt: {self.yaml_data.shorten_response_length_prompt}")
             
             # Add {message_to_shorten} to replacements_dict
             replacements_dict['message_to_shorten'] = extracted_message
             replacements_dict['original_thread_instructions'] = thread_instructions
 
             # Add original response #NOTE: FORMAT
-            self.logger.debug(f"This is the extracted_message_incl_shorten_prompt: {self.yaml_data.gpt_assistants_prompt_shorten_response}")  
+            self.logger.debug(f"This is the extracted_message_incl_shorten_prompt: {self.yaml_data.shorten_response_length_prompt}")  
             try:
                 response_thread_messages = await self._run_and_get_assistant_response_thread_messages(
                     assistant_id=assistant_id,
                     thread_id=thread_id,
-                    thread_instructions=self.yaml_data.gpt_assistants_prompt_shorten_response,
+                    thread_instructions=self.yaml_data.shorten_response_length_prompt,
                     replacements_dict=replacements_dict
                 )
             except Exception as e:
@@ -487,7 +495,8 @@ class GPTResponseManager(GPTBaseClass):
 #     gpt_response_manager = GPTResponseManager(
 #         gpt_client=gpt_client, 
 #         gpt_thread_manager=gpt_thread_manager,
-#         gpt_assistant_manager=gpt_assistant_manager
+#         gpt_assistant_manager=gpt_assistant_manager,
+#@        max_waittime_for_gpt_response=config.max_waittime_for_gpt_response
 #         )
 
 #     # Get the thread id for 'article_summarizer'

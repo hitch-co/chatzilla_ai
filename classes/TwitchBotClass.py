@@ -475,6 +475,10 @@ class Bot(twitch_commands.Bot):
     async def showcommands(self, ctx):
         await self._send_channel_message_wrapper("Commands include: !what, !chat, !todo, !startstory, !addtostory, !extendstory")
 
+    @twitch_commands.command(name='specs')
+    async def discord(self, ctx):
+        await self._send_channel_message_wrapper("i7-13700K || RTX 4070 Ti OC || 64GB DDR5 6400MHz || ASUS ROG Strix Z790-F")
+
     @twitch_commands.command(name='discord')
     async def discord(self, ctx):
         await self._send_channel_message_wrapper("This is the discord channel, come say hello but, ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")

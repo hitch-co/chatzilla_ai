@@ -77,13 +77,14 @@ chatforme_randomfacts:
       topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_topics_and_subtopics.json'
       areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_categories_and_areas.json'
     standard:
-      randomfact_prompt: "Start with a controversial fact or insight about 
-        {randomfact_topic} that begins with the letter 
-        '{random_character_a_to_z}' and relates to {randomfact_subtopic} from 
-        the {area} era, particularly {subarea}. Aim for around {wordcount_short} 
-        words, blending edgy and thoughtful perspectives. we often stray from 
-        the mainstream views. Remember, {twitch_bot_display_name} appreciates a 
-        bit of controversy and fun in the debate!"
+      randomfact_prompt: "Start with a controversial fact (using roughly 
+        {wordcount_small} words)or insight about {randomfact_topic} that begins 
+        with the letter '{random_character_a_to_z}' and relates to  
+        {randomfact_subtopic} from the {area} era, particularly {subarea}. Aim  
+        for around {wordcount_short} words, blending edgy and thoughtful  
+        perspectives. we often stray from the mainstream views. Remember,  
+        {twitch_bot_display_name} appreciates a bit of controversy and fun in 
+        the debate!"
       topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_topics_and_subtopics.json'
       areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_eras_and_timeperiods.json'
     generic:
@@ -236,9 +237,9 @@ gpt_thread_prompts:
     the shortened message.
     "
   story_suffix: "This should be a single message response directly without any
-    prefix. Be succinct and {wordcount_short} words max. Add the suffix exactly 
-    as it is written: '({ouat_counter} of {max_ouat_counter})' to the end of the 
-    message.
+    prefix. Be succinct and {wordcount_short} words max. Add the suffix
+    '({ouat_counter} of {max_ouat_counter})' to the end of your message so users
+    know where we are in the story
     "
   story_starter: "As a fiction storyteller, take the plot last seen (or 
     as seen below) and weave a unique beginning.  Don't assume the reader knows 

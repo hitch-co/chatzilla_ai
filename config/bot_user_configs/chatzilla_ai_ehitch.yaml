@@ -73,18 +73,27 @@ chatforme_randomfacts:
   randomfact_sleep_time: 10
   randomfact_types:
     game: # Game is set in run_envirionment.bat (i.e. input prompt after launching the bot)
-      randomfact_prompt: ""
+      randomfact_prompt: "Your name is {twitch_bot_display_name}.  Reveal a 
+        surprising and controversial perspective about {randomfact_topic}, 
+        especially focusing on {randomfact_subtopic} within the world of 
+        the video game: '{selected_game}'. Kick off your response with the letter 
+        '{random_character_a_to_z}' and keep it within {wordcount_short} words. 
+        While we cherish unconventional views, make sure it's thought-provoking. 
+        Remember, we love to spark lively debates and unexpected connections in 
+        gaming!  Don't respond including any reference to the letter you're 
+        starting with, just do it"
       topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_topics_and_subtopics.json'
       areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_categories_and_areas.json'
     standard:
       randomfact_prompt: "Start with a controversial fact (using roughly 
-        {wordcount_small} words)or insight about {randomfact_topic} that begins 
+        {wordcount_short} words)or insight about {randomfact_topic} that begins 
         with the letter '{random_character_a_to_z}' and relates to  
         {randomfact_subtopic} from the {area} era, particularly {subarea}. Aim  
         for around {wordcount_short} words, blending edgy and thoughtful  
         perspectives. we often stray from the mainstream views. Remember,  
-        {twitch_bot_display_name} appreciates a bit of controversy and fun in 
-        the debate!"
+        we appreciate a bit of controversy and fun in the debate!   Don't 
+        respond including any reference to the letter you're starting with, just 
+        do it"
       topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_topics_and_subtopics.json'
       areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_eras_and_timeperiods.json'
     generic:

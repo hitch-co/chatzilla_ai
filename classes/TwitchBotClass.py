@@ -885,6 +885,17 @@ class Bot(twitch_commands.Bot):
         except Exception as e:
             response = f"no change made, see log"
             await self.channel.send(response)
+            self.logger.error(f"Error occurred in !randomfact_sleeptime: {e}")   
+
+
+    @twitch_commands.command(name='change_game')
+    async def change_game(self, ctx, *args):
+        try:
+            self.config.randomfact_selected_game = ' '.join(args)
+            self.logger.info(f"Randomfact sleep time has been updated to '{self.config.randomfact_sleep_time}' seconds")  
+        except Exception as e:
+            response = f"no change made, see log"
+            await self.channel.send(response)
             self.logger.error(f"Error occurred in !randomfact_sleeptime: {e}")        
 
     def _randomfact_category_picker(self, data: dict):
@@ -902,7 +913,6 @@ class Bot(twitch_commands.Bot):
 
             # Prompt set in os.env on .bat file run
             selected_prompt = self.config.randomfact_prompt
-            self.logger.warning(f"Selected prompt: {selected_prompt}")
             assistant_name = 'random_fact'
             thread_name = 'chatformemsgs'
             tts_voice = self.config.tts_voice_randomfact
@@ -914,12 +924,11 @@ class Bot(twitch_commands.Bot):
             #Generate random character from a to z
             random_character_a_to_z = random.choice('abcdefghijklmnopqrstuvwxyz')
 
-            self.logger.debug(f"Thread Instructions: {selected_prompt}")
+            self.logger.debug(f"Thread Instructions (selected prompt): {selected_prompt[0:50]}")
             self.logger.debug(f"Selected topic: {topic}, Selected subtopic: {subtopic}")
             self.logger.debug(f"Selected area: {area}, Selected subarea: {subarea}")
             self.logger.debug(f"Selected random_character_a_to_z: {random_character_a_to_z}")
             self.logger.debug(f"Selected random voice: {tts_voice}")
-            self.logger.debug(f"Selected prompt: {selected_prompt}")
 
             replacements_dict = {
                 "wordcount_short":self.config.wordcount_short,

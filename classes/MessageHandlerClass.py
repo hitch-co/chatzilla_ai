@@ -1,12 +1,7 @@
-from tenacity import retry, stop_after_attempt, wait_fixed
-import requests
-import traceback
-
 from classes.ConfigManagerClass import ConfigManager
-from models.task import AddMessageTask, ExecuteThreadTask
+from models.task import AddMessageTask
 
 from my_modules import my_logging
-from my_modules import utils
 
 runtime_logger_level = 'INFO'
 
@@ -154,26 +149,25 @@ class MessageHandler:
         message_content = message_username+": "+message_metadata['content']
         message_content = message_metadata['content']
 
-        self.logger.info(f"Adding message to threads...")
+        self.logger.info(f"Adding message to queues...")
+        self.logger.info("This is the message_metadata: {}".format(message_metadata))
 
-        # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY)
-        if message.author is not None and message_metadata['name'] is not self.config.twitch_bot_username:
+        # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY FOR BOT RESPONSES, so we exclude those)
+        if message.author is not None and message_metadata['name'] is not self.config.twitch_bot_username and message_metadata['name'] is not "_unknown":
             thread_name = 'chatformemsgs'
             task = AddMessageTask(thread_name, message_content, message_role).to_dict()
+            
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-            self.logger.debug(f"Task added to thread: {thread_name}")
-
-        # Logging message metadata and content
-        self.logger.debug("This is the message_metadata: {}".format(message_metadata))
-        self.logger.info(f"Message added to threads")
+            self.logger.info(f"Message author not the bot ({message_metadata['name']})")
+            self.logger.info(f"Task message added to queue: {thread_name}")
+        else:
+            self.logger.info(f"Message author is the bot ({message_metadata['name']})")
 
     async def add_to_appropriate_message_history(self, message):
-        #Grab and write metadata, add users to users list
         message_metadata = self._get_message_metadata(message)
 
         # Add user to users list
         self._add_user_to_users_in_messages_list(message_metadata)
-
         self.logger.debug("This is the message_metadata")
         self.logger.debug(f"message_username: {message_metadata['name']}")
         self.logger.debug(f"message content: {message_metadata['content']}")

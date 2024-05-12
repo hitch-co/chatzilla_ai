@@ -13,15 +13,6 @@ gpt_thread_mgr_debug_level = 'INFO'
 gpt_assistant_mgr_debug_level = 'INFO'
 gpt_response_mgr_debug_level = 'INFO'
 
-def prompt_text_replacement(logger, gpt_prompt_text, replacements_dict=None):
-    if replacements_dict:
-        prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
-    else:
-        prompt_text_replaced = gpt_prompt_text
-
-    logger.debug(f"prompt_text_replaced: {prompt_text_replaced}")
-    return prompt_text_replaced
-
 class GPTBaseClass:
     """
     Initializes the GPT Base Class.
@@ -48,6 +39,15 @@ class GPTBaseClass:
         def delete():
             print("did a delete")
 
+    def prompt_text_replacement(self, gpt_prompt_text, replacements_dict=None):
+        if replacements_dict:
+            prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
+        else:
+            prompt_text_replaced = gpt_prompt_text
+
+        self.logger.info(f"prompt_text_replaced: {prompt_text_replaced}")
+        return prompt_text_replaced
+    
 class GPTAssistantManager(GPTBaseClass):
     """
     Initializes the GPT Assistant Manager.
@@ -94,8 +94,7 @@ class GPTAssistantManager(GPTBaseClass):
         """
         assistant_type = assistant_type or self.yaml_data.gpt_assistant_type
         assistant_model = assistant_model or self.yaml_data.gpt_model
-        assistant_instructions = prompt_text_replacement(
-            logger=self.logger, 
+        assistant_instructions = self.prompt_text_replacement(
             gpt_prompt_text=assistant_instructions,
             replacements_dict=replacements_dict
             )
@@ -189,10 +188,10 @@ class GPTThreadManager(GPTBaseClass):
                     task = await queue.get()
                     self.logger.info(f"1. Task (type: {task['type']}) found in queue...")
                     self.logger.debug(f"...executing process_task() with task for thread '{task['thread_name']}'")
-                    await self.process_task(task)
-            await asyncio.sleep(1)
+                    await self._process_task(task)
+            await asyncio.sleep(2)
 
-    async def process_task(self, task: dict):
+    async def _process_task(self, task: dict):
         """
         Process the task before executing. This method includes logging, validation,
         and any other pre-processing steps needed before the task is handled.
@@ -286,8 +285,7 @@ class GPTResponseManager(GPTBaseClass):
             A list of response thread messages.
         """
         try:
-            thread_instructions = prompt_text_replacement(
-                logger=self.logger, 
+            thread_instructions = self.prompt_text_replacement(
                 gpt_prompt_text=thread_instructions,
                 replacements_dict=replacements_dict
                 )

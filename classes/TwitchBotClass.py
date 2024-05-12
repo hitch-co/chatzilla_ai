@@ -188,15 +188,6 @@ class Bot(twitch_commands.Bot):
                 self.logger.error(f"Error occurred in 'execute_thread': {e}", exc_info=True)
                 gpt_response = None
 
-            # Add the gpt_response to the appropriate thread
-            if gpt_response is not None:
-                add_message_task = AddMessageTask(
-                    thread_name=thread_name, 
-                    content=gpt_response,
-                    message_role=message_role
-                    ).to_dict()
-                await self.gpt_thread_mgr.add_task_to_queue(thread_name, add_message_task)
-            
             # Send the GPT response to the channel
             if gpt_response is not None and bool_send_channel_message is True:
                 try:
@@ -363,7 +354,7 @@ class Bot(twitch_commands.Bot):
             await asyncio.sleep(1800)
 
     async def _send_message_to_new_users_task(self):
-        tts_voice_selected = random.choice(random.choice(list(self.config.tts_voices.values())))
+        tts_voice_selected = self.config.tts_voice_newuser
         while True:
             await asyncio.sleep(self.newusers_sleep_time)
             self.logger.info("Checking for new users...")
@@ -437,7 +428,7 @@ class Bot(twitch_commands.Bot):
             prompt_text = self.config.hello_assistant_prompt
             assistant_name = 'chatforme'
             thread_name = 'chatformemsgs'
-            tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
+            tts_voice = self.config.tts_voice_default
 
             replacements_dict = {
                 "helloworld_message_wordcount":self.config.helloworld_message_wordcount,
@@ -454,6 +445,8 @@ class Bot(twitch_commands.Bot):
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice
             ).to_dict()
+            self.logger.debug(f"Task to add to queue: {task}")
+        
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
     @twitch_commands.command(name='getstats')
@@ -467,7 +460,7 @@ class Bot(twitch_commands.Bot):
         prompt_text = self.config.botears_prompt
         assistant_name = 'chatforme'
         thread_name = 'chatformemsgs'
-        tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
+        tts_voice = self.config.tts_voice_default
 
         #add format for concat with filename in trext format       
         path = os.path.join(self.config.botears_audio_path)
@@ -500,6 +493,8 @@ class Bot(twitch_commands.Bot):
             replacements_dict=replacements_dict,
             tts_voice=tts_voice
         ).to_dict()
+        self.logger.debug(f"Task to add to queue: {task}")
+
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
     @twitch_commands.command(name='commands')
@@ -541,7 +536,7 @@ class Bot(twitch_commands.Bot):
     async def _chatforme_main(self):
         assistant_name = 'chatforme'
         thread_name = 'chatformemsgs'
-        tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
+        tts_voice = self.config.tts_voice_randomfact
         chatforme_prompt = self.config.chatforme_prompt
 
         #Select prompt from argument, build the final prompt textand format replacements
@@ -562,6 +557,8 @@ class Bot(twitch_commands.Bot):
             replacements_dict=replacements_dict,
             tts_voice=tts_voice
         ).to_dict()
+        self.logger.debug(f"Task to add to queue: {task}")
+
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
         
     @twitch_commands.command(name='chat')
@@ -647,7 +644,7 @@ class Bot(twitch_commands.Bot):
             assistant_name = 'storyteller'
 
             # Randomly select voice/tone/style/theme from list, set replacements dictionary
-            self.current_story_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
+            self.current_story_voice = self.config.tts_voice_story
 
             writing_tone_values = list(self.config.writing_tone.values())
             self.selected_writing_tone = random.choice(writing_tone_values)
@@ -694,6 +691,7 @@ class Bot(twitch_commands.Bot):
                 tts_voice=self.current_story_voice,
                 send_channel_message=False
                 ).to_dict()
+            self.logger.debug(f"Task to add to queue: {task}")
 
             # Add the bullet list to the 'ouatmsgs' thread via queue
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
@@ -756,6 +754,7 @@ class Bot(twitch_commands.Bot):
                     "max_ouat_counter":self.config.ouat_story_max_counter,
                     'param_in_text':'variable_from_scope'
                     }
+
                 # Add a executeTask to the queue
                 task = ExecuteThreadTask(
                     thread_name=thread_name,
@@ -764,6 +763,7 @@ class Bot(twitch_commands.Bot):
                     replacements_dict=replacements_dict,
                     tts_voice=tts_voice
                 ).to_dict()
+                self.logger.debug(f"Task to add to queue: {task}")
 
                 await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
@@ -788,6 +788,7 @@ class Bot(twitch_commands.Bot):
         # Add the bullet list to the 'ouatmsgs' thread via queue
         thread_name = 'ouatmsgs'
         task = AddMessageTask(thread_name, prompt_text).to_dict()
+
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
         self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'")
 
@@ -816,7 +817,7 @@ class Bot(twitch_commands.Bot):
 
         assistant_name = 'factchecker'
         thread_name = 'chatformemsgs'
-        tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
+        tts_voice = self.config.tts_voice_randomfact
 
         # select a random number/item based on the number of items inside of self.config.factchecker_prompts.values()
         random_number = random.randint(0, len(self.config.factchecker_prompts.values())-1)
@@ -841,6 +842,8 @@ class Bot(twitch_commands.Bot):
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice
             ).to_dict()
+            self.logger.debug(f"Task to add to queue: {task}")
+
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
         except Exception as e:
@@ -877,8 +880,8 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='randomfact_sleeptime')
     async def randomfact_sleeptime(self, ctx, *args):
         try:
-            #Grab *args from text and make sure that it is an integer
             self.config.randomfact_sleep_time = int(args[0])
+            self.logger.info(f"Randomfact sleep time has been updated to '{self.config.randomfact_sleep_time}' seconds")  
         except Exception as e:
             response = f"no change made, see log"
             await self.channel.send(response)
@@ -899,9 +902,10 @@ class Bot(twitch_commands.Bot):
 
             # Prompt set in os.env on .bat file run
             selected_prompt = self.config.randomfact_prompt
+            self.logger.warning(f"Selected prompt: {selected_prompt}")
             assistant_name = 'random_fact'
             thread_name = 'chatformemsgs'
-            tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
+            tts_voice = self.config.tts_voice_randomfact
 
             # Correctly pass the topics data structure to _randomfact_category_picker
             topic, subtopic = self._randomfact_category_picker(data=self.config.randomfact_topics)
@@ -910,6 +914,7 @@ class Bot(twitch_commands.Bot):
             #Generate random character from a to z
             random_character_a_to_z = random.choice('abcdefghijklmnopqrstuvwxyz')
 
+            self.logger.debug(f"Thread Instructions: {selected_prompt}")
             self.logger.debug(f"Selected topic: {topic}, Selected subtopic: {subtopic}")
             self.logger.debug(f"Selected area: {area}, Selected subarea: {subarea}")
             self.logger.debug(f"Selected random_character_a_to_z: {random_character_a_to_z}")
@@ -917,7 +922,7 @@ class Bot(twitch_commands.Bot):
             self.logger.debug(f"Selected prompt: {selected_prompt}")
 
             replacements_dict = {
-                "wordcount_short":self.wordcount_short,
+                "wordcount_short":self.config.wordcount_short,
                 'twitch_bot_display_name':self.config.twitch_bot_display_name,
                 'randomfact_topic':topic,
                 'randomfact_subtopic':subtopic,
@@ -927,7 +932,8 @@ class Bot(twitch_commands.Bot):
                 'selected_game':self.config.randomfact_selected_game,
                 'param_in_text':'variable_from_scope'
                 }
-
+            self.logger.debug(f"Replacements dict: {replacements_dict}")
+            
             # Add a executeTask to the queue
             task = ExecuteThreadTask(
                 thread_name=thread_name,
@@ -936,5 +942,6 @@ class Bot(twitch_commands.Bot):
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice
             ).to_dict()
+            self.logger.debug(f"Task to add to queue: {task}")
 
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)

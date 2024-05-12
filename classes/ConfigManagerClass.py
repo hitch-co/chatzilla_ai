@@ -60,14 +60,12 @@ class ConfigManager:
     def print_config(self):
         self.logger.debug(f"Bot: {self.twitch_bot_username}") 
         self.logger.debug(f"Channel: {self.twitch_bot_channel_name}")
-        self.logger.debug(f"Port: {self.input_port_number}")
         self.logger.debug(f".env filepath: {self.env_file_directory}/{self.env_file_name}")
         self.logger.debug(f".yaml filepath: {self.app_config_dirpath}")
         self.logger.debug(f"self.keys_dirpath: {self.keys_dirpath}")
         self.logger.debug(f"self.google_application_credentials_file: {self.google_application_credentials_file}")
         self.logger.debug(f"self.twitch_bot_redirect_path: {self.twitch_bot_redirect_path}")
         self.logger.debug(f"self.twitch_bot_gpt_hello_world: {self.twitch_bot_gpt_hello_world}")
-
 
     def load_yaml_config(self, yaml_full_path):
         try:
@@ -88,6 +86,7 @@ class ConfigManager:
                 self.yaml_botears_config(yaml_config)
 
                 self.yaml_gpt_config(yaml_config)
+                self.yaml_gpt_voice_config(yaml_config)
                 self.yaml_gpt_thread_config(yaml_config)
                 self.yaml_gpt_assistant_config(yaml_config)
                 
@@ -189,6 +188,15 @@ class ConfigManager:
     def yaml_gpt_thread_config(self, yaml_config):
         self.gpt_thread_names = yaml_config['gpt_thread_names']
 
+    def yaml_gpt_voice_config(self, yaml_config):
+        self.openai_vars = yaml_config['openai-api']
+        self.tts_voice_randomfact = yaml_config['openai-api']['tts_voice_randomfact']
+        self.tts_voice_story = yaml_config['openai-api']['tts_voice_story']
+        self.factcheck_voice = yaml_config['openai-api']['tts_voice_factcheck']
+        self.tts_voice_newuser = yaml_config['openai-api']['tts_voice_newuser']
+        self.tts_voice_default = yaml_config['openai-api']['tts_voice_default']
+        self.tts_voice_vibecheck = yaml_config['openai-api']['tts_voice_vibecheck']
+
     def yaml_vibecheck_config(self, yaml_config):
         try:
             self.vibechecker_max_interaction_count = yaml_config['vibechecker_max_interaction_count']
@@ -280,19 +288,21 @@ class ConfigManager:
     def yaml_randomfact_json(self, yaml_config):
         try:
             self.randomfact_sleep_time = yaml_config['chatforme_randomfacts']['randomfact_sleep_time']
-            selected_type = os.getenv('selected_game')
-            self.randomfact_selected_game =os.getenv('selected_game', '')
+            self.randomfact_selected_game = os.getenv('selected_game')
                             
-            # Set selected_type to 'standard' if selected_game is None
-            if selected_type is not None:
-                if selected_type == '':
-                    selected_type = 'standard'
-                else:
-                    selected_type = 'game'
-                    self.logger.warning(f"WARNING: selected_type is 'game' and selected_game is {self.randomfact_selected_game}")
-            else:
-                self.logger.warning("WARNING: selected_game is None and was set to 'standard'")
+            # Set selected_type to 'standard' if randomfact_selected_game is None
+            self.logger.info(f"randomfact_selected_game: {self.randomfact_selected_game}")
+            selected_type = 'standard'
+            if self.randomfact_selected_game == 'no_game_selected':
                 selected_type = 'standard'
+            elif self.randomfact_selected_game != 'no_game_selected' and self.randomfact_selected_game is not None:
+                selected_type = 'game'
+            elif self.randomfact_selected_game == None:
+                selected_type = 'standard'
+            else:
+                self.logger.error("randomfact_selected_game is None and was set to 'standard'")
+                selected_type = 'standard'
+            self.logger.info(f"Selected_type is {selected_type} and randomfact_selected_game is {self.randomfact_selected_game}")
 
             # Get random fact topics and areas json file paths
             self.randomfact_topics_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['topics_injection_file_path']
@@ -360,10 +370,23 @@ def main(yaml_filepath):
     return config
 
 if __name__ == "__main__":
-    yaml_filepath = r'C:\_repos\chatzilla_ai\config\config.yaml'
+    yaml_filepath = r'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml'
     print(f"yaml_filepath_type: {type(yaml_filepath)}")
 
     config = main(yaml_filepath)
+    print(config)
+
+    with open(config.randomfact_topics_json, 'r') as file:
+        randomfact_topics = yaml.safe_load(file)
+    with open(config.randomfact_areas_json, 'r') as file:
+        randomfact_areas = yaml.safe_load(file)    
+    print(f"RANDOMFACT_TOPICS: {randomfact_topics}")
+    print(f"RANDOMFACT_AREAS: {randomfact_areas}")
+    
+    # Get random fact topics and areas json file paths
+    print(config.randomfact_topics_json)
+    print(config.randomfact_areas_json)
+    print(config.randomfact_prompt)
 
     print(config.env_file_directory)
     print(config.tts_data_folder)

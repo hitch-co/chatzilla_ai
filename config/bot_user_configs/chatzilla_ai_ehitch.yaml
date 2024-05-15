@@ -29,7 +29,7 @@ spellcheck_commands_filename: 'config\command_spellcheck_terms.json'
 #########################
 #OpenAI
 openai-api:
-  assistant_model: "gpt-4-1106-preview" #"gpt-4-0613" #"gpt-3.5-turbo"
+  assistant_model: "gpt-4o" #"gpt-4-1106-preview" #"gpt-4-0613" #"gpt-3.5-turbo"
   assistant_response_max_length: 300
   tts_include_voice: "yes"
   tts_model: "tts-1" #tts-2 has higher latency
@@ -73,8 +73,8 @@ chatforme_randomfacts:
   randomfact_sleep_time: 10
   randomfact_types:
     game: # Game is set in run_envirionment.bat (i.e. input prompt after launching the bot)
-      randomfact_prompt: "Your name is {twitch_bot_display_name}.  Reveal a 
-        surprising and controversial perspective about {randomfact_topic}, 
+      randomfact_prompt: "Your name is {twitch_bot_display_name}.  Share a fact 
+        or perspective about {randomfact_topic}, 
         especially focusing on {randomfact_subtopic} within the world of 
         the video game: '{selected_game}'. Kick off your response with the letter 
         '{random_character_a_to_z}' and keep it within {wordcount_short} words. 
@@ -85,8 +85,8 @@ chatforme_randomfacts:
       topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_topics_and_subtopics.json'
       areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_categories_and_areas.json'
     standard:
-      randomfact_prompt: "Start with a controversial fact (using roughly 
-        {wordcount_short} words)or insight about {randomfact_topic} that begins 
+      randomfact_prompt: "share  a controversial fact (using roughly 
+        {wordcount_short} words) or insight about {randomfact_topic} that begins 
         with the letter '{random_character_a_to_z}' and relates to  
         {randomfact_subtopic} from the {area} era, particularly {subarea}. Aim  
         for around {wordcount_short} words, blending edgy and thoughtful  
@@ -103,15 +103,13 @@ chatforme_randomfacts:
 chatforme_factcheck:
   chatforme_factcheck_prompts:
     factcheck_prompt_standard: >
-      "As {twitch_bot_display_name}, the diligent assistant of {twitch_bot_channel_name}, I've been closely monitoring our recent conversations. In the flurry of exchanges among participants, it's important to uphold the accuracy of the information shared. My task now is to sift through the dialogue and identify the most recent statement that appears to be a factual claim. Once identified, I will conduct a thorough analysis to ascertain its veracity.
+      "As {twitch_bot_display_name}, the diligent assistant of {twitch_bot_channel_name}, I've been closely monitoring the streams recent conversations. In the flurry of exchanges among participants, it's important to uphold the accuracy of the information shared. My task now is to sift through the dialogue and identify the most recent statement that aims to be factual. Once identified, I will conduct a thorough analysis to ascertain its veracity.
 
       Factual Claim for Review:
       [The model should extract and insert the most recent factual statement from the provided message history here]
 
       Fact-Check Analysis:
-      In a detailed examination, approximately {wordcount_short} words in length, I will assess the accuracy of the claim based on my training data up until April 2023.
-
-      Please be mindful that while I aim to provide precise and reliable analyses, my assessments are limited to the extent of my training and should not be taken as absolute truth. For crucial matters, further confirmation from reliable sources or consultation with {bot_operatorname} is advisable.
+      using approximately {wordcount_short} words in my response, I will assess the accuracy of the claim based on my training data up until April 2023.
       "
 
 

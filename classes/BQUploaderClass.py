@@ -1,22 +1,17 @@
-import requests
-from google.cloud import bigquery
 from google.api_core.exceptions import GoogleAPIError
-import pandas as pd
-from tenacity import retry, stop_after_attempt, wait_fixed
 
 from classes.ConfigManagerClass import ConfigManager
 
 from my_modules import my_logging
-from my_modules import utils
 
 runtime_debug_level = 'INFO'
 
 class BQUploader:
-    def __init__(self):
+    def __init__(self, bq_client):
         #logger
         self.logger = my_logging.create_logger(
             dirname='log', 
-            logger_name='logger_BQUploader',
+            logger_name='BQUploader',
             debug_level=runtime_debug_level,
             mode='w',
             stream_logs=True
@@ -24,9 +19,7 @@ class BQUploader:
         self.config = ConfigManager.get_instance()
 
         #Build the client
-        self.bq_client = bigquery.Client()
-
-        self.logger.info("BQUploader initialized.")
+        self.bq_client = bq_client
 
     def fetch_interaction_stats_as_text(self, table_id):
         # Construct a query to count occurrences of specific commands in a case-insensitive manner
@@ -38,36 +31,44 @@ class BQUploader:
             SUM(CASE WHEN LOWER(content) LIKE '!what%' THEN 1 ELSE 0 END) as what_count,
             SUM(CASE WHEN LOWER(content) LIKE '!factcheck%' THEN 1 ELSE 0 END) as factcheck_count,
             SUM(CASE WHEN LOWER(content) LIKE '!vc%' THEN 1 ELSE 0 END) as vibecheck_count,
-            SUM(CASE WHEN LOWER(content) LIKE '@chatzilla_ai%' THEN 1 ELSE 0 END) as chatzilla_shoutouts            
+            SUM(CASE WHEN LOWER(content) LIKE '@chatzilla_ai%' THEN 1 ELSE 0 END) as chatzilla_shoutouts,
+            COUNT(*) as total_messages              
+        
         FROM `{table_id}`
         """
 
         # Execute the query and fetch the result
-        result = self.bq_client.query(query).result()
-        self.logger.debug(f"Result (type: {type(result)}): {result}")
+        try:
+            result = self.bq_client.query(query).result()
+            self.logger.debug(f"Result (type: {type(result)}): {result}")
+        except GoogleAPIError as e:
+            self.logger.error(f"BigQuery query failed: {e}")
+            return None
 
         # Convert RowIterator to a list and get the first row
         result_list = list(result)[0]  # 'result' is the RowIterator from BQ query
         if result_list:
             stats_text = f"""
-            Historic !commands usage:\n
-            \n!chat: {result_list.chat_count}
-            !startstory: {result_list.startstory_count}
-            !addtostory: {result_list.addtostory_count}
-            !what: {result_list.what_count}
-            """
+                Historic !commands usage and mentions:
+                Total messages received: {result_list.total_messages} ||
+                @chatzilla_ai mentions: {result_list.chatzilla_shoutouts}\n ||
+                !chat: {result_list.chat_count}\n ||
+                !startstory: {result_list.startstory_count}\n ||
+                !what: {result_list.what_count}\n ||
+                !factcheck: {result_list.factcheck_count}\n ||
+                !vc (vibe check): {result_list.vibecheck_count}\n
+                """
 
         # Log the formatted stats
         self.logger.debug(f"Formatted Stats: {stats_text}")
-
         return stats_text
 
     def fetch_unique_usernames_from_bq_as_list(self) -> list[str]:
         table_id = self.config.talkzillaai_userdata_table_id
         
         query = f"""
-        SELECT DISTINCT user_name FROM `{table_id}`
-        """
+            SELECT DISTINCT user_name FROM `{table_id}`
+            """
 
         # Execute the query
         query_job = self.bq_client.query(query)
@@ -105,16 +106,20 @@ class BQUploader:
 
         self.logger.info("Starting BigQuery send_recordsjob_to_bq() job...")
         table = self.bq_client.get_table(table_id)
-        errors = self.bq_client.insert_rows_json(table, records)     
+        try:
+            errors = self.bq_client.insert_rows_json(table, records)     
+        except GoogleAPIError as e:
+            self.logger.error(f"BigQuery insert_rows_json failed: {e}")
+            return
+
         if errors:
             self.logger.error(f"Encountered errors while inserting rows: {errors}")
-            self.logger.error("These are the records:")
+            self.logger.error("These are the original records, in full:")
             self.logger.error(records)
         else:
-            self.logger.info(f"{len(records)} successfully inserted into table_id: {table_id}")
+            self.logger.info(f"{len(records)} records successfully inserted into table_id: {table_id}")
             self.logger.debug("These are the records:")
-            self.logger.debug(records)
-            #log number of records
+            self.logger.debug(records[0:2])
           
     def send_queryjob_to_bq(self, query):
         try:

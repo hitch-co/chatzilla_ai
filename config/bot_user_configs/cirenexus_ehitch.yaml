@@ -3,14 +3,14 @@
 
 #Flask App
 twitch-app:
-  twitch_bot_gpt_hello_world: True
-  twitch_bot_username: 'chatzilla_ai'
-  twitch_bot_display_name: 'chatzilla_ai'
+  twitch_bot_gpt_hello_world: False
+  twitch_bot_username: 'cirenexus'
+  twitch_bot_display_name: 'cirenexus'
   twitch_bot_operatorname: 'ehitch'
   twitch_bot_channel_name: 'ehitch'
   twitch_bot_redirect_path: 'callback'
   twitch_bot_redirect_auth: ''
-  twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters'
+  twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read' #user:read:email moderation:read channel:moderate'
 
 twitch-bots:
   chatforme: ['chatzilla_ai', 'cirenexus']
@@ -23,7 +23,7 @@ env_dirname: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____C
 app_config_dirpath: '.\config'
 keys_dirpath: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\keys'
 is_gpt_testing: True
-spellcheck_commands_filename: 'config\command_spellcheck_terms.json' 
+spellcheck_commands_filename: 'config\command_spellcheck_terms.json'
 
 #########################
 #########################
@@ -46,8 +46,22 @@ openai-api:
       - nova
       - shimmer
       - alloy
+  magic_max_waittime_for_gpt_response: 60
 
-#CHATFORME RANDOM FACTS
+#########################
+#########################
+#ArticleGenerator/TwitchAPI/BiQuery details
+twitch-ouat:
+  newsarticle_rss_feed: 'http://rss.cnn.com/rss/cnn_latest.rss'
+  google_service_account_credentials_file: 'eh-talkzilla-ai-1bcb1963d5b4.json'
+  talkzillaai_userdata_table_id: 'eh-talkzilla-ai.TalkzillaAI_UserData.users'
+  talkzillaai_usertransactions_table_id: 'eh-talkzilla-ai.TalkzillaAI_UserData.user_interactions'
+  #twitch_get_chatters_endpoint: 'https://api.twitch.tv/helix/chat/chatters'
+
+
+#########################
+#########################
+#CHATFORME RANDOM FACTS & FACTCHECK
 chatforme_randomfacts:
   randomfact_topics_json_filepath: 'C:\_repos\chatzilla_ai\config\randomfact_topics.json'
   randomfact_eras_json_filepath: 'C:\_repos\chatzilla_ai\config\randomfact_eras.json'
@@ -97,7 +111,17 @@ chatforme_factcheck:
       Please be mindful that while I aim to provide precise and reliable analyses, my assessments are limited to the extent of my training and should not be taken as absolute truth. For crucial matters, further confirmation from reliable sources or consultation with {bot_operatorname} is advisable.
       "
 
-#'CHATFORME PROMPTS
+
+#################################################################
+#################################################################
+#CHATFORME PARAMS
+msg_history_limit: 50
+num_bot_responses: 1
+wordcounts:
+  short: 19
+  medium: 28
+  long: 45
+
 chatforme_prompts:
   standard: >
     "Your mission is to send a single reply (max {wordcount_medium} words) to 
@@ -140,10 +164,6 @@ chatforme_prompts:
     - use boatloads of emojis
     "
 
-wordcounts:
-  short: 19
-  medium: 28
-  long: 45
 
 #########################
 #########################
@@ -165,25 +185,6 @@ botears_prompt: "Below is a question/comment from the user. You are to respond
   
   '{botears_questioncomment}'"
 
-#########################
-#########################
-#TODO Prompt
-gpt_todo_prompt_prefix: "Summarize my todo list in a short sentence. Today I'm working on:"
-gpt_todo_prompt: "Ask and find out!"
-gpt_todo_prompt_suffix: "Be brief and less than {wordcount_short} words max.  Don't 
-  repeat yourself.  If there doesn't appear to be a task list, just say we're
-  plugging away on some fun things and to ask for more details if you're curious.
-  "
-
-#########################
-#########################
-#ArticleGenerator/TwitchAPI/BiQuery details
-twitch-ouat:
-  newsarticle_rss_feed: 'http://rss.cnn.com/rss/cnn_latest.rss'
-  google_service_account_credentials_file: 'eh-talkzilla-ai-1bcb1963d5b4.json'
-  talkzillaai_userdata_table_id: 'eh-talkzilla-ai.TalkzillaAI_UserData.users'
-  talkzillaai_usertransactions_table_id: 'eh-talkzilla-ai.TalkzillaAI_UserData.user_interactions'
-  #twitch_get_chatters_endpoint: 'https://api.twitch.tv/helix/chat/chatters'
 
 #########################
 #########################
@@ -200,6 +201,132 @@ formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for
     - Be sure to say, 'I'm {twitch_bot_display_name}'  in your message
     - Say something that defies typical bot behavior
   "
+
+#########################
+#########################
+#OUAT Params
+ouat_message_recurrence_seconds: 12
+ouat_story_progression_number: 2
+ouat_story_wrapup_number: 6
+ouat_story_max_counter: 8
+
+
+#########################
+#########################
+#GPT Assistant Manager
+gpt_assistant_config:
+  assistant_type: "code_interpreter"
+
+# gpt thread_names
+gpt_thread_names:
+  - "chatformemsgs"
+
+  - "ouatmsgs"
+
+  - "vibecheckmsgs"
+
+## GPT Assistant Manager Prompts
+gpt_assistant_prompts:
+  article_summarizer: "The user is going to share with you an article.  Create 5 short bullet points based on the artile summary shared with you.  Two of those bullet points should be designed to make the story more exciting, for example Introducing intriguing characters or compelling dilemmas, ensuring each point is unique. In the new bullet pointed list, make sure to erase mentions of news outlets, and replace sensitive topics related to person/country/location/religion names with made up names if necessary."
+  storyteller: "You are a bot designed to tell stories one line at a time.  Be succinct and clear, develop plotlines where possible.  Continue a previous thought if relevant.  Be confrontational, respond briefly. Responses have a maximum length of 20 words."  
+  chatforme: "You are a bot designed to provide a response to the users last question or comment. Be confrontational, respond briefly. Do not repeat yourself. Responses have a maximum length of 20 words. Be clear and succinct, always aim to answer the question"
+  botthot: "You are a bot designed to provide a response to the users last question or comment. Be confrontational, respond briefly. Do not repeat yourself. Responses have a maximum length of 20 words."
+  factchecker: "You are a bot designed to factcheck the users last question or comment. Be confrontational, respond briefly. Responses have a maximum length of 20 words."
+  random_fact: "You are a bot designed to provide a random fact. Be confrontational, respond briefly. Do not repeat yourself. Responses have a maximum length of 20 words."
+  vibechecker: "You are a bot designed to vibecheck the users last question or comment. Be confrontational, respond briefly. Responses have a maximum length of 20 words."
+  
+gpt_aboutme: "this is the stuff about me"
+
+gpt_thread_prompts:
+  shorten_response_length: "shorten this message to 25 words.  Make no 
+    message by itself mention that you have shortened the message, just output  
+    the shortened message.
+    "
+  story_suffix: "This should be a single message response directly without any
+    prefix. Be succinct and {wordcount_short} words max. Add the suffix exactly 
+    as it is written: '({ouat_counter} of {max_ouat_counter})' to the end of the 
+    message.
+    "
+  story_starter: "As a fiction storyteller, take the plot last seen (or 
+    as seen below) and weave a unique beginning.  Don't assume the reader knows 
+    anything about the plot.  You're telling a new story to new people. Try to 
+    introduce the main characters and setting in a way that is engaging and 
+    intriguing. Be quirky.
+    "
+  story_progressor: "Your job is to start to progress the story without 
+    repeating or reiterating known facts.  Develop the story/characters/etc.
+    "
+  story_finisher: "Your job is to start to wrap up the story without repeating 
+    or reiterating known facts.  Start to create some closure on existing plotlines.
+    "
+  story_ender: "This is the last line of the story, close out any plotlines. No 
+    sequels, this is the end of the story. Include your story response and then 
+    after it the sentence 'The end.'
+    "
+  story_addtostory_prefix: "Ensure to include this new addition to the plot as a 
+    main part of the story:
+    "
+  story_user_bullet_list_summary_prompt: >
+    "Create a new bullet-pointed summary based on the 
+    [user_requested_plotline]. Spice up the bullet list with additional points
+    to make the story more exciting, for example introducing intriguing 
+    characters or compelling dilemmas, ensuring each point is unique.  
+
+    Keep your newly created bullet-point summary less than {wordcount_long} 
+    words in length.
+
+    [user_requested_plotline]
+    '{user_requested_plotline}'
+    "
+  story_article_bullet_list_summary_prompt: >
+    "Create a new bullet-pointed summary based on primarily the the 
+    [user_requested_plotline] and spice it up with [Article] content including 
+    some additional points to make the story more exciting, for example 
+    Introducing intriguing characters or compelling dilemmas, ensuring each 
+    point is unique.  
+
+    In the new bullet pointed list, make sure to erase mentions of news outlets, 
+    and peoples names with made up names. 
+    
+    Keep your newly created bullet-point summary less than {wordcount_medium} 
+    words in length.
+
+    [user_requested_plotline] -- Leave this mostly as is in the updated bullet 
+    list:
+    '{user_requested_plotline}'
+
+    [Article] -- Make replacements in the article when you summarize it into 
+    bullets. Be sure to erase mentions of news outlets, and replace person, 
+    country, location names with made up names and places in the bullet-list: 
+    '{random_article_content}'
+    "
+
+#########################
+#########################
+#OUAT Writing Parameters
+ouat-writing-parameters:
+  writing_tone:
+    humor: "Incorporate humor through wit, irony, and clever punchlines."
+    dark: "Maintain a dark, ominous atmosphere."
+    adventurous: "Inject a sense of excitement and adventure."
+    dramatic: "Create a dramatic, emotional atmosphere."
+    lighthearted: "Keep the tone light and fun."
+  writing_style:
+    gonzo: "Utilize a gonzo journalism style, blending fact and fiction."
+    poetic: "Employ poetic devices like metaphor, simile, and vivid imagery."
+    archetypal: "Use archetypal storytelling elements for immediate understanding."
+    journalistic: "Stick to a factual tone, focusing on clarity and information." 
+  writing_theme:
+    love: "The central theme revolves around love or relationships."
+    existential: "The story should explore existential questions."
+    mystery: "Maintain an air of mystery or suspense."
+    technology: "Focus on the impact or role of ancient technology."
+    cowboy: "The story should be set in the Wild West."
+    underwater: "The story should be set underwater."
+    fantasy: "The story should be set in a fantasy world."
+    scifi: "The story should be set in a futuristic world."
+    horror: "The story should be set in a horror setting."
+    comedy: "The story should be set in a comedic setting."
 
 #########################
 #########################
@@ -269,193 +396,13 @@ formatted_gpt_viberesult_prompt: "You have been put in a decision makers role.
     question/response to the use
   "
 
-
-
 #########################
 #########################
-#OUAT Params
-ouat_message_recurrence_seconds: 12
-ouat_story_progression_number: 2
-ouat_story_wrapup_number: 6
-ouat_story_max_counter: 8
+#TODO Prompt
+gpt_todo_prompt_prefix: "Summarize my todo list in a short sentence. Today I'm working on:"
+gpt_todo_prompt: "Ask and find out!"
+gpt_todo_prompt_suffix: "Be brief and less than {wordcount_short} words max.  Don't 
+  repeat yourself.  If there doesn't appear to be a task list, just say we're
+  plugging away on some fun things and to ask for more details if you're curious.
+  "
 
-## GPT Assistant Manager Prompts
-gpt_assistant_prompts:
-  article_summarizer: "The user is going to share with you an article.  Create 5 short bullet points based on the artile summary shared with you.  Two of those bullet points should be designed to make the story more exciting, for example Introducing intriguing characters or compelling dilemmas, ensuring each point is unique. In the new bullet pointed list, make sure to erase mentions of news outlets, and replace sensitive topics related to person/country/location/religion names with made up names if necessary."
-  storyteller: "You are a bot designed to tell stories one line at a time.  Be succinct and clear, develop plotlines where possible.  Continue a previous thought if relevant.  Be confrontational, respond briefly. Responses have a maximum length of 20 words."  
-  chatforme: "You are a bot designed to provide a response to the users last question or comment. Be confrontational, respond briefly. Responses have a maximum length of 20 words. Be clear and succinct, always aim to answer the question"
-  botthot: "You are a bot designed to provide a response to the users last question or comment. Be confrontational, respond briefly. Responses have a maximum length of 20 words."
-  factchecker: "You are a bot designed to factcheck the users last question or comment. Be confrontational, respond briefly. Responses have a maximum length of 20 words."
-  random_fact: "You are a bot designed to provide a random fact. Be confrontational, respond briefly. Responses have a maximum length of 20 words."
-
-gpt_assistant_config:
-  assistant_type: "code_interpreter"
-
-# gpt thread_names
-gpt_thread_names:
-  - "rawmsgs"
-  - "chatformemsgs"
-  - "allmsghistory"
-  - "nonbotmsgs"
-  - "ouatmsgs"
-  - "randomfactmsgs"
-  - "factcheckmsgs"
-  - "vibecheckmsgs"
-
-# DEV
-# DEV
-gpt_aboutme: "this is the stuff about me"
-
-gpt_thread_prompts:
-  shorten_response_length: "shorten this message to 25 words.  Make no 
-    message by itself mention that you have shortened the message, just output  
-    the shortened message.
-    "
-  story_suffix: "This should be a single message response directly without any
-    prefix. Be succinct and {wordcount_short} words max. Add the suffix
-    '({ouat_counter} of {max_ouat_counter})' to the message.
-    "
-  story_starter: "As a fiction storyteller, take the plot received and   
-    weave a unique beginning.  Don't assume the reader knows anything about the   
-    plot. Try to introduce the main characters and setting in a way that is
-    engaging and intriguing.
-    "
-  story_progressor: "Your job is to start to progress the story without 
-    repeating or reiterating known facts.  Develop the story/characters/etc.
-    "
-  story_finisher: "Your job is to start to wrap up the story without repeating 
-    or reiterating known facts.  Start to create some closure on existing plotlines.
-    "
-  story_ender: "This is the last line of the story, close out any plotlines. No 
-    sequels, this is the end of the story. Include your story response and then 
-    after it the sentence 'The end.'
-    "
-  story_addtostory_prefix: "Ensure to include this new addition to the plot as a 
-    main part of the story:
-    "
-  story_user_bullet_list_summary_prompt: >
-    "Create a new bullet-pointed summary based on the 
-    [user_requested_plotline]. Spice up the bullet list with additional points
-    to make the story more exciting, for example introducing intriguing 
-    characters or compelling dilemmas, ensuring each point is unique.  
-
-    Keep your newly created bullet-point summary less than {wordcount_long} 
-    words in length.
-
-    [user_requested_plotline]
-    '{user_requested_plotline}'
-    "
-  story_article_bullet_list_summary_prompt: >
-    "Create a new bullet-pointed summary based on primarily the the 
-    [user_requested_plotline] and spice it up with [Article] content including 
-    some additional points to make the story more exciting, for example 
-    Introducing intriguing characters or compelling dilemmas, ensuring each 
-    point is unique.  
-
-    In the new bullet pointed list, make sure to erase mentions of news outlets, 
-    and peoples names with made up names. 
-    
-    Keep your newly created bullet-point summary less than {wordcount_medium} 
-    words in length.
-
-    [user_requested_plotline] -- Leave this mostly as is in the updated bullet 
-    list:
-    '{user_requested_plotline}'
-
-    [Article] -- Make replacements in the article when you summarize it into 
-    bullets. Be sure to erase mentions of news outlets, and replace person, 
-    country, location names with made up names and places in the bullet-list: 
-    '{random_article_content}'
-    "
-# DEV
-# DEV
-
-gpt_thread_prompts_dev:
-  shorten_response_length: "Following these [instructions], shorten the [message] below to {wordcount_medium} words max.  Make no 
-    mention that you have shortened the message, ONLY output the shortened message itselt, and not in quotes.  
-
-    This is the [message]: '{message_to_shorten}'
-    
-    This is the original [prompt]: '{original_thread_instructions}'
-    "
-  story_suffix: "This should be a single message response directly without any 
-    prefix. Be succinct; {wordcount_short} words max.
-    "
-  story_starter: "As a mystery/scifi storyteller, take the plot received and   
-    weave a unique beginning.  Don't assume the reader knows anything about the   
-    plot. Try to introduce the main characters and setting in a way that is
-    engaging and intriguing.
-    "
-  story_progressor: "Your job is to start to progress the story without 
-    repeating or reiterating known facts.  Develop the story.
-    "
-  story_finisher: "Your job is to start to wrap up the story without repeating 
-    or reiterating known facts.  Create some closure on existing plotlines.
-    "
-  story_ender: "This is the last line of the story, close out any plotlines. No 
-    sequels, this is the end of the story. Include your story response and then 
-    after it the sentence 'The end.'
-    "
-  story_addtostory_prefix: >
-    "Ensure to include this new addition to the plot as a main part of the story:"
-  story_user_bullet_list_summary_prompt: >
-    "Create a new bullet-pointed summary based on the text thus far.  Spice up 
-    the bullet list with additional points to make the story more exciting, for 
-    example introducing intriguing characters or compelling dilemmas, ensuring 
-    each point is unique.  
-
-    Keep your newly created bullet-point summary less than 200 characters in 
-    length.
-    "
-  story_article_bullet_list_summary_prompt: >
-    "Create a new bullet-pointed summary based on primarily the the 
-    [user_requested_plotline] and spice it up with [Article] content including 
-    some additional points to make the story more exciting, for example 
-    Introducing intriguing characters or compelling dilemmas, ensuring each 
-    point is unique.  
-
-    In the new bullet pointed list, make sure to erase mentions of news outlets, 
-    and peoples names with made up names. 
-    
-    Keep your newly created bullet-point summary less than 200 characters in 
-    length.
-
-    [user_requested_plotline] -- Leave this mostly as is in the updated bullet 
-    list:
-    '{user_requested_plotline}'
-
-    [Article] -- Make replacements in the article when you summarize it into 
-    bullets. Be sure to erase mentions of news outlets, and replace person, 
-    country, location names with made up names and places in the bullet-list: 
-    '{random_article_content}'
-    "
-
-ouat-writing-parameters:
-  writing_tone:
-    humor: "Incorporate humor through wit, irony, and clever punchlines."
-    dark: "Maintain a dark, ominous atmosphere."
-    adventurous: "Inject a sense of excitement and adventure."
-    dramatic: "Create a dramatic, emotional atmosphere."
-    lighthearted: "Keep the tone light and fun."
-  writing_style:
-    gonzo: "Utilize a gonzo journalism style, blending fact and fiction."
-    poetic: "Employ poetic devices like metaphor, simile, and vivid imagery."
-    archetypal: "Use archetypal storytelling elements for immediate understanding."
-    journalistic: "Stick to a factual tone, focusing on clarity and information." 
-  writing_theme:
-    love: "The central theme revolves around love or relationships."
-    existential: "The story should explore existential questions."
-    mystery: "Maintain an air of mystery or suspense."
-    technology: "Focus on the impact or role of ancient technology."
-    cowboy: "The story should be set in the Wild West."
-    underwater: "The story should be set underwater."
-    fantasy: "The story should be set in a fantasy world."
-    scifi: "The story should be set in a futuristic world."
-    horror: "The story should be set in a horror setting."
-    comedy: "The story should be set in a comedic setting."
-
-#################################################################
-#################################################################
-#CHATFORME PARAMS
-msg_history_limit: 50
-num_bot_responses: 1

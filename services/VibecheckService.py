@@ -130,7 +130,7 @@ class VibeCheckService:
 
                     assistant_name = 'vibechecker'
                     thread_name = 'vibecheckmsgs'
-                    tts_voice = random.choice(random.choice(list(self.config.tts_voices.values())))
+                    tts_voice = self.config.tts_voice_vibecheck
 
                     #Prompt text replacement
                     self.logger.debug(f"This is the vibechecker_prompt: {vibechecker_prompt}")

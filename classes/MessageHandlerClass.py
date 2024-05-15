@@ -1,11 +1,7 @@
-from tenacity import retry, stop_after_attempt, wait_fixed
-import requests
-import traceback
-
-from models.task import AddMessageTask, ExecuteThreadTask
+from classes.ConfigManagerClass import ConfigManager
+from models.task import AddMessageTask
 
 from my_modules import my_logging
-from my_modules import utils
 
 runtime_logger_level = 'INFO'
 
@@ -19,6 +15,9 @@ class MessageHandler:
             stream_logs=True
             )
         
+        # Initialize config
+        self.config = ConfigManager.get_instance()
+
         # GPT Thread Manager
         self.gpt_thread_mgr = gpt_thread_mgr
 
@@ -37,10 +36,9 @@ class MessageHandler:
         self.chatforme_msg_history = []
         self.nonbot_temp_msg_history = []
 
-        self.logger.info('MessageHandler initialized.')
-
     def _get_message_metadata(self, message) -> None:
 
+        self.logger.debug(f"Getting message metadata for message.author: {message.author}")
         message_metadata = {
             'badges': getattr(message.tags, 'badges', '_none'),
             'name': getattr(message.author, 'name', '_unknown'),
@@ -126,7 +124,7 @@ class MessageHandler:
 
     def _parse_message_metadata(self, message):
         message_metadata = self._get_message_metadata(message)
-        message_role = message_metadata['role']
+        role = message_metadata['role']
         message_username = message_metadata['name']
         message_content = message_metadata['content']
         self.logger.debug("This is the message_metadata")
@@ -136,7 +134,7 @@ class MessageHandler:
 
         # Add all to list for return
         message_metadata = {
-            'role': message_role,
+            'role': role,
             'name': message_username,
             'content': message_content
         }
@@ -146,50 +144,44 @@ class MessageHandler:
 
         # Grab and write metadata, add users to users list
         message_metadata = self._get_message_metadata(message)
-
         message_role = message_metadata['role']
         message_username = message_metadata['name']
+        message_content = message_username+": "+message_metadata['content']
         message_content = message_metadata['content']
 
-        self.logger.debug(f"Adding message to threads...")
+        self.logger.info(f"Adding message to queues...")
+        self.logger.info("This is the message_metadata: {}".format(message_metadata))
 
-        # Create tasks for adding messages to threads
-        for thread_name in thread_names:
-            self.logger.debug(f"Adding message to thread: {thread_name}")
+        # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY FOR BOT RESPONSES, so we exclude those)
+        if message.author is not None and message_metadata['name'] is not self.config.twitch_bot_username and message_metadata['name'] is not "_unknown":
+            thread_name = 'chatformemsgs'
             task = AddMessageTask(thread_name, message_content, message_role).to_dict()
-            if message.author is not None and thread_name == 'nonbotmsgs':
-                await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-            else: await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-            self.logger.debug(f"Task added to thread: {thread_name}")
-
-        # Logging message metadata and content
-        self.logger.debug("This is the message_metadata: {}".format(message_metadata))
-        self.logger.info(f"Message added to threads")
+            
+            await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+            self.logger.info(f"Message author not the bot ({message_metadata['name']})")
+            self.logger.info(f"Task message added to queue: {thread_name}")
+        else:
+            self.logger.info(f"Message author is the bot ({message_metadata['name']})")
 
     async def add_to_appropriate_message_history(self, message):
-        #Grab and write metadata, add users to users list
         message_metadata = self._get_message_metadata(message)
 
-        message_role = message_metadata['role']
-        message_username = message_metadata['name']
-        message_content = message_metadata['content']
-
+        # Add user to users list
         self._add_user_to_users_in_messages_list(message_metadata)
-        self.message_history_raw.append(message_metadata)
-        
         self.logger.debug("This is the message_metadata")
-        self.logger.debug(message_metadata)
-        self.logger.debug(f"message_username: {message_username}")
-        self.logger.debug(f"message content: {message_content}")
+        self.logger.debug(f"message_username: {message_metadata['name']}")
+        self.logger.debug(f"message content: {message_metadata['content']}")
+        self.logger.debug(f"message_role: {message_metadata['role']}")
 
         #Create gpt message dict
         gpt_ready_msg_dict = self.create_gpt_message_dict_from_strings(
-            role=message_role,
-            name=message_username,
-            content=message_content
+            role=message_metadata['role'],
+            name=message_metadata['name'],
+            content=message_metadata['content']
             )
 
         #Apply message dict to msg histories
+        self.message_history_raw.append(message_metadata)
         self.chatforme_msg_history.append(gpt_ready_msg_dict)
         self.all_msg_history_gptdict.append(gpt_ready_msg_dict)
 

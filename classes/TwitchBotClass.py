@@ -24,6 +24,7 @@ from services.ChatForMeService import ChatForMeService
 from services.AudioService import AudioService
 from services.BotEarsService import BotEars
 from services.SpeechToTextService import SpeechToTextService
+from services.WakeWordDetector import WakeWordDetector
 
 runtime_logger_level = 'INFO'
 class Bot(twitch_commands.Bot):
@@ -99,17 +100,20 @@ class Bot(twitch_commands.Bot):
 
         # TODO: Could be a good idea to inject these dependencies into the services
         # instantiate the AudioService and BotEars
-        self.audio_service = AudioService(volume=self.config.tts_volume)
+        # self.audio_service = AudioService(volume=self.config.tts_volume)
         device_name = "Microphone (Yeti Classic), MME"
-        self.bot_ears = BotEars(
-            config=self.config,
-            device_name=device_name,
-            buffer_length_seconds=self.config.botears_buffer_length_seconds
-            )
+        # self.bot_ears = BotEars(
+        #     config=self.config,
+        #     device_name=device_name,
+        #     buffer_length_seconds=self.config.botears_buffer_length_seconds
+        #     )
 
         # TODO: Could be a good idea to inject these dependencies into the services
         # Instantiate the speech to text service
         self.s2t_service = SpeechToTextService()
+
+        # Instantiate the Wake Word Detector
+        self.wake_word_detector = WakeWordDetector()
 
         #Taken from app authentication class() #TODO: Reudndant with twitchAPI?
         self.twitch_auth = twitch_auth
@@ -220,9 +224,9 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(f"Starting OUAT service")
         self.loop.create_task(self.ouat_storyteller_task())
 
-        # Start bot ears streaming
-        self.logger.debug(f"Starting bot ears streaming")
-        self.loop.create_task(self.bot_ears.start_botears_audio_stream())
+        # # Start bot ears streaming
+        # self.logger.debug(f"Starting bot ears streaming")
+        # self.loop.create_task(self.bot_ears.start_botears_audio_stream())
 
         # start newusers loop
         self.logger.debug(f"Starting newusers service")
@@ -235,6 +239,18 @@ class Bot(twitch_commands.Bot):
         # start randomfact loop
         self.logger.debug('Starting the randomfact service')
         self.loop.create_task(self.randomfact_task())
+
+        # Start Wake Word Detector
+        self.wake_word_detector.set_loop(self.loop)
+        await self.wake_word_detector.initialize(
+            device_index=4, 
+            model_path=r"C:\_repos\chatzilla_ai_prod\chatzilla_ai\models\vosk-model-small-en-us-0.15", 
+            wake_word='hey bot', 
+            buffer_length_seconds=10, 
+            handle_wake_word_func=self.what
+            )
+        
+        self.loop.create_task(self.wake_word_detector.stream.start())
 
         # Create Assistants
         self.assistants_config = self.config.gpt_assistant_prompts
@@ -457,6 +473,31 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='what')
     async def what(self, ctx):
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+        self.logger.warning("Wake word detected!")
+
         prompt_text = self.config.botears_prompt
         assistant_name = 'chatforme'
         thread_name = 'chatformemsgs'

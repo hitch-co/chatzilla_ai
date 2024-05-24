@@ -11,6 +11,23 @@ from my_modules import my_logging, utils
 # Set the logging level for the runtime.
 runtime_logger_level = 'INFO'
 
+def load_json(
+        dir_path,
+        file_name
+        ):
+    file_path = os.path.join(dir_path, file_name)
+    
+    if not os.path.exists(file_path):
+        return None
+    
+    try:
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+    except Exception as e:
+        return None
+
+    return data
+
 class BotEars():
     """A class to handle the playing of audio files using Pygame."""
 
@@ -162,23 +179,6 @@ async def main():
         filepath=filename,
         n=4
         )
-
-def load_json(
-        dir_path,
-        file_name
-        ):
-    file_path = os.path.join(dir_path, file_name)
-    
-    if not os.path.exists(file_path):
-        return None
-    
-    try:
-        with open(file_path, 'r') as f:
-            data = json.load(f)
-    except Exception as e:
-        return None
-
-    return data
 
 if __name__ == "__main__":
     asyncio.run(main())

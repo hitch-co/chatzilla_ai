@@ -254,7 +254,7 @@ class ConfigManager:
             # News Article Feed/Prompts
             self.newsarticle_rss_feed = yaml_config['twitch-ouat']['newsarticle_rss_feed']
             self.story_article_bullet_list_summary_prompt = yaml_config['gpt_thread_prompts']['story_article_bullet_list_summary_prompt'] 
-            self.story_user_bullet_list_summary_prompt = yaml_config['gpt_thread_prompts']['story_user_bullet_list_summary_prompt']
+            self.story_user_opening_scene_summary_prompt = yaml_config['gpt_thread_prompts']['story_user_opening_scene_summary_prompt']
 
             # GPT Thread Prompts
             self.storyteller_storysuffix_prompt = yaml_config['gpt_thread_prompts']['story_suffix']

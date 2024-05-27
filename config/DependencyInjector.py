@@ -3,7 +3,7 @@ from google.cloud import bigquery
 
 from classes.MessageHandlerClass import MessageHandler
 from classes.BQUploaderClass import BQUploader
-from classes.GPTTextToSpeechClass import GPTTextToSpeech
+from services.GPTTextToSpeechService import GPTTextToSpeech
 from classes.GPTAssistantManagerClass import GPTBaseClass, GPTThreadManager, GPTResponseManager, GPTAssistantManager
 
 import openai

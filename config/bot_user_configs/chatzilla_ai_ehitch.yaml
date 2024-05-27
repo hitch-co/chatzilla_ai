@@ -251,7 +251,7 @@ gpt_thread_prompts:
   story_suffix: "This should be a single message response directly without any
     prefix. Be succinct and {wordcount_short} words max. Add the suffix
     '({ouat_counter} of {max_ouat_counter})' to the end of your message so users
-    know where we are in the story
+    know where we are in the story.
     "
   story_starter: "As a fiction storyteller, take the plot last seen (or 
     as seen below) and weave a unique beginning.  Don't assume the reader knows 
@@ -272,8 +272,8 @@ gpt_thread_prompts:
   story_addtostory_prefix: "Ensure to include this new addition to the plot as a 
     main part of the story:
     "
-  story_user_bullet_list_summary_prompt: >
-    "Create a new bullet-pointed summary based on the 
+  story_user_opening_scene_summary_prompt: >
+    "Create an opening 'set the seen' statement/intro based on the 
     [user_requested_plotline]. Spice up the bullet list with additional points
     to make the story more exciting, for example introducing intriguing 
     characters or compelling dilemmas, ensuring each point is unique.  
@@ -281,7 +281,7 @@ gpt_thread_prompts:
     Keep your newly created bullet-point summary less than {wordcount_long} 
     words in length.
 
-    [user_requested_plotline]
+    [user_requested_plotline]:
     '{user_requested_plotline}'
     "
   story_article_bullet_list_summary_prompt: >

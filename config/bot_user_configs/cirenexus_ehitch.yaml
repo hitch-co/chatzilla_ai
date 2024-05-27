@@ -266,7 +266,7 @@ gpt_thread_prompts:
   story_addtostory_prefix: "Ensure to include this new addition to the plot as a 
     main part of the story:
     "
-  story_user_bullet_list_summary_prompt: >
+  story_user_opening_scene_summary_prompt: >
     "Create a new bullet-pointed summary based on the 
     [user_requested_plotline]. Spice up the bullet list with additional points
     to make the story more exciting, for example introducing intriguing 

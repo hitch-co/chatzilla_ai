@@ -152,6 +152,11 @@ class MessageHandler:
         self.logger.info(f"Adding message to queues...")
         self.logger.info("This is the message_metadata: {}".format(message_metadata))
 
+        # Check for commands that should not be added to the thread history
+        if message_metadata['content'].startswith('!'):
+            self.logger.info(f"Message '{message_metadata['content']}' is a command and will not be added to the thread history.")
+            return
+    
         # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY FOR BOT RESPONSES, so we exclude those)
         if message.author is not None and message_metadata['name'] is not self.config.twitch_bot_username and message_metadata['name'] is not "_unknown":
             thread_name = 'chatformemsgs'

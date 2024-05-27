@@ -672,7 +672,7 @@ class Bot(twitch_commands.Bot):
                 submitted_plotline = self.article_generator.fetch_random_article_content(article_char_trunc=1000)                    
                 self.logger.info(f"2: This is the random article plotline: {submitted_plotline}")
 
-            gpt_prompt_text = self.config.storyteller_storysuffix_prompt + " " + self.config.story_user_bullet_list_summary_prompt    
+            gpt_prompt_text = self.config.story_user_opening_scene_summary_prompt + " " + self.config.storyteller_storysuffix_prompt    
             replacements_dict = {
                 "user_requested_plotline":submitted_plotline,
                 "wordcount_short":self.wordcount_short,

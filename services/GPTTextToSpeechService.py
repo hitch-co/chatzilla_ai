@@ -1,5 +1,6 @@
 import os
 import pygame
+import re
 
 from my_modules import my_logging
 from classes.ConfigManagerClass import ConfigManager
@@ -14,7 +15,7 @@ class GPTTextToSpeech:
             mode='w', 
             stream_logs=True
             )
-
+        
         self.config = ConfigManager.get_instance()
         self.tts_client = openai_client
 
@@ -26,16 +27,25 @@ class GPTTextToSpeech:
         if not os.path.exists(self.config.tts_data_folder):
             os.makedirs(self.config.tts_data_folder)
 
+    def _strip_story_number(self, text_input):
+        # Text is formatted as "This is the story (0 of 8)" where the 0 of 8 is the story number and we don't want text to speech to read it
+        pattern = r'\(\d+ of \d+\)'
+        return re.sub(pattern, '', text_input).strip()
+
     def _get_speech_response(
             self, 
             text_input:str,
             voice_name
             ) -> object:
         self.logger.info(f"Starting speech create with params: input={text_input}, model={self.tts_model}, voice={voice_name}")
+        
+        text_input = self._strip_story_number(text_input)
+        
         response = self.tts_client.audio.speech.create(
             model=self.tts_model,
             voice=voice_name,
-            input=text_input)
+            input=text_input
+            )
         self.logger.info("Got response:")
         self.logger.info(response)
         return response

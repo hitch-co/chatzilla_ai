@@ -892,7 +892,7 @@ class Bot(twitch_commands.Bot):
     async def change_game(self, ctx, *args):
         try:
             self.config.randomfact_selected_game = ' '.join(args)
-            self.logger.info(f"Randomfact sleep time has been updated to '{self.config.randomfact_sleep_time}' seconds")  
+            self.logger.info(f"Randomfact selected game has been updated to '{self.config.randomfact_selected_game}'")  
         except Exception as e:
             response = f"no change made, see log"
             await self.channel.send(response)

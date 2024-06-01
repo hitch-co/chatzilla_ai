@@ -3,6 +3,7 @@ from twitchio.ext import commands as twitch_commands
 
 import random
 import re
+import json
 import os
 import inspect
 import time
@@ -10,12 +11,10 @@ import time
 from models.task import AddMessageTask, ExecuteThreadTask
 
 from my_modules.my_logging import create_logger
-from my_modules import utils
 from classes.TwitchAPI import TwitchAPI
 
 from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
-from classes import GPTAssistantManagerClass
 from classes.GPTChatCompletionClass import GPTChatCompletion
 
 from services.VibecheckService import VibeCheckService
@@ -49,11 +48,10 @@ class Bot(twitch_commands.Bot):
             token=self.config.twitch_bot_access_token,
             name=config.twitch_bot_username,
             prefix='!',
-            initial_channels=[config.twitch_bot_channel_name],
+            initial_channels=[self.config.twitch_bot_channel_name],
             nick = 'chatzilla_ai'
         )
 
-        #setup logger
         self.logger = create_logger(
             dirname='log', 
             logger_name='logger_TwitchBotClass', 
@@ -355,6 +353,8 @@ class Bot(twitch_commands.Bot):
 
     async def _send_message_to_new_users_task(self):
         tts_voice_selected = self.config.tts_voice_newuser
+        thread_name = 'chatformemsgs'
+        assistant_name = 'newuser_shoutout'
         while True:
             await asyncio.sleep(self.newusers_sleep_time)
             self.logger.info("Checking for new users...")
@@ -363,6 +363,7 @@ class Bot(twitch_commands.Bot):
             try:
                 current_users_list = await self.twitch_api.retrieve_active_usernames(
                     bearer_token = self.config.twitch_bot_access_token)
+                
             except Exception as e:
                 self.logger.error(f"Failed to retrieve active users from Twitch API: {e}")
                 current_users_list = None
@@ -388,21 +389,22 @@ class Bot(twitch_commands.Bot):
                         "random_new_user":random_new_user,
                         "wordcount_medium":self.config.wordcount_medium
                     }  
-                    gpt_response = await self.gpt_chatcompletion.make_singleprompt_gpt_response(
-                        prompt_text=self.config.newusers_msg_prompt,
-                        replacements_dict=replacements_dict
-                        )
-                    
-                    await self.chatforme_service.send_output_message_and_voice(
-                        text=gpt_response,
-                        incl_voice=self.config.tts_include_voice,
-                        voice_name=tts_voice_selected
-                    )
-                    
+
+                    # Add a executeTask to the queue
+                    task = ExecuteThreadTask(
+                        thread_name=thread_name,
+                        assistant_name=assistant_name,
+                        thread_instructions=self.config.newusers_msg_prompt,
+                        replacements_dict=replacements_dict,
+                        tts_voice=tts_voice_selected
+                    ).to_dict()
+
+                    self.logger.debug(f"Task to add to queue: {task}")
+                    await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+
                     self.logger.debug(f"self.newusers_service.users_sent_messages_list: {self.newusers_service.users_sent_messages_list}")
                     self.logger.debug(f"users_not_yet_sent_message: {users_not_yet_sent_message}")
-                    self.logger.info(f"random_new_user: {random_new_user}")
-                    self.logger.info(f"gpt_response: {gpt_response}")
+                    self.logger.info(f"Sent random new user task for run.  random_new_user: {random_new_user}")
                     continue
 
                 except Exception as e:
@@ -907,7 +909,23 @@ class Bot(twitch_commands.Bot):
         
         return topic, subtopic
 
+    def _is_valid_json(self, response: str) -> bool:
+        try:
+            json.loads(response)
+            return True
+        except json.JSONDecodeError:
+            return False
+        
     async def randomfact_task(self):
+
+        def format_chat_history(chat_history: list[dict]) -> str:
+            formatted_messages = []
+            for message in chat_history:
+                role = message.get('role', 'unknown')
+                content = message.get('content', '')
+                formatted_messages.append(f"Role: {role}, Content: {content}")
+            return "\n".join(formatted_messages)
+        
         while True:
             await asyncio.sleep(self.config.randomfact_sleep_time)   
 
@@ -923,6 +941,44 @@ class Bot(twitch_commands.Bot):
 
             #Generate random character from a to z
             random_character_a_to_z = random.choice('abcdefghijklmnopqrstuvwxyz')
+
+            # Make singleprompt_gpt_response
+            conversation_director_prompt = self.config.randomfact_conversation_director
+            chat_history = format_chat_history(self.message_handler.all_msg_history_gptdict)
+            replacements_dict={
+                'wordcount_short':self.config.wordcount_short,
+                'twitch_bot_display_name':self.config.twitch_bot_display_name,
+                'randomfact_topic':topic,
+                'randomfact_subtopic':subtopic,
+                'area':area,
+                'subarea':subarea,
+                'param_in_text':'variable_from_scope',
+                'chat_history':chat_history
+                }
+            
+            # Do not make this a task, as clutter in the task queue could make randomfact behave unpredictably
+            response_text = await self.gpt_chatcompletion.make_singleprompt_gpt_response(
+                prompt_text=conversation_director_prompt,
+                replacements_dict=replacements_dict,
+                gpt_model=self.config.gpt_model_davinci
+                )
+
+            # Strip backticks and json tag if present
+            response_text = response_text.strip().strip('```').strip('json').strip()
+
+            if self._is_valid_json(response_text):
+                response = json.loads(response_text)
+                if response['response_type'] == 'respond':
+                    selected_prompt = self.config.randomfact_prompt
+                elif response['response_type'] == 'fact':
+                    selected_prompt = self.config.randomfact_prompt
+                else:
+                    self.logger.warning(f"Error occurred in 'randomfact_task': response.response_type is not 'respond' or 'fact'")
+                    selected_prompt = self.config.randomfact_prompt
+            else:
+                self.logger.warning("Received response is not valid JSON")
+                # Handle the case where the response is not valid JSON
+                selected_prompt = "An error occurred while processing the response."
 
             self.logger.debug(f"Thread Instructions (selected prompt): {selected_prompt[0:50]}")
             self.logger.debug(f"Selected topic: {topic}, Selected subtopic: {subtopic}")

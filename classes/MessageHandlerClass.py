@@ -9,7 +9,7 @@ class MessageHandler:
     def __init__(self, gpt_thread_mgr, msg_history_limit):
         self.logger = my_logging.create_logger(
             dirname='log', 
-            logger_name='logger_MessageHandler',
+            logger_name='MessageHandlerClass',
             debug_level=runtime_logger_level,
             mode='w',
             stream_logs=True
@@ -120,7 +120,6 @@ class MessageHandler:
     def _pop_message_from_message_history(self, msg_history_list_dict, msg_history_limit):
         if len(msg_history_list_dict) > msg_history_limit:
             msg_history_list_dict.pop(0)
-        return msg_history_list_dict
 
     def _parse_message_metadata(self, message):
         message_metadata = self._get_message_metadata(message)
@@ -158,7 +157,7 @@ class MessageHandler:
             return
     
         # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY FOR BOT RESPONSES, so we exclude those)
-        if message.author is not None and message_metadata['name'] is not self.config.twitch_bot_username and message_metadata['name'] is not "_unknown":
+        if message.author is not None and message_metadata['name'] != self.config.twitch_bot_username and message_metadata['name'] != "_unknown":
             thread_name = 'chatformemsgs'
             task = AddMessageTask(thread_name, message_content, message_role).to_dict()
             
@@ -198,6 +197,8 @@ class MessageHandler:
         #cleanup msg histories for GPT
         self._cleanup_message_history()
         self.logger.info("Message added to message histories")
+        self.logger.info(f"Preview of latest 2 messages in message histories ({len(self.all_msg_history_gptdict)} total):")
+        self.logger.info(f"chatforme_msg_history: {self.all_msg_history_gptdict[-2:]}")
 
 if __name__ == '__main__':
     print("loaded MessageHandlerClass.py")

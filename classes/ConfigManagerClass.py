@@ -354,7 +354,7 @@ class ConfigManager:
             self.twitch_bot_scope = yaml_config['twitch-app']['twitch_bot_scope']
 
             self.gpt_model = yaml_config.get('openai-api',{}).get('assistant_model', 'gpt-3.5-turbo') 
-            self.gpt_model_basic = yaml_config.get('openai-api',{}).get('assistant_model_basic', 'gpt-3.5-turbo') 
+            self.gpt_model_davinci = yaml_config.get('openai-api',{}).get('assistant_model_davinci', 'gpt-3.05-turbo') 
 
             self.tts_model = yaml_config.get('openai-api', {}).get('tts_model','tts-1')
         except Exception as e:

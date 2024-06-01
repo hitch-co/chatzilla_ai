@@ -20,8 +20,10 @@ def prompt_text_replacement(logger, gpt_prompt_text, replacements_dict=None):
     else:
         prompt_text_replaced = gpt_prompt_text
 
-    logger.debug(f"prompt_text_replaced: {prompt_text_replaced}")
+    logger.debug(f"replacements_dict: {replacements_dict}")
+    logger.debug(f"prompt_text_replaced: {prompt_text_replaced[0:75]}")
     return prompt_text_replaced
+
 class GPTChatCompletion:
     def __init__(self, gpt_client=None, yaml_data=None):
         self.config = yaml_data
@@ -65,7 +67,6 @@ class GPTChatCompletion:
         self.logger.info(f"replacements_dict: {replacements_dict}")
         self.logger.info(f"gpt_model: {gpt_model}")
         
-
         try:
             prompt_text = prompt_text_replacement(
                 logger = self.logger,
@@ -234,6 +235,7 @@ class GPTChatCompletion:
         return gpt_response_text
 
     def _make_string_gptlistdict(
+            self,
             prompt_text, 
             prompt_text_role='user'
             ) -> list[dict]:

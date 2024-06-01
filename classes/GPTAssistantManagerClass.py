@@ -44,8 +44,9 @@ class GPTBaseClass:
             prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
         else:
             prompt_text_replaced = gpt_prompt_text
-
-        self.logger.info(f"prompt_text_replaced: {prompt_text_replaced}")
+        
+        self.logger.debug(f"replacements_dict: {replacements_dict}")
+        self.logger.info(f"prompt_text_replaced: {prompt_text_replaced[0:75]}")
         return prompt_text_replaced
     
 class GPTAssistantManager(GPTBaseClass):
@@ -107,7 +108,7 @@ class GPTAssistantManager(GPTBaseClass):
         )
         self.assistants[assistant_name] = {'object':assistant, 'id':assistant.id}
 
-        self.logger.info(f"Assistant object created successfully for '{assistant_name}' with instructions: {assistant_instructions}")
+        self.logger.info(f"Assistant object created successfully for '{assistant_name}' with instructions: {assistant_instructions[0:50]}")
         self.logger.debug(assistant)
         return assistant
 

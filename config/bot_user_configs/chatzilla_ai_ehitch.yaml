@@ -30,7 +30,7 @@ spellcheck_commands_filename: 'config\command_spellcheck_terms.json'
 #OpenAI
 openai-api:
   assistant_model: "gpt-4o" #"gpt-4-1106-preview" #"gpt-4-0613" #"gpt-3.5-turbo"
-  assistant_model_basic: "code-davinci" #"gpt-3.5-turbo"
+  assistant_model_davinci: "code-davinci" #"gpt-3.5-turbo"
   assistant_response_max_length: 300
   tts_include_voice: "yes"
   tts_model: "tts-1" #tts-2 has higher latency
@@ -227,9 +227,7 @@ gpt_assistant_config:
 # gpt thread_names
 gpt_thread_names:
   - "chatformemsgs"
-
   - "ouatmsgs"
-
   - "vibecheckmsgs"
 
 ## GPT Assistant Manager Prompts
@@ -241,6 +239,7 @@ gpt_assistant_prompts:
   factchecker: "You are a bot designed to factcheck the users last question or comment. Be confrontational, respond briefly. Responses have a maximum length of 20 words."
   random_fact: "You are a bot designed to provide a random fact. Be confrontational, respond briefly. Do not repeat yourself. Responses have a maximum length of 20 words."
   vibechecker: "You are a bot designed to vibecheck the users last question or comment. Be confrontational, respond briefly. Responses have a maximum length of 20 words."
+  newuser_shoutout: "You are a bot designed to welcome new users to the chat. Be confrontational, respond briefly. Do not repeat yourself. Responses have a maximum length of 20 words."
 
 gpt_thread_prompts:
   conversation_director: "Given the following conversation history: {chat_history} , decide the response type: Return a JSON object where 'response_type' can be 'respond' if the last message is a question or 'fact' if not. If there is no visible chat history, still build the json but response_type should be 'fact'. Include 'content' to elaborate on the decision."

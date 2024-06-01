@@ -263,6 +263,8 @@ class ConfigManager:
             self.storyteller_storyfinisher_prompt = yaml_config['gpt_thread_prompts']['story_finisher']
             self.storyteller_storyender_prompt = yaml_config['gpt_thread_prompts']['story_ender']
             self.ouat_prompt_addtostory_prefix = yaml_config['gpt_thread_prompts']['story_addtostory_prefix']
+            self.randomfact_conversation_director = yaml_config['gpt_thread_prompts']['conversation_director']
+            self.aboutme_prompt = yaml_config['gpt_thread_prompts']['aboutme_prompt']
 
             # OUAT Progression flow / Config
             self.ouat_message_recurrence_seconds = yaml_config['ouat_message_recurrence_seconds']
@@ -352,6 +354,8 @@ class ConfigManager:
             self.twitch_bot_scope = yaml_config['twitch-app']['twitch_bot_scope']
 
             self.gpt_model = yaml_config.get('openai-api',{}).get('assistant_model', 'gpt-3.5-turbo') 
+            self.gpt_model_davinci = yaml_config.get('openai-api',{}).get('assistant_model_davinci', 'gpt-3.05-turbo') 
+
             self.tts_model = yaml_config.get('openai-api', {}).get('tts_model','tts-1')
         except Exception as e:
             self.logger.error(f"Error in update_config_from_yaml(): {e}")

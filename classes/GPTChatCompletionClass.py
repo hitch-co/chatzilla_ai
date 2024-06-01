@@ -76,7 +76,7 @@ class GPTChatCompletion:
                 replacements_dict = replacements_dict
                 )
             
-            prompt_listdict = _make_string_gptlistdict(
+            prompt_listdict = self._make_string_gptlistdict(
                 prompt_text=prompt_text,
                 prompt_text_role='user'
                 )
@@ -232,6 +232,17 @@ class GPTChatCompletion:
         
         return gpt_response_text
 
+    def _make_string_gptlistdict(
+            prompt_text, 
+            prompt_text_role='user'
+            ) -> list[dict]:
+        """
+        Returns:
+        - list[dict]: A list containing a single dictionary with the message text and role.
+        """
+        prompt_listdict = [{'role': prompt_text_role, 'content': f'{prompt_text}'}]
+        return prompt_listdict
+    
     def get_models(self):
         """
         Function to fetch the available models from the OpenAI API.

@@ -7,6 +7,8 @@ from typing import List
 import re
 import asyncio
 
+from models.task import ExecuteThreadTask
+
 from classes.ConfigManagerClass import ConfigManager
 
 from my_modules.my_logging import create_logger
@@ -20,7 +22,6 @@ def prompt_text_replacement(logger, gpt_prompt_text, replacements_dict=None):
 
     logger.debug(f"prompt_text_replaced: {prompt_text_replaced}")
     return prompt_text_replaced
-
 class GPTChatCompletion:
     def __init__(self, gpt_client=None, yaml_data=None):
         self.config = yaml_data
@@ -32,7 +33,7 @@ class GPTChatCompletion:
 
         self.logger = create_logger(
             dirname='log',
-            logger_name='logger_gpt',
+            logger_name='GPTChatCompletionClass',
             debug_level=runtime_logger_level,
             mode='w',
             stream_logs=stream_logs
@@ -41,7 +42,8 @@ class GPTChatCompletion:
     async def make_singleprompt_gpt_response(
             self,
             prompt_text, 
-            replacements_dict=None
+            replacements_dict=None,
+            gpt_model=None
             ) -> str:
         """
         Asynchronously generates a GPT response for a single prompt.
@@ -58,17 +60,12 @@ class GPTChatCompletion:
         - str: The generated GPT response.
 
         """
-        def _make_string_gptlistdict(
-                prompt_text, 
-                prompt_text_role='user'
-                ) -> list[dict]:
-            """
-            Returns:
-            - list[dict]: A list containing a single dictionary with the message text and role.
-            """
-            prompt_listdict = [{'role': prompt_text_role, 'content': f'{prompt_text}'}]
-            return prompt_listdict
+        self.logger.info(f"Entered 'make_singleprompt_gpt_response'")
+        self.logger.info(f"prompt_text: {prompt_text}")
+        self.logger.info(f"replacements_dict: {replacements_dict}")
+        self.logger.info(f"gpt_model: {gpt_model}")
         
+
         try:
             prompt_text = prompt_text_replacement(
                 logger = self.logger,
@@ -81,7 +78,10 @@ class GPTChatCompletion:
                 prompt_text_role='user'
                 )
             try:
-                gpt_response = self._openai_gpt_chatcompletion(messages_dict_gpt=prompt_listdict)
+                gpt_response = self._openai_gpt_chatcompletion(
+                    messages_dict_gpt=prompt_listdict,
+                    gpt_model=gpt_model
+                    )
             except Exception as e:
                 self.logger.error(f"Error occurred in '_openai_gpt_chatcompletion': {e}")        
         except Exception as e:
@@ -98,7 +98,8 @@ class GPTChatCompletion:
             max_attempts=3,
             frequency_penalty=1,
             presence_penalty=1,
-            temperature=0.6
+            temperature=0.6,
+            gpt_model=None
             ) -> str: 
         """
         Sends a list of messages to the OpenAI GPT self.config.gpt_model and retrieves a generated response.
@@ -160,7 +161,7 @@ class GPTChatCompletion:
         self.logger.debug(f"The number of tokens included at start is: {_count_tokens_in_messages(messages=messages_dict_gpt)}")
         self.logger.debug(messages_dict_gpt)
 
-        #Error checking for token length, etc.
+        gpt_model = gpt_model or self.config.gpt_model
         counter=0
         try:
             while _count_tokens_in_messages(messages=messages_dict_gpt) > 2000:
@@ -293,7 +294,8 @@ if __name__ == '__main__':
     start = time.time()
     response = asyncio.run(gpt_chat_completion.make_singleprompt_gpt_response(
         prompt_text=r"What is the tallest building in {country}?",
-        replacements_dict={'country':'Dubai'}
+        replacements_dict={'country':'Dubai'},
+        gpt_model=config.gpt_model
         ))
     end = time.time()
     print(f"Time to complete: {end - start}")

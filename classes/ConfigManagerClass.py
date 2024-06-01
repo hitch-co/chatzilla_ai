@@ -263,6 +263,8 @@ class ConfigManager:
             self.storyteller_storyfinisher_prompt = yaml_config['gpt_thread_prompts']['story_finisher']
             self.storyteller_storyender_prompt = yaml_config['gpt_thread_prompts']['story_ender']
             self.ouat_prompt_addtostory_prefix = yaml_config['gpt_thread_prompts']['story_addtostory_prefix']
+            self.randomfact_conversation_director = yaml_config['gpt_thread_prompts']['conversation_director']
+            self.aboutme_prompt = yaml_config['gpt_thread_prompts']['aboutme_prompt']
 
             # OUAT Progression flow / Config
             self.ouat_message_recurrence_seconds = yaml_config['ouat_message_recurrence_seconds']

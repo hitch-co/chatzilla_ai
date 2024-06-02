@@ -54,7 +54,7 @@ class Bot(twitch_commands.Bot):
 
         self.logger = create_logger(
             dirname='log', 
-            logger_name='logger_TwitchBotClass', 
+            logger_name='TwitchBotClass', 
             debug_level=runtime_logger_level,
             mode='w',
             stream_logs=True,
@@ -205,14 +205,14 @@ class Bot(twitch_commands.Bot):
 
     async def event_ready(self):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
-        self.logger.info(f'TwitchBot ready | {self.config.twitch_bot_username} (nick:{self.nick})')
+        self.logger.info(f'TwitchBot ready on channel {self.channel} | {self.config.twitch_bot_username} (nick:{self.nick})')
 
         # initialize the event loop
         self.logger.debug(f"Initializing event loop")
         self.loop = asyncio.get_event_loop()
  
-        # send hello world message
-        await self._send_hello_world()
+        # # send hello world message
+        # await self._send_hello_world()
 
         # start OUAT loop
         self.logger.debug(f"Starting OUAT service")
@@ -329,6 +329,22 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(self.gpt_thread_mgr.task_queues)
         self.logger.info("Message processing complete.")      
 
+    def _get_commands(self):
+        commands_info = []
+        for command_name, command_obj in self.commands.items():
+            aliases = command_obj.aliases
+            command_info = {
+                "name": command_name,
+                "aliases": aliases,
+            }
+            #has more than just aliases?
+            self.logger.info(f"command_obj: {command_obj}")
+            
+            #result
+            self.logger.debug(f"Command info: {command_info}")
+            commands_info.append(command_info)
+        return commands_info
+    
     async def _token_refresh_task(self):
         while True:
             try:
@@ -451,13 +467,13 @@ class Bot(twitch_commands.Bot):
         
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
-    @twitch_commands.command(name='getstats')
+    @twitch_commands.command(name='getstats', aliases=("p_getstats"))
     async def get_command_stats(self, ctx):
         table_id = self.config.talkzillaai_usertransactions_table_id
         stats_text = self.bq_uploader.fetch_interaction_stats_as_text(table_id)
         await self._send_channel_message_wrapper(stats_text)
 
-    @twitch_commands.command(name='what')
+    @twitch_commands.command(name='what', aliases=("m_what"))
     async def what(self, ctx):
         prompt_text = self.config.botears_prompt
         assistant_name = 'chatforme'
@@ -499,19 +515,49 @@ class Bot(twitch_commands.Bot):
 
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
-    @twitch_commands.command(name='commands')
+    @twitch_commands.command(name='commands', aliases=["p_commands"])
     async def showcommands(self, ctx):
-        await self._send_channel_message_wrapper("Commands include: !what, !chat, !todo, !startstory, !addtostory, !extendstory")
+        results = set()
+        commands_info = self._get_commands()
+        
+        for command in commands_info:
+            self.logger.info(f"Command Object: {command}")
+            
+            command_name = command['name']
+            aliases = command['aliases']
 
-    @twitch_commands.command(name='specs')
+            if aliases is None:
+                self.logger.info(f"No aliases for command: {command_name}")
+                continue
+
+            # Normalize aliases to a list
+            if isinstance(aliases, str):
+                aliases = [aliases]
+            elif isinstance(aliases, tuple):
+                aliases = list(aliases)
+
+            for alias in aliases:
+                self.logger.info(f"Alias: {alias}")
+                
+                if not alias.startswith("m_"):
+                    results.add(command_name)
+                    
+        self.logger.info(f"Results: {results}")
+        
+        results_string = ', '.join(sorted(results))
+        self.logger.info(f"Results string: {results_string}")
+        
+        await self._send_channel_message_wrapper(f"Commands include: {results_string}")
+
+    @twitch_commands.command(name='specs', aliases=("p_specs"))
     async def discord(self, ctx):
         await self._send_channel_message_wrapper("i7-13700K || RTX 4070 Ti OC || 64GB DDR5 6400MHz || ASUS ROG Strix Z790-F")
 
-    @twitch_commands.command(name='discord')
+    @twitch_commands.command(name='discord', aliases=("p_discord"))
     async def discord(self, ctx):
         await self._send_channel_message_wrapper("This is the discord channel, come say hello but, ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")
 
-    @twitch_commands.command(name='updatetodo')
+    @twitch_commands.command(name='updatetodo', aliases=("m_updatetodo"))
     async def updatetodo(self, ctx, *args):
             is_sender_mod = await self._check_mod(ctx)
 
@@ -520,7 +566,7 @@ class Bot(twitch_commands.Bot):
                 self.config.gpt_todo_prompt = updated_string
                 self.logger.info(f"updated todo list: {updated_string}")
 
-    @twitch_commands.command(name='todo')
+    @twitch_commands.command(name='todo', aliases=("p_todo"))
     async def todo(self, ctx):
         replacements_dict = {
             "wordcount_short": self.wordcount_short,
@@ -563,11 +609,11 @@ class Bot(twitch_commands.Bot):
 
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
         
-    @twitch_commands.command(name='chat')
+    @twitch_commands.command(name='chat', aliases=("p_chat"))
     async def chatforme(self, ctx=None):
         self.loop.create_task(self._chatforme_main()) #does a task really need to be created here?
 
-    @twitch_commands.command(name='vc')
+    @twitch_commands.command(name='vc', aliases=("m_vc"))
     async def vc(self, message, *args):
         self.vibechecker_interactions_counter = 0
         self.is_vibecheck_loop_active = True
@@ -630,7 +676,7 @@ class Bot(twitch_commands.Bot):
         except asyncio.CancelledError:
             self.logger.debug("(message from stop_vibechecker_loop()) -- Task was cancelled and cleanup is complete")
 
-    @twitch_commands.command(name='startstory')
+    @twitch_commands.command(name='startstory', aliases=("p_startstory"))
     async def startstory(self, message, *args):
         self.logger.info(f"self.ouat_counter={self.ouat_counter}")
         if self.ouat_counter == 0:
@@ -771,7 +817,7 @@ class Bot(twitch_commands.Bot):
 
             await asyncio.sleep(int(self.config.ouat_message_recurrence_seconds))
 
-    @twitch_commands.command(name='addtostory')
+    @twitch_commands.command(name='addtostory', aliases=("p_addtostory"))
     async def add_to_story_ouat(self, ctx,  *args):
         self.ouat_counter = self.config.ouat_story_progression_number
         
@@ -794,17 +840,17 @@ class Bot(twitch_commands.Bot):
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
         self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'")
 
-    @twitch_commands.command(name='extendstory')
+    @twitch_commands.command(name='extendstory', aliases=("p_extendstory"))
     async def extend_story(self, ctx, *args) -> None:
         self.ouat_counter = self.config.ouat_story_progression_number
         self.logger.info(f"Story extension requested by {ctx.message.author.name} ({ctx.message.author.id}), self.ouat_counter has been set to {self.ouat_counter}")
 
-    @twitch_commands.command(name='stopstory')
+    @twitch_commands.command(name='stopstory', aliases=("m_stopstory"))
     async def stop_story(self, ctx):
         await self._send_channel_message_wrapper("to be continued...")
         await self.stop_ouat_loop()
 
-    @twitch_commands.command(name='endstory')
+    @twitch_commands.command(name='endstory', aliases=("m_endstory"))
     async def endstory(self, ctx):
         self.ouat_counter = self.config.ouat_story_max_counter
         self.logger.info(f"Story is being forced to end by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}")
@@ -851,11 +897,11 @@ class Bot(twitch_commands.Bot):
         except Exception as e:
             return self.logger.error(f"error with chatforme in twitchbotclass: {e}")
 
-    @twitch_commands.command(name='factcheck')
+    @twitch_commands.command(name='factcheck', aliases=("p_factcheck"))
     async def factcheck(self, ctx):
         self.loop.create_task(self._factcheck_main())
 
-    @twitch_commands.command(name='tts')
+    @twitch_commands.command(name='tts', aliases=("m_tts"))
     async def tts(self, ctx, *args):
         is_sender_mod = await self._check_mod(ctx)
 
@@ -879,7 +925,7 @@ class Bot(twitch_commands.Bot):
             response = f"no change made, see log"
             self.logger.error(f"Error occurred in !tts: {e}")
 
-    @twitch_commands.command(name='randomfact_sleeptime')
+    @twitch_commands.command(name='randomfact_sleeptime', aliases=("m_randomfact_sleeptime"))
     async def randomfact_sleeptime(self, ctx, *args):
         try:
             self.config.randomfact_sleep_time = int(args[0])
@@ -889,16 +935,17 @@ class Bot(twitch_commands.Bot):
             await self.channel.send(response)
             self.logger.error(f"Error occurred in !randomfact_sleeptime: {e}")   
 
-
-    @twitch_commands.command(name='change_game')
+    @twitch_commands.command(name='change_game', aliases=("m_change_game", "m_change_game2"))
     async def change_game(self, ctx, *args):
-        try:
-            self.config.randomfact_selected_game = ' '.join(args)
-            self.logger.info(f"Randomfact selected game has been updated to '{self.config.randomfact_selected_game}'")  
-        except Exception as e:
-            response = f"no change made, see log"
-            await self.channel.send(response)
-            self.logger.error(f"Error occurred in !randomfact_sleeptime: {e}")        
+        is_sender_mod = await self._check_mod(ctx)
+        if is_sender_mod == True:
+            try:
+                self.config.randomfact_selected_game = ' '.join(args)
+                self.logger.info(f"Randomfact selected game has been updated to '{self.config.randomfact_selected_game}'")  
+            except Exception as e:
+                response = f"no change made, see log"
+                await self.channel.send(response)
+                self.logger.error(f"Error occurred in !change_game: {e}")        
 
     def _randomfact_category_picker(self, data: dict):
         # Pick a random category (like 'historicalContexts', 'categories', etc.)

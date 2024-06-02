@@ -53,9 +53,9 @@ class ConfigManager:
             self.logger.error(f"Error, exception in load_yaml_config(): {e}", exc_info=True)
 
         try:
-            self.set_env_variables()
+            self.set_env_file_variables()
         except Exception as e:
-            self.logger.error(f"Error, exception in set_env_variables(): {e}", exc_info=True)
+            self.logger.error(f"Error, exception in set_env_file_variables(): {e}", exc_info=True)
 
     def print_config(self):
         self.logger.debug(f"Bot: {self.twitch_bot_username}") 
@@ -112,7 +112,7 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Error in load_yaml_config(): {e}")
 
-    def set_env_variables(self):
+    def set_env_file_variables(self):
         if self.env_file_directory and self.env_file_name:
             env_path = os.path.join(self.env_file_directory, self.env_file_name)
             if os.path.exists(env_path):

@@ -11,6 +11,8 @@ import time
 from models.task import AddMessageTask, ExecuteThreadTask
 
 from my_modules.my_logging import create_logger
+import modules.adjustable_sleep_task as adjustable_sleep_task
+
 from classes.TwitchAPI import TwitchAPI
 
 from classes.ConsoleColoursClass import bcolors, printc
@@ -167,6 +169,14 @@ class Bot(twitch_commands.Bot):
                 self.logger.error(f"Error occurred in 'add_message_to_thread': {e}", exc_info=True)
             
         elif task["type"] == "execute_thread":
+
+            # # NOTE: if we decide to bulk add (to reduce api calls and speedup the app), 
+            # #  this is where we should dump message queue into thread history
+            # await self.message_handler.dump_message_queue_into_thread_history(
+            #     thread_name=thread_name
+            #     message_history=message_history
+            #     )
+
             self.logger.debug(f"3. Handling task type 'execute_thread' for Assistant/Thread: {task['assistant_name']}, {task['thread_name']}")
             assistant_name = task["assistant_name"]
             thread_instructions = task["thread_instructions"]
@@ -443,7 +453,7 @@ class Bot(twitch_commands.Bot):
     async def _send_hello_world(self):
         # Say hello to the chat 
         if self.config.twitch_bot_gpt_hello_world == True:
-            prompt_text = self.config.hello_assistant_prompt
+            gpt_prompt_text = self.config.hello_assistant_prompt
             assistant_name = 'chatforme'
             thread_name = 'chatformemsgs'
             tts_voice = self.config.tts_voice_default
@@ -459,7 +469,7 @@ class Bot(twitch_commands.Bot):
             task = ExecuteThreadTask(
                 thread_name=thread_name,
                 assistant_name=assistant_name,
-                thread_instructions=prompt_text,
+                thread_instructions=gpt_prompt_text,
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice
             ).to_dict()
@@ -475,7 +485,7 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='what', aliases=("m_what"))
     async def what(self, ctx):
-        prompt_text = self.config.botears_prompt
+        gpt_prompt_text = self.config.botears_prompt
         assistant_name = 'chatforme'
         thread_name = 'chatformemsgs'
         tts_voice = self.config.tts_voice_default
@@ -507,7 +517,7 @@ class Bot(twitch_commands.Bot):
         task = ExecuteThreadTask(
             thread_name=thread_name,
             assistant_name=assistant_name,
-            thread_instructions=prompt_text,
+            thread_instructions=gpt_prompt_text,
             replacements_dict=replacements_dict,
             tts_voice=tts_voice
         ).to_dict()
@@ -572,10 +582,10 @@ class Bot(twitch_commands.Bot):
             "wordcount_short": self.wordcount_short,
             'param_in_text':'variable_from_scope'
             }
-        prompt_text = self.config.gpt_todo_prompt_prefix + self.config.gpt_todo_prompt + self.config.gpt_todo_prompt_suffix
+        gpt_prompt_text = self.config.gpt_todo_prompt_prefix + self.config.gpt_todo_prompt + self.config.gpt_todo_prompt_suffix
 
         todo = await self.gpt_chatcompletion.make_singleprompt_gpt_response(
-            prompt_text=prompt_text, 
+            prompt_text=gpt_prompt_text, 
             replacements_dict=replacements_dict
             )
         
@@ -822,8 +832,8 @@ class Bot(twitch_commands.Bot):
         self.ouat_counter = self.config.ouat_story_progression_number
         
         author=ctx.message.author.name
-        prompt_text = ' '.join(args)
-        prompt_text_with_prefix = f"{self.config.ouat_prompt_addtostory_prefix}:'{prompt_text}'"
+        gpt_prompt_text = ' '.join(args)
+        prompt_text_with_prefix = f"{self.config.ouat_prompt_addtostory_prefix}:'{gpt_prompt_text}'"
         
         #workflow1: get gpt_ready_msg_dict and add message to message history        
         gpt_ready_msg_dict = self.message_handler.create_gpt_message_dict_from_strings(
@@ -835,10 +845,10 @@ class Bot(twitch_commands.Bot):
 
         # Add the bullet list to the 'ouatmsgs' thread via queue
         thread_name = 'ouatmsgs'
-        task = AddMessageTask(thread_name, prompt_text).to_dict()
+        task = AddMessageTask(thread_name, gpt_prompt_text).to_dict()
 
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-        self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{prompt_text}'")
+        self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{gpt_prompt_text}'")
 
     @twitch_commands.command(name='extendstory', aliases=("p_extendstory"))
     async def extend_story(self, ctx, *args) -> None:
@@ -901,51 +911,66 @@ class Bot(twitch_commands.Bot):
     async def factcheck(self, ctx):
         self.loop.create_task(self._factcheck_main())
 
-    @twitch_commands.command(name='tts', aliases=("m_tts"))
-    async def tts(self, ctx, *args):
-        is_sender_mod = await self._check_mod(ctx)
-
-        try:
-            if is_sender_mod == True:
-                if args[0].lower() in ['off', 'false']:
-                    self.config.tts_include_voice = 'no'
-                    response = "TTS OFF."
-                elif args[0].lower() in ['on', 'true']:
-                    self.config.tts_include_voice = 'yes'
-                    response = "TTS ON."
-                else:
-                    response = "Invalid option for tts command. Use 'on' or 'off'"
-                
-                await self.channel.send(response)
+    @twitch_commands.command(name='update_config', aliases=("m_update_config",))
+    async def update_config(self, ctx, *args):
         
-            else: 
-                self.logger.debug = "Requester was not a mod... nothing happened"
-
-        except Exception as e:
-            response = f"no change made, see log"
-            self.logger.error(f"Error occurred in !tts: {e}")
-
-    @twitch_commands.command(name='randomfact_sleeptime', aliases=("m_randomfact_sleeptime"))
-    async def randomfact_sleeptime(self, ctx, *args):
-        try:
-            self.config.randomfact_sleep_time = int(args[0])
-            self.logger.info(f"Randomfact sleep time has been updated to '{self.config.randomfact_sleep_time}' seconds")  
-        except Exception as e:
-            response = f"no change made, see log"
-            await self.channel.send(response)
-            self.logger.error(f"Error occurred in !randomfact_sleeptime: {e}")   
-
-    @twitch_commands.command(name='change_game', aliases=("m_change_game", "m_change_game2"))
-    async def change_game(self, ctx, *args):
         is_sender_mod = await self._check_mod(ctx)
-        if is_sender_mod == True:
-            try:
-                self.config.randomfact_selected_game = ' '.join(args)
-                self.logger.info(f"Randomfact selected game has been updated to '{self.config.randomfact_selected_game}'")  
-            except Exception as e:
-                response = f"no change made, see log"
-                await self.channel.send(response)
-                self.logger.error(f"Error occurred in !change_game: {e}")        
+        if not is_sender_mod:
+            self.logger.debug("Requester was not a mod... nothing happened")
+            return
+
+        # Validate input
+        if len(args) < 2:
+            await self.channel.send("Usage: !update_config [config_var] [value]")
+            return
+
+        # Extract the config variable and value from the command arguments
+        config_var = args[0]
+        value = ' '.join(args[1:])
+
+        # If the value is true or false, make sure that the setatt() method is used to set the value to a boolean
+        if value.lower() in ['true', 'false']:
+            self.logger.debug(f"Value '{value}' is a boolean. It will be set as a boolean.")
+            if value.lower() == 'true':
+                value = True
+            elif value.lower() == 'false':
+                value = False
+
+        # If the value is an integer, make sure that the setatt() method is used to set the value to an integer
+        try:
+            value = int(value)
+        except ValueError:
+            self.logger.debug(f"Value '{value}' could not be converted to an integer. It will be set as a string.")   
+            pass
+
+        # # Dictionary of allowed config variables and their expected types
+        # config_vars = {
+        #     'tts_include_voice': str,
+        #     'randomfact_selected_game': str,
+        #     'another_config_var': int,  # Add more config variables as needed
+        # }
+
+        # # Check if the config variable is allowed
+        # if config_var not in config_vars:
+        #     await self.channel.send(f"Invalid config variable: {config_var}")
+        #     return
+
+        # Attempt to update the config variable
+        try:
+            # expected_type = config_vars[config_var]
+            # if expected_type == int:
+            #     value = int(value)
+            # elif expected_type == str:
+            #     value = str(value)
+            # # Add more type checks as needed
+
+            setattr(self.config, config_var, value)
+            self.logger.info(f"Config variable '{config_var}' has been updated to '{value}'")
+        # except ValueError:
+        #     await self.channel.send(f"Invalid value type for '{config_var}'. Expected {expected_type.__name__}.")
+        except Exception as e:
+            self.logger.error(f"Error occurred in !update_config: {e}")
+            await self.channel.send("No change made, see log for details.")
 
     def _randomfact_category_picker(self, data: dict):
         # Pick a random category (like 'historicalContexts', 'categories', etc.)
@@ -974,7 +999,8 @@ class Bot(twitch_commands.Bot):
             return "\n".join(formatted_messages)
         
         while True:
-            await asyncio.sleep(self.config.randomfact_sleep_time)   
+            #await asyncio.sleep(self.config.randomfact_sleeptime)
+            await adjustable_sleep_task.adjustable_sleep_task(self.config, 'randomfact_sleeptime')
 
             # Prompt set in os.env on .bat file run
             selected_prompt = self.config.randomfact_prompt

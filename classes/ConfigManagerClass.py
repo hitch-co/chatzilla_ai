@@ -289,7 +289,7 @@ class ConfigManager:
 
     def yaml_randomfact_json(self, yaml_config):
         try:
-            self.randomfact_sleep_time = yaml_config['chatforme_randomfacts']['randomfact_sleep_time']
+            self.randomfact_sleeptime = yaml_config['chatforme_randomfacts']['randomfact_sleeptime']
             self.randomfact_selected_game = os.getenv('selected_game')
                             
             # Set selected_type to 'standard' if randomfact_selected_game is None
@@ -310,6 +310,7 @@ class ConfigManager:
             self.randomfact_topics_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['topics_injection_file_path']
             self.randomfact_areas_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['areas_injection_file_path']
             self.randomfact_prompt = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_prompt']
+            self.randomfact_response = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_response']
 
             with open(self.randomfact_topics_json, 'r') as file:
                 self.randomfact_topics = yaml.safe_load(file)

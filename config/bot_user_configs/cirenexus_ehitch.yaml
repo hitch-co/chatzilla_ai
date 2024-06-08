@@ -31,7 +31,7 @@ spellcheck_commands_filename: 'config\command_spellcheck_terms.json'
 openai-api:
   assistant_model: "gpt-4-1106-preview" #"gpt-4-0613" #"gpt-3.5-turbo"
   assistant_response_max_length: 300
-  tts_include_voice: "yes"
+  tts_include_voice: True
   tts_model: "tts-1" #tts-2 has higher latency
   tts_voice: "nova"
   tts_volume: .4
@@ -65,7 +65,7 @@ twitch-ouat:
 chatforme_randomfacts:
   randomfact_topics_json_filepath: 'C:\_repos\chatzilla_ai\config\randomfact_topics.json'
   randomfact_eras_json_filepath: 'C:\_repos\chatzilla_ai\config\randomfact_eras.json'
-  randomfact_sleep_time: 600
+  randomfact_sleeptime: 600
   randomfact_types:
     game:
       # randomfact_prompt: "Share an engaging fact in roughly {wordcount_short} words about the topic {selected_game} or any of its related genres, etc.  Let's explorle {randomfact_topic} or {randomfact_subtopic} within categories like {area} and/or {subarea} in this random fact/opinion.  If you can, make the topic start with the letter '{random_character_a_to_z}'.  Ensure a wide expanse of knowledge is covered.  Start your message with 'fact:'"

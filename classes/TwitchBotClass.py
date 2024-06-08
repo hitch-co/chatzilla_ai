@@ -11,6 +11,8 @@ import time
 from models.task import AddMessageTask, ExecuteThreadTask
 
 from my_modules.my_logging import create_logger
+import modules.adjustable_sleep_task as adjustable_sleep_task
+
 from classes.TwitchAPI import TwitchAPI
 
 from classes.ConsoleColoursClass import bcolors, printc
@@ -928,6 +930,7 @@ class Bot(twitch_commands.Bot):
 
         # If the value is true or false, make sure that the setatt() method is used to set the value to a boolean
         if value.lower() in ['true', 'false']:
+            self.logger.debug(f"Value '{value}' is a boolean. It will be set as a boolean.")
             if value.lower() == 'true':
                 value = True
             elif value.lower() == 'false':
@@ -937,6 +940,7 @@ class Bot(twitch_commands.Bot):
         try:
             value = int(value)
         except ValueError:
+            self.logger.debug(f"Value '{value}' could not be converted to an integer. It will be set as a string.")   
             pass
 
         # # Dictionary of allowed config variables and their expected types
@@ -995,20 +999,9 @@ class Bot(twitch_commands.Bot):
             return "\n".join(formatted_messages)
         
         while True:
-            await asyncio.sleep(self.config.randomfact_sleeptime)
+            #await asyncio.sleep(self.config.randomfact_sleeptime)
+            await adjustable_sleep_task.adjustable_sleep_task(self.config, 'randomfact_sleeptime')
 
-
-
-
-
-
-
-
-
-
-            
-              
-  
             # Prompt set in os.env on .bat file run
             selected_prompt = self.config.randomfact_prompt
             assistant_name = 'random_fact'

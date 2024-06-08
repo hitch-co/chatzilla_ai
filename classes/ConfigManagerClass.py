@@ -289,7 +289,7 @@ class ConfigManager:
 
     def yaml_randomfact_json(self, yaml_config):
         try:
-            self.randomfact_sleep_time = yaml_config['chatforme_randomfacts']['randomfact_sleep_time']
+            self.randomfact_sleeptime = yaml_config['chatforme_randomfacts']['randomfact_sleeptime']
             self.randomfact_selected_game = os.getenv('selected_game')
                             
             # Set selected_type to 'standard' if randomfact_selected_game is None

@@ -55,7 +55,7 @@ class GPTChatCompletion:
         Parameters:
         - prompt_text (str): The text prompt to generate a response for.
         - replacements_dict (dict, optional): A dictionary of replacements to apply to the prompt text.
-        - incl_voice (str): Specifies whether to include voice output ('yes' or 'no'). Default is 'yes'.
+        - incl_voice (str): Specifies whether to include voice output (True or False). Default is True.
         - voice_name (str): The name of the voice to be used in the text-to-speech service. Default is 'nova'.
 
         Returns:

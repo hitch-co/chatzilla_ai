@@ -146,7 +146,6 @@ class MessageHandler:
         message_role = message_metadata['role']
         message_username = message_metadata['name']
         message_content = message_username+": "+message_metadata['content']
-        # message_content = message_metadata['content']
 
         self.logger.info(f"Adding message to queues...")
         self.logger.info("This is the message_metadata: {}".format(message_metadata))

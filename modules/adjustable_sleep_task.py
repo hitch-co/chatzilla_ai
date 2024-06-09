@@ -17,17 +17,17 @@ async def adjustable_sleep_task(config, attribute_name):
 
     elapsed_time = 0
     while elapsed_time < total_sleep_time:
-        logger.info(f"Elapsed time: {elapsed_time} (of {total_sleep_time})")
+        logger.debug(f"Elapsed time: {elapsed_time} (of {total_sleep_time})")
         await asyncio.sleep(sleep_interval)
         elapsed_time += sleep_interval
 
         # Check if the sleep time needs to be adjusted
         new_sleep_time = getattr(config, attribute_name)
-        logger.info(f"new_sleep_time: {new_sleep_time}")
+        logger.debug(f"new_sleep_time: {new_sleep_time}")
         if new_sleep_time != total_sleep_time:
             logger.info(f"Sleep time was adjusted: {total_sleep_time} -> {new_sleep_time}")
             total_sleep_time = new_sleep_time
-    logger.info("Completed adjustable sleep.")
+    logger.debug("Completed adjustable sleep.")
 
 # # Ceate an example usage of the adjustable_sleep_task function
 # import asyncio

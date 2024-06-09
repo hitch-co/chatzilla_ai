@@ -174,7 +174,7 @@ class ConfigManager:
 
     def yaml_gpt_config(self, yaml_config):
         try:
-            self.wordcount_short = str(yaml_config['wordcounts']['short'])
+            self.wordcount_short = str(yaml_config['wordcounts']['short']) #2024-06-09: shouldn't these be captured as ints and typecasted when used?
             self.wordcount_medium = str(yaml_config['wordcounts']['medium'])
             self.wordcount_long = str(yaml_config['wordcounts']['long'])
             self.magic_max_waittime_for_gpt_response = int(yaml_config['openai-api']['magic_max_waittime_for_gpt_response'])

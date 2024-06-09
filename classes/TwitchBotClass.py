@@ -1033,7 +1033,7 @@ class Bot(twitch_commands.Bot):
             response_text = await self.gpt_chatcompletion.make_singleprompt_gpt_response(
                 prompt_text=conversation_director_prompt,
                 replacements_dict=replacements_dict,
-                gpt_model=self.config.gpt_model_davinci
+                model=self.config.gpt_model_davinci
                 )
 
             # Strip backticks and json tag if present

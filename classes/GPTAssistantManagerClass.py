@@ -8,6 +8,8 @@ from my_modules.my_logging import create_logger
 
 from classes.ConfigManagerClass import ConfigManager
 
+import modules.gpt_utils as gpt_utils
+
 gpt_base_debug_level = 'INFO'
 gpt_thread_mgr_debug_level = 'INFO'
 gpt_assistant_mgr_debug_level = 'INFO'
@@ -38,16 +40,6 @@ class GPTBaseClass:
             print("did a create")
         def delete():
             print("did a delete")
-
-    def prompt_text_replacement(self, gpt_prompt_text, replacements_dict=None):
-        if replacements_dict:
-            prompt_text_replaced = gpt_prompt_text.format(**replacements_dict)   
-        else:
-            prompt_text_replaced = gpt_prompt_text
-        
-        self.logger.debug(f"replacements_dict: {replacements_dict}")
-        self.logger.info(f"prompt_text_replaced: {prompt_text_replaced[0:75]}")
-        return prompt_text_replaced
     
 class GPTAssistantManager(GPTBaseClass):
     """
@@ -95,9 +87,10 @@ class GPTAssistantManager(GPTBaseClass):
         """
         assistant_type = assistant_type or self.yaml_data.gpt_assistant_type
         assistant_model = assistant_model or self.yaml_data.gpt_model
-        assistant_instructions = self.prompt_text_replacement(
-            gpt_prompt_text=assistant_instructions,
-            replacements_dict=replacements_dict
+        assistant_instructions = gpt_utils.replace_prompt_text(
+            logger=self.logger,
+            prompt_template=assistant_instructions,
+            replacements=replacements_dict
             )
         
         assistant = self.gpt_client.beta.assistants.create(
@@ -286,9 +279,10 @@ class GPTResponseManager(GPTBaseClass):
             A list of response thread messages.
         """
         try:
-            thread_instructions = self.prompt_text_replacement(
-                gpt_prompt_text=thread_instructions,
-                replacements_dict=replacements_dict
+            thread_instructions = gpt_utils.replace_prompt_text(
+                logger=self.logger,
+                prompt_template=thread_instructions,
+                replacements=replacements_dict
                 )
             self.logger.info(f"This is the final thread_instructions: {thread_instructions}")
         except Exception as e:

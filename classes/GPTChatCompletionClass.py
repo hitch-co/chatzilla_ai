@@ -113,29 +113,6 @@ class GPTChatCompletion:
         - ValueError: If the initial message exceeds a token limit after multiple attempts to reduce its size.
         - Exception: If the maximum number of retries is exceeded without generating a valid response.
         """
-        def _count_tokens(text:str) -> int:
-            try:
-                encoding = tiktoken.encoding_for_model(model_name=self.config.gpt_model)
-                tokens_in_text = len(encoding.encode(text))
-            except:
-                raise ValueError("tiktoken.encoding_for_model() failed")
-
-            return tokens_in_text
-
-        def _count_tokens_in_messages(messages: List[dict]) -> int:
-            try:
-                total_tokens = 0
-                for message in messages:
-                    # Using .get() with default value as an empty string
-                    role = message.get('role', '')
-                    content = message.get('content', '')
-
-                    # Count tokens in role and content
-                    total_tokens += _count_tokens(role) + _count_tokens(content)
-                self.logger.debug(f"Total Tokens: {total_tokens}")
-                return total_tokens
-            except:
-                raise ValueError("_count_tokens_in_messages() failed")
 
         def _strip_prefix(text):
             # Regular expression pattern to match the prefix <<<[some_name]>>>:
@@ -149,28 +126,13 @@ class GPTChatCompletion:
 
             return stripped_text
 
-        self.logger.debug("This is the messages_dict_gpt submitted to GPT ChatCompletion")
-        self.logger.debug(f"The number of tokens included at start is: {_count_tokens_in_messages(messages=messages_dict_gpt)}")
-        self.logger.debug(messages_dict_gpt)
+        self.logger.debug("This is the messages submitted to GPT ChatCompletion")
+        self.logger.debug(messages)
 
-        gpt_model = gpt_model or self.config.gpt_model
-        counter=0
-        try:
-            while _count_tokens_in_messages(messages=messages_dict_gpt) > 2000:
-                if counter > 10:
-                    error_message = f"Error: Too many tokens {token_count} even after 10 attempts to reduce count"
-                    self.logger.error(error_message)
-                    raise ValueError(error_message)
-                self.logger.debug("Entered _count_tokens_in_messages() > ____")
-                token_count = _count_tokens_in_messages(messages=messages_dict_gpt)
-                self.logger.warning(f"The messages_dict_gpt contained too many tokens {(token_count)}, .pop(0) first dict")
-                messages_dict_gpt.pop(0)
-                counter+=1
-        except Exception as e:
-            self.logger.error(f"Exception ocurred in _openai_gpt_chatcompletion() during _count_tokens_in_messages(): {e}")
-        
-        self.logger.debug(f"messages_dict_gpt submitted to GPT ChatCompletion (tokens: {_count_tokens_in_messages(messages=messages_dict_gpt)})")
-        self.logger.debug(messages_dict_gpt)
+        model = model or self.config.model
+
+        self.logger.debug(f"messages submitted to GPT ChatCompletion:")
+        self.logger.debug(messages)
 
         #Call to OpenAI #TODO: This loop is wonky.  Should probably divert to a 'while' statement
         for attempt in range(max_attempts):

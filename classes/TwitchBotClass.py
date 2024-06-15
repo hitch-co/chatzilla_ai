@@ -8,7 +8,7 @@ import os
 import inspect
 import time
 
-from models.task import AddMessageTask, ExecuteThreadTask
+from models.task import AddMessageTask, CreateExecuteThreadTask
 
 from my_modules.my_logging import create_logger
 import modules.adjustable_sleep_task as adjustable_sleep_task
@@ -134,19 +134,9 @@ class Bot(twitch_commands.Bot):
         # BQ Table IDs
         self.userdata_table_id=self.config.talkzillaai_userdata_table_id
         self.usertransactions_table_id=self.config.talkzillaai_usertransactions_table_id
-        
-        #NOTE: ARGUABLY DO NOT NEED TO INITIALIZE THESE HERE
-        # Response wordcounts
-        self.wordcount_short = self.config.wordcount_short
-        self.wordcount_medium = self.config.wordcount_medium
-        self.wordcount_long = self.config.wordcount_long
 
+        # Initialize the twitch bot's channel and user IDs
         self.twitch_bot_client_id = self.config.twitch_bot_client_id
-
-        #NOTE: ARGUABLY DO NOT NEED TO INITIALIZE THESE HERE
-        #newusers params
-        self.newusers_sleep_time = self.config.newusers_sleep_time 
-
         self.logger.info("TwitchBotClass initialized")
 
     async def handle_tasks(self, task: dict):
@@ -221,8 +211,8 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(f"Initializing event loop")
         self.loop = asyncio.get_event_loop()
  
-        # # send hello world message
-        # await self._send_hello_world()
+        # send hello world message
+        await self._send_hello_world()
 
         # start OUAT loop
         self.logger.debug(f"Starting OUAT service")
@@ -292,7 +282,7 @@ class Bot(twitch_commands.Bot):
             )
 
         # 1c. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
-        if '@'+self.config.twitch_bot_username in message.content and "!chat" not in message.content:
+        if self.config.twitch_bot_username in message.content and "!chat" not in message.content:
             await self._chatforme_main()
 
         # 2. Process the message through the vibecheck service.
@@ -378,49 +368,89 @@ class Bot(twitch_commands.Bot):
             await asyncio.sleep(1800)
 
     async def _send_message_to_new_users_task(self):
+        self.current_users_list = []
         tts_voice_selected = self.config.tts_voice_newuser
         thread_name = 'chatformemsgs'
         assistant_name = 'newuser_shoutout'
+
         while True:
-            await asyncio.sleep(self.newusers_sleep_time)
+            await adjustable_sleep_task.adjustable_sleep_task(self.config, 'newusers_sleep_time')
+            self.logger.debug("---------------------------------------")
             self.logger.info("Checking for new users...")
 
             # Get the current users in the channel
             try:
                 current_users_list = await self.twitch_api.retrieve_active_usernames(
-                    bearer_token = self.config.twitch_bot_access_token)
-                
+                    bearer_token = self.config.twitch_bot_access_token
+                    )
+                self.logger.info(f"Current users retrieved: {current_users_list}")  
             except Exception as e:
                 self.logger.error(f"Failed to retrieve active users from Twitch API: {e}")
-                current_users_list = None
+                current_users_list = []
+                
+            # Add self.current_users_list to self.current_users_list as set to remove duplicates
+            self.current_users_list = list(set(self.current_users_list + current_users_list))
+
+            if not self.current_users_list:
+                self.logger.info("No users in self.current_users_list, skipping this iteration.")
+                continue
 
             # Identify list of users who are new to the channel and have not yet been sent a message
-            users_not_yet_sent_message = await self.newusers_service.get_users_not_yet_sent_message(
+            users_not_yet_sent_message_info = await self.newusers_service.get_users_not_yet_sent_message(
                 historic_users_list = self.historic_users_at_start_of_session,
-                current_users_list = current_users_list
+                current_users_list = self.current_users_list,
+                users_sent_messages_list = self.newusers_service.users_sent_messages_list
             )
 
-            if len(users_not_yet_sent_message) == 0:
-                self.logger.debug("No new users found...")
+            self.logger.info("New users found in self.current_users_list, starting new users message...")
+
+            self.logger.debug(f"Long-running Current users list: {current_users_list}")
+            self.logger.debug(f"Users sent messages list: {self.newusers_service.users_sent_messages_list}")
+            self.logger.debug(f"Users not yet sent message: {users_not_yet_sent_message_info}")
+
+            if users_not_yet_sent_message_info:
+                eligible_users = [
+                    user for user in users_not_yet_sent_message_info
+                    if (user['username'] not in self.newusers_service.known_bots and
+                        user['username'] not in self.config.twitch_bot_operatorname and
+                        user['username'] not in self.config.twitch_bot_channel_name and
+                        user['username'] not in self.config.twitch_bot_username and
+                        user['username'] not in self.config.twitch_bot_display_name
+                        #and user['username'] not in "crubeyawne"
+                        #and user['username'] not in "nanovision"
+                        #and user['username'] not in mods_list
+                        )
+                ]
+                self.logger.debug(f"Eligible users to send a message: {eligible_users}")
+            else:
+                self.logger.info("No eligible users to send a message.")
                 continue
-            
-            elif len(users_not_yet_sent_message) > 0:      
-                self.logger.info("New users found, starting new users message...")
-                self.logger.debug(f"Initial value of self.newusers_service.users_sent_messages_list: {self.newusers_service.users_sent_messages_list}")   
-                random_new_user = random.choice(users_not_yet_sent_message)
-                self.newusers_service.users_sent_messages_list.append(random_new_user)
-                
+     
+            if eligible_users:
+                self.logger.info(f"Eligible users found: {len(eligible_users)}")
+                random_user = random.choice(eligible_users)  
+                random_user_type = random_user['usertype']
+                random_user_name = random_user['username'] 
+
+                self.newusers_service.users_sent_messages_list.append(random_user_name)
+                self.logger.debug(f"Selected user: {random_user_name} ({random_user_type})")
+
+                # Create task to send a message to the selected user
                 try:
                     replacements_dict = {
-                        "random_new_user":random_new_user,
-                        "wordcount_medium":self.config.wordcount_medium
-                    }  
+                        "random_new_user": random_user_name,
+                        "wordcount_medium": self.config.wordcount_medium,
+                        "user_specific_chat_history": "lots and lots of tomatos and tomato sauce"
+                    }
 
-                    # Add a executeTask to the queue
-                    task = ExecuteThreadTask(
+                    # Select the appropriate prompt based on the user type
+                    prompt = self.config.newusers_msg_prompt if random_user_type == "new" else self.config.returningusers_msg_prompt
+
+                    # Add an executeTask to the queue
+                    task = CreateExecuteThreadTask(
                         thread_name=thread_name,
                         assistant_name=assistant_name,
-                        thread_instructions=self.config.newusers_msg_prompt,
+                        thread_instructions=prompt,
                         replacements_dict=replacements_dict,
                         tts_voice=tts_voice_selected
                     ).to_dict()
@@ -429,13 +459,17 @@ class Bot(twitch_commands.Bot):
                     await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
                     self.logger.debug(f"self.newusers_service.users_sent_messages_list: {self.newusers_service.users_sent_messages_list}")
-                    self.logger.debug(f"users_not_yet_sent_message: {users_not_yet_sent_message}")
-                    self.logger.info(f"Sent random new user task for run.  random_new_user: {random_new_user}")
-                    continue
+                    self.logger.debug(f"users_not_yet_sent_message: {users_not_yet_sent_message_info}")
+                    self.logger.info(f"Sent {random_user_type} user task for run. random_user: {random_user}")
+
 
                 except Exception as e:
-                    self.logger.exception(f"Error occurred in 'make_singleprompt_gpt_response': {e}")            
+                    self.logger.exception(f"Error occurred in sending {random_user_type} user message: {e}")
                     continue
+
+            else:
+                self.logger.info(f"Eligible users list is empty.  eligible_users: {eligible_users}")
+                continue
 
     async def _send_channel_message_wrapper(self, message):
         await self.channel.send(message)
@@ -466,7 +500,7 @@ class Bot(twitch_commands.Bot):
                 }
 
             # Add a executeTask to the queue
-            task = ExecuteThreadTask(
+            task = CreateExecuteThreadTask(
                 thread_name=thread_name,
                 assistant_name=assistant_name,
                 thread_instructions=gpt_prompt_text,
@@ -509,12 +543,12 @@ class Bot(twitch_commands.Bot):
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
         replacements_dict = {
-            "wordcount_medium": self.wordcount_medium,
+            "wordcount_medium": self.config.wordcount_medium,
             "botears_questioncomment": text
         }
 
         # Add a executeTask to the queue
-        task = ExecuteThreadTask(
+        task = CreateExecuteThreadTask(
             thread_name=thread_name,
             assistant_name=assistant_name,
             thread_instructions=gpt_prompt_text,
@@ -579,7 +613,7 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='todo', aliases=("p_todo"))
     async def todo(self, ctx):
         replacements_dict = {
-            "wordcount_short": self.wordcount_short,
+            "wordcount_short": self.config.wordcount_short,
             'param_in_text':'variable_from_scope'
             }
         gpt_prompt_text = self.config.gpt_todo_prompt_prefix + self.config.gpt_todo_prompt + self.config.gpt_todo_prompt_suffix
@@ -608,7 +642,7 @@ class Bot(twitch_commands.Bot):
         }
 
         # Add a executeTask to the queue
-        task = ExecuteThreadTask(
+        task = CreateExecuteThreadTask(
             thread_name=thread_name,
             assistant_name=assistant_name,
             thread_instructions=chatforme_prompt,
@@ -733,15 +767,15 @@ class Bot(twitch_commands.Bot):
             gpt_prompt_text = self.config.story_user_opening_scene_summary_prompt + " " + self.config.storyteller_storysuffix_prompt    
             replacements_dict = {
                 "user_requested_plotline":submitted_plotline,
-                "wordcount_short":self.wordcount_short,
-                "wordcount_medium":self.wordcount_medium,
-                "wordcount_long":self.wordcount_long,
+                "wordcount_short":self.config.wordcount_short,
+                "wordcount_medium":self.config.wordcount_medium,
+                "wordcount_long":self.config.wordcount_long,
                 "ouat_counter":self.ouat_counter,
                 "max_ouat_counter":self.config.ouat_story_max_counter,
                 }
 
             # Add executeTask to the queue
-            task = ExecuteThreadTask(
+            task = CreateExecuteThreadTask(
                 thread_name=thread_name,
                 assistant_name=assistant_name,
                 thread_instructions=gpt_prompt_text,
@@ -801,8 +835,8 @@ class Bot(twitch_commands.Bot):
                 self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
 
                 replacements_dict = {
-                    "wordcount_short":self.wordcount_short,
-                    "wordcount_long":self.wordcount_long,
+                    "wordcount_short":self.config.wordcount_short,
+                    "wordcount_long":self.config.wordcount_long,
                     'twitch_bot_display_name':self.config.twitch_bot_display_name,
                     'num_bot_responses':self.config.num_bot_responses,
                     'writing_style': self.selected_writing_style,
@@ -814,7 +848,7 @@ class Bot(twitch_commands.Bot):
                     }
 
                 # Add a executeTask to the queue
-                task = ExecuteThreadTask(
+                task = CreateExecuteThreadTask(
                     thread_name=thread_name,
                     assistant_name=assistant_name,
                     thread_instructions=gpt_prompt_final,
@@ -893,7 +927,7 @@ class Bot(twitch_commands.Bot):
         try:
             
             # Add a executeTask to the queue
-            task = ExecuteThreadTask(
+            task = CreateExecuteThreadTask(
                 thread_name=thread_name,
                 assistant_name=assistant_name,
                 thread_instructions=chatforme_factcheck_prompt,
@@ -1073,7 +1107,7 @@ class Bot(twitch_commands.Bot):
             self.logger.debug(f"Replacements dict: {replacements_dict}")
             
             # Add a executeTask to the queue
-            task = ExecuteThreadTask(
+            task = CreateExecuteThreadTask(
                 thread_name=thread_name,
                 assistant_name=assistant_name,
                 thread_instructions=selected_prompt,

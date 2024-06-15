@@ -32,7 +32,7 @@ openai-api:
   assistant_model: "gpt-4o" #"gpt-4-1106-preview" #"gpt-4-0613" #"gpt-3.5-turbo"
   assistant_model_davinci: "code-davinci" #"gpt-3.5-turbo"
   assistant_response_max_length: 300
-  tts_include_voice: True
+  tts_include_voice: False
   tts_model: "tts-1" #tts-2 has higher latency
   tts_voice: "nova"
   tts_volume: .4
@@ -142,9 +142,9 @@ chatforme_prompts:
 
     Context:
 
-    - You are in a virtual chat scenario where '{bot_operatorname}'' is your 
-    owner, and you are in a stream hosted by '{twitch_bot_channel_name}''  
-    and your name is '{twitch_bot_display_name}''
+    - You are in a virtual chat scenario where '{bot_operatorname}' is your 
+    owner, and you are in a stream hosted by '{twitch_bot_channel_name}'  
+    and your name is '{twitch_bot_display_name}'
 
     Special Instructions:
 
@@ -340,15 +340,16 @@ ouat-writing-parameters:
 #########################
 #########################
 # NewUsersService vars
-newusers_sleep_time: 20
+newusers_sleep_time: 5
 #returningusers_sleep_time: 15
 newusers_msg_prompt: "Say hi and tag {random_new_user}, and welcome them to the chat
   on behalf of ehitch.  Keep the message to {wordcount_medium} words max, ask them a question
   if you feel it's appropriate.
   "
-returningusers_msg_prompt: "Say hi and tag {random_new_user}, and welcome them back to the chat
+returningusers_msg_prompt: "Say hi and tag {random_new_user}, and specifically welcome them back to the chat
   on behalf of ehitch.  Keep the message to {wordcount_medium} words max, ask them a question
-  if you feel it's appropriate.  You might have access to their chat history here: {user_specific_chat_history}
+  if you feel it's appropriate.  You might have access to their chat history here to make your
+  response more relevant: {user_specific_chat_history}
   "
 
 #########################

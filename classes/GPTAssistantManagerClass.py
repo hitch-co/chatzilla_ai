@@ -518,7 +518,7 @@ class GPTResponseManager(GPTBaseClass):
 
 #     import os
 #     import openai
-#     from models.task import AddMessageTask, ExecuteThreadTask
+#     from models.task import AddMessageTask, CreateExecuteThreadTask
 
 #     # get loop
 #     loop = asyncio.get_event_loop()

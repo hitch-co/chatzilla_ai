@@ -7,7 +7,7 @@ from typing import List
 import re
 import asyncio
 
-from models.task import ExecuteThreadTask
+from models.task import CreateExecuteThreadTask
 
 from classes.ConfigManagerClass import ConfigManager
 

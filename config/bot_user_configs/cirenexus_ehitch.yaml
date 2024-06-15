@@ -340,25 +340,15 @@ ouat-writing-parameters:
 #########################
 #########################
 # NewUsersService vars
-newusers_sleep_time: 15
+newusers_sleep_time: 20
+#returningusers_sleep_time: 15
 newusers_msg_prompt: "Say hi and tag {random_new_user}, and welcome them to the chat
   on behalf of ehitch.  Keep the message to {wordcount_medium} words max, ask them a question
   if you feel it's appropriate.
   "
-newusers_nonewusers_prompt: >
-  "Your primary objective is to respond with one and only one message that is 
-  {wordcount_medium} words max, and is a fact about a person place or thing.  
-  To help you say something relevant, I've added some rules you should consider 
-  when sending that message:
-   - Prefix your message with 'Fun fact:' if you're sharing a fact
-   - The noun, person, place, or thing that you share a fact about should start 
-     with the letter '{random_letter}'
-   - Make it relevant to the chat history if possible
-   - don't send multiple messages or include details about why you sent the 
-     message you sent
-   - Don't repeat what's already been said in the chat, but if relevant you can
-      build on what's already been said
-   - use boatloads of emojis
+returningusers_msg_prompt: "Say hi and tag {random_new_user}, and welcome them back to the chat
+  on behalf of ehitch.  Keep the message to {wordcount_medium} words max, ask them a question
+  if you feel it's appropriate.  You might have access to their chat history here: {user_specific_chat_history}
   "
 
 #########################
@@ -414,3 +404,4 @@ gpt_todo_prompt_suffix: "Be brief and less than {wordcount_short} words max.  Do
   repeat yourself.  If there doesn't appear to be a task list, just say we're
   plugging away on some fun things and to ask for more details if you're curious.
   "
+

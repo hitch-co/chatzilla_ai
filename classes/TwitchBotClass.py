@@ -1033,7 +1033,6 @@ class Bot(twitch_commands.Bot):
             return "\n".join(formatted_messages)
         
         while True:
-            #await asyncio.sleep(self.config.randomfact_sleeptime)
             await adjustable_sleep_task.adjustable_sleep_task(self.config, 'randomfact_sleeptime')
 
             # Prompt set in os.env on .bat file run

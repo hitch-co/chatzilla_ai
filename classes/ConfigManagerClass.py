@@ -203,8 +203,8 @@ class ConfigManager:
             self.formatted_gpt_vibecheck_prompt = yaml_config['formatted_gpt_vibecheck_prompt']
             self.formatted_gpt_viberesult_prompt = yaml_config['formatted_gpt_viberesult_prompt']
             self.newusers_sleep_time = yaml_config['newusers_sleep_time']
-            self.newusers_nonewusers_prompt = yaml_config['newusers_nonewusers_prompt']
             self.newusers_msg_prompt = yaml_config['newusers_msg_prompt']
+            self.returningusers_msg_prompt = yaml_config['returningusers_msg_prompt']
             self.vibechecker_message_wordcount = str(yaml_config['vibechecker_message_wordcount'])
             self.vibechecker_question_session_sleep_time = yaml_config['vibechecker_question_session_sleep_time']
             self.vibechecker_listener_sleep_time = yaml_config['vibechecker_listener_sleep_time']
@@ -381,17 +381,20 @@ if __name__ == "__main__":
     config = main(yaml_filepath)
     print(config)
 
-    with open(config.randomfact_topics_json, 'r') as file:
-        randomfact_topics = yaml.safe_load(file)
-    with open(config.randomfact_areas_json, 'r') as file:
-        randomfact_areas = yaml.safe_load(file)    
-    print(f"RANDOMFACT_TOPICS: {randomfact_topics}")
-    print(f"RANDOMFACT_AREAS: {randomfact_areas}")
+    # print(config.returningusers_msg_prompt)
+    # print(config.randomfact_sleeptime)
+
+    # with open(config.randomfact_topics_json, 'r') as file:
+    #     randomfact_topics = yaml.safe_load(file)
+    # with open(config.randomfact_areas_json, 'r') as file:
+    #     randomfact_areas = yaml.safe_load(file)    
+    # print(f"RANDOMFACT_TOPICS: {randomfact_topics}")
+    # print(f"RANDOMFACT_AREAS: {randomfact_areas}")
     
-    # Get random fact topics and areas json file paths
-    print(config.randomfact_topics_json)
-    print(config.randomfact_areas_json)
-    print(config.randomfact_prompt)
+    # # Get random fact topics and areas json file paths
+    # print(config.randomfact_topics_json)
+    # print(config.randomfact_areas_json)
+    # print(config.randomfact_prompt)
 
     print(config.env_file_directory)
     print(config.tts_data_folder)

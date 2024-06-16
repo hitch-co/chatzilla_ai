@@ -1,7 +1,4 @@
 import asyncio
-import random
-
-from classes.ConfigManagerClass import ConfigManager
 
 from my_modules.my_logging import create_logger
 from my_modules import utils
@@ -30,55 +27,64 @@ class NewUsersService:
     async def get_users_not_yet_sent_message(
             self,
             historic_users_list: list,
-            current_users_list: dict,
+            current_users_list: list,
             users_sent_messages_list: list = None
-            ) -> list:
+        ) -> list:
+
+        # Construct list of dictionaries with user details
+        users_not_yet_sent_message_info_list = []
+
+        # Use class variable if users_sent_messages_list is None
+        if users_sent_messages_list is None:
+            users_sent_messages_list = self.users_sent_messages_list
+
+        # Normalize to lowercase
+        historic_users_list = [user.lower() for user in historic_users_list]
+        current_users_list = [user.lower() for user in current_users_list]
+        users_sent_messages_list = [user.lower() for user in users_sent_messages_list]
+        
         self.logger.debug("inputs:")
         self.logger.debug(f"historic_users_list: {historic_users_list}")
         self.logger.debug(f"current_users_list: {current_users_list}")
         self.logger.debug(f"users_sent_messages_list: {users_sent_messages_list}")
 
-        #make lowercase prior to comparison
-        historic_users_list = [user.lower() for user in historic_users_list]
-        current_users_list = [user.lower() for user in current_users_list]
-
-        #set diff from current_user_names and historic_users_list, remove known bots
+        # Exclude known bots
         current_users_list_excluding_bots = [user for user in current_users_list if user not in self.known_bots]
-        current_new_usernames = await utils.find_unique_to_new_list(
-            source_list=historic_users_list,
-            new_list=current_users_list_excluding_bots
-            )
+        self.logger.debug(f"current_users_list_excluding_bots: {current_users_list_excluding_bots}")
 
-        self.logger.debug(f"Updated items:")
-        self.logger.debug(f"known_bots: {self.known_bots}")
-        self.logger.debug(f"current_new_usernames (after excluding bots): {current_new_usernames}")
+        # Find users not yet sent a message
+        users_not_yet_sent_message = set(current_users_list_excluding_bots) - set(users_sent_messages_list)
+        self.logger.info(f"users_not_yet_sent_message: {users_not_yet_sent_message}")
 
-        # If users_sent_messages_list is None, use the class variable
-        if users_sent_messages_list is None:
-            users_sent_messages_list = self.users_sent_messages_list
-        self.logger.debug(f"users_sent_messages_list (after setting None if applicable): {users_sent_messages_list}")
+        for user in users_not_yet_sent_message:
+            if user not in historic_users_list:
+                user_type = "new"
+            elif user in historic_users_list:
+                user_type = "returning"
+            else:
+                user_type = "unknown"
 
-        users_not_yet_sent_message = await utils.find_unique_to_new_list(
-            source_list=self.users_sent_messages_list,
-            new_list=current_new_usernames
-            )
-        self.logger.info(f"users_not_yet_sent_message: {users_not_yet_sent_message}")   
+            users_not_yet_sent_message_info_list.append({"username": user, "usertype": user_type})
 
-        if users_not_yet_sent_message is None:
-            self.logger.error("users_not_yet_sent_message is None, this should not happen")
-            
-        return users_not_yet_sent_message
+        self.logger.debug(f"user_info_list: {users_not_yet_sent_message_info_list}")
 
+        return users_not_yet_sent_message_info_list
+    
 if __name__ == "__main__":
-    print("tests")
+
     # Test the get_users_not_yet_sent_message() fucntion
     historic_users_list = ['user1', 'user2', 'user3']
     current_users_list = ['user1', 'user2', 'user3', 'user4', 'user5', 'streamlabs']
+    users_sent_messages_list=['user1', 'user2', 'user3', 'user4']
     new_users_service = NewUsersService()
+    
     print(f"known_bots: {new_users_service.known_bots}")
+
     result = asyncio.run(new_users_service.get_users_not_yet_sent_message(
         historic_users_list, 
-        current_users_list
+        current_users_list,
+        users_sent_messages_list=users_sent_messages_list
         ))
-    print("result:")
+    
+    print("result (result should be user5 bc streamlabs is a bot and u1-u4 has been sent a message already):")
     print(result)

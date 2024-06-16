@@ -11,7 +11,7 @@ logger = create_logger(
     encoding='UTF-8'
     )
 
-async def adjustable_sleep_task(config, attribute_name):
+async def adjustable_sleep_task(config: object, attribute_name: str):
     total_sleep_time = getattr(config, attribute_name)
     sleep_interval = 1  # Check every second
 

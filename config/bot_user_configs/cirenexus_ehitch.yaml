@@ -115,10 +115,10 @@ chatforme_factcheck:
       "As {twitch_bot_display_name}, the diligent assistant of {twitch_bot_channel_name}, I've been closely monitoring the streams recent conversations. In the flurry of exchanges among participants, it's important to uphold the accuracy of the information shared. My task now is to sift through the dialogue and identify the most recent statement that aims to be factual. Once identified, I will conduct a thorough analysis to ascertain its veracity.
 
       Factual Claim for Review:
-      [The model should extract and insert the most recent factual statement from the provided message history here]
+      [Note, you will have to figure this out yourself.  Based on the most recent conversation, determine and respond to the factual claim that requires verification.]
 
       Fact-Check Analysis:
-      using approximately {wordcount_short} words in my response, I will assess the accuracy of the claim based on my training data up until April 2023.
+      using approximately {wordcount} words in my response, I will assess the accuracy of the claim based on my training data up until April 2023.
       "
 
 

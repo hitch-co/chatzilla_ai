@@ -919,7 +919,7 @@ class Bot(twitch_commands.Bot):
             "twitch_bot_display_name":self.config.twitch_bot_display_name,
             "num_bot_responses":self.config.num_bot_responses,
             "users_in_messages_list_text":self.message_handler.users_in_messages_list_text,
-            "wordcount_short":self.config.wordcount_short,
+            "wordcount":self.config.wordcount_medium,
             "bot_operatorname":self.config.twitch_bot_operatorname,
             "twitch_bot_channel_name":self.config.twitch_bot_channel_name
         }

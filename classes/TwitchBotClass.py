@@ -282,7 +282,7 @@ class Bot(twitch_commands.Bot):
             )
 
         # 1c. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
-        if self.config.twitch_bot_username in message.content and "!chat" not in message.content and message.author.name is not None:
+        if self.config.twitch_bot_username in message.content and "!chat" not in message.content and message.author is not None:
             await self._chatforme_main()
 
         # 2. Process the message through the vibecheck service.
@@ -435,12 +435,23 @@ class Bot(twitch_commands.Bot):
                 self.newusers_service.users_sent_messages_list.append(random_user_name)
                 self.logger.debug(f"Selected user: {random_user_name} ({random_user_type})")
 
+                # Get the user's chat history
+                if random_user_type == "returning":
+                    user_specific_chat_history = self.bq_uploader.fetch_user_chat_history_from_bq(
+                        user_login=random_user_name,
+                        interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
+                        users_table_id=self.config.talkzillaai_userdata_table_id,
+                        limit=15
+                    )
+                else:
+                    user_specific_chat_history = "none"
+
                 # Create task to send a message to the selected user
                 try:
                     replacements_dict = {
                         "random_new_user": random_user_name,
                         "wordcount_medium": self.config.wordcount_medium,
-                        "user_specific_chat_history": "lots and lots of tomatos and tomato sauce"
+                        "user_specific_chat_history": user_specific_chat_history
                     }
 
                     # Select the appropriate prompt based on the user type
@@ -511,7 +522,7 @@ class Bot(twitch_commands.Bot):
         
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
-    @twitch_commands.command(name='getstats', aliases=("p_getstats"))
+    @twitch_commands.command(name='getstats', aliases=("p_getstats", "stats"))
     async def get_command_stats(self, ctx):
         table_id = self.config.talkzillaai_usertransactions_table_id
         stats_text = self.bq_uploader.fetch_interaction_stats_as_text(table_id)
@@ -625,20 +636,23 @@ class Bot(twitch_commands.Bot):
         
         return todo
 
-    async def _chatforme_main(self):
+    async def _chatforme_main(self, text_input_from_user=None):
         assistant_name = 'chatforme'
         thread_name = 'chatformemsgs'
         tts_voice = self.config.tts_voice_randomfact
         chatforme_prompt = self.config.chatforme_prompt
 
-        #Select prompt from argument, build the final prompt textand format replacements
+        if text_input_from_user is None:
+            text_input_from_user = 'none'
+
         replacements_dict = {
             "twitch_bot_display_name":self.config.twitch_bot_display_name,
             "num_bot_responses":self.config.num_bot_responses,
             "users_in_messages_list_text":self.message_handler.users_in_messages_list_text,
             "wordcount_medium":self.config.wordcount_medium,
             "bot_operatorname":self.config.twitch_bot_operatorname,
-            "twitch_bot_channel_name":self.config.twitch_bot_channel_name
+            "twitch_bot_channel_name":self.config.twitch_bot_channel_name,
+            "text_input_from_user":text_input_from_user,
         }
 
         # Add a executeTask to the queue
@@ -654,8 +668,40 @@ class Bot(twitch_commands.Bot):
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
         
     @twitch_commands.command(name='chat', aliases=("p_chat"))
-    async def chatforme(self, ctx=None):
-        self.loop.create_task(self._chatforme_main()) #does a task really need to be created here?
+    async def chatforme(self, ctx=None, *args):
+        if args is None or len(args) == 0:
+            text_input_from_user = 'none'
+        else:
+            text_input_from_user = ' '.join(args)
+
+        self.loop.create_task(self._chatforme_main(text_input_from_user)) #does a task really need to be created here?  Maybe should use process task method instead
+
+    @twitch_commands.command(name='last_message', aliases=("m_last_message",))
+    async def last_message(self, ctx, *args):
+        # Parse the command arguments
+        is_sender_mod = await self._check_mod(ctx)
+
+        if is_sender_mod == True and args is not None:
+            if len(args) == 1:
+                user_name = args[0]
+            else:
+                self.logger.warning(f"Incorrect number of arguments ({len(args)} were sent, only 1 required)")
+
+            last_message = self.bq_uploader.fetch_user_chat_history_from_bq(
+                user_login=user_name,
+                interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
+                users_table_id=self.config.talkzillaai_userdata_table_id,
+                limit=1
+                )
+            
+            # Get content variable from the last message json string
+            last_message = json.loads(last_message)
+            last_message_content = last_message[0]['content']
+
+        else:
+            self.logger.info(f"Sender is not a mod or incorrect number of arguments {len(args)} were sent, 1 is required.")
+        
+        await self._send_channel_message_wrapper(f"Last message from {user_name}: {last_message_content}")
 
     @twitch_commands.command(name='vc', aliases=("m_vc"))
     async def vc(self, message, *args):
@@ -905,11 +951,14 @@ class Bot(twitch_commands.Bot):
         self.logger.info(f"OUAT loop has been stopped, self.ouat_counter has been reset to {self.ouat_counter}")
         self.message_handler.ouat_msg_history.clear()
 
-    async def _factcheck_main(self):
+    async def _factcheck_main(self, text_input_from_user=None):
 
         assistant_name = 'factchecker'
         thread_name = 'chatformemsgs'
         tts_voice = self.config.tts_voice_randomfact
+
+        if text_input_from_user is None:
+            text_input_from_user = "none"
 
         # select a random number/item based on the number of items inside of self.config.factchecker_prompts.values()
         random_number = random.randint(0, len(self.config.factchecker_prompts.values())-1)
@@ -921,7 +970,8 @@ class Bot(twitch_commands.Bot):
             "users_in_messages_list_text":self.message_handler.users_in_messages_list_text,
             "wordcount":self.config.wordcount_medium,
             "bot_operatorname":self.config.twitch_bot_operatorname,
-            "twitch_bot_channel_name":self.config.twitch_bot_channel_name
+            "twitch_bot_channel_name":self.config.twitch_bot_channel_name,
+            "factual_claim_input":text_input_from_user
         }
 
         try:
@@ -942,8 +992,12 @@ class Bot(twitch_commands.Bot):
             return self.logger.error(f"error with chatforme in twitchbotclass: {e}")
 
     @twitch_commands.command(name='factcheck', aliases=("p_factcheck"))
-    async def factcheck(self, ctx):
-        self.loop.create_task(self._factcheck_main())
+    async def factcheck(self, ctx, *args):
+        if args is not None and len(args) > 0:
+            text_input_from_user = ' '.join(args)
+        else:
+            text_input_from_user = 'none'
+        self.loop.create_task(self._factcheck_main(text_input_from_user))
 
     @twitch_commands.command(name='update_config', aliases=("m_update_config",))
     async def update_config(self, ctx, *args):

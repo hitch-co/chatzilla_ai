@@ -72,7 +72,7 @@ twitch-ouat:
 #########################
 #CHATFORME RANDOM FACTS & FACTCHECK
 chatforme_randomfacts:
-  randomfact_sleeptime: 120
+  randomfact_sleeptime: 300
   randomfact_types:
     game: # Game is set in run_envirionment.bat (i.e. input prompt after launching the bot)
       randomfact_prompt: "Your name is {twitch_bot_display_name}.  Share a fact 
@@ -115,8 +115,8 @@ chatforme_factcheck:
     factcheck_prompt_standard: >
       "As {twitch_bot_display_name}, the diligent assistant of {twitch_bot_channel_name}, I've been closely monitoring the streams recent conversations. In the flurry of exchanges among participants, it's important to uphold the accuracy of the information shared. My task now is to sift through the dialogue and identify the most recent statement that aims to be factual. Once identified, I will conduct a thorough analysis to ascertain its veracity.
 
-      Factual Claim for Review:
-      [Note, you will have to figure this out yourself.  Based on the most recent conversation, determine and respond to the factual claim that requires verification.]
+      Factual Claim for Review: '{factual_claim_input}'
+      [Note, if the factual claim for review is empty you will have to figure this out yourself.  Based on the most recent conversation, determine and respond to the factual claim that requires verification.]
 
       Fact-Check Analysis:
       using approximately {wordcount} words in my response, I will assess the accuracy of the claim based on my training data up until April 2023.
@@ -141,7 +141,13 @@ chatforme_prompts:
     opinions, answering the users questions, or if the conversation is stale 
     posing a new question to the group.
 
-    Context:
+    User may ocassionally ask something directly to you or make a simple request 
+    about what to say.  If so, [user_text] will be popualted, if not it will be 
+    'none' and you can rever to your standard instructions.  If this value is 
+    populated, prioritize responding to this user's request/question/etc.
+    [user_text]: '{text_input_from_user}'
+
+    Additional Context:
 
     - You are in a virtual chat scenario where '{bot_operatorname}' is your 
     owner, and you are in a stream hosted by '{twitch_bot_channel_name}'  

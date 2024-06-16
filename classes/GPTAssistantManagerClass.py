@@ -190,7 +190,7 @@ class GPTThreadManager(GPTBaseClass):
         Process the task before executing. This method includes logging, validation,
         and any other pre-processing steps needed before the task is handled.
         """
-        self.logger.info(f"2. Starting to process task: '{task['type']}' for assistant/thread: '{task['assistant_name']}' ({task['thread_name']})")
+        self.logger.info(f"2. Starting to process task: '{task['type']}' for thread_name: '{task['thread_name']}")
         self.logger.debug(f"Task details: {task}")
 
         # Basic validation to ensure necessary fields are present

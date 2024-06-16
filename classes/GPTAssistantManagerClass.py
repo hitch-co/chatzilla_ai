@@ -190,7 +190,7 @@ class GPTThreadManager(GPTBaseClass):
         Process the task before executing. This method includes logging, validation,
         and any other pre-processing steps needed before the task is handled.
         """
-        self.logger.info(f"2. Starting to process task: '{task['type']}' for thread: '{task['thread_name']}'")
+        self.logger.info(f"2. Starting to process task: '{task['type']}' for thread_name: '{task['thread_name']}")
         self.logger.debug(f"Task details: {task}")
 
         # Basic validation to ensure necessary fields are present
@@ -361,8 +361,8 @@ class GPTResponseManager(GPTBaseClass):
         """
         assistant_id = self.gpt_assistant_manager.assistants[assistant_name]['id']
         thread_id = self.gpt_thread_manager.threads[thread_name]['id']
-        self.logger.info(f"Executing Assistant/Thread: {assistant_id}, Thread: {thread_id}")
-        self.logger.debug(f"Thread_instructions: {thread_instructions[0:25]}...")
+        self.logger.info(f"3. Executing Assistant/Thread: '{assistant_name}' ({assistant_id}, Thread id: {thread_id}")
+        self.logger.debug(f"Thread_instructions: {thread_instructions[0:50]}...")
 
         try:
             response_thread_messages = await self._run_and_get_assistant_response_thread_messages(

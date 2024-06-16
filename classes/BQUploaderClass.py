@@ -1,3 +1,5 @@
+import json
+
 from google.api_core.exceptions import GoogleAPIError
 
 from classes.ConfigManagerClass import ConfigManager
@@ -31,7 +33,7 @@ class BQUploader:
             SUM(CASE WHEN LOWER(content) LIKE '!what%' THEN 1 ELSE 0 END) as what_count,
             SUM(CASE WHEN LOWER(content) LIKE '!factcheck%' THEN 1 ELSE 0 END) as factcheck_count,
             SUM(CASE WHEN LOWER(content) LIKE '!vc%' THEN 1 ELSE 0 END) as vibecheck_count,
-            SUM(CASE WHEN LOWER(content) LIKE '@chatzilla_ai%' THEN 1 ELSE 0 END) as chatzilla_shoutouts,
+            SUM(CASE WHEN LOWER(content) LIKE '@{self.config.twitch_bot_display_name}%' THEN 1 ELSE 0 END) as bot_shoutouts,
             COUNT(*) as total_messages              
         
         FROM `{table_id}`
@@ -47,11 +49,13 @@ class BQUploader:
 
         # Convert RowIterator to a list and get the first row
         result_list = list(result)[0]  # 'result' is the RowIterator from BQ query
+        
+        #Include line breaks in the stats text
         if result_list:
             stats_text = f"""
-                Historic !commands usage and mentions:
+                Historic !commands usage and mentions: \n
                 Total messages received: {result_list.total_messages} ||
-                @chatzilla_ai mentions: {result_list.chatzilla_shoutouts}\n ||
+                {self.config.twitch_bot_display_name} mentions: {result_list.bot_shoutouts}\n ||
                 !chat: {result_list.chat_count}\n ||
                 !startstory: {result_list.startstory_count}\n ||
                 !what: {result_list.what_count}\n ||
@@ -78,6 +82,37 @@ class BQUploader:
 
         return results
 
+    def fetch_user_chat_history_from_bq(
+            self, 
+            user_login: str, 
+            interactions_table_id: str, 
+            users_table_id: str, 
+            limit: int = 5
+            ) -> str:
+        
+        query = f"""
+            SELECT
+                CAST(ui.timestamp as string) as timestamp,
+                u.user_login,
+                ui.content,
+            FROM `{interactions_table_id}` ui
+            JOIN `{users_table_id}` u ON ui.user_id = u.user_id
+            WHERE lower(u.user_login) = lower('{user_login}')
+            ORDER BY ui.timestamp DESC
+            LIMIT {limit}
+            """
+        query_job = self.bq_client.query(query)
+
+        results = [{
+            "timestamp": row.timestamp, 
+            "user_login": row.user_login, 
+            "content": row.content
+            } for row in query_job]
+
+        json_results = json.dumps(results)
+
+        return json_results
+    
     def generate_twitch_user_interactions_records_for_bq(self, records: list[dict]) -> list[dict]:
         rows_to_insert = []
         for record in records:
@@ -143,5 +178,22 @@ class BQUploader:
             self.logger.debug(f"Query plan: {job_stats}")
 
 if __name__ == '__main__':
-    chatdataclass = BQUploader()
-    chatdataclass._fetch_channel_viewers()
+
+    from google.cloud import bigquery
+
+    ConfigManager.initialize(yaml_filepath=r'C:\_repos\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml')
+    config = ConfigManager.get_instance()
+    
+    bq_client = bigquery.Client()
+
+    chatdataclass = BQUploader(bq_client)
+
+    # Test the fetch_user_chat_history_from_bq method
+    test_list_of_chat_history = chatdataclass.fetch_user_chat_history_from_bq(
+        user_login='mynameiskhan1090', 
+        interactions_table_id='eh-talkzilla-ai.TalkzillaAI_UserData.user_interactions',
+        users_table_id='eh-talkzilla-ai.TalkzillaAI_UserData.users', 
+        limit=15
+        )
+    
+    print(test_list_of_chat_history)

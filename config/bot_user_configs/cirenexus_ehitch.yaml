@@ -128,9 +128,9 @@ chatforme_factcheck:
 msg_history_limit: 10
 num_bot_responses: 1
 wordcounts:
-  short: 19
-  medium: 25
-  long: 45
+  short: 23
+  medium: 26
+  long: 40
 
 chatforme_prompts:
   standard: >

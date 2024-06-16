@@ -308,7 +308,7 @@ class Bot(twitch_commands.Bot):
             self.bq_uploader.send_queryjob_to_bq(query=channel_viewers_queue_query)            
             viewer_interaction_records = self.bq_uploader.generate_twitch_user_interactions_records_for_bq(records=self.message_handler.message_history_raw)
 
-            self.logger.info(f"viewer_interaction_records: {viewer_interaction_records}")
+            self.logger.debug(f"viewer_interaction_records: {viewer_interaction_records}")
 
             self.bq_uploader.send_recordsjob_to_bq(
                 table_id=self.usertransactions_table_id,
@@ -316,9 +316,10 @@ class Bot(twitch_commands.Bot):
                 )
 
             self.logger.info(f"Clearing message_history_raw and channel_viewers_queue.")
-            self.message_handler.message_history_raw.clear()
-            
+            self.logger.debug(f"MESSAGE HISTORY RAW PRE-CLEAR: {self.message_handler.message_history_raw}")
             self.logger.debug(f"CHANNEL VIEWERS QUEUE PRE-CLEAR: {self.twitch_api.channel_viewers_queue}")
+            
+            self.message_handler.message_history_raw.clear()
             self.twitch_api.channel_viewers_queue.clear()
 
         # 5. self.handle_commands runs through bot commands
@@ -327,7 +328,8 @@ class Bot(twitch_commands.Bot):
         
         self.logger.debug("THIS IS THE TASK QUEUE:")
         self.logger.debug(self.gpt_thread_mgr.task_queues)
-        self.logger.info("Message processing complete.")      
+        self.logger.info("MESSAGE PROCESSED: Processing message...")      
+        self.logger.info("---------------------------------------")
 
     def _get_commands(self):
         commands_info = []
@@ -864,11 +866,6 @@ class Bot(twitch_commands.Bot):
                 #storyender
                 elif self.ouat_counter == self.config.ouat_story_max_counter:
                     gpt_prompt_final = self.config.storyteller_storyender_prompt
-                    await self.stop_ouat_loop()
-                                                    
-                elif self.ouat_counter > self.config.ouat_story_max_counter:
-                    await self.stop_ouat_loop()
-                    continue
 
                 # Combine prefix and final article content
                 gpt_prompt_final = self.config.storyteller_storysuffix_prompt + " " + gpt_prompt_final
@@ -905,7 +902,11 @@ class Bot(twitch_commands.Bot):
 
                 await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
-            await asyncio.sleep(int(self.config.ouat_message_recurrence_seconds))
+            if self.ouat_counter == self.config.ouat_story_max_counter:
+                await self.stop_ouat_loop()
+                break
+            else:
+                await asyncio.sleep(int(self.config.ouat_message_recurrence_seconds))
 
     @twitch_commands.command(name='addtostory', aliases=("p_addtostory"))
     async def add_to_story_ouat(self, ctx,  *args):

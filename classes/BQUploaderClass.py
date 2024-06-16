@@ -138,8 +138,6 @@ class BQUploader:
         return rows_to_insert   
 
     def send_recordsjob_to_bq(self, table_id, records:list[dict]) -> None:
-
-        self.logger.info("Starting BigQuery send_recordsjob_to_bq() job...")
         table = self.bq_client.get_table(table_id)
         try:
             errors = self.bq_client.insert_rows_json(table, records)     
@@ -152,7 +150,7 @@ class BQUploader:
             self.logger.error("These are the original records, in full:")
             self.logger.error(records)
         else:
-            self.logger.info(f"{len(records)} records successfully inserted into table_id: {table_id}")
+            self.logger.info(f"BigQuery send_recordsjob_to_bq() job sent {len(records)} records successfully into table_id: {table_id}")
             self.logger.debug("These are the records:")
             self.logger.debug(records[0:2])
           

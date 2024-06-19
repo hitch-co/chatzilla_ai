@@ -15,7 +15,7 @@ import modules.adjustable_sleep_task as adjustable_sleep_task
 
 from classes.TwitchAPI import TwitchAPI
 
-from classes.ConsoleColoursClass import bcolors, printc
+# from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
 from classes.GPTChatCompletionClass import GPTChatCompletion
 
@@ -183,7 +183,7 @@ class Bot(twitch_commands.Bot):
                     replacements_dict=replacements_dict
                 )
             except Exception as e:
-                self.logger.error(f"Error occurred in 'execute_thread': {e}", exc_info=True)
+                self.logger.error(f"Error occurred in 'execute_thread': {e}")
                 gpt_response = None
 
             # Send the GPT response to the channel
@@ -198,10 +198,10 @@ class Bot(twitch_commands.Bot):
                 except Exception as e:
                     self.logger.error(f"Error occurred in 'send_output_message_and_voice': {e}")
                 self.logger.debug("Thread executed...")
-
+                self.logger.debug(f"'{task['type']}' task handled for thread: {thread_name}") 
             else:
                 self.logger.error(f"Gpt response is None, this should not happen.  Task: {task}")
-            self.logger.debug(f"'{task['type']}' task handled for thread: {thread_name}")           
+          
 
     async def event_ready(self):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
@@ -770,8 +770,9 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='startstory', aliases=("p_startstory"))
     async def startstory(self, message, *args):
-        self.logger.info(f"self.ouat_counter={self.ouat_counter}")
+        self.logger.info(f"Starting story, self.ouat_counter={self.ouat_counter}")
         if self.ouat_counter == 0:
+            self.ouat_counter += 1
             self.message_handler.ouat_msg_history.clear()
 
             # Extract the user requested plotline and if '' or ' ', etc. then set to None
@@ -796,13 +797,13 @@ class Bot(twitch_commands.Bot):
             self.selected_theme = random.choice(theme_values)
 
             # Log the story details
-            self.logger.info(f"A story was started by {message.author.name} ({message.author.id})")
-            self.logger.info(f"thread_name and assistant_name: {thread_name}, {assistant_name}")
-            self.logger.info(f"user_requested_plotline_str: {user_requested_plotline_str}")
-            self.logger.info(f"current_story_voice: {self.current_story_voice}")
-            self.logger.info(f"selected_writing_tone: {self.selected_writing_tone}")
-            self.logger.info(f"selected_writing_style: {self.selected_writing_style}")
-            self.logger.info(f"selected_theme: {self.selected_theme}")
+            self.logger.info(f"...A story was started by {message.author.name} ({message.author.id})")
+            self.logger.info(f"...thread_name and assistant_name: {thread_name}, {assistant_name}")
+            self.logger.info(f"...user_requested_plotline_str: {user_requested_plotline_str}")
+            self.logger.info(f"...current_story_voice: {self.current_story_voice}")
+            self.logger.info(f"...selected_writing_tone: {self.selected_writing_tone}")
+            self.logger.info(f"...selected_writing_style: {self.selected_writing_style}")
+            self.logger.info(f"...selected_theme: {self.selected_theme}")
 
             if user_requested_plotline_str is not None:
                 submitted_plotline = user_requested_plotline_str      
@@ -848,11 +849,10 @@ class Bot(twitch_commands.Bot):
                 continue
 
             else:
-                self.ouat_counter += 1
                 self.logger.info(f"OUAT details: Starting cycle #{self.ouat_counter} of the OUAT Storyteller") 
 
                 #storystarter
-                if self.ouat_counter == 1:
+                if self.ouat_counter == 0 or self.ouat_counter == 1:
                     gpt_prompt_final = self.config.storyteller_storystarter_prompt
 
                 #storyprogressor
@@ -873,7 +873,7 @@ class Bot(twitch_commands.Bot):
                 thread_name = 'ouatmsgs'
                 tts_voice = self.current_story_voice
 
-                self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (self.config.ouat_story_max_counter={self.config.ouat_story_max_counter})")
+                self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (ouat_story_max_counter={self.config.ouat_story_max_counter})")
                 self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
                 self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
 

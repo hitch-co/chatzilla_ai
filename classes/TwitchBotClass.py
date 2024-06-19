@@ -26,7 +26,7 @@ from services.AudioService import AudioService
 from services.BotEarsService import BotEars
 from services.SpeechToTextService import SpeechToTextService
 from services.ExplanationService import ExplanationService
-from services.WakeWordDetector import WakeWordDetector
+from services.WakeWordDetector import WakeWordDetector #troubleshoot
 
 runtime_logger_level = 'INFO'
 class Bot(twitch_commands.Bot):

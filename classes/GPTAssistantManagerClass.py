@@ -13,7 +13,7 @@ import modules.gpt_utils as gpt_utils
 gpt_base_debug_level = 'DEBUG'
 gpt_thread_mgr_debug_level = 'DEBUG'
 gpt_assistant_mgr_debug_level = 'DEBUG'
-gpt_response_mgr_debug_level = 'DEBUG'
+gpt_response_mgr_debug_level = 'INFO'
 
 class GPTBaseClass:
     """
@@ -253,7 +253,7 @@ class GPTResponseManager(GPTBaseClass):
                 self.logger.debug(response)
                 return response
             else:
-                self.logger.debug(f"The 'response' object is not completed yet. Polling time: {counter*polling_seconds} seconds...")
+                self.logger.info(f"The 'response' object is not completed yet. Polling time: {counter*polling_seconds} seconds...")
                 counter+=1
             await asyncio.sleep(polling_seconds)
         raise ValueError(f"Response not completed after {counter*polling_seconds} seconds")
@@ -360,7 +360,7 @@ class GPTResponseManager(GPTBaseClass):
         assistant_id = self.gpt_assistant_manager.assistants[assistant_name]['id']
         thread_id = self.gpt_thread_manager.threads[thread_name]['id']
         self.logger.info(f"Scheduler-3: Executing Assistant/Thread: '{assistant_name}' ({assistant_id}, Thread id: {thread_id}")
-        self.logger.debug(f"...Thread_instructions: {thread_instructions[0:50]}...")
+        self.logger.info(f"...Thread_instructions: {thread_instructions[0:50]}...")
 
         try:
             response_thread_messages = await self._run_and_get_assistant_response_thread_messages(
@@ -384,8 +384,6 @@ class GPTResponseManager(GPTBaseClass):
             replacements_dict['message_to_shorten'] = extracted_message
             replacements_dict['original_thread_instructions'] = thread_instructions
 
-            # Add original response #NOTE: FORMAT
-            self.logger.debug(f"...This is the extracted_message_incl_shorten_prompt: {self.yaml_data.shorten_response_length_prompt}")  
             try:
                 response_thread_messages = await self._run_and_get_assistant_response_thread_messages(
                     assistant_id=assistant_id,
@@ -429,9 +427,7 @@ class GPTResponseManager(GPTBaseClass):
             ValueError: If the 'role' parameter is not 'user' or 'assistant'.
         """
         #NOTE: could use a thread registry to share self.threads between classes 
-        self.logger.debug(f"Message content: {message_content}")
-        self.logger.debug(f"Message content: {thread_name}")
-        self.logger.debug(f"Message role: {role}")
+        self.logger.debug(f"Message content (role: {role}, thread_name: {thread_name}): {message_content[0:50]}...")
         
         # Validate the role
         if role not in ['user', 'assistant']:
@@ -439,8 +435,6 @@ class GPTResponseManager(GPTBaseClass):
 
         if thread_name in self.gpt_thread_manager.threads:
             thread_id = self.gpt_thread_manager.threads[thread_name]['id']
-            self.logger.debug(f"Thread '{thread_name}' found with ID: {thread_id}")
-            self.logger.debug(f"Role: {role}, Content: '{message_content[0:25]}...'")
 
             async for attempt in AsyncRetrying(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True):
                 with attempt:
@@ -449,7 +443,7 @@ class GPTResponseManager(GPTBaseClass):
                         role=role, 
                         content=message_content
                     )
-                    self.logger.debug(f"Finished adding message to thread '{thread_name}' (ID: {thread_id})")
+                    self.logger.info(f"Finished adding message to thread ({thread_name}/{thread_id}): Message content {message_content[0:50]}...")
                     return message_object
         else:
             self.logger.warning(f"Thread '{thread_name}' not found.")

@@ -25,6 +25,7 @@ from services.ChatForMeService import ChatForMeService
 from services.AudioService import AudioService
 from services.BotEarsService import BotEars
 from services.SpeechToTextService import SpeechToTextService
+from services.ExplanationService import ExplanationService
 
 runtime_logger_level = 'INFO'
 class Bot(twitch_commands.Bot):
@@ -111,6 +112,13 @@ class Bot(twitch_commands.Bot):
         # Instantiate the speech to text service
         self.s2t_service = SpeechToTextService()
 
+        # Instantiate the explanation service
+        self.explanation_service = ExplanationService(
+            config=self.config,
+            gpt_thread_mgr=self.gpt_thread_mgr,
+            message_handler=self.message_handler
+            )
+
         #Taken from app authentication class() #TODO: Reudndant with twitchAPI?
         self.twitch_auth = twitch_auth
 
@@ -138,6 +146,13 @@ class Bot(twitch_commands.Bot):
         # Initialize the twitch bot's channel and user IDs
         self.twitch_bot_client_id = self.config.twitch_bot_client_id
         self.logger.info("TwitchBotClass initialized")
+
+        # register commands
+        self._register_commands()
+
+    def _register_commands(self):
+            self.add_command(twitch_commands.command(name='explain', aliases=("p_explain"))(self.explanation_service.startexplanation))
+            self.add_command(twitch_commands.command(name='stopexplain', aliases=("m_stopexplain", 'stopexplanation'))(self.explanation_service.stop_explanation))
 
     async def handle_tasks(self, task: dict):
         
@@ -233,6 +248,10 @@ class Bot(twitch_commands.Bot):
         # start randomfact loop
         self.logger.debug('Starting the randomfact service')
         self.loop.create_task(self.randomfact_task())
+
+        # start explanation loop
+        self.logger.debug('Starting the explanation service')
+        self.loop.create_task(self.explanation_service.explanation_task())
 
         # Create Assistants
         self.assistants_config = self.config.gpt_assistant_prompts
@@ -418,7 +437,7 @@ class Bot(twitch_commands.Bot):
                         user['username'] not in self.config.twitch_bot_channel_name and
                         user['username'] not in self.config.twitch_bot_username and
                         user['username'] not in self.config.twitch_bot_display_name
-                        #and user['username'] not in "crubeyawne"
+                        and user['username'] not in "crubeyawne"
                         #and user['username'] not in "nanovision"
                         #and user['username'] not in mods_list
                         )
@@ -807,11 +826,11 @@ class Bot(twitch_commands.Bot):
 
             if user_requested_plotline_str is not None:
                 submitted_plotline = user_requested_plotline_str      
-                self.logger.info(f"2: This is the submitted plotline: {submitted_plotline}")
+                self.logger.info(f"Scheduler-2: This is the submitted plotline: {submitted_plotline}")
 
             elif user_requested_plotline_str is None:
                 submitted_plotline = self.article_generator.fetch_random_article_content(article_char_trunc=1000)                    
-                self.logger.info(f"2: This is the random article plotline: {submitted_plotline}")
+                self.logger.info(f"Scheduler-2: This is the random article plotline: {submitted_plotline}")
 
             gpt_prompt_text = self.config.story_user_opening_scene_summary_prompt + " " + self.config.storyteller_storysuffix_prompt    
             replacements_dict = {
@@ -849,6 +868,7 @@ class Bot(twitch_commands.Bot):
                 continue
 
             else:
+                self.ouat_counter += 1
                 self.logger.info(f"OUAT details: Starting cycle #{self.ouat_counter} of the OUAT Storyteller") 
 
                 #storystarter
@@ -856,7 +876,7 @@ class Bot(twitch_commands.Bot):
                     gpt_prompt_final = self.config.storyteller_storystarter_prompt
 
                 #storyprogressor
-                if self.ouat_counter <= self.config.ouat_story_progression_number:
+                elif self.ouat_counter <= self.config.ouat_story_progression_number:
                     gpt_prompt_final = self.config.storyteller_storyprogressor_prompt
 
                 #storyfinisher

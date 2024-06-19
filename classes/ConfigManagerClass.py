@@ -87,6 +87,7 @@ class ConfigManager:
 
                 self.yaml_gpt_config(yaml_config)
                 self.yaml_gpt_voice_config(yaml_config)
+                self.yaml_gpt_explain_config(yaml_config)
                 self.yaml_gpt_thread_config(yaml_config)
                 self.yaml_gpt_assistant_config(yaml_config)
                 
@@ -187,6 +188,19 @@ class ConfigManager:
 
     def yaml_gpt_thread_config(self, yaml_config):
         self.gpt_thread_names = yaml_config['gpt_thread_names']
+
+    def yaml_gpt_explain_config(self, yaml_config):
+        self.gpt_explain_prompts = yaml_config['gpt_explain_prompts']
+        self.explanation_suffix = yaml_config['gpt_explain_prompts']['explanation_suffix']
+        self.explanation_starter = yaml_config['gpt_explain_prompts']['explanation_starter']
+        self.explanation_progressor = yaml_config['gpt_explain_prompts']['explanation_progressor']
+        self.explanation_additional_detail_prefix = yaml_config['gpt_explain_prompts']['explanation_additional_detail_prefix']
+        self.explanation_user_opening_summary_prompt = yaml_config['gpt_explain_prompts']['explanation_user_opening_summary_prompt']
+        self.explanation_ender = yaml_config['gpt_explain_prompts']['explanation_ender']
+
+        self.explanation_progression_number = yaml_config['gpt_explain_prompts']['explanation_progression_number']
+        self.explanation_max_counter = yaml_config['gpt_explain_prompts']['explanation_max_counter']
+        self.explanation_message_recurrence_seconds = yaml_config['gpt_explain_prompts']['explanation_message_recurrence_seconds']
 
     def yaml_gpt_voice_config(self, yaml_config):
         self.openai_vars = yaml_config['openai-api']

@@ -33,6 +33,7 @@ class MessageHandler:
 
         # Message History Lists
         self.ouat_msg_history = []
+        self.explanation_msg_history = []
         self.chatforme_msg_history = []
         self.nonbot_temp_msg_history = []
 
@@ -66,6 +67,7 @@ class MessageHandler:
         # Cleanup message histories for GPT
         message_histories = [
             ("ouat_msg_history", self.ouat_msg_history, self.msg_history_limit),
+            ("explanation_msg_history", self.explanation_msg_history, self.msg_history_limit),
             ("chatforme_msg_history", self.chatforme_msg_history, self.msg_history_limit),
             ("nonbot_temp_msg_history", self.nonbot_temp_msg_history, self.msg_history_limit),
             ("all_msg_history_gptdict", self.all_msg_history_gptdict, self.msg_history_limit)
@@ -191,6 +193,7 @@ class MessageHandler:
             self.nonbot_temp_msg_history.append(gpt_ready_msg_dict)
         elif message.author is None: 
             self.ouat_msg_history.append(gpt_ready_msg_dict)
+            self.explanation_msg_history.append(gpt_ready_msg_dict)
 
         #cleanup msg histories for GPT
         self._cleanup_message_history()

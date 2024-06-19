@@ -10,10 +10,10 @@ from classes.ConfigManagerClass import ConfigManager
 
 import modules.gpt_utils as gpt_utils
 
-gpt_base_debug_level = 'INFO'
-gpt_thread_mgr_debug_level = 'INFO'
-gpt_assistant_mgr_debug_level = 'INFO'
-gpt_response_mgr_debug_level = 'INFO'
+gpt_base_debug_level = 'DEBUG'
+gpt_thread_mgr_debug_level = 'DEBUG'
+gpt_assistant_mgr_debug_level = 'DEBUG'
+gpt_response_mgr_debug_level = 'DEBUG'
 
 class GPTBaseClass:
     """
@@ -176,12 +176,12 @@ class GPTThreadManager(GPTBaseClass):
     async def task_scheduler(self):
         self.logger.info("Starting task scheduler...")
         while True:
-            self.logger.debug("Checking task queues...")
+            self.logger.info("Checking task queues...")
             for thread_name, queue in self.task_queues.items():
                 if not queue.empty():
                     task = await queue.get()
-                    self.logger.info(f"1. Task (type: {task['type']}) found in queue...")
-                    self.logger.debug(f"...executing process_task() with task for thread '{task['thread_name']}'")
+                    self.logger.info(f"Task found in queue (type: {task['type']})...")
+                    self.logger.debug(f"...executing process_task() with: {task}")
                     await self._process_task(task)
             await asyncio.sleep(2)
 
@@ -190,23 +190,21 @@ class GPTThreadManager(GPTBaseClass):
         Process the task before executing. This method includes logging, validation,
         and any other pre-processing steps needed before the task is handled.
         """
-        self.logger.info(f"2. Starting to process task: '{task['type']}' for thread_name: '{task['thread_name']}")
+        self.logger.info(f"Scheduler-2: Processing task '{task['type']}' for thread_name: '{task['thread_name']}")
         self.logger.debug(f"Task details: {task}")
 
         # Basic validation to ensure necessary fields are present
         if not task.get('type') or not task.get('thread_name'):
-            self.logger.error("Task missing required fields. Task will be skipped.")
-            self.logger.error(f"Invalid task: {task}")
+            self.logger.error("...Task missing required fields. Task will be skipped.")
+            self.logger.error(f"...Invalid task: {task}")
             raise ValueError("Task missing required fields. Task will be skipped.")
-
-        self.logger.debug(f"Task validated successfully")
 
         # Check if the on_task_ready callback is set and invoke it to handle the task execution
         if self.on_task_ready:
-            self.logger.debug(f"Invoking task handler for task associated with thread name, execution type: {task['thread_name']}, {task['type']}")
+            self.logger.debug(f"...Invoking task handler for task associated with thread name, execution: {task['thread_name']}, {task['type']}")
             await self.on_task_ready(task)
         else:
-            self.logger.warning("No task handler has been set. Unable to execute task.")
+            self.logger.warning("...No task handler has been set. Unable to execute task.")
 
 class GPTResponseManager(GPTBaseClass):
     """
@@ -322,24 +320,24 @@ class GPTResponseManager(GPTBaseClass):
         """
         try:
             sorted_response_thread_messages = sorted(response_thread_messages.data, key=lambda msg: msg.created_at, reverse=True)
-            self.logger.debug("This is the sorted_response_thread_messages:")
+            self.logger.debug("...This is the sorted_response_thread_messages:")
             self.logger.debug(sorted_response_thread_messages)
 
             for message in sorted_response_thread_messages:
-                self.logger.info(f"This is the message.role: {message.role}")
+                self.logger.debug(f"...This is the message.role: {message.role}")
                 if message.role == 'assistant':
                     for content in message.content:
                         if content.type == 'text':
-                            self.logger.info(f"This is the '{message.role}' 'content.text.value': {content.text.value}")
+                            self.logger.info(f"Scheduler-4: This is the gpt response from the '{message.role}': {content.text.value}")
                             return content.text.value
                 else:
-                    self.logger.error("No response found in thread messages")
-                    raise ValueError("No response found in thread messages")    
+                    self.logger.error("...No response found in thread messages")
+                    raise ValueError("...No response found in thread messages")    
             return None
         except Exception as e:
-            self.logger.error(f"Error extracting latest response from thread messages")
+            self.logger.error(f"...Error extracting latest response from thread messages")
             self.logger.error(e)
-            raise ValueError(f"Error extracting latest response from thread messages")
+            raise ValueError(f"...Error extracting latest response from thread messages")
         
     async def execute_thread(
         self, 
@@ -361,8 +359,8 @@ class GPTResponseManager(GPTBaseClass):
         """
         assistant_id = self.gpt_assistant_manager.assistants[assistant_name]['id']
         thread_id = self.gpt_thread_manager.threads[thread_name]['id']
-        self.logger.info(f"3. Executing Assistant/Thread: '{assistant_name}' ({assistant_id}, Thread id: {thread_id}")
-        self.logger.debug(f"Thread_instructions: {thread_instructions[0:50]}...")
+        self.logger.info(f"Scheduler-3: Executing Assistant/Thread: '{assistant_name}' ({assistant_id}, Thread id: {thread_id}")
+        self.logger.debug(f"...Thread_instructions: {thread_instructions[0:50]}...")
 
         try:
             response_thread_messages = await self._run_and_get_assistant_response_thread_messages(
@@ -372,23 +370,22 @@ class GPTResponseManager(GPTBaseClass):
                 replacements_dict=replacements_dict
             )        
             extracted_message = self._extract_latest_response_from_thread_messages(response_thread_messages)
-            self.logger.debug(f"Extracted message and length: ({len(extracted_message)}) Message: {extracted_message}")
+            self.logger.debug(f"...Extracted message and length: ({len(extracted_message)}) Message: {extracted_message}")
         except Exception as e:
-            self.logger.error(f"Error running assistant on thread")
-            self.logger.error(e)
-            raise ValueError(f"Error running assistant on thread")
+            self.logger.error(f"...Error running assistant on thread: {e}")
+            raise ValueError(f"...Error running assistant on thread: {e}")
         
         #Check length of output
         if len(extracted_message) > self.yaml_data.assistant_response_max_length:
-            self.logger.warning(f"Message exceeded character length ({self.yaml_data.assistant_response_max_length}), processing the gpt thread again")
-            self.logger.debug(f"This is the shorten_response_length_prompt: {self.yaml_data.shorten_response_length_prompt}")
+            self.logger.warning(f"...Message exceeded character length ({self.yaml_data.assistant_response_max_length}), processing the gpt thread again")
+            self.logger.debug(f"...This is the shorten_response_length_prompt: {self.yaml_data.shorten_response_length_prompt}")
             
             # Add {message_to_shorten} to replacements_dict
             replacements_dict['message_to_shorten'] = extracted_message
             replacements_dict['original_thread_instructions'] = thread_instructions
 
             # Add original response #NOTE: FORMAT
-            self.logger.debug(f"This is the extracted_message_incl_shorten_prompt: {self.yaml_data.shorten_response_length_prompt}")  
+            self.logger.debug(f"...This is the extracted_message_incl_shorten_prompt: {self.yaml_data.shorten_response_length_prompt}")  
             try:
                 response_thread_messages = await self._run_and_get_assistant_response_thread_messages(
                     assistant_id=assistant_id,
@@ -397,16 +394,16 @@ class GPTResponseManager(GPTBaseClass):
                     replacements_dict=replacements_dict
                 )
             except Exception as e:
-                self.logger.error(f"Error running assistant on thread")
+                self.logger.error(f"...Error running assistant on thread")
                 self.logger.error(e)
-                raise ValueError(f"Error running assistant on thread")
+                raise ValueError(f"...Error running assistant on thread")
                         
             # Extract the latest response from the messages
             extracted_message = self._extract_latest_response_from_thread_messages(response_thread_messages)
 
-        self.logger.debug("This is the response_thread_messages object:")
+        self.logger.debug("...This is the response_thread_messages object:")
         self.logger.debug(response_thread_messages)
-        self.logger.info(f"This is the final response from execute_thread(): '{extracted_message}'")
+        self.logger.info(f"...This is the final response from execute_thread(): '{extracted_message}'")
         return extracted_message
 
     async def add_message_to_thread(

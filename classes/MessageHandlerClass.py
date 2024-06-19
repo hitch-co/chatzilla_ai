@@ -9,7 +9,7 @@ class MessageHandler:
     def __init__(self, gpt_thread_mgr, msg_history_limit):
         self.logger = my_logging.create_logger(
             dirname='log', 
-            logger_name='logger_MessageHandler',
+            logger_name='MessageHandlerClass',
             debug_level=runtime_logger_level,
             mode='w',
             stream_logs=True
@@ -33,6 +33,7 @@ class MessageHandler:
 
         # Message History Lists
         self.ouat_msg_history = []
+        self.explanation_msg_history = []
         self.chatforme_msg_history = []
         self.nonbot_temp_msg_history = []
 
@@ -66,6 +67,7 @@ class MessageHandler:
         # Cleanup message histories for GPT
         message_histories = [
             ("ouat_msg_history", self.ouat_msg_history, self.msg_history_limit),
+            ("explanation_msg_history", self.explanation_msg_history, self.msg_history_limit),
             ("chatforme_msg_history", self.chatforme_msg_history, self.msg_history_limit),
             ("nonbot_temp_msg_history", self.nonbot_temp_msg_history, self.msg_history_limit),
             ("all_msg_history_gptdict", self.all_msg_history_gptdict, self.msg_history_limit)
@@ -120,7 +122,6 @@ class MessageHandler:
     def _pop_message_from_message_history(self, msg_history_list_dict, msg_history_limit):
         if len(msg_history_list_dict) > msg_history_limit:
             msg_history_list_dict.pop(0)
-        return msg_history_list_dict
 
     def _parse_message_metadata(self, message):
         message_metadata = self._get_message_metadata(message)
@@ -147,21 +148,24 @@ class MessageHandler:
         message_role = message_metadata['role']
         message_username = message_metadata['name']
         message_content = message_username+": "+message_metadata['content']
-        message_content = message_metadata['content']
 
         self.logger.info(f"Adding message to queues...")
-        self.logger.info("This is the message_metadata: {}".format(message_metadata))
+        self.logger.debug("This is the message_metadata: {}".format(message_metadata))
 
+        # Check for commands that should not be added to the thread history
+        if message_metadata['content'].startswith('!'):
+            self.logger.info(f"Message '{message_metadata['content']}' is a command and will not be added to the thread history.")
+            return
+    
         # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY FOR BOT RESPONSES, so we exclude those)
-        if message.author is not None and message_metadata['name'] is not self.config.twitch_bot_username and message_metadata['name'] is not "_unknown":
+        if message.author is not None and message_metadata['name'] != self.config.twitch_bot_username and message_metadata['name'] != "_unknown":
             thread_name = 'chatformemsgs'
             task = AddMessageTask(thread_name, message_content, message_role).to_dict()
             
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-            self.logger.info(f"Message author not the bot ({message_metadata['name']})")
-            self.logger.info(f"Task message added to queue: {thread_name}")
+            self.logger.info(f"Message author not the bot '{message_metadata['name']}', message added to queue (thread: {thread_name})")
         else:
-            self.logger.info(f"Message author is the bot ({message_metadata['name']})")
+            self.logger.info(f"Message author is the bot '{message_metadata['name']}', messager not added to queue.")
 
     async def add_to_appropriate_message_history(self, message):
         message_metadata = self._get_message_metadata(message)
@@ -189,10 +193,13 @@ class MessageHandler:
             self.nonbot_temp_msg_history.append(gpt_ready_msg_dict)
         elif message.author is None: 
             self.ouat_msg_history.append(gpt_ready_msg_dict)
+            self.explanation_msg_history.append(gpt_ready_msg_dict)
 
         #cleanup msg histories for GPT
         self._cleanup_message_history()
         self.logger.info("Message added to message histories")
+        self.logger.info(f"Preview of latest 2 messages in message histories ({len(self.all_msg_history_gptdict)} total):")
+        self.logger.info(f"chatforme_msg_history: {self.all_msg_history_gptdict[-1]}")
 
 if __name__ == '__main__':
     print("loaded MessageHandlerClass.py")

@@ -1,10 +1,11 @@
 import os
 import pygame
+import re
 
 from my_modules import my_logging
 from classes.ConfigManagerClass import ConfigManager
 
-runtime_logger_level = 'WARNING'
+runtime_logger_level = 'INFO'
 
 class GPTTextToSpeech:
     def __init__(self, openai_client):
@@ -14,7 +15,7 @@ class GPTTextToSpeech:
             mode='w', 
             stream_logs=True
             )
-
+        
         self.config = ConfigManager.get_instance()
         self.tts_client = openai_client
 
@@ -26,18 +27,27 @@ class GPTTextToSpeech:
         if not os.path.exists(self.config.tts_data_folder):
             os.makedirs(self.config.tts_data_folder)
 
+    def _strip_story_number(self, text_input):
+        # Text is formatted as "This is the story (0 of 8)" where the 0 of 8 is the story number and we don't want text to speech to read it
+        pattern = r'\(\d+ of \d+\)'
+        return re.sub(pattern, '', text_input).strip()
+
     def _get_speech_response(
             self, 
             text_input:str,
             voice_name
             ) -> object:
-        self.logger.info(f"Starting speech create with params: input={text_input}, model={self.tts_model}, voice={voice_name}")
+        self.logger.debug(f"Starting speech create with params: input={text_input}, model={self.tts_model}, voice={voice_name}")
+        
+        text_input = self._strip_story_number(text_input)
+        
         response = self.tts_client.audio.speech.create(
             model=self.tts_model,
             voice=voice_name,
-            input=text_input)
-        self.logger.info("Got response:")
-        self.logger.info(response)
+            input=text_input
+            )
+        self.logger.debug("Got response:")
+        self.logger.debug(response)
         return response
     
     def _write_speech_to_file(
@@ -45,9 +55,9 @@ class GPTTextToSpeech:
             response:object,
             speech_file_path:str
             ) -> None:
-        self.logger.info("starting stream to speech file")
+        self.logger.debug("starting stream to speech file")
         response.stream_to_file(speech_file_path)
-        self.logger.info(f"finished stream to speech file: {speech_file_path}")
+        self.logger.debug(f"finished stream to speech file: {speech_file_path}")
 
     def workflow_t2s(
             self,
@@ -58,8 +68,10 @@ class GPTTextToSpeech:
             ):
         if output_filename is None:
             output_filename = self.tts_data_folder
+            self.logger.debug(f"output_filename is None, setting to {output_filename}")
         if output_dirpath is None:
             output_dirpath = self.output_dirpath
+            self.logger.debug(f"output_dirpath is None, setting to {output_dirpath}")
             
         speech_file_path = os.path.join(os.getcwd(),output_dirpath, output_filename)
         

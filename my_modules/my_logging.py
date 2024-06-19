@@ -1,5 +1,7 @@
 import logging
 
+from classes.ConsoleColoursClass import ColoredFormatter
+
 def create_logger(
         dirname='log', 
         logger_name=None, 
@@ -14,7 +16,7 @@ def create_logger(
         'INFO': logging.INFO,
         'WARNING': logging.WARNING,
         'ERROR': logging.ERROR,
-        'EXCEPTION': logging.ERROR,  # Exception is not a level in Python logging; it's usually logged as an ERROR
+        'CRITICAL': logging.ERROR,  # Exception is not a level in Python logging; it's usually logged as an ERROR
     }
 
     if debug_level.upper() not in level_mapping:
@@ -29,8 +31,12 @@ def create_logger(
 
     logger.setLevel(level_mapping[debug_level.upper()])
 
+    log_format = (
+            '%(asctime)s - %(module)s - %(levelname)s - Name: %(funcName)s - Line: %(lineno)d - %(message)s'
+        )
+
     formatter = logging.Formatter(
-        '%(asctime)s - %(module)s - %(levelname)s - Name: %(funcName)s - Line: %(lineno)d - %(message)s',
+        log_format,
         datefmt='%H:%M:%S'
         )
 
@@ -42,7 +48,11 @@ def create_logger(
     if stream_logs == True:
         stream_handler = logging.StreamHandler()
         stream_handler.setLevel(level_mapping[debug_level.upper()])
-        stream_handler.setFormatter(formatter)
+        colored_formatter = ColoredFormatter(
+            log_format,
+            datefmt='%H:%M:%S'
+        )      
+        stream_handler.setFormatter(colored_formatter)
         logger.addHandler(stream_handler)
 
     return logger

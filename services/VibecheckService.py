@@ -4,8 +4,8 @@ import random
 from classes.ConfigManagerClass import ConfigManager
 
 from my_modules.my_logging import create_logger
-from models.task import AddMessageTask, ExecuteThreadTask
-from models.task import ExecuteThreadTask
+from models.task import AddMessageTask, CreateExecuteThreadTask
+from models.task import CreateExecuteThreadTask
 
 runtime_logger_level = 'DEBUG'
 
@@ -141,7 +141,7 @@ class VibeCheckService:
                         }
 
                     # Add a executeTask to the queue
-                    task = ExecuteThreadTask(
+                    task = CreateExecuteThreadTask(
                         thread_name=thread_name,
                         assistant_name=assistant_name,
                         thread_instructions=vibechecker_prompt,

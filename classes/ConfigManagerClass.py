@@ -53,9 +53,9 @@ class ConfigManager:
             self.logger.error(f"Error, exception in load_yaml_config(): {e}", exc_info=True)
 
         try:
-            self.set_env_variables()
+            self.set_env_file_variables()
         except Exception as e:
-            self.logger.error(f"Error, exception in set_env_variables(): {e}", exc_info=True)
+            self.logger.error(f"Error, exception in set_env_file_variables(): {e}", exc_info=True)
 
     def print_config(self):
         self.logger.debug(f"Bot: {self.twitch_bot_username}") 
@@ -87,6 +87,7 @@ class ConfigManager:
 
                 self.yaml_gpt_config(yaml_config)
                 self.yaml_gpt_voice_config(yaml_config)
+                self.yaml_gpt_explain_config(yaml_config)
                 self.yaml_gpt_thread_config(yaml_config)
                 self.yaml_gpt_assistant_config(yaml_config)
                 
@@ -112,7 +113,7 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Error in load_yaml_config(): {e}")
 
-    def set_env_variables(self):
+    def set_env_file_variables(self):
         if self.env_file_directory and self.env_file_name:
             env_path = os.path.join(self.env_file_directory, self.env_file_name)
             if os.path.exists(env_path):
@@ -174,7 +175,7 @@ class ConfigManager:
 
     def yaml_gpt_config(self, yaml_config):
         try:
-            self.wordcount_short = str(yaml_config['wordcounts']['short'])
+            self.wordcount_short = str(yaml_config['wordcounts']['short']) #2024-06-09: shouldn't these be captured as ints and typecasted when used?
             self.wordcount_medium = str(yaml_config['wordcounts']['medium'])
             self.wordcount_long = str(yaml_config['wordcounts']['long'])
             self.magic_max_waittime_for_gpt_response = int(yaml_config['openai-api']['magic_max_waittime_for_gpt_response'])
@@ -187,6 +188,19 @@ class ConfigManager:
 
     def yaml_gpt_thread_config(self, yaml_config):
         self.gpt_thread_names = yaml_config['gpt_thread_names']
+
+    def yaml_gpt_explain_config(self, yaml_config):
+        self.gpt_explain_prompts = yaml_config['gpt_explain_prompts']
+        self.explanation_suffix = yaml_config['gpt_explain_prompts']['explanation_suffix']
+        self.explanation_starter = yaml_config['gpt_explain_prompts']['explanation_starter']
+        self.explanation_progressor = yaml_config['gpt_explain_prompts']['explanation_progressor']
+        self.explanation_additional_detail_prefix = yaml_config['gpt_explain_prompts']['explanation_additional_detail_prefix']
+        self.explanation_user_opening_summary_prompt = yaml_config['gpt_explain_prompts']['explanation_user_opening_summary_prompt']
+        self.explanation_ender = yaml_config['gpt_explain_prompts']['explanation_ender']
+
+        self.explanation_progression_number = yaml_config['gpt_explain_prompts']['explanation_progression_number']
+        self.explanation_max_counter = yaml_config['gpt_explain_prompts']['explanation_max_counter']
+        self.explanation_message_recurrence_seconds = yaml_config['gpt_explain_prompts']['explanation_message_recurrence_seconds']
 
     def yaml_gpt_voice_config(self, yaml_config):
         self.openai_vars = yaml_config['openai-api']
@@ -203,8 +217,8 @@ class ConfigManager:
             self.formatted_gpt_vibecheck_prompt = yaml_config['formatted_gpt_vibecheck_prompt']
             self.formatted_gpt_viberesult_prompt = yaml_config['formatted_gpt_viberesult_prompt']
             self.newusers_sleep_time = yaml_config['newusers_sleep_time']
-            self.newusers_nonewusers_prompt = yaml_config['newusers_nonewusers_prompt']
             self.newusers_msg_prompt = yaml_config['newusers_msg_prompt']
+            self.returningusers_msg_prompt = yaml_config['returningusers_msg_prompt']
             self.vibechecker_message_wordcount = str(yaml_config['vibechecker_message_wordcount'])
             self.vibechecker_question_session_sleep_time = yaml_config['vibechecker_question_session_sleep_time']
             self.vibechecker_listener_sleep_time = yaml_config['vibechecker_listener_sleep_time']
@@ -254,7 +268,7 @@ class ConfigManager:
             # News Article Feed/Prompts
             self.newsarticle_rss_feed = yaml_config['twitch-ouat']['newsarticle_rss_feed']
             self.story_article_bullet_list_summary_prompt = yaml_config['gpt_thread_prompts']['story_article_bullet_list_summary_prompt'] 
-            self.story_user_bullet_list_summary_prompt = yaml_config['gpt_thread_prompts']['story_user_bullet_list_summary_prompt']
+            self.story_user_opening_scene_summary_prompt = yaml_config['gpt_thread_prompts']['story_user_opening_scene_summary_prompt']
 
             # GPT Thread Prompts
             self.storyteller_storysuffix_prompt = yaml_config['gpt_thread_prompts']['story_suffix']
@@ -263,6 +277,8 @@ class ConfigManager:
             self.storyteller_storyfinisher_prompt = yaml_config['gpt_thread_prompts']['story_finisher']
             self.storyteller_storyender_prompt = yaml_config['gpt_thread_prompts']['story_ender']
             self.ouat_prompt_addtostory_prefix = yaml_config['gpt_thread_prompts']['story_addtostory_prefix']
+            self.randomfact_conversation_director = yaml_config['gpt_thread_prompts']['conversation_director']
+            self.aboutme_prompt = yaml_config['gpt_thread_prompts']['aboutme_prompt']
 
             # OUAT Progression flow / Config
             self.ouat_message_recurrence_seconds = yaml_config['ouat_message_recurrence_seconds']
@@ -287,7 +303,7 @@ class ConfigManager:
 
     def yaml_randomfact_json(self, yaml_config):
         try:
-            self.randomfact_sleep_time = yaml_config['chatforme_randomfacts']['randomfact_sleep_time']
+            self.randomfact_sleeptime = yaml_config['chatforme_randomfacts']['randomfact_sleeptime']
             self.randomfact_selected_game = os.getenv('selected_game')
                             
             # Set selected_type to 'standard' if randomfact_selected_game is None
@@ -308,6 +324,7 @@ class ConfigManager:
             self.randomfact_topics_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['topics_injection_file_path']
             self.randomfact_areas_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['areas_injection_file_path']
             self.randomfact_prompt = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_prompt']
+            self.randomfact_response = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_response']
 
             with open(self.randomfact_topics_json, 'r') as file:
                 self.randomfact_topics = yaml.safe_load(file)
@@ -352,6 +369,8 @@ class ConfigManager:
             self.twitch_bot_scope = yaml_config['twitch-app']['twitch_bot_scope']
 
             self.gpt_model = yaml_config.get('openai-api',{}).get('assistant_model', 'gpt-3.5-turbo') 
+            self.gpt_model_davinci = yaml_config.get('openai-api',{}).get('assistant_model_davinci', 'gpt-3.05-turbo') 
+
             self.tts_model = yaml_config.get('openai-api', {}).get('tts_model','tts-1')
         except Exception as e:
             self.logger.error(f"Error in update_config_from_yaml(): {e}")
@@ -375,6 +394,9 @@ if __name__ == "__main__":
 
     config = main(yaml_filepath)
     print(config)
+
+    print(config.returningusers_msg_prompt)
+    print(config.randomfact_sleeptime)
 
     with open(config.randomfact_topics_json, 'r') as file:
         randomfact_topics = yaml.safe_load(file)

@@ -1,3 +1,5 @@
+import logging
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -8,14 +10,18 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
-    PRAG_SUX = '\033[91m'
+    CRITICAL = '\033[1;31m'
 
-def printc(message, color_name):
-    """Prints a message in a specific color.
+class ColoredFormatter(logging.Formatter):
+    COLORS = {
+        'DEBUG': bcolors.OKCYAN,
+        'INFO': bcolors.OKGREEN,
+        'WARNING': bcolors.WARNING,
+        'ERROR': bcolors.FAIL,
+        'CRITICAL': bcolors.BOLD + bcolors.FAIL,
+    }
 
-    Args:
-        message (str): The message to be printed.
-        color_name (str): One of HEADER, WARNING, FAIL, etc.
-
-    """
-    print(color_name + message + bcolors.ENDC)
+    def format(self, record):
+        color = self.COLORS.get(record.levelname, bcolors.ENDC)
+        message = super().format(record)
+        return f"{color}{message}{bcolors.ENDC}"

@@ -9,7 +9,6 @@ twitch-app:
   twitch_bot_operatorname: 'ehitch'
   twitch_bot_channel_name: 'ehitch'
   twitch_bot_redirect_path: 'callback'
-  twitch_bot_redirect_auth: ''
   twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read' #user:read:email moderation:read channel:moderate'
 
 twitch-bots:
@@ -22,7 +21,9 @@ env_filename: 'config.env'
 env_dirname: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config'
 app_config_dirpath: '.\config'
 keys_dirpath: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\keys'
-is_gpt_testing: True
+
+
+
 spellcheck_commands_filename: 'config\command_spellcheck_terms.json'
 
 #########################
@@ -32,7 +33,7 @@ openai-api:
   assistant_model: "gpt-4o" #"gpt-4-1106-preview" #"gpt-4-0613" #"gpt-3.5-turbo"
   assistant_model_davinci: "code-davinci" #"gpt-3.5-turbo"
   assistant_response_max_length: 300
-  tts_include_voice: "yes"
+  tts_include_voice: True
   tts_model: "tts-1" #tts-2 has higher latency
   tts_voice: "nova"
   tts_volume: .4
@@ -71,7 +72,7 @@ twitch-ouat:
 #########################
 #CHATFORME RANDOM FACTS & FACTCHECK
 chatforme_randomfacts:
-  randomfact_sleep_time: 300
+  randomfact_sleeptime: 300
   randomfact_types:
     game: # Game is set in run_envirionment.bat (i.e. input prompt after launching the bot)
       randomfact_prompt: "Your name is {twitch_bot_display_name}.  Share a fact 
@@ -84,6 +85,8 @@ chatforme_randomfacts:
         gaming!  Don't respond including any reference to the letter you're 
         starting with, just do it.   Remember this is a stream so you may be ignored, if you are, 
         then you can continue to share facts about the topic."
+      randomfact_response: "Looks like there's a conversation happening.  Maybe we can add a small bit of insight into what's beeing said or we can fact check the conversation or we can (sparingly) change the topic only slightly. Be sure to respond in less than {wordcount_short} words."
+ 
       topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_topics_and_subtopics.json'
       areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_categories_and_areas.json'
     standard:
@@ -99,7 +102,8 @@ chatforme_randomfacts:
         primary purpose is to share facts, you can ocassionally stray from that job and 
         respond if you think there is a good opportunity for you to add some value to the conversation.  Do this sparingly.
         Finally, remember this is a a stream so you may be ignored.  if you are ignored, then you can continue to share facts about the topic instead."
-        
+      randomfact_response: "Looks like there's a conversation happening.  Maybe we can add a small bit of insight into what's beeing said or we can fact check the conversation or we can (sparingly) change the topic only slightly. Be sure to respond in less than {wordcount_short} words."
+ 
       topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_topics_and_subtopics.json'
       areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_eras_and_timeperiods.json'
     generic:
@@ -111,11 +115,11 @@ chatforme_factcheck:
     factcheck_prompt_standard: >
       "As {twitch_bot_display_name}, the diligent assistant of {twitch_bot_channel_name}, I've been closely monitoring the streams recent conversations. In the flurry of exchanges among participants, it's important to uphold the accuracy of the information shared. My task now is to sift through the dialogue and identify the most recent statement that aims to be factual. Once identified, I will conduct a thorough analysis to ascertain its veracity.
 
-      Factual Claim for Review:
-      [The model should extract and insert the most recent factual statement from the provided message history here]
+      Factual Claim for Review: '{factual_claim_input}'
+      [Note, if the factual claim for review is empty you will have to figure this out yourself.  Based on the most recent conversation, determine and respond to the factual claim that requires verification.]
 
       Fact-Check Analysis:
-      using approximately {wordcount_short} words in my response, I will assess the accuracy of the claim based on my training data up until April 2023.
+      using approximately {wordcount} words in my response, I will assess the accuracy of the claim based on my training data up until April 2023.
       "
 
 
@@ -126,7 +130,7 @@ msg_history_limit: 10
 num_bot_responses: 1
 wordcounts:
   short: 19
-  medium: 28
+  medium: 25
   long: 45
 
 chatforme_prompts:
@@ -137,11 +141,17 @@ chatforme_prompts:
     opinions, answering the users questions, or if the conversation is stale 
     posing a new question to the group.
 
-    Context:
+    User may ocassionally ask something directly to you or make a simple request 
+    about what to say.  If so, [user_text] will be popualted, if not it will be 
+    'none' and you can rever to your standard instructions.  If this value is 
+    populated, prioritize responding to this user's request/question/etc.
+    [user_text]: '{text_input_from_user}'
 
-    - You are in a virtual chat scenario where '{bot_operatorname}'' is your 
-    owner, and you are in a stream hosted by '{twitch_bot_channel_name}''  
-    and your name is '{twitch_bot_display_name}''
+    Additional Context:
+
+    - You are in a virtual chat scenario where '{bot_operatorname}' is your 
+    owner, and you are in a stream hosted by '{twitch_bot_channel_name}'  
+    and your name is '{twitch_bot_display_name}'
 
     Special Instructions:
 
@@ -232,17 +242,44 @@ gpt_thread_names:
 
 ## GPT Assistant Manager Prompts
 gpt_assistant_prompts:
-  article_summarizer: "The user is going to share with you an article.  Create 5 short bullet points based on the artile summary shared with you.  Two of those bullet points should be designed to make the story more exciting, for example Introducing intriguing characters or compelling dilemmas, ensuring each point is unique. In the new bullet pointed list, make sure to erase mentions of news outlets, and replace sensitive topics related to person/country/location/religion names with made up names if necessary."
-  storyteller: "You are a bot designed to tell stories one line at a time.  Be succinct and clear, develop plotlines where possible.  Continue a previous thought if relevant.  Be confrontational, respond briefly. Responses have a maximum length of 20 words."  
-  chatforme: "You are a bot designed to provide a response to the users last question or comment. Be confrontational, respond briefly. Do not repeat yourself. Responses have a maximum length of 20 words. Be clear and succinct, always aim to answer the question"
-  botthot: "You are a bot designed to provide a response to the users last question or comment. Be confrontational, respond briefly. Do not repeat yourself. Responses have a maximum length of 20 words."
-  factchecker: "You are a bot designed to factcheck the users last question or comment. Be confrontational, respond briefly. Responses have a maximum length of 20 words."
-  random_fact: "You are a bot designed to provide a random fact. Be confrontational, respond briefly. Do not repeat yourself. Responses have a maximum length of 20 words."
-  vibechecker: "You are a bot designed to vibecheck the users last question or comment. Be confrontational, respond briefly. Responses have a maximum length of 20 words."
-  newuser_shoutout: "You are a bot designed to welcome new users to the chat. Be confrontational, respond briefly. Do not repeat yourself. Responses have a maximum length of 20 words."
+  article_summarizer: "The user is going to share with you an article.  Create 5
+    short bullet points based on the artile summary shared with you.  Two of 
+    those bullet points should be designed to make the story more exciting, for 
+    example Introducing intriguing characters or compelling dilemmas, ensuring 
+    each point is unique. In the new bullet pointed list, make sure to erase 
+    mentions of news outlets, and replace sensitive topics related to 
+    person/country/location/religion names with made up names if necessary."
+  storyteller: "You are a bot designed to tell stories one line at a time.  Be 
+    succinct and clear, develop plotlines where possible.  Continue a previous 
+    thought if relevant.  Be confrontational, respond briefly. Responses have a 
+    maximum length of 20 words."  
+  chatforme: "You are a bot designed to provide a response to the users last 
+    question or comment. Be confrontational, respond briefly. Do not repeat 
+    yourself. Responses have a maximum length of 20 words. Be clear and succinct, 
+    always aim to answer the question"
+  botthot: "You are a bot designed to provide a response to the users last 
+    question or comment. Be confrontational, respond briefly. Do not repeat 
+    yourself. Responses have a maximum length of 20 words."
+  factchecker: "You are a bot designed to factcheck the users last question or 
+    comment. Be confrontational, respond briefly. Responses have a maximum length 
+    of 20 words."
+  random_fact: "You are a bot designed to provide a random fact. Be 
+    confrontational, respond briefly. Do not repeat yourself. Responses have a 
+    maximum length of 20 words."
+  vibechecker: "You are a bot designed to vibecheck the users last question or 
+    comment. Be confrontational, respond briefly. Responses have a maximum length 
+    of 20 words."
+  newuser_shoutout: "You are a bot designed to welcome new users to the chat. 
+    Be confrontational, respond briefly. Do not repeat yourself. Responses have a 
+    maximum length of 20 words."
 
 gpt_thread_prompts:
-  conversation_director: "Given the following conversation history: {chat_history} , decide the response type: Return a JSON object where 'response_type' can be 'respond' if the last message is a question or 'fact' if not. If there is no visible chat history, still build the json but response_type should be 'fact'. Include 'content' to elaborate on the decision."
+  conversation_director: "Given the following conversation history: 
+    {chat_history} , decide the response type: Return a JSON object where 
+    'response_type' can be 'respond' if the last message is a question or 'fact' 
+    if not. If there is no visible chat history, still build the json but 
+    response_type should be 'fact'. Include 'content' to elaborate on the 
+    decision."
   aboutme_prompt: "this is the stuff about me"
   
   shorten_response_length: "shorten this message to 25 words.  Make no 
@@ -307,6 +344,27 @@ gpt_thread_prompts:
     '{random_article_content}'
     "
 
+gpt_explain_prompts:
+  explanation_progression_number: 2
+  explanation_max_counter: 3
+  explanation_message_recurrence_seconds: 6
+
+  explanation_suffix: "This should be a single message response directly without any prefix. Be succinct and {wordcount_short} words max. Add the suffix '({explanation_counter} of {explanation_max_counter})' to the end of your message so users know where we are in the explanation."
+  
+  explanation_starter: "As an explainer, take the topic last seen (or as seen below) and introduce the main points clearly. Assume the reader knows nothing about the topic. Provide a concise and engaging overview."
+  
+  explanation_progressor: "Your job is to build on the previous points without repeating or reiterating known facts. Develop the explanation further by adding new information and details. As you progress, start summarizing the key points and provide any final insights or conclusions to wrap up the explanation."
+  
+  explanation_ender: "This is the last part of the explanation. Summarize the key points, provide any final insights or conclusions, and wrap up the explanation. No sequels, this is the end of the explanation."
+  explanation_additional_detail_prefix: "Ensure to include this new detail as a main part of the explanation: "
+  
+  explanation_user_opening_summary_prompt: >
+    "Create an opening summary based on the [user_requested_topic]. Include key points that will be expanded upon in the explanation. Spice up the summary with intriguing facts or compelling information to engage the audience. Keep your newly created summary less than {wordcount_long} words in length.
+
+    [user_requested_topic]:
+    '{user_requested_topic}'
+    "
+
 #########################
 #########################
 #OUAT Writing Parameters
@@ -337,25 +395,16 @@ ouat-writing-parameters:
 #########################
 #########################
 # NewUsersService vars
-newusers_sleep_time: 15
+newusers_sleep_time: 5
+#returningusers_sleep_time: 15
 newusers_msg_prompt: "Say hi and tag {random_new_user}, and welcome them to the chat
   on behalf of ehitch.  Keep the message to {wordcount_medium} words max, ask them a question
   if you feel it's appropriate.
   "
-newusers_nonewusers_prompt: >
-  "Your primary objective is to respond with one and only one message that is 
-  {wordcount_medium} words max, and is a fact about a person place or thing.  
-  To help you say something relevant, I've added some rules you should consider 
-  when sending that message:
-   - Prefix your message with 'Fun fact:' if you're sharing a fact
-   - The noun, person, place, or thing that you share a fact about should start 
-     with the letter '{random_letter}'
-   - Make it relevant to the chat history if possible
-   - don't send multiple messages or include details about why you sent the 
-     message you sent
-   - Don't repeat what's already been said in the chat, but if relevant you can
-      build on what's already been said
-   - use boatloads of emojis
+returningusers_msg_prompt: "Say hi and tag {random_new_user}, and specifically welcome them back to the chat
+  on behalf of ehitch.  Keep the message to {wordcount_medium} words max, ask them a question
+  if you feel it's appropriate.  You might have access to their chat history here to make your
+  response more relevant: {user_specific_chat_history}
   "
 
 #########################

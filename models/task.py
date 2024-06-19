@@ -41,7 +41,7 @@ class AddMessageTask(BaseTask):
         self.logger.debug(f"AddMessageTask Dict created: {task_dict}")
         return task_dict
 
-class ExecuteThreadTask(BaseTask):
+class CreateExecuteThreadTask(BaseTask):
     def __init__(
             self, 
             thread_name: str,
@@ -71,5 +71,5 @@ class ExecuteThreadTask(BaseTask):
             "send_channel_message": self.send_channel_message,
             "message_role": self.message_role
         })
-        self.logger.debug(f"ExecuteThreadTask Dict created: {task_dict}")
+        self.logger.debug(f"CreateExecuteThreadTask Dict created: {task_dict}")
         return task_dict

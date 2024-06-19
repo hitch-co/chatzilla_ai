@@ -87,6 +87,7 @@ class ConfigManager:
 
                 self.yaml_gpt_config(yaml_config)
                 self.yaml_gpt_voice_config(yaml_config)
+                self.yaml_gpt_explain_config(yaml_config)
                 self.yaml_gpt_thread_config(yaml_config)
                 self.yaml_gpt_assistant_config(yaml_config)
                 
@@ -174,7 +175,7 @@ class ConfigManager:
 
     def yaml_gpt_config(self, yaml_config):
         try:
-            self.wordcount_short = str(yaml_config['wordcounts']['short'])
+            self.wordcount_short = str(yaml_config['wordcounts']['short']) #2024-06-09: shouldn't these be captured as ints and typecasted when used?
             self.wordcount_medium = str(yaml_config['wordcounts']['medium'])
             self.wordcount_long = str(yaml_config['wordcounts']['long'])
             self.magic_max_waittime_for_gpt_response = int(yaml_config['openai-api']['magic_max_waittime_for_gpt_response'])
@@ -187,6 +188,19 @@ class ConfigManager:
 
     def yaml_gpt_thread_config(self, yaml_config):
         self.gpt_thread_names = yaml_config['gpt_thread_names']
+
+    def yaml_gpt_explain_config(self, yaml_config):
+        self.gpt_explain_prompts = yaml_config['gpt_explain_prompts']
+        self.explanation_suffix = yaml_config['gpt_explain_prompts']['explanation_suffix']
+        self.explanation_starter = yaml_config['gpt_explain_prompts']['explanation_starter']
+        self.explanation_progressor = yaml_config['gpt_explain_prompts']['explanation_progressor']
+        self.explanation_additional_detail_prefix = yaml_config['gpt_explain_prompts']['explanation_additional_detail_prefix']
+        self.explanation_user_opening_summary_prompt = yaml_config['gpt_explain_prompts']['explanation_user_opening_summary_prompt']
+        self.explanation_ender = yaml_config['gpt_explain_prompts']['explanation_ender']
+
+        self.explanation_progression_number = yaml_config['gpt_explain_prompts']['explanation_progression_number']
+        self.explanation_max_counter = yaml_config['gpt_explain_prompts']['explanation_max_counter']
+        self.explanation_message_recurrence_seconds = yaml_config['gpt_explain_prompts']['explanation_message_recurrence_seconds']
 
     def yaml_gpt_voice_config(self, yaml_config):
         self.openai_vars = yaml_config['openai-api']
@@ -203,8 +217,8 @@ class ConfigManager:
             self.formatted_gpt_vibecheck_prompt = yaml_config['formatted_gpt_vibecheck_prompt']
             self.formatted_gpt_viberesult_prompt = yaml_config['formatted_gpt_viberesult_prompt']
             self.newusers_sleep_time = yaml_config['newusers_sleep_time']
-            self.newusers_nonewusers_prompt = yaml_config['newusers_nonewusers_prompt']
             self.newusers_msg_prompt = yaml_config['newusers_msg_prompt']
+            self.returningusers_msg_prompt = yaml_config['returningusers_msg_prompt']
             self.vibechecker_message_wordcount = str(yaml_config['vibechecker_message_wordcount'])
             self.vibechecker_question_session_sleep_time = yaml_config['vibechecker_question_session_sleep_time']
             self.vibechecker_listener_sleep_time = yaml_config['vibechecker_listener_sleep_time']
@@ -289,7 +303,7 @@ class ConfigManager:
 
     def yaml_randomfact_json(self, yaml_config):
         try:
-            self.randomfact_sleep_time = yaml_config['chatforme_randomfacts']['randomfact_sleep_time']
+            self.randomfact_sleeptime = yaml_config['chatforme_randomfacts']['randomfact_sleeptime']
             self.randomfact_selected_game = os.getenv('selected_game')
                             
             # Set selected_type to 'standard' if randomfact_selected_game is None
@@ -310,6 +324,7 @@ class ConfigManager:
             self.randomfact_topics_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['topics_injection_file_path']
             self.randomfact_areas_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['areas_injection_file_path']
             self.randomfact_prompt = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_prompt']
+            self.randomfact_response = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_response']
 
             with open(self.randomfact_topics_json, 'r') as file:
                 self.randomfact_topics = yaml.safe_load(file)
@@ -379,6 +394,9 @@ if __name__ == "__main__":
 
     config = main(yaml_filepath)
     print(config)
+
+    print(config.returningusers_msg_prompt)
+    print(config.randomfact_sleeptime)
 
     with open(config.randomfact_topics_json, 'r') as file:
         randomfact_topics = yaml.safe_load(file)

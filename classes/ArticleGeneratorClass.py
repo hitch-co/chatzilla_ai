@@ -3,7 +3,7 @@ import numpy as np
 from bs4 import BeautifulSoup
 from my_modules import utils
 
-from classes.ConsoleColoursClass import bcolors, printc
+# from classes.ConsoleColoursClass import bcolors, printc
 from my_modules.my_logging import create_logger
 
 class ArticleGenerator:
@@ -51,7 +51,7 @@ class ArticleGenerator:
         
         if not self.articles:
             self.logger.info("Missing URL or article data")
-            printc("Missing URL or article data.", bcolors.WARNING)
+            self.logger.warning("Missing URL or article data.")
             return ['']
         
         while found_article == False:
@@ -62,7 +62,7 @@ class ArticleGenerator:
                 response.raise_for_status()  # This will raise if HTTP request returned an unsuccessful status code
             except requests.RequestException as e:
                 self.logger.warning(f"Failed to fetch the article at {random_article_link}. Error: {e}")
-                self.logger.warning(f"Failed to fetch the article at {random_article_link}. Error: {e}", bcolors.FAIL)
+                self.logger.warning(f"Failed to fetch the article at {random_article_link}. Error: {e}")
                 return ['']
 
             try:
@@ -70,7 +70,7 @@ class ArticleGenerator:
                 content_html_soup = soup.find('div', {'class': 'article__content'})
             except Exception as e:
                 self.logger.error(f"Error during parsing the article at {random_article_link}. Error: {e}")
-                self.logger.warning(f"Error during parsing the article at {random_article_link}. Error: {e}", bcolors.FAIL)
+                self.logger.warning(f"Error during parsing the article at {random_article_link}. Error: {e}")
                 return ['']
 
             if content_html_soup:
@@ -79,13 +79,11 @@ class ArticleGenerator:
                 found_article = False if self.check_for_disallowed_terms(article_content=random_article_content,
                                                                          list_of_disallowed_terms=list_of_disallowed_terms) else True
                 if found_article:
-                    self.logger.info(f"Successfully fetched article with content  (source:{random_article_link})")
-                    printc(f"\nSuccessfully fetched article with content  (source:{random_article_link})", bcolors.OKBLUE)
-                    printc(f'Preview of article: {random_article_content[:300]}...', bcolors.UNDERLINE)
+                    self.logger.info(f"Successfully fetched article with content  (source:{random_article_link}, preview: {random_article_content[:300]}...)")
                 else:
-                    printc(f"\nSuccessfully fetched article but it contained disallowed_terms (source: {random_article_link}) ", bcolors.FAIL)   
+                    self.logger.debug(f"\nSuccessfully fetched article but it contained disallowed_terms (source: {random_article_link}) ")   
             else: 
-                printc(f"\nSuccessfully fetched article but it contained no content.  Trying again... \n(source: {random_article_link}", bcolors.FAIL)
+                self.logger.debug(f"\nSuccessfully fetched article but it contained no content.  Trying again... \n(source: {random_article_link}")
 
         trimmed_article = random_article_content[:article_char_trunc]
         return trimmed_article

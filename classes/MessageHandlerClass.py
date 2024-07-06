@@ -146,7 +146,7 @@ class MessageHandler:
         message_role = 'assistant'
         message_username = self.config.twitch_bot_display_name
         message_content = message_username+": "+message_content
-        self.logger.info(f"Adding message to queues...")
+        self.logger.info(f"Adding message to specific thread ({thread_name})...")
 
         task = AddMessageTask(thread_name, message_content, message_role).to_dict()    
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
@@ -158,7 +158,7 @@ class MessageHandler:
         message_username = message_metadata['name']
         message_content = message_username+": "+message_metadata['content']
 
-        self.logger.info(f"Adding message to queues...")
+        self.logger.info(f"Adding message to appropriate thread...")
         self.logger.debug("This is the message_metadata: {}".format(message_metadata))
 
         # Check for commands that should not be added to the thread history

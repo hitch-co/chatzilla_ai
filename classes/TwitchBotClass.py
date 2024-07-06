@@ -64,6 +64,9 @@ class Bot(twitch_commands.Bot):
             encoding='UTF-8'
             )
         
+        # Create a lock for the bot
+        self.lock = asyncio.Lock()
+
         # dependencies instances
         self.gpt_client = gpt_client
         self.bq_uploader = bq_uploader 
@@ -137,7 +140,6 @@ class Bot(twitch_commands.Bot):
 
         #counters
         self.ouat_counter = 0
-
 
         # Set the thread name and assistant name
         self.ouat_thread_name = 'ouatmsgs'
@@ -251,16 +253,16 @@ class Bot(twitch_commands.Bot):
         await self._send_hello_world()
 
         # start OUAT loop
-        self.logger.debug(f"Starting OUAT service")
-        self.loop.create_task(self.ouat_storyteller_task())
+        self.logger.debug(f"Setting up OUAT task...")
+        self.ouat_task = None
 
         # Start bot ears streaming
         self.logger.debug(f"Starting bot ears streaming")
         self.loop.create_task(self.bot_ears.start_botears_audio_stream())
 
-        # start newusers loop
-        self.logger.debug(f"Starting newusers service")
-        self.loop.create_task(self._send_message_to_new_users_task())
+        # # start newusers loop
+        # self.logger.debug(f"Starting newusers service")
+        # self.loop.create_task(self._send_message_to_new_users_task())
 
         # start authentication refresh loop
         self.logger.debug('Starting the refresh token service')
@@ -506,8 +508,6 @@ class Bot(twitch_commands.Bot):
                         replacements_dict=replacements_dict,
                         tts_voice=tts_voice_selected
                     ).to_dict()
-
-                    self.logger.debug(f"Task to add to queue: {task}")
                     await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
                     self.logger.debug(f"self.newusers_service.users_sent_messages_list: {self.newusers_service.users_sent_messages_list}")
@@ -559,8 +559,6 @@ class Bot(twitch_commands.Bot):
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice
             ).to_dict()
-            self.logger.debug(f"Task to add to queue: {task}")
-        
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
     @twitch_commands.command(name='getstats', aliases=("p_getstats", "stats"))
@@ -607,8 +605,6 @@ class Bot(twitch_commands.Bot):
             replacements_dict=replacements_dict,
             tts_voice=tts_voice
         ).to_dict()
-        self.logger.debug(f"Task to add to queue: {task}")
-
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
     @twitch_commands.command(name='commands', aliases=["p_commands"])
@@ -704,8 +700,6 @@ class Bot(twitch_commands.Bot):
             replacements_dict=replacements_dict,
             tts_voice=tts_voice
         ).to_dict()
-        self.logger.debug(f"Task to add to queue: {task}")
-
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
         
     @twitch_commands.command(name='chat', aliases=("p_chat"))
@@ -1029,8 +1023,6 @@ class Bot(twitch_commands.Bot):
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice
             ).to_dict()
-            self.logger.debug(f"Task to add to queue: {task}")
-
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
         except Exception as e:
@@ -1212,6 +1204,4 @@ class Bot(twitch_commands.Bot):
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice
             ).to_dict()
-            self.logger.debug(f"Task to add to queue: {task}")
-
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)

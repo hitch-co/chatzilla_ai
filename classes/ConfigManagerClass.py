@@ -145,6 +145,7 @@ class ConfigManager:
     def yaml_tts_config(self, yaml_config):
         try:
             self.tts_include_voice = yaml_config['openai-api']['tts_include_voice']
+            self.tts_text_replacements_filename = yaml_config['tts_text_replacements_filename']
         except Exception as e:
             self.logger.error(f"Error in yaml_tts_config(): {e}")
 

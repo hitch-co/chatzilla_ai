@@ -25,6 +25,7 @@ keys_dirpath: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____
 
 
 spellcheck_commands_filename: 'config\command_spellcheck_terms.json'
+tts_text_replacements_filename: 'config\tts_text_replacements.json'
 
 #########################
 #########################
@@ -291,10 +292,10 @@ gpt_thread_prompts:
     know where we are in the story.
     "
   story_starter: "As a fiction storyteller, take the plot last seen (or 
-    as seen below) and weave a unique beginning.  Don't assume the reader knows 
-    anything about the plot.  You're telling a new story to new people. Try to 
-    introduce the main characters and setting in a way that is engaging and 
-    intriguing. Be quirky.
+    as seen below) and weave a beginning.  Only worry about the new plot, forget
+    about old plotlines discussed. Don't assume the reader knows anything about 
+    the new plot.  You're telling a new story to new people. Try to introduce 
+    the main characters and setting in a way that is engaging and intriguing. Be quirky, but stick to the plotline
     "
   story_progressor: "Your job is to start to progress the story without 
     repeating or reiterating known facts.  Develop the story/characters/etc.
@@ -312,8 +313,9 @@ gpt_thread_prompts:
   story_user_opening_scene_summary_prompt: >
     "Create an opening 'set the seen' statement/intro based on the 
     [user_requested_plotline]. Spice up the bullet list with additional points
-    to make the story more exciting, for example introducing intriguing 
-    characters or compelling dilemmas, ensuring each point is unique.  
+    to make the story more tightly associated to the topic, for example 
+    introducing intriguing characters or compelling dilemmas related to the 
+    user_requested_plotline, while also ensuring each point is unique.  
 
     Keep your newly created bullet-point summary less than {wordcount_long} 
     words in length.

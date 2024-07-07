@@ -71,5 +71,5 @@ class CreateExecuteThreadTask(BaseTask):
             "send_channel_message": self.send_channel_message,
             "message_role": self.message_role
         })
-        self.logger.debug(f"CreateExecuteThreadTask Dict created: {task_dict}")
+        self.logger.info(f"CreateExecuteThreadTask Dict created: {task_dict}")
         return task_dict

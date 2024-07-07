@@ -1,6 +1,7 @@
 import os
 import pygame
 import re
+import json
 
 from my_modules import my_logging
 from classes.ConfigManagerClass import ConfigManager
@@ -27,10 +28,24 @@ class GPTTextToSpeech:
         if not os.path.exists(self.config.tts_data_folder):
             os.makedirs(self.config.tts_data_folder)
 
+        # Read in json file of things to rename for text to speech
+        with open(self.config.tts_text_replacements_filename, 'r') as f:
+            self.tts_text_replacements = json.load(f)
+            self.logger.debug("Finished reading in json file of things to rename for text to speech")
+
     def _strip_story_number(self, text_input):
-        # Text is formatted as "This is the story (0 of 8)" where the 0 of 8 is the story number and we don't want text to speech to read it
+        # Stories include a number in parenthesis that should be removed from tts
         pattern = r'\(\d+ of \d+\)'
         return re.sub(pattern, '', text_input).strip()
+
+    def _rename_things_for_tts(self, text_input):
+        # This is a workaround for poor tts pronunciation
+        # NOTE: partial matches will also be substituted
+        for original, new in self.tts_text_replacements.items():
+            pattern = re.compile(r'\b' + re.escape(original) + r'\b', re.IGNORECASE)
+            text_input = pattern.sub(new, text_input)
+        
+        return text_input
 
     def _get_speech_response(
             self, 
@@ -40,6 +55,7 @@ class GPTTextToSpeech:
         self.logger.debug(f"Starting speech create with params: input={text_input}, model={self.tts_model}, voice={voice_name}")
         
         text_input = self._strip_story_number(text_input)
+        text_input = self._rename_things_for_tts(text_input)
         
         response = self.tts_client.audio.speech.create(
             model=self.tts_model,

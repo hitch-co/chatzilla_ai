@@ -141,15 +141,24 @@ class MessageHandler:
         }
         return message_metadata
     
-    async def add_to_appropriate_thread_history(self, thread_names, message):  
+    async def add_to_specific_thread_history(self, thread_name, message_content):
+        # Add message to specific thread history
+        message_role = 'assistant'
+        message_username = self.config.twitch_bot_display_name
+        message_content = message_username+": "+message_content
+        self.logger.info(f"Adding message to specific thread ({thread_name})...")
 
-        # Grab and write metadata, add users to users list
+        task = AddMessageTask(thread_name, message_content, message_role).to_dict()    
+        await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+
+    async def add_to_appropriate_thread_history(self, message):  
+        # Add message to appropriate thread history based on conditions
         message_metadata = self._get_message_metadata(message)
         message_role = message_metadata['role']
         message_username = message_metadata['name']
         message_content = message_username+": "+message_metadata['content']
 
-        self.logger.info(f"Adding message to queues...")
+        self.logger.info(f"Adding message to appropriate thread...")
         self.logger.debug("This is the message_metadata: {}".format(message_metadata))
 
         # Check for commands that should not be added to the thread history

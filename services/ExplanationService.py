@@ -1,5 +1,4 @@
 import asyncio
-import random
 
 from my_modules.my_logging import create_logger
 from classes.ConfigManagerClass import ConfigManager
@@ -149,7 +148,7 @@ class ExplanationService:
         self.explanation_counter = 0
         self.logger.info(f"Explanation service loop has been stopped, self.ouat_counter has been reset to {self.explanation_counter}")
 
-    # async def add_to_story_ouat(self, ctx,  *args):
+    # async def clarify_explanation(self, ctx,  *args):
     #     self.explanation_counter = self.config.ouat_story_progression_number
         
     #     author=ctx.message.author.name
@@ -169,9 +168,3 @@ class ExplanationService:
 
     #     await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
     #     self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{gpt_prompt_text}'")
-        
-    # async def stop_explanation_loop(self):
-    #     self.is_ouat_loop_active = False
-    #     self.explanation_counter = 0
-    #     self.logger.info(f"OUAT Storyteller has been stopped")
-        

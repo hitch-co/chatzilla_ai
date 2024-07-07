@@ -399,14 +399,17 @@ ouat-writing-parameters:
 # NewUsersService vars
 newusers_sleep_time: 5
 #returningusers_sleep_time: 15
-newusers_msg_prompt: "Say hi and tag {random_new_user}, and welcome them to the chat
-  on behalf of ehitch.  Keep the message to {wordcount_medium} words max, ask them a question
-  if you feel it's appropriate.
+newusers_msg_prompt: "Say hi and tag {random_new_user}, and welcome them to the 
+  chat on behalf of ehitch.  Keep the message to {wordcount_medium} words max, 
+  ask them a question if you feel it's appropriate.
   "
-returningusers_msg_prompt: "Say hi and tag {random_new_user}, and specifically welcome them back to the chat
-  on behalf of ehitch.  Keep the message to {wordcount_medium} words max, ask them a question
-  if you feel it's appropriate.  You might have access to their chat history here to make your
-  response more relevant: {user_specific_chat_history}
+returningusers_msg_prompt: "Say hi and tag {random_new_user}, and specifically 
+  welcome them back to the chat on behalf of ehitch.  Keep the message to 
+  {wordcount_medium} words max, ask them a question if you feel it's appropriate.  
+  You might have access to their chat history here.  Pick something interesting 
+  to comment on if there is a cool chat message in the history
+  
+  chat history: {user_specific_chat_history}
   "
 
 #########################

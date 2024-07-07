@@ -426,7 +426,7 @@ class Bot(twitch_commands.Bot):
                 current_users_list = await self.twitch_api.retrieve_active_usernames(
                     bearer_token = self.config.twitch_bot_access_token
                     )
-                self.logger.info(f"Current users retrieved: {current_users_list}")  
+                self.logger.info(f"Current users retrieved: {current_users_list.sort()}")  
             except Exception as e:
                 self.logger.error(f"Failed to retrieve active users from Twitch API: {e}")
                 current_users_list = []
@@ -459,7 +459,7 @@ class Bot(twitch_commands.Bot):
                         user['username'] not in self.config.twitch_bot_channel_name and
                         user['username'] not in self.config.twitch_bot_username and
                         user['username'] not in self.config.twitch_bot_display_name
-                        and user['username'] not in "crubeyawne"
+                        #and user['username'] not in "crubeyawne"
                         #and user['username'] not in "nanovision"
                         #and user['username'] not in mods_list
                         )

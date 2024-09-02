@@ -140,7 +140,6 @@ class ExplanationService:
 
             if self.explanation_counter >= self.config.explanation_max_counter:
                 await self.stop_explanation_loop()
-                break
             else:
                 await asyncio.sleep(int(self.config.explanation_message_recurrence_seconds))
 
@@ -153,30 +152,3 @@ class ExplanationService:
         self.is_explanation_loop_active = False
         self.explanation_counter = 0
         self.logger.info(f"Explanation service loop has been stopped, self.ouat_counter has been reset to {self.explanation_counter}")
-
-    # async def add_to_story_ouat(self, ctx,  *args):
-    #     self.explanation_counter = self.config.ouat_story_progression_number
-        
-    #     author=ctx.message.author.name
-    #     gpt_prompt_text = ' '.join(args)
-    #     prompt_text_with_prefix = f"{self.config.ouat_prompt_addtostory_prefix}:'{gpt_prompt_text}'"
-        
-    #     #workflow1: get gpt_ready_msg_dict and add message to message history        
-    #     gpt_ready_msg_dict = self.message_handler.create_gpt_message_dict_from_strings(
-    #         content=prompt_text_with_prefix,
-    #         role='user',
-    #         name=author
-    #         )
-
-    #     # Add the bullet list to the 'ouatmsgs' thread via queue
-    #     thread_name = 'ouatmsgs'
-    #     task = AddMessageTask(thread_name, gpt_prompt_text).to_dict()
-
-    #     await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-    #     self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{gpt_prompt_text}'")
-        
-    # async def stop_explanation_loop(self):
-    #     self.is_ouat_loop_active = False
-    #     self.explanation_counter = 0
-    #     self.logger.info(f"OUAT Storyteller has been stopped")
-        

@@ -250,7 +250,7 @@
         <mxCell id="X0K00MM57r9cbO4nfmmp-69" value="create_gpt_message_dict_from_metadata" style="text;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=0" parent="X0K00MM57r9cbO4nfmmp-66" vertex="1">
           <mxGeometry y="60" width="160" height="26" as="geometry" />
         </mxCell>
-        <mxCell id="X0K00MM57r9cbO4nfmmp-70" value="create_gpt_message_dict_from_strings" style="text;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="X0K00MM57r9cbO4nfmmp-66" vertex="1">
+        <mxCell id="X0K00MM57r9cbO4nfmmp-70" value="_create_gpt_message_dict_from_strings" style="text;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="X0K00MM57r9cbO4nfmmp-66" vertex="1">
           <mxGeometry y="86" width="160" height="26" as="geometry" />
         </mxCell>
         <mxCell id="X0K00MM57r9cbO4nfmmp-71" value="MessageHandler" style="swimlane;fontStyle=0;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeLast=0;collapsible=1;marginBottom=0;rounded=0;shadow=0;strokeWidth=1;" parent="X0K00MM57r9cbO4nfmmp-1" vertex="1">

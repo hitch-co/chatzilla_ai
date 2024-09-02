@@ -155,7 +155,7 @@ class Bot(twitch_commands.Bot):
             self.add_command(twitch_commands.command(name='stopexplain', aliases=("m_stopexplain", 'stopexplanation'))(self.explanation_service.stop_explanation))
 
     async def _add_message_to_chatformemsgs_thread(self, message_content: str, role: str, thread_name: str):
-        if self.should_add_to_chatformemsgs(thread_name):
+        if thread_name in self.config.gpt_thread_names and thread_name != 'chatformemsgs':
             try:
                 message_object = await self.gpt_response_manager.add_message_to_thread(
                     message_content=message_content,
@@ -176,7 +176,7 @@ class Bot(twitch_commands.Bot):
             content = task["content"]
 
             # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
-            self._add_message_to_chatformemsgs_thread(
+            await self._add_message_to_chatformemsgs_thread(
                 message_content=content, 
                 role=message_role, 
                 thread_name='chatformemsgs'
@@ -222,7 +222,7 @@ class Bot(twitch_commands.Bot):
                 raise f"Error occurred in 'execute_thread': {e}"
 
             # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
-            self._add_message_to_chatformemsgs_thread(
+            await self._add_message_to_chatformemsgs_thread(
                 message_content=gpt_response, 
                 role=message_role, 
                 thread_name='chatformemsgs'
@@ -248,7 +248,7 @@ class Bot(twitch_commands.Bot):
             content = task["content"]
 
             # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
-            self._add_message_to_chatformemsgs_thread(
+            await self._add_message_to_chatformemsgs_thread(
                 message_content=content, 
                 role=message_role, 
                 thread_name='chatformemsgs'
@@ -705,7 +705,7 @@ class Bot(twitch_commands.Bot):
     async def _chatforme_main(self, text_input_from_user=None):
         assistant_name = 'chatforme'
         thread_name = 'chatformemsgs'
-        tts_voice = self.config.tts_voice_randomfact
+        tts_voice = self.config.tts_voice_chatforme
         chatforme_prompt = self.config.chatforme_prompt
 
         if text_input_from_user is None:

@@ -140,7 +140,6 @@ class ExplanationService:
 
             if self.explanation_counter >= self.config.explanation_max_counter:
                 await self.stop_explanation_loop()
-                break
             else:
                 await asyncio.sleep(int(self.config.explanation_message_recurrence_seconds))
 

@@ -205,6 +205,7 @@ class ConfigManager:
     def yaml_gpt_voice_config(self, yaml_config):
         self.openai_vars = yaml_config['openai-api']
         self.tts_voice_randomfact = yaml_config['openai-api']['tts_voice_randomfact']
+        self.tts_voice_chatforme = yaml_config['openai-api']['tts_voice_chatforme']
         self.tts_voice_story = yaml_config['openai-api']['tts_voice_story']
         self.factcheck_voice = yaml_config['openai-api']['tts_voice_factcheck']
         self.tts_voice_newuser = yaml_config['openai-api']['tts_voice_newuser']

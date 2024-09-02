@@ -40,6 +40,7 @@ openai-api:
   tts_data_folder: "data\\tts"
   tts_file_name: "speech.mp3"
   tts_voice_randomfact: "nova"
+  tts_voice_chatforme: "echo"
   tts_voice_story: "shimmer"
   tts_voice_factcheck: "fable"
   tts_voice_newuser: "echo"

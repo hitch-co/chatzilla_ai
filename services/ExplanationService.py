@@ -25,7 +25,7 @@ class ExplanationService:
         self.is_explanation_loop_active = False
         self.explanation_counter = 0
 
-    async def startexplanation(self, message, *args):
+    async def explanation_start(self, message, *args):
         self.logger.info(f"Starting story, self.explanation_counter={self.explanation_counter}")
         if self.explanation_counter == 0:
             self.explanation_counter += 1

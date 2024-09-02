@@ -86,9 +86,9 @@ chatforme_randomfacts:
         starting with, just do it.   Remember this is a stream so you may be ignored, if you are, 
         then you can continue to share facts about the topic."
       randomfact_response: "Looks like there's a conversation happening.  Maybe we can add a small bit of insight into what's beeing said or we can fact check the conversation or we can (sparingly) change the topic only slightly. Be sure to respond in less than {wordcount_short} words."
- 
       topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_topics_and_subtopics.json'
       areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_categories_and_areas.json'
+
     standard:
       randomfact_prompt: "share a wild/controversial/lesser known fact (using roughly 
         {wordcount_short} words) or insight about {randomfact_topic} that begins 
@@ -103,13 +103,14 @@ chatforme_randomfacts:
         respond if you think there is a good opportunity for you to add some value to the conversation.  Do this sparingly.
         Finally, remember this is a a stream so you may be ignored.  if you are ignored, then you can continue to share facts about the topic instead."
       randomfact_response: "Looks like there's a conversation happening.  Maybe we can add a small bit of insight into what's beeing said or we can fact check the conversation or we can (sparingly) change the topic only slightly. Be sure to respond in less than {wordcount_short} words."
- 
       topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_topics_and_subtopics.json'
       areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_eras_and_timeperiods.json'
+
     generic:
       randomfact_prompt: "your only job is to participate in the conversation.  Remember this is a stream so conversations are short, and only last for a few messages.  Remember, you can't hear the streamer, so if part of a convo doesn't make sense just go back to sharing facts.  If there is no apparent active conversation, or you've already made a response, at random just share a random fact about a game or game genre, or a book, or a song, or a place, or a space, etc.  If you recently shared a fact about a subject/topic/person/place/thing, then maybe hsare a deeper fact about that person/place/thing/topic/subvject. Make sure you cover a wide variety of topics if not particiapting in the conversation.  Keep it to {wordcount_short} words max.  If you can, make the topic start with the letter '{random_character_a_to_z}'.  Ensure a wide expanse of knowledge is covered.  Start your message with 'fact:' if it's a fact, otherwise jsut participate in the conversation"
       # topics_injection_file_path: "Need to make this optional"
       # areas_injection_file_path: "Need to make this optional"
+
 chatforme_factcheck:
   chatforme_factcheck_prompts:
     factcheck_prompt_standard: >
@@ -122,16 +123,15 @@ chatforme_factcheck:
       using approximately {wordcount} words in my response, I will assess the accuracy of the claim based on my training data up until April 2023.
       "
 
-
 #################################################################
 #################################################################
 #CHATFORME PARAMS
-msg_history_limit: 10
+msg_history_limit: 100
 num_bot_responses: 1
 wordcounts:
-  short: 19
-  medium: 25
-  long: 45
+  short: 21
+  medium: 27
+  long: 50
 
 chatforme_prompts:
   standard: >
@@ -185,8 +185,8 @@ chatforme_prompts:
 #########################
 #########################
 #Bot Ears
-botears_buffer_length_seconds: 10
-botears_save_length_seconds: 18
+botears_buffer_length_seconds: 15
+botears_save_length_seconds: 22
 botears_audio_path: "./data/ears"
 botears_audio_filename: "latest_ears"
 botears_devices_json_filepath: "audio_devices.json"
@@ -206,7 +206,7 @@ botears_prompt: "Below is a question/comment from the user. You are to respond
 #########################
 #########################
 # HelloWorld BOT Prompts
-helloworld_message_wordcount: 22
+helloworld_message_wordcount: 30
 formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for 
   {twitch_bot_channel_name} and your name is {twitch_bot_display_name} 
   and you are of generation alpha. Your mission is to send a concise 'hello stream' 
@@ -216,7 +216,7 @@ formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for
     - Your only message should be a {helloworld_message_wordcount} word long message
     - Minimize repetition
     - Be sure to say, 'I'm {twitch_bot_display_name}'  in your message
-    - Say something that defies typical bot behavior
+    - be a rad dude/dudette
   "
 
 #########################
@@ -346,16 +346,17 @@ gpt_thread_prompts:
 
 gpt_explain_prompts:
   explanation_progression_number: 2
-  explanation_max_counter: 3
-  explanation_message_recurrence_seconds: 6
+  explanation_max_counter: 5
+  explanation_message_recurrence_seconds: 5
 
   explanation_suffix: "This should be a single message response directly without any prefix. Be succinct and {wordcount_short} words max. Add the suffix '({explanation_counter} of {explanation_max_counter})' to the end of your message so users know where we are in the explanation."
   
-  explanation_starter: "As an explainer, take the topic last seen (or as seen below) and introduce the main points clearly. Assume the reader knows nothing about the topic. Provide a concise and engaging overview."
+  explanation_starter: "As an explainer, take the topic last seen (or as seen in the conversation history) and introduce the main points clearly. Assume the reader knows nothing about the topic. Provide a concise and engaging overview."
   
-  explanation_progressor: "Your job is to build on the previous points without repeating or reiterating known facts. Develop the explanation further by adding new information and details. As you progress, start summarizing the key points and provide any final insights or conclusions to wrap up the explanation."
+  explanation_progressor: "Your job is to build on and elaborate on the most important the previous points without repeating or reiterating facts that have already been shared, but are allowed to step in and correct previously stated points about the topic. Develop the explanation further by adding new information and details. As you progress, start summarizing the key points and provide any final insights or conclusions to wrap up the explanation."
   
-  explanation_ender: "This is the last part of the explanation. Summarize the key points, provide any final insights or conclusions, and wrap up the explanation. No sequels, this is the end of the explanation."
+  explanation_ender: "This is the last part of the explanation. Provide any final insights or conclusions, and wrap up the explanation. No sequels, this is the end of the explanation."
+
   explanation_additional_detail_prefix: "Ensure to include this new detail as a main part of the explanation: "
   
   explanation_user_opening_summary_prompt: >

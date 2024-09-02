@@ -222,10 +222,10 @@ formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for
 #########################
 #########################
 #OUAT Params
-ouat_message_recurrence_seconds: 12
+ouat_message_recurrence_seconds: 10
 ouat_story_progression_number: 2
-ouat_story_wrapup_number: 6
-ouat_story_max_counter: 8
+ouat_story_wrapup_number: 3
+ouat_story_max_counter: 4
 
 
 #########################

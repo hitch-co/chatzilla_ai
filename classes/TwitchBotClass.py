@@ -805,7 +805,7 @@ class Bot(twitch_commands.Bot):
             assistant_name = 'storyteller'
 
             # Randomly select voice/tone/style/theme from list, set replacements dictionary
-            self.current_story_voice = self.config.tts_voice_story
+            self.current_story_voice = random.choice(self.config.tts_voices['female'])
 
             writing_tone_values = list(self.config.writing_tone.values())
             self.selected_writing_tone = random.choice(writing_tone_values)

@@ -294,7 +294,10 @@ gpt_thread_prompts:
     as seen below) and weave a unique beginning.  Don't assume the reader knows 
     anything about the plot.  You're telling a new story to new people. Try to 
     introduce the main characters and setting in a way that is engaging and 
-    intriguing. Be quirky.
+    intriguing. Be quirky.  If you're provided with multiple plot lines, pick one
+    and stick to it but feel free to integrate elements from the other plotlines. 
+    Our priority here is clarity and a story that looks like it's told by a person
+    at a campfire.  Remember, you're telling a story, not writing a novel.
     "
   story_progressor: "Your job is to start to progress the story without 
     repeating or reiterating known facts.  Develop the story/characters/etc.
@@ -349,7 +352,7 @@ gpt_explain_prompts:
   explanation_max_counter: 5
   explanation_message_recurrence_seconds: 5
 
-  explanation_suffix: "This should be a single message response directly without any prefix. Be succinct and {wordcount_short} words max. Add the suffix '({explanation_counter} of {explanation_max_counter})' to the end of your message so users know where we are in the explanation."
+  explanation_suffix: "This should be a single message response directly without any prefix. Be succinct and {wordcount_short} words max. It's very im portant that you explicitly add the suffix '({explanation_counter} of {explanation_max_counter})' exactly to the end of your message so users know where we are in the explanation."
   
   explanation_starter: "As an explainer, take the topic last seen (or as seen in the conversation history) and introduce the main points clearly. Assume the reader knows nothing about the topic. Provide a concise and engaging overview."
   
@@ -360,10 +363,10 @@ gpt_explain_prompts:
   explanation_additional_detail_prefix: "Ensure to include this new detail as a main part of the explanation: "
   
   explanation_user_opening_summary_prompt: >
-    "Create an opening summary based on the [user_requested_topic]. Include key points that will be expanded upon in the explanation. Spice up the summary with intriguing facts or compelling information to engage the audience. Keep your newly created summary less than {wordcount_long} words in length.
+    "Create an opening summary based on the [user_requested_explanation]. Include key points that will be expanded upon in the explanation. Spice up the summary with intriguing facts or compelling information to engage the audience. Keep your newly created summary less than {wordcount_long} words in length.
 
-    [user_requested_topic]:
-    '{user_requested_topic}'
+    [user_requested_explanation]:
+    '{user_requested_explanation}'
     "
 
 #########################

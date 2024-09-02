@@ -8,7 +8,7 @@ import os
 import inspect
 import time
 
-from models.task import AddMessageTask, CreateExecuteThreadTask
+from models.task import AddMessageTask, CreateExecuteThreadTask, CreateSendChannelMessageTask
 
 from my_modules.my_logging import create_logger
 import modules.adjustable_sleep_task as adjustable_sleep_task
@@ -217,7 +217,16 @@ class Bot(twitch_commands.Bot):
                 self.logger.debug(f"'{task['type']}' task handled for thread: {thread_name}") 
             else:
                 self.logger.error(f"Gpt response is None, this should not happen.  Task: {task}")
-          
+
+        elif task["type"] == "send_channel_message":
+            try:
+                await self.chatforme_service.send_output_message_and_voice(
+                    text=task["content"],
+                    incl_voice=self.config.tts_include_voice,
+                    voice_name=task["tts_voice"]
+                )
+            except Exception as e:
+                self.logger.error(f"Error occurred in 'send_channel_message': {e}")
 
     async def event_ready(self):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
@@ -834,6 +843,7 @@ class Bot(twitch_commands.Bot):
                 self.logger.info(f"Scheduler-2: This is the random article plotline: {submitted_plotline}")
 
             gpt_prompt_text = self.config.story_user_opening_scene_summary_prompt + " " + self.config.storyteller_storysuffix_prompt    
+            self.logger.info(f"...OUAT gpt_prompt_text (before replacements): '{gpt_prompt_text}'")
             replacements_dict = {
                 "user_requested_plotline":submitted_plotline,
                 "wordcount_short":self.config.wordcount_short,
@@ -850,7 +860,7 @@ class Bot(twitch_commands.Bot):
                 thread_instructions=gpt_prompt_text,
                 replacements_dict=replacements_dict,
                 tts_voice=self.current_story_voice,
-                send_channel_message=False
+                send_channel_message=True
                 ).to_dict()
             self.logger.debug(f"Task to add to queue: {task}")
 
@@ -872,12 +882,8 @@ class Bot(twitch_commands.Bot):
                 self.ouat_counter += 1
                 self.logger.info(f"OUAT details: Starting cycle #{self.ouat_counter} of the OUAT Storyteller") 
 
-                #storystarter
-                if self.ouat_counter == 0 or self.ouat_counter == 1:
-                    gpt_prompt_final = self.config.storyteller_storystarter_prompt
-
                 #storyprogressor
-                elif self.ouat_counter <= self.config.ouat_story_progression_number:
+                if self.ouat_counter <= self.config.ouat_story_progression_number:
                     gpt_prompt_final = self.config.storyteller_storyprogressor_prompt
 
                 #storyfinisher
@@ -892,7 +898,6 @@ class Bot(twitch_commands.Bot):
                 gpt_prompt_final = self.config.storyteller_storysuffix_prompt + " " + gpt_prompt_final
                 assistant_name = 'storyteller'
                 thread_name = 'ouatmsgs'
-                tts_voice = self.current_story_voice
 
                 self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (ouat_story_max_counter={self.config.ouat_story_max_counter})")
                 self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
@@ -917,15 +922,14 @@ class Bot(twitch_commands.Bot):
                     assistant_name=assistant_name,
                     thread_instructions=gpt_prompt_final,
                     replacements_dict=replacements_dict,
-                    tts_voice=tts_voice
+                    tts_voice=self.current_story_voice
                 ).to_dict()
                 self.logger.debug(f"Task to add to queue: {task}")
 
                 await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
-            if self.ouat_counter == self.config.ouat_story_max_counter:
+            if self.ouat_counter >= self.config.ouat_story_max_counter:
                 await self.stop_ouat_loop()
-                break
             else:
                 await asyncio.sleep(int(self.config.ouat_message_recurrence_seconds))
 
@@ -959,13 +963,29 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='stopstory', aliases=("m_stopstory"))
     async def stop_story(self, ctx):
-        await self._send_channel_message_wrapper("to be continued...")
+        if self.ouat_counter >= 1:
+            self.logger.info(f"Story is being forced to end by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}")
+        
+            content = "to be continued..."
+            try:
+                task = CreateSendChannelMessageTask(
+                    thread_name='ouatmsgs',
+                    content=content,
+                    tts_voice=self.current_story_voice,
+                ).to_dict()
+
+                self.logger.debug(f"Task to add to queue: {task}")
+                await self.gpt_thread_mgr.add_task_to_queue('ouatmsgs', task)
+            except Exception as e:
+                self.logger.error(f"Error occurred in stopping the story: {e}")
+            
         await self.stop_ouat_loop()
 
     @twitch_commands.command(name='endstory', aliases=("m_endstory"))
     async def endstory(self, ctx):
-        self.ouat_counter = self.config.ouat_story_max_counter
-        self.logger.info(f"Story is being forced to end by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}")
+        if self.ouat_counter >= 1:
+            self.ouat_counter = self.config.ouat_story_max_counter - 1
+            self.logger.info(f"Story is being ended by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}")
 
     async def stop_ouat_loop(self) -> None:
         self.is_ouat_loop_active = False

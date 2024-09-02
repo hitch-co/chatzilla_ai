@@ -356,10 +356,10 @@ gpt_explain_prompts:
   explanation_additional_detail_prefix: "Ensure to include this new detail as a main part of the explanation: "
   
   explanation_user_opening_summary_prompt: >
-    "Create an opening summary based on the [user_requested_topic]. Include key points that will be expanded upon in the explanation. Spice up the summary with intriguing facts or compelling information to engage the audience. Keep your newly created summary less than {wordcount_long} words in length.
+    "Create an opening summary based on the [user_requested_explanation]. Include key points that will be expanded upon in the explanation. Spice up the summary with intriguing facts or compelling information to engage the audience. Keep your newly created summary less than {wordcount_long} words in length.
 
-    [user_requested_topic]:
-    '{user_requested_topic}'
+    [user_requested_explanation]:
+    '{user_requested_explanation}'
     "
 
 #########################

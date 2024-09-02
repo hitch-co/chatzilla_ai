@@ -128,7 +128,7 @@ class TwitchAPI:
     #         print("Failed to retrieve bot's user ID.")
 
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
-    async def _fetch_channel_viewers(self, bearer_token) -> dict:
+    async def _fetch_channel_viewers_data(self, bearer_token) -> dict:
 
         try:
             chatters_endpoint_url = f"{self.TWITCH_API_BASE_URL}{self.CHATTERS_ENDPOINT}"
@@ -160,7 +160,7 @@ class TwitchAPI:
     
 
     async def retrieve_active_usernames(self, bearer_token) -> list[str]:
-        viewer_data = await self._fetch_channel_viewers(bearer_token)
+        viewer_data = await self._fetch_channel_viewers_data(bearer_token)
 
         if viewer_data:
             current_users_in_session = viewer_data.get('data', [])
@@ -187,7 +187,7 @@ class TwitchAPI:
         
         return channel_viewers_list_dict
 
-    async def _enqueue_viewer_records(self, records: list[dict]) -> None:
+    async def _enqueue_and_deduplicate_viewer_records(self, records: list[dict]) -> None:
 
         self.logger.debug(f'Enqueuing {len(records)} records to channel_viewers_queue')
 
@@ -210,7 +210,7 @@ class TwitchAPI:
         self.channel_viewers_queue = df.to_dict('records')
         self.logger.debug(f'channel_viewers_queue updated with {len(self.channel_viewers_queue)} rows')
         
-    def _create_bigquery_merge_query(self, table_id, records: list[dict]) -> str:
+    def _build_bigquery_merge_query(self, table_id, records: list[dict]) -> str:
 
         # Build the UNION ALL part of the query
         union_all_query = " UNION ALL ".join([
@@ -242,13 +242,13 @@ class TwitchAPI:
         return merge_query
 
     # LAST STEP: RUNNNER
-    async def process_viewers_for_bigquery(self, bearer_token, table_id) -> str:
-        viewer_data = await self._fetch_channel_viewers(bearer_token)
+    async def generate_viewers_merge_query(self, bearer_token, table_id) -> str:
+        viewer_data = await self._fetch_channel_viewers_data(bearer_token)
 
         if viewer_data:
             channel_viewers_records = self._transform_viewer_data(viewer_data)
-            await self._enqueue_viewer_records(records=channel_viewers_records)
-            channel_viewers_query = self._create_bigquery_merge_query(table_id, self.channel_viewers_queue)
+            await self._enqueue_and_deduplicate_viewer_records(records=channel_viewers_records)
+            channel_viewers_query = self._build_bigquery_merge_query(table_id, self.channel_viewers_queue)
             return channel_viewers_query
         else:
             self.logger.error("Failed to process viewers for BigQuery due to data retrieval failure.")

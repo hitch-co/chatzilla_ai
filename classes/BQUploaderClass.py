@@ -154,9 +154,9 @@ class BQUploader:
             self.logger.debug("These are the records:")
             self.logger.debug(records[0:2])
           
-    def send_queryjob_to_bq(self, query):
+    def execute_query_on_bigquery(self, query):
         try:
-            self.logger.info("Starting BigQuery send_queryjob_to_bq() job...")
+            self.logger.info("Starting BigQuery execute_query_on_bigquery() job...")
             query_job = self.bq_client.query(query)
 
             self.logger.debug(f"Executing query...")

@@ -6,7 +6,7 @@ from classes.ConfigManagerClass import ConfigManager
 
 from models.task import CreateExecuteThreadTask, AddMessageTask
 
-runtime_logger_level = 'WARNING'
+runtime_logger_level = 'INFO'
 class ExplanationService:
     def __init__(self, config, gpt_thread_mgr, message_handler):
         self.config = config
@@ -24,16 +24,23 @@ class ExplanationService:
         self.loop_sleep_time = 5
         self.is_explanation_loop_active = False
         self.explanation_counter = 0
+        self.explanation_max_counter = self.config.explanation_max_counter
 
-    async def startexplanation(self, message, *args):
+    async def explanation_start(self, message, *args):
         self.logger.info(f"Starting story, self.explanation_counter={self.explanation_counter}")
+
+        # Check the arguments to see if it is numeric, if so, set the max counter to that number
+        if len(args) > 0 and args[0].isnumeric():
+            self.explanation_max_counter = int(args[0])
+            self.logger.info(f"...Setting newly requested explanation_max_counter to {self.explanation_max_counter}")
+
         if self.explanation_counter == 0:
             self.explanation_counter += 1
 
-            # Extract the user requested plotline and if '' or ' ', etc. then set to None
-            user_requested_topic = ' '.join(args)
-            if user_requested_topic in ['', ' ', None]:
-                user_requested_topic = None
+            # Extract the user requested explanation and if '' or ' ', etc. then set to None
+            user_requested_explanation = ' '.join(args)
+            if user_requested_explanation in ['', ' ', None]:
+                user_requested_explanation = None
 
             # Set the thread name and assistant name
             thread_name = 'ouatmsgs'
@@ -45,22 +52,20 @@ class ExplanationService:
             # Log the story details
             self.logger.info(f"...A explanation was started by {message.author.name} ({message.author.id})")
             self.logger.info(f"...thread_name and assistant_name: {thread_name}, {assistant_name}")
-            self.logger.info(f"...user_requested_topic: {user_requested_topic}")
+            self.logger.info(f"...user_requested_explanation: {user_requested_explanation}")
             self.logger.info(f"...current_story_voice: {self.current_story_voice}")
 
-            if user_requested_topic is not None:
-                submitted_plotline = user_requested_topic      
-                self.logger.info(f"Scheduler-2: This is the submitted plotline: {submitted_plotline}")
+            if user_requested_explanation is not None:   
+                self.logger.info(f"...This is the requested explanation: {user_requested_explanation}")
 
             gpt_prompt_text = self.config.explanation_user_opening_summary_prompt + " " + self.config.explanation_suffix    
             replacements_dict = {
-                "user_requested_plotline":submitted_plotline,
                 "wordcount_short":self.config.wordcount_short,
                 "wordcount_medium":self.config.wordcount_medium,
                 "wordcount_long":self.config.wordcount_long,
                 "explanation_counter":self.explanation_counter,
-                "explanation_max_counter":self.config.explanation_max_counter,
-                "user_requested_topic":user_requested_topic,
+                "explanation_max_counter":self.explanation_max_counter,
+                "user_requested_explanation":user_requested_explanation,
                 }
 
             # Add executeTask to the queue
@@ -82,7 +87,7 @@ class ExplanationService:
         #This is the while loop that generates the occurring GPT response
         while True:
             if self.is_explanation_loop_active is False:
-                self.logger.info(f"OUAT details: Explanation loop is not active, waiting longer...")
+                self.logger.debug(f"OUAT details: Explanation loop is not active, waiting longer...")
                 await asyncio.sleep(self.loop_sleep_time)
                 continue
 
@@ -91,7 +96,7 @@ class ExplanationService:
                 self.logger.info(f"OUAT details: Starting cycle #{self.explanation_counter} of the OUAT Storyteller") 
 
                 #storystarter
-                if self.explanation_counter == 0 or self.explanation_counter == 1:
+                if self.explanation_counter <=2:
                     gpt_prompt_final = self.config.explanation_starter
 
                 #storyprogressor
@@ -99,7 +104,7 @@ class ExplanationService:
                     gpt_prompt_final = self.config.explanation_progressor
 
                 #storyender
-                elif self.explanation_counter == self.config.explanation_max_counter:
+                elif self.explanation_counter >= self.config.explanation_max_counter:
                     gpt_prompt_final = self.config.explanation_ender
 
                 # Combine prefix and final article content

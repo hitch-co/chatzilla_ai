@@ -73,3 +73,25 @@ class CreateExecuteThreadTask(BaseTask):
         })
         self.logger.debug(f"CreateExecuteThreadTask Dict created: {task_dict}")
         return task_dict
+    
+class CreateSendChannelMessageTask(BaseTask): # TODO: Unsure if needed (base task)
+    def __init__(
+            self, 
+            thread_name: str,
+            content: str, 
+            tts_voice: str, 
+            message_role: str = 'assistant'
+            ):
+        super().__init__(thread_name) # TODO: Unsure if needed (inheritance)
+        self.content = content
+        self.tts_voice = tts_voice
+        self.message_role = message_role
+
+    def to_dict(self) -> dict:
+        return {
+            "type": "send_channel_message",
+            "thread_name": self.thread_name,
+            "content": self.content,
+            "tts_voice": self.tts_voice,
+            "message_role": self.message_role
+        }

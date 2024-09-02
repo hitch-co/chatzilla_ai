@@ -72,6 +72,7 @@ class VibeCheckService:
     async def process_vibecheck_message(self, message_username, message_content):
         if self.is_vibecheck_loop_active and message_username == self.vibecheckee_username: 
             # Set the event if the criteria is met
+            self.logger.debug(f"Vibecheck message received from {message_username} with content: {message_content}")
 
             # Add the bullet list to the 'ouatmsgs' thread via queue
             thread_name = 'vibecheckmsgs'

@@ -222,7 +222,7 @@ formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for
 #########################
 #########################
 #OUAT Params
-ouat_message_recurrence_seconds: 10
+ouat_message_recurrence_seconds: 15
 ouat_story_progression_number: 2
 ouat_story_wrapup_number: 3
 ouat_story_max_counter: 4
@@ -350,7 +350,7 @@ gpt_thread_prompts:
 gpt_explain_prompts:
   explanation_progression_number: 2
   explanation_max_counter: 5
-  explanation_message_recurrence_seconds: 5
+  explanation_message_recurrence_seconds: 8
 
   explanation_suffix: "This should be a single message response directly without any prefix. Be succinct and {wordcount_short} words max. It's very im portant that you explicitly add the suffix '({explanation_counter} of {explanation_max_counter})' exactly to the end of your message so users know where we are in the explanation."
   
@@ -401,14 +401,17 @@ ouat-writing-parameters:
 # NewUsersService vars
 newusers_sleep_time: 5
 #returningusers_sleep_time: 15
-newusers_msg_prompt: "Say hi and tag {random_new_user}, and welcome them to the chat
-  on behalf of ehitch.  Keep the message to {wordcount_medium} words max, ask them a question
-  if you feel it's appropriate.
+newusers_msg_prompt: "Say hi and tag {random_new_user}, and welcome them to the 
+  chat on behalf of ehitch.  Keep the message to {wordcount_medium} words max, 
+  ask them a question if you feel it's appropriate.
   "
-returningusers_msg_prompt: "Say hi and tag {random_new_user}, and specifically welcome them back to the chat
-  on behalf of ehitch.  Keep the message to {wordcount_medium} words max, ask them a question
-  if you feel it's appropriate.  You might have access to their chat history here to make your
-  response more relevant: {user_specific_chat_history}
+returningusers_msg_prompt: "Say hi and tag {random_new_user}, and specifically 
+  welcome them back to the chat on behalf of ehitch.  Keep the message to 
+  {wordcount_medium} words max, ask them a question if you feel it's appropriate.  
+  You might have access to their chat history here.  Pick something interesting 
+  to comment on if there is a cool chat message in the history
+  
+  chat history: {user_specific_chat_history}
   "
 
 #########################

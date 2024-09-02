@@ -106,7 +106,7 @@ class MessageHandler:
             self.logger.debug(message.raw_data)
             return message_extracted_name
 
-    def create_gpt_message_dict_from_strings(
+    def _create_gpt_message_dict_from_strings(
             self,
             content,
             role='user',
@@ -140,7 +140,7 @@ class MessageHandler:
             'content': message_content
         }
         return message_metadata
-    
+
     async def add_to_appropriate_thread_history(self, thread_names, message):  
 
         # Grab and write metadata, add users to users list
@@ -178,7 +178,7 @@ class MessageHandler:
         self.logger.debug(f"message_role: {message_metadata['role']}")
 
         #Create gpt message dict
-        gpt_ready_msg_dict = self.create_gpt_message_dict_from_strings(
+        gpt_ready_msg_dict = self._create_gpt_message_dict_from_strings(
             role=message_metadata['role'],
             name=message_metadata['name'],
             content=message_metadata['content']

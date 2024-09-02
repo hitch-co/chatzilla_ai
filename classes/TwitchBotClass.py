@@ -154,6 +154,18 @@ class Bot(twitch_commands.Bot):
             self.add_command(twitch_commands.command(name='explain', aliases=("p_explain"))(self.explanation_service.explanation_start))
             self.add_command(twitch_commands.command(name='stopexplain', aliases=("m_stopexplain", 'stopexplanation'))(self.explanation_service.stop_explanation))
 
+    async def _add_message_to_chatformemsgs_thread(self, message_content: str, role: str, thread_name: str):
+        if self.should_add_to_chatformemsgs(thread_name):
+            try:
+                message_object = await self.gpt_response_manager.add_message_to_thread(
+                    message_content=message_content,
+                    thread_name='chatformemsgs',
+                    role=role
+                )
+                self.logger.debug(f"Message object: {message_object}")
+            except Exception as e:
+                self.logger.error(f"Error occurred in 'add_message_to_thread': {e}", exc_info=True)
+    
     async def handle_tasks(self, task: dict):
         
         thread_name = task["thread_name"]
@@ -162,7 +174,14 @@ class Bot(twitch_commands.Bot):
         if task["type"] == "add_message":
             self.logger.debug(f"3. Handling task type 'add_message' for thread: {task['thread_name']}")
             content = task["content"]
-            
+
+            # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
+            self._add_message_to_chatformemsgs_thread(
+                message_content=content, 
+                role=message_role, 
+                thread_name='chatformemsgs'
+                )
+
             try:
                 message_object = await self.gpt_response_manager.add_message_to_thread(
                     message_content=content, 
@@ -181,7 +200,7 @@ class Bot(twitch_commands.Bot):
             #     thread_name=thread_name
             #     message_history=message_history
             #     )
-
+ 
             self.logger.debug(f"3. Handling task type 'execute_thread' for Assistant/Thread: {task['assistant_name']}, {task['thread_name']}")
             assistant_name = task["assistant_name"]
             thread_instructions = task["thread_instructions"]
@@ -192,15 +211,22 @@ class Bot(twitch_commands.Bot):
             # Execute the thread
             try:
                 gpt_response = await self.gpt_response_manager.execute_thread( 
-                    thread_name = thread_name, 
-                    assistant_name = assistant_name, 
-                    thread_instructions= thread_instructions,
+                    thread_name=thread_name, 
+                    assistant_name=assistant_name, 
+                    thread_instructions=thread_instructions,
                     replacements_dict=replacements_dict
                 )
             except Exception as e:
                 self.logger.error(f"Error occurred in 'execute_thread': {e}")
                 gpt_response = None
                 raise f"Error occurred in 'execute_thread': {e}"
+
+            # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
+            self._add_message_to_chatformemsgs_thread(
+                message_content=gpt_response, 
+                role=message_role, 
+                thread_name='chatformemsgs'
+                )
 
             # Send the GPT response to the channel
             if gpt_response is not None and bool_send_channel_message is True:
@@ -219,6 +245,15 @@ class Bot(twitch_commands.Bot):
                 self.logger.error(f"Gpt response is None, this should not happen.  Task: {task}")
 
         elif task["type"] == "send_channel_message":
+            content = task["content"]
+
+            # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
+            self._add_message_to_chatformemsgs_thread(
+                message_content=content, 
+                role=message_role, 
+                thread_name='chatformemsgs'
+                )
+    
             try:
                 await self.chatforme_service.send_output_message_and_voice(
                     text=task["content"],
@@ -940,9 +975,9 @@ class Bot(twitch_commands.Bot):
         author=ctx.message.author.name
         gpt_prompt_text = ' '.join(args)
         prompt_text_with_prefix = f"{self.config.ouat_prompt_addtostory_prefix}:'{gpt_prompt_text}'"
-        
-        #workflow1: get gpt_ready_msg_dict and add message to message history        
-        gpt_ready_msg_dict = self.message_handler.create_gpt_message_dict_from_strings(
+
+        #workflow1: get gpt_ready_msg_dict and add message to message history
+        gpt_ready_msg_dict = self.message_handler._create_gpt_message_dict_from_strings(
             content=prompt_text_with_prefix,
             role='user',
             name=author

@@ -142,7 +142,7 @@ chatforme_prompts:
 
     User may ocassionally ask something directly to you or make a simple request 
     about what to say.  If so, [user_text] will be popualted, if not it will be 
-    'none' and you can rever to your standard instructions.  If this value is 
+    'none' and you can refer to your standard instructions.  If this value is 
     populated, prioritize responding to this user's request/question/etc.
     [user_text]: '{text_input_from_user}'
 
@@ -224,7 +224,7 @@ formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for
 ouat_message_recurrence_seconds: 12
 ouat_story_progression_number: 2
 ouat_story_wrapup_number: 6
-ouat_story_max_counter: 8
+ouat_story_max_counter_default: 8
 
 
 #########################
@@ -343,7 +343,7 @@ gpt_thread_prompts:
 
 gpt_explain_prompts:
   explanation_progression_number: 2
-  explanation_max_counter: 3
+  explanation_max_counter_default: 3
   explanation_message_recurrence_seconds: 6
 
   explanation_suffix: "This should be a single message response directly without any prefix. Be succinct and {wordcount_short} words max. Add the suffix '({explanation_counter} of {explanation_max_counter})' to the end of your message so users know where we are in the explanation."
@@ -353,7 +353,7 @@ gpt_explain_prompts:
   explanation_progressor: "Your job is to build on the previous points without repeating or reiterating known facts. Develop the explanation further by adding new information and details. As you progress, start summarizing the key points and provide any final insights or conclusions to wrap up the explanation."
   
   explanation_ender: "This is the last part of the explanation. Summarize the key points, provide any final insights or conclusions, and wrap up the explanation. No sequels, this is the end of the explanation."
-  explanation_additional_detail_prefix: "Ensure to include this new detail as a main part of the explanation: "
+  explanation_additional_detail_addition: "Ensure to include this new detail as a main part of the explanation: "
   
   explanation_user_opening_summary_prompt: >
     "Create an opening summary based on the [user_requested_explanation]. Include key points that will be expanded upon in the explanation. Spice up the summary with intriguing facts or compelling information to engage the audience. Keep your newly created summary less than {wordcount_long} words in length.

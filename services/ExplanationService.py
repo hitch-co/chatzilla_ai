@@ -4,7 +4,7 @@ import random
 from my_modules.my_logging import create_logger
 from classes.ConfigManagerClass import ConfigManager
 
-from models.task import CreateExecuteThreadTask, AddMessageTask
+from models.task import CreateExecuteThreadTask
 
 runtime_logger_level = 'INFO'
 class ExplanationService:
@@ -24,27 +24,49 @@ class ExplanationService:
         self.loop_sleep_time = 5
         self.is_explanation_loop_active = False
         self.explanation_counter = 0
-        self.explanation_max_counter = self.config.explanation_max_counter
+        self.explanation_max_counter = self.config.explanation_max_counter_default
 
     async def explanation_start(self, message, *args):
-        self.logger.info(f"Starting story, self.explanation_counter={self.explanation_counter}")
+        self.logger.info(f"Starting explanation, self.explanation_counter is at {self.explanation_counter} (of {self.explanation_max_counter})")
 
-        # Check the arguments to see if it is numeric, if so, set the max counter to that number
-        if len(args) > 0 and args[0].isnumeric():
-            self.explanation_max_counter = int(args[0])
-            self.logger.info(f"...Setting newly requested explanation_max_counter to {self.explanation_max_counter}")
+        # Log message details
+        self.logger.info(f"...args: {args}")
+        self.logger.debug("...Logging message object (ctx) details:")
+        self.logger.debug(f"...message.author.name: {message.author.name}")
+        self.logger.debug(f"...message.content: {message.message.content}")
+        self.logger.debug(f"...Joined args: {' '.join(args)}")
+        self.logger.debug(f"...self.is_explanation_loop_active: {self.is_explanation_loop_active}")
+        
+        # Ensure that args has at least one element
+        if len(args) > 0:
+            first_arg = args[0].strip()
+
+            # Check if the first argument is numeric
+            if first_arg.isnumeric():
+                self.explanation_max_counter = int(first_arg)
+                self.logger.info(f"...Setting newly requested explanation_max_counter to {self.explanation_max_counter}")
+                user_requested_explanation = ' '.join(args[1:])
+            else:
+                self.logger.warning(f"...First argument is not numeric: {first_arg}")
+
+                #Check to make sure not empty string or empty inputs
+                if args == [''] or args == [' ']:
+                    user_requested_explanation = None
+                else:
+                    user_requested_explanation = ' '.join(args)
+        else:
+            user_requested_explanation = None
 
         if self.explanation_counter == 0:
             self.explanation_counter += 1
 
             # Extract the user requested explanation and if '' or ' ', etc. then set to None
-            user_requested_explanation = ' '.join(args)
             if user_requested_explanation in ['', ' ', None]:
                 user_requested_explanation = None
 
             # Set the thread name and assistant name
             thread_name = 'ouatmsgs'
-            assistant_name = 'storyteller'
+            assistant_name = 'storyteller' #NOTE: maybe should be a new explaination assistant instead of storyteller
 
             # Randomly select voice/tone/style/theme from list, set replacements dictionary
             self.current_story_voice = self.config.tts_voice_story
@@ -97,23 +119,23 @@ class ExplanationService:
 
                 #storystarter
                 if self.explanation_counter <=2:
-                    gpt_prompt_final = self.config.explanation_starter
+                    gpt_prompt_detail = self.config.explanation_starter
 
                 #storyprogressor
                 elif self.explanation_counter <= self.config.explanation_progression_number:
-                    gpt_prompt_final = self.config.explanation_progressor
+                    gpt_prompt_detail = self.config.explanation_progressor
 
                 #storyender
-                elif self.explanation_counter >= self.config.explanation_max_counter:
-                    gpt_prompt_final = self.config.explanation_ender
+                elif self.explanation_counter >= self.explanation_max_counter:
+                    gpt_prompt_detail = self.config.explanation_ender
 
                 # Combine prefix and final article content
-                gpt_prompt_final = self.config.explanation_suffix + " " + gpt_prompt_final
+                gpt_prompt_final = gpt_prompt_detail + " " + self.config.explanation_suffix
                 assistant_name = 'storyteller'
                 thread_name = 'ouatmsgs'
                 tts_voice = self.current_story_voice
 
-                self.logger.info(f"The self.explanation_counter is currently at {self.explanation_counter} (explanation_max_counter={self.config.explanation_max_counter})")
+                self.logger.info(f"The self.explanation_counter is currently at {self.explanation_counter} (explanation_max_counter={self.explanation_max_counter})")
                 self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
 
                 replacements_dict = {
@@ -122,7 +144,7 @@ class ExplanationService:
                     'twitch_bot_display_name':self.config.twitch_bot_display_name,
                     'num_bot_responses':self.config.num_bot_responses,
                     "explanation_counter":self.explanation_counter,
-                    "explanation_max_counter":self.config.explanation_max_counter,
+                    "explanation_max_counter":self.explanation_max_counter,
                     'param_in_text':'variable_from_scope'
                     }
 
@@ -138,7 +160,7 @@ class ExplanationService:
 
                 await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
-            if self.explanation_counter >= self.config.explanation_max_counter:
+            if self.explanation_counter >= self.explanation_max_counter:
                 await self.stop_explanation_loop()
             else:
                 await asyncio.sleep(int(self.config.explanation_message_recurrence_seconds))

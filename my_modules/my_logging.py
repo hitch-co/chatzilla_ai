@@ -16,7 +16,7 @@ def create_logger(
         'INFO': logging.INFO,
         'WARNING': logging.WARNING,
         'ERROR': logging.ERROR,
-        'CRITICAL': logging.ERROR,  # Exception is not a level in Python logging; it's usually logged as an ERROR
+        'CRITICAL': logging.ERROR,
     }
 
     if debug_level.upper() not in level_mapping:

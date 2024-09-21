@@ -141,13 +141,15 @@ class MessageHandler:
         }
         return message_metadata
 
-    async def add_to_appropriate_thread_history(self, thread_names, message):  
+    async def add_to_chatformemsgs_thread_history(self, message):  
+        thread_name='chatformemsgs'
 
         # Grab and write metadata, add users to users list
         message_metadata = self._get_message_metadata(message)
         message_role = message_metadata['role']
         message_username = message_metadata['name']
-        message_content = message_username+": "+message_metadata['content']
+        message_content_raw = message_metadata['content']
+        message_content = message_username+": "+message_content_raw
 
         self.logger.info(f"Adding message to queues...")
         self.logger.debug("This is the message_metadata: {}".format(message_metadata))
@@ -157,9 +159,8 @@ class MessageHandler:
             self.logger.info(f"Message '{message_metadata['content']}' is a command and will not be added to the thread history.")
             return
     
-        # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY FOR BOT RESPONSES, so we exclude those)
+        # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY FOR BOT RESPONSES, so we don't add bot messages to the message history)
         if message.author is not None and message_metadata['name'] != self.config.twitch_bot_username and message_metadata['name'] != "_unknown":
-            thread_name = 'chatformemsgs'
             task = AddMessageTask(thread_name, message_content, message_role).to_dict()
             
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)

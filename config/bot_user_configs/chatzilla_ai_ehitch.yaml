@@ -30,7 +30,7 @@ spellcheck_commands_filename: 'config\command_spellcheck_terms.json'
 #########################
 #OpenAI
 openai-api:
-  assistant_model: "gpt-4o" #"gpt-4-1106-preview" #"gpt-4-0613" #"gpt-3.5-turbo"
+  assistant_model: "gpt-4o" #"gpt-4-1106-preview" # #"gpt-4-0613" #"gpt-3.5-turbo"
   assistant_model_davinci: "code-davinci" #"gpt-3.5-turbo"
   assistant_response_max_length: 300
   tts_include_voice: True
@@ -91,18 +91,26 @@ chatforme_randomfacts:
       areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_categories_and_areas.json'
 
     standard:
-      randomfact_prompt: "share a wild/controversial/lesser known fact (using roughly 
-        {wordcount_short} words) or insight about {randomfact_topic} that begins 
-        with the letter '{random_character_a_to_z}' and relates to  
-        {randomfact_subtopic} from the {area} era, particularly {subarea}. Aim  
-        for around {wordcount_short} words, blending edgy and thoughtful  
-        perspectives. we often stray from the mainstream views. Remember,  
-        we appreciate a bit of good fun in the debate!   Don't 
-        respond including any reference to the letter or category you're talking about, just 
-        do it.  Given this is a stream, you'll see everyones chat history.  Although Your
-        primary purpose is to share facts, you can ocassionally stray from that job and 
-        respond if you think there is a good opportunity for you to add some value to the conversation.  Do this sparingly.
-        Finally, remember this is a a stream so you may be ignored.  if you are ignored, then you can continue to share facts about the topic instead."
+      randomfact_prompt: "Share a wild/controversial/lesser known fact (using roughly 
+        {wordcount_short} words) or insight about {randomfact_topic} that begins with the 
+        letter '{random_character_a_to_z}' and relates to {randomfact_subtopic} from the 
+        {area} era, particularly {subarea}. Aim for around {wordcount_short} words, blending 
+        edgy and thoughtful perspectives. We often stray from the mainstream views. Remember, 
+        we appreciate a bit of good fun in the debate! 
+
+        You have access to the chat history in this thread. Use it to inform your responses. 
+        If relevant, reference or build upon previous chat messages to enhance the conversation. 
+        Do this when it adds value to the current context, but your primary goal is still to share 
+        facts. You can occasionally respond if there is a meaningful opportunity to contribute to 
+        the conversation—do this sparingly. 
+
+        It's important that you realize the context of this chat.  This is 
+        during a live stream, and it's possible you'll be ignored. If no one 
+        responds, continue sharing facts about a topic as discussed. 
+        
+        Don't mention the letter or category you're working with, 
+        just present the information seamlessly."
+
       randomfact_response: "Looks like there's a conversation happening.  Maybe we can add a small bit of insight into what's beeing said or we can fact check the conversation or we can (sparingly) change the topic only slightly. Be sure to respond in less than {wordcount_short} words."
       topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_topics_and_subtopics.json'
       areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_eras_and_timeperiods.json'
@@ -132,7 +140,7 @@ num_bot_responses: 1
 wordcounts:
   short: 21
   medium: 27
-  long: 50
+  long: 40
 
 chatforme_prompts:
   standard: >
@@ -144,7 +152,7 @@ chatforme_prompts:
 
     User may ocassionally ask something directly to you or make a simple request 
     about what to say.  If so, [user_text] will be popualted, if not it will be 
-    'none' and you can rever to your standard instructions.  If this value is 
+    'none' and you can refer to your standard instructions.  If this value is 
     populated, prioritize responding to this user's request/question/etc.
     [user_text]: '{text_input_from_user}'
 
@@ -210,7 +218,7 @@ botears_prompt: "Below is a question/comment from the user. You are to respond
 helloworld_message_wordcount: 30
 formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for 
   {twitch_bot_channel_name} and your name is {twitch_bot_display_name} 
-  and you are of generation alpha. Your mission is to send a concise 'hello stream' 
+  and you are of generation millenial. Your mission is to send a concise 'hello stream' 
   message that welcomes viewers and says something interesting to get us started.
   Suggest viewers checkout !commands for fun stuff the bot can do
     Key Points
@@ -226,7 +234,7 @@ formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for
 ouat_message_recurrence_seconds: 15
 ouat_story_progression_number: 2
 ouat_story_wrapup_number: 3
-ouat_story_max_counter: 4
+ouat_story_max_counter_default: 4
 
 
 #########################
@@ -315,7 +323,7 @@ gpt_thread_prompts:
     "
   story_user_opening_scene_summary_prompt: >
     "Create an opening 'set the seen' statement/intro based on the 
-    [user_requested_plotline]. Spice up the bullet list with additional points
+    [user_requested_plotline]. Spice up the intro with additional points
     to make the story more exciting, for example introducing intriguing 
     characters or compelling dilemmas, ensuring each point is unique.  
 
@@ -350,25 +358,26 @@ gpt_thread_prompts:
 
 gpt_explain_prompts:
   explanation_progression_number: 2
-  explanation_max_counter: 5
+  explanation_max_counter_default: 5
   explanation_message_recurrence_seconds: 8
 
-  explanation_suffix: "This should be a single message response directly without any prefix. Be succinct and {wordcount_short} words max. It's very im portant that you explicitly add the suffix '({explanation_counter} of {explanation_max_counter})' exactly to the end of your message so users know where we are in the explanation."
-  
-  explanation_starter: "As an explainer, take the topic last seen (or as seen in the conversation history) and introduce the main points clearly. Assume the reader knows nothing about the topic. Provide a concise and engaging overview."
+  explanation_starter: "As an explainer, take the topic last seen (or as seen in the conversation history) and introduce the main points clearly. Assume the reader knows nothing about the topic. If the user’s query is unclear or references something like 'the most recent story,' 'conversation,' or 'message,' refer back to the recent conversation history to infer what they want explained. Provide a concise and engaging overview. Remember that users may implicitly ask about recent conversations if they don't explicitly mention a specific topic."
   
   explanation_progressor: "Your job is to build on and elaborate on the most important the previous points without repeating or reiterating facts that have already been shared, but are allowed to step in and correct previously stated points about the topic. Develop the explanation further by adding new information and details. As you progress, start summarizing the key points and provide any final insights or conclusions to wrap up the explanation."
   
   explanation_ender: "This is the last part of the explanation. Provide any final insights or conclusions, and wrap up the explanation. No sequels, this is the end of the explanation."
 
-  explanation_additional_detail_prefix: "Ensure to include this new detail as a main part of the explanation: "
+  explanation_additional_detail_addition: "Ensure to include this new detail as a main part of the explanation: "
   
   explanation_user_opening_summary_prompt: >
-    "Create an opening summary based on the [user_requested_explanation]. Include key points that will be expanded upon in the explanation. Spice up the summary with intriguing facts or compelling information to engage the audience. Keep your newly created summary less than {wordcount_long} words in length.
+    "Create an opening summary based on the [user_requested_explanation]. If the [user_requested_explanation] is vague or references 'the most recent story/conversation,' refer to the most recent messages in the conversation history for context. Include key points that will be expanded upon in the explanation, and spice up the summary with intriguing facts or compelling information to engage the audience. Keep your newly created summary less than {wordcount_long} words in length.
 
     [user_requested_explanation]:
     '{user_requested_explanation}'
     "
+  
+  explanation_suffix: "This should be a single message response directly without any prefix. Be succinct and {wordcount_short} words max. It's very im portant that you explicitly add the suffix '({explanation_counter} of {explanation_max_counter})' exactly to the end of your message so users know where we are in the explanation."
+  
 
 #########################
 #########################
@@ -402,17 +411,32 @@ ouat-writing-parameters:
 # NewUsersService vars
 newusers_sleep_time: 5
 #returningusers_sleep_time: 15
-newusers_msg_prompt: "Say hi and tag {random_new_user}, and welcome them to the 
-  chat on behalf of ehitch.  Keep the message to {wordcount_medium} words max, 
-  ask them a question if you feel it's appropriate.
+newusers_msg_prompt: "Say hi and tag {random_new_user}, welcoming them to the chat on behalf 
+  of ehitch. Keep the message to {wordcount_medium} words max. Since it's their first time 
+  here (or first in a long time), greet them warmly and make them feel welcome.
+
+  If there’s no chat history available (which is likely for new users), focus on creating 
+  a friendly first-time experience. Feel free to ask a lighthearted or open-ended question 
+  to encourage them to engage.
+
+  Be sure you only say hello once, and don't repeat yourself
+
+  If no chat history is present, use a welcoming tone without referring to previous 
+  interactions.
   "
-returningusers_msg_prompt: "Say hi and tag {random_new_user}, and specifically 
-  welcome them back to the chat on behalf of ehitch.  Keep the message to 
-  {wordcount_medium} words max, ask them a question if you feel it's appropriate.  
-  You might have access to their chat history here.  Pick something interesting 
-  to comment on if there is a cool chat message in the history
+
+returningusers_msg_prompt: "Say hi and tag {random_new_user}, specifically welcoming them back 
+  to the chat on behalf of ehitch. Keep the message to {wordcount_medium} words max. Since 
+  they're a returning user, try to make the message more personal by referencing something 
+  from their previous chat history if it's available.
+
+  You might have access to their chat history below.  If there is something relevant, 
+  mention it briefly to make the message feel more personal. Ask a question if you feel 
+  it's appropriate to keep the conversation flowing.
+
+  Be sure you only say hello once, and don't repeat yourself
   
-  chat history: {user_specific_chat_history}
+  chat history: '{user_specific_chat_history}' (if applicable)
   "
 
 #########################

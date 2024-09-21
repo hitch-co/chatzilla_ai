@@ -101,7 +101,7 @@ class Bot(twitch_commands.Bot):
         # TODO: Could be a good idea to inject these dependencies into the services
         # instantiate the AudioService and BotEars
         self.audio_service = AudioService(volume=self.config.tts_volume)
-        device_name = "Microphone (Yeti Classic), MME"
+        device_name = self.config.botears_device_mic
         self.bot_ears = BotEars(
             config=self.config,
             device_name=device_name,
@@ -154,18 +154,20 @@ class Bot(twitch_commands.Bot):
             self.add_command(twitch_commands.command(name='explain', aliases=("p_explain"))(self.explanation_service.explanation_start))
             self.add_command(twitch_commands.command(name='stopexplain', aliases=("m_stopexplain", 'stopexplanation'))(self.explanation_service.stop_explanation))
 
-    async def _add_message_to_chatformemsgs_thread(self, message_content: str, role: str, thread_name: str):
-        if thread_name in self.config.gpt_thread_names and thread_name != 'chatformemsgs':
+    async def _add_message_to_specified_thread(self, message_content: str, role: str, thread_name: str) -> None:
+        if thread_name in self.config.gpt_thread_names:
             try:
                 message_object = await self.gpt_response_manager.add_message_to_thread(
                     message_content=message_content,
-                    thread_name='chatformemsgs',
+                    thread_name=thread_name,
                     role=role
                 )
                 self.logger.debug(f"Message object: {message_object}")
             except Exception as e:
                 self.logger.error(f"Error occurred in 'add_message_to_thread': {e}", exc_info=True)
-    
+        else:
+            self.logger.error(f"Thread name '{thread_name}' is not in the list of thread names. Message content: {message_content[0:25]+'...'}")
+
     async def handle_tasks(self, task: dict):
         
         thread_name = task["thread_name"]
@@ -176,21 +178,14 @@ class Bot(twitch_commands.Bot):
             content = task["content"]
 
             # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
-            await self._add_message_to_chatformemsgs_thread(
-                message_content=content, 
-                role=message_role, 
-                thread_name='chatformemsgs'
-                )
-
             try:
-                message_object = await self.gpt_response_manager.add_message_to_thread(
+                await self._add_message_to_specified_thread(
                     message_content=content, 
-                    thread_name=thread_name,
-                    role=message_role
+                    role=message_role,
+                    thread_name=thread_name
                     )
-                self.logger.debug(f"Message object: {message_object}")
             except Exception as e: 
-                self.logger.error(f"Error occurred in 'add_message_to_thread': {e}", exc_info=True)
+                self.logger.error(f"Error occurred in '_add_message_to_specified_thread': {e}", exc_info=True)
             
         elif task["type"] == "execute_thread":
 
@@ -221,12 +216,14 @@ class Bot(twitch_commands.Bot):
                 gpt_response = None
                 raise f"Error occurred in 'execute_thread': {e}"
 
-            # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
-            await self._add_message_to_chatformemsgs_thread(
-                message_content=gpt_response, 
-                role=message_role, 
-                thread_name='chatformemsgs'
-                )
+            # If the thread name is not chatformemsgs, add the message to the thread
+            if thread_name != 'chatformemsgs':
+                await self._add_message_to_specified_thread(
+                    message_content=gpt_response, 
+                    role=message_role, 
+                    thread_name='chatformemsgs'
+                    )
+
 
             # Send the GPT response to the channel
             if gpt_response is not None and bool_send_channel_message is True:
@@ -248,10 +245,10 @@ class Bot(twitch_commands.Bot):
             content = task["content"]
 
             # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
-            await self._add_message_to_chatformemsgs_thread(
+            await self._add_message_to_specified_thread(
                 message_content=content, 
                 role=message_role, 
-                thread_name='chatformemsgs'
+                thread_name=thread_name
                 )
     
             try:
@@ -274,6 +271,10 @@ class Bot(twitch_commands.Bot):
         # send hello world message
         await self._send_hello_world_message()
 
+        # start newusers loop
+        self.logger.debug(f"Starting newusers service")
+        self.loop.create_task(self._send_message_to_new_users_task())
+
         # start OUAT loop
         self.logger.debug(f"Starting OUAT service")
         self.loop.create_task(self.ouat_storyteller_task())
@@ -281,10 +282,6 @@ class Bot(twitch_commands.Bot):
         # Start bot ears streaming
         self.logger.debug(f"Starting bot ears streaming")
         self.loop.create_task(self.bot_ears.start_botears_audio_stream())
-
-        # start newusers loop
-        self.logger.debug(f"Starting newusers service")
-        self.loop.create_task(self._send_message_to_new_users_task())
 
         # start authentication refresh loop
         self.logger.debug('Starting the refresh token service')
@@ -338,16 +335,14 @@ class Bot(twitch_commands.Bot):
             self.config.command_spellcheck_terms
             )
         
-        # 1b. Add the message to the appropriate thread history
+        # 1b. Add the message to the appropriate message history (not to be confused with the thread history)
         await self.message_handler.add_to_appropriate_message_history(message)
-        await self.message_handler.add_to_appropriate_thread_history(
-            thread_names=self.config.gpt_thread_names, 
-            message=message
-            )
+        if message.author is not None:
+            await self.message_handler.add_to_chatformemsgs_thread_history(message=message)
 
         # 1c. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
         if self.config.twitch_bot_username in message.content and "!chat" not in message.content and message.author is not None:
-            await self._chatforme_main()
+            await self._chatforme_main(message.content)
 
         # 2. Process the message through the vibecheck service.
             #NOTE: Should this be a separate task?    
@@ -433,11 +428,9 @@ class Bot(twitch_commands.Bot):
             # Wait for 30 minutes before checking again
             await asyncio.sleep(1800)
 
-    async def _send_message_to_new_users_task(self):
+    async def _send_message_to_new_users_task(self, thread_name='chatformemsgs', assistant_name='newuser_shoutout'):
         self.current_users_list = []
         tts_voice_selected = self.config.tts_voice_newuser
-        thread_name = 'chatformemsgs'
-        assistant_name = 'newuser_shoutout'
 
         while True:
             await adjustable_sleep_task.adjustable_sleep_task(self.config, 'newusers_sleep_time')
@@ -616,7 +609,7 @@ class Bot(twitch_commands.Bot):
         self.logger.info(f"Transcribed text: {text}")
 
         # Add to thread (This is done to send the voice message to the GPT thread)
-        task = AddMessageTask(thread_name, text).to_dict()
+        task = AddMessageTask(thread_name, text, message_role='user').to_dict()
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
         replacements_dict = {
@@ -835,18 +828,32 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='startstory', aliases=("p_startstory"))
     async def startstory(self, message, *args):
         self.logger.info(f"Starting story, self.ouat_counter={self.ouat_counter}")
+        self.logger.info(f"args: {args}")
+
+        # Set the thread name and assistant name
+        thread_name = 'ouatmsgs'
+        assistant_name = 'storyteller'
+        
         if self.ouat_counter == 0:
+            self.ouat_story_max_counter = self.config.ouat_story_max_counter_default
             self.ouat_counter += 1
             self.message_handler.ouat_msg_history.clear()
 
             # Extract the user requested plotline and if '' or ' ', etc. then set to None
-            user_requested_plotline_str = ' '.join(args)
-            if user_requested_plotline_str in ['', ' ', None]:
-                user_requested_plotline_str = None
+            if len(args) > 0:
+                first_arg = args[0].strip()
 
-            # Set the thread name and assistant name
-            thread_name = 'ouatmsgs'
-            assistant_name = 'storyteller'
+                # If the first argument is a number, set the max counter to that number
+                if first_arg.isnumeric():
+                    self.ouat_story_max_counter = int(first_arg)
+                    self.logger.info(f"Max counter set to {self.ouat_story_max_counter}")
+                    user_requested_plotline_str = ' '.join(args[1:])
+                else:
+                    user_requested_plotline_str = ' '.join(args)
+                    if user_requested_plotline_str in ['', ' ', None]:
+                        user_requested_plotline_str = None  
+            else:
+                user_requested_plotline_str = None
 
             # Randomly select voice/tone/style/theme from list, set replacements dictionary
             self.current_story_voice = random.choice(self.config.tts_voices['female'])
@@ -885,7 +892,7 @@ class Bot(twitch_commands.Bot):
                 "wordcount_medium":self.config.wordcount_medium,
                 "wordcount_long":self.config.wordcount_long,
                 "ouat_counter":self.ouat_counter,
-                "max_ouat_counter":self.config.ouat_story_max_counter,
+                "max_ouat_counter":self.ouat_story_max_counter,
                 }
 
             # Add executeTask to the queue
@@ -922,11 +929,11 @@ class Bot(twitch_commands.Bot):
                     gpt_prompt_final = self.config.storyteller_storyprogressor_prompt
 
                 #storyfinisher
-                elif self.ouat_counter < self.config.ouat_story_max_counter:
+                elif self.ouat_counter < self.ouat_story_max_counter:
                     gpt_prompt_final = self.config.storyteller_storyfinisher_prompt
 
                 #storyender
-                elif self.ouat_counter == self.config.ouat_story_max_counter:
+                elif self.ouat_counter == self.ouat_story_max_counter:
                     gpt_prompt_final = self.config.storyteller_storyender_prompt
 
                 # Combine prefix and final article content
@@ -934,7 +941,7 @@ class Bot(twitch_commands.Bot):
                 assistant_name = 'storyteller'
                 thread_name = 'ouatmsgs'
 
-                self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (ouat_story_max_counter={self.config.ouat_story_max_counter})")
+                self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (ouat_story_max_counter={self.ouat_story_max_counter})")
                 self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
                 self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
 
@@ -947,7 +954,7 @@ class Bot(twitch_commands.Bot):
                     'writing_tone': self.selected_writing_tone,
                     'writing_theme': self.selected_theme,
                     "ouat_counter":self.ouat_counter,
-                    "max_ouat_counter":self.config.ouat_story_max_counter,
+                    "max_ouat_counter":self.ouat_story_max_counter,
                     'param_in_text':'variable_from_scope'
                     }
 
@@ -963,7 +970,7 @@ class Bot(twitch_commands.Bot):
 
                 await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
-            if self.ouat_counter >= self.config.ouat_story_max_counter:
+            if self.ouat_counter >= self.ouat_story_max_counter:
                 await self.stop_ouat_loop()
             else:
                 await asyncio.sleep(int(self.config.ouat_message_recurrence_seconds))
@@ -986,7 +993,7 @@ class Bot(twitch_commands.Bot):
 
         # Add the bullet list to the 'ouatmsgs' thread via queue
         thread_name = 'ouatmsgs'
-        task = AddMessageTask(thread_name, gpt_prompt_text).to_dict()
+        task = AddMessageTask(thread_name, gpt_prompt_text, message_role='user').to_dict()
 
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
         self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{gpt_prompt_text}'")
@@ -1019,7 +1026,7 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='endstory', aliases=("m_endstory"))
     async def endstory(self, ctx):
         if self.ouat_counter >= 1:
-            self.ouat_counter = self.config.ouat_story_max_counter - 1
+            self.ouat_counter = self.ouat_story_max_counter - 1
             self.logger.info(f"Story is being ended by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}")
 
     async def stop_ouat_loop(self) -> None:

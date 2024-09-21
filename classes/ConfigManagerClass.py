@@ -194,12 +194,12 @@ class ConfigManager:
         self.explanation_suffix = yaml_config['gpt_explain_prompts']['explanation_suffix']
         self.explanation_starter = yaml_config['gpt_explain_prompts']['explanation_starter']
         self.explanation_progressor = yaml_config['gpt_explain_prompts']['explanation_progressor']
-        self.explanation_additional_detail_prefix = yaml_config['gpt_explain_prompts']['explanation_additional_detail_prefix']
+        self.explanation_additional_detail_addition = yaml_config['gpt_explain_prompts']['explanation_additional_detail_addition']
         self.explanation_user_opening_summary_prompt = yaml_config['gpt_explain_prompts']['explanation_user_opening_summary_prompt']
         self.explanation_ender = yaml_config['gpt_explain_prompts']['explanation_ender']
 
         self.explanation_progression_number = yaml_config['gpt_explain_prompts']['explanation_progression_number']
-        self.explanation_max_counter = yaml_config['gpt_explain_prompts']['explanation_max_counter']
+        self.explanation_max_counter_default = yaml_config['gpt_explain_prompts']['explanation_max_counter_default']
         self.explanation_message_recurrence_seconds = yaml_config['gpt_explain_prompts']['explanation_message_recurrence_seconds']
 
     def yaml_gpt_voice_config(self, yaml_config):
@@ -284,7 +284,7 @@ class ConfigManager:
             # OUAT Progression flow / Config
             self.ouat_message_recurrence_seconds = yaml_config['ouat_message_recurrence_seconds']
             self.ouat_story_progression_number = yaml_config['ouat_story_progression_number']
-            self.ouat_story_max_counter = yaml_config['ouat_story_max_counter']
+            self.ouat_story_max_counter_default = yaml_config['ouat_story_max_counter_default']
 
             # GPT Writing Style/Theme/Tone Paramaters
             self.writing_tone = yaml_config.get('ouat-writing-parameters', {}).get('writing_tone', 'no specified writing tone')

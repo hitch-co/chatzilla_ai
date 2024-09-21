@@ -88,10 +88,13 @@ class CreateSendChannelMessageTask(BaseTask): # TODO: Unsure if needed (base tas
         self.message_role = message_role
 
     def to_dict(self) -> dict:
-        return {
+        task_dict = super().to_dict()  
+        task_dict.update({
             "type": "send_channel_message",
             "thread_name": self.thread_name,
             "content": self.content,
             "tts_voice": self.tts_voice,
             "message_role": self.message_role
-        }
+        })
+        self.logger.debug(f"CreateSendChannelMessageTask Dict created: {task_dict}")
+        return task_dict

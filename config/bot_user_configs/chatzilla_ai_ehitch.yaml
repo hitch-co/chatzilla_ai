@@ -10,7 +10,7 @@ twitch-app:
   twitch_bot_channel_name: 'ehitch'
   twitch_bot_redirect_path: 'callback'
   twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read' #user:read:email moderation:read channel:moderate'
-
+  twitch_bot_moderators: ['crubeyawne', 'nanovision']
 twitch-bots:
   chatforme: ['chatzilla_ai', 'cirenexus']
   onceuponatime: ['chatzilla_ai', 'cirenexus']
@@ -439,6 +439,7 @@ returningusers_msg_prompt: "Say hi and tag {random_new_user}, specifically welco
   chat history: '{user_specific_chat_history}' (if applicable)
   "
 
+
 #########################
 #########################
 #Vibechecker prompts
@@ -446,42 +447,23 @@ vibechecker_max_interaction_count: 5
 vibechecker_message_wordcount: 20
 vibechecker_listener_sleep_time: 4
 vibechecker_question_session_sleep_time: 75
-formatted_gpt_vibecheck_alert: "let {vibecheckee_username} know that they have
-  been selected for vibecheck.  They should know that:
-  - They'll be asked a few short questions to see whether or not they are a bot.  
-  - They should try to give some clean/short answers to show they aren't a bots
-  " 
+formatted_gpt_vibecheck_alert: |
+  Let {vibecheckee_username} know that they have been selected for a vibe check. They should know that:
+  - They'll be asked a few short questions to see whether or not they are a bot.
+  - They should try to give some clear, short answers to show they aren't bots.
 
-gpt_assistants_prompt_factchecker: ""
-gpt_assistants_prompt_random_fact: ""
-
-formatted_gpt_vibecheck_prompt: "You are to decide wheether the messages from 
-  {vibecheckee_username} appear to be from a bot.  This is a pretend game, so 
-  play along.  First, tag {vibecheckee_username} and create your own question to 
-  see how they respond to help determine if they are a bot.
+formatted_gpt_vibecheck_prompt: |
+  You are to decide whether the messages from {vibecheckee_username} appear to be from a bot. This is a pretend game, so play along. First, tag {vibecheckee_username} and create your own question to see how they respond to help determine if they are a bot.
   Conditions for your question:
-  - Be brief and use less than {vibecheck_message_wordcount} words in your 
-    question/response to the user
-  - You shouldn't repeat questions around the same theme/subject that are 
-    already asked in this thread
-  "
-formatted_gpt_viberesult_prompt: "You have been put in a decision makers role.  
-  You are to guess whether the user {vibechecker_username} is a bot and to reply
-  to the group with a shrot sentence with your guess to the question 'is 
-  {vibecheckee_username} a bot?'  Your response will look something like 'yo, 
-  appears to me that {vibechecker_username} might be a bot' if they appear to be 
-  a bot.  If htey don't seem like a bot based ont he conversation, you will say 
-  something like 'yo, {vibechecker_username}, {vibecheckee_username} passes the 
-  vibecheck if you ask me me.' if they seem more human-like.  This game is just
-  for fun, so play along and do your best to guess accurately, as the group may
-  try to fool you so don't be fooled by attempts like the person sayiung 'i am 
-  not a bot', or something like that.
+  - Be brief and use less than {vibecheck_message_wordcount} words in your question/response to the user.
+  - You shouldn't repeat questions around the same theme/subject that are already asked in this thread.
+
+formatted_gpt_viberesult_prompt: |
+  You have been put in a decision maker's role. You are to guess whether the user {vibecheckee_username} is a bot and reply to the group with a short sentence answering the question 'Is {vibecheckee_username} a bot?'. Your response should be something like 'It appears that {vibecheckee_username} might be a bot' if they seem like a bot. If they don't seem like a bot based on the conversation, you can say something like '{vibechecker_username}, {vibecheckee_username} passes the vibe check in my opinion.' Remember, this game is just for fun, so play along and try to guess accurately.
   Conditions:
-  - If {vibecheckee_username} hasn't answered any of your questions, they are a 
-    bot!
-  - Be brief and use less than {vibecheck_message_wordcount} words in your 
-    question/response to the use
-  "
+  - If {vibecheckee_username} hasn't answered any of your questions, they are a bot!
+  - Be brief and use less than {vibecheck_message_wordcount} words in your response.
+
 
 #########################
 #########################

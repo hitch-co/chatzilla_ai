@@ -151,8 +151,14 @@ class Bot(twitch_commands.Bot):
         self._register_chat_commands()
 
     def _register_chat_commands(self):
-            self.add_command(twitch_commands.command(name='explain', aliases=("p_explain"))(self.explanation_service.explanation_start))
-            self.add_command(twitch_commands.command(name='stopexplain', aliases=("m_stopexplain", 'stopexplanation'))(self.explanation_service.stop_explanation))
+            self.add_command(twitch_commands.command(
+                name='explain', 
+                aliases=("p_explain"))(self.explanation_service.explanation_start)
+                )
+            self.add_command(twitch_commands.command(
+                name='stopexplain', 
+                aliases=("m_stopexplain", 'stopexplanation'))(self.explanation_service.stop_explanation)
+                )
 
     async def _add_message_to_specified_thread(self, message_content: str, role: str, thread_name: str) -> None:
         if thread_name in self.config.gpt_thread_names:
@@ -475,7 +481,7 @@ class Bot(twitch_commands.Bot):
                         user['username'] not in self.config.twitch_bot_channel_name and
                         user['username'] not in self.config.twitch_bot_username and
                         user['username'] not in self.config.twitch_bot_display_name
-                        and user['username'] not in "crubeyawne"
+                        #and user['username'] not in "crubeyawne"
                         #and user['username'] not in "nanovision"
                         #and user['username'] not in mods_list
                         )
@@ -544,7 +550,7 @@ class Bot(twitch_commands.Bot):
     async def _send_channel_message_wrapper(self, message):
         await self.channel.send(message)
 
-    async def _verify_moderator_permission(self, ctx) -> bool:
+    async def _is_function_caller_moderator(self, ctx) -> bool:
         is_sender_mod = False
         command_name = inspect.currentframe().f_back.f_code.co_name
         self.logger.info(f"ctx.message.author.is_mod???: {ctx.message.author.is_mod}")
@@ -589,6 +595,12 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='what', aliases=("m_what"))
     async def what(self, ctx):
+    
+        is_sender_mod = await self._is_function_caller_moderator(ctx)
+        if not is_sender_mod:
+            self.logger.debug("Requester was not a mod... nothing happened")
+            return
+    
         gpt_prompt_text = self.config.botears_prompt
         assistant_name = 'chatforme'
         thread_name = 'chatformemsgs'
@@ -659,7 +671,7 @@ class Bot(twitch_commands.Bot):
         self.logger.info(f"Results: {results}")
         
         results_string = ', '.join(sorted(results))
-        self.logger.info(f"Results string: {results_string}")
+        self.logger.debug(f"Results string: {results_string}")
         
         await self._send_channel_message_wrapper(f"Commands include: {results_string}")
 
@@ -673,9 +685,11 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='updatetodo', aliases=("m_updatetodo"))
     async def updatetodo(self, ctx, *args):
-            is_sender_mod = await self._verify_moderator_permission(ctx)
+        is_sender_mod = await self._is_function_caller_moderator(ctx)
+        if not is_sender_mod:
+            self.logger.debug("Requester was not a mod... nothing happened")
+            return
 
-            if is_sender_mod == True:
                 updated_string = ' '.join(args)
                 self.config.gpt_todo_prompt = updated_string
                 self.logger.info(f"updated todo list: {updated_string}")
@@ -737,8 +751,7 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='last_message', aliases=("m_last_message",))
     async def last_message(self, ctx, *args):
-        # Parse the command arguments
-        is_sender_mod = await self._verify_moderator_permission(ctx)
+        is_sender_mod = await self._is_function_caller_moderator(ctx)
 
         if is_sender_mod == True and args is not None:
             if len(args) == 1:
@@ -756,6 +769,7 @@ class Bot(twitch_commands.Bot):
             # Get content variable from the last message json string
             last_message = json.loads(last_message)
             last_message_content = last_message[0]['content']
+            await self._send_channel_message_wrapper(f"Last message from {user_name}: {last_message_content}")
 
         else:
             self.logger.info(f"Sender is not a mod or incorrect number of arguments {len(args)} were sent, 1 is required.")
@@ -1086,7 +1100,7 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='update_config', aliases=("m_update_config",))
     async def update_config(self, ctx, *args):
         
-        is_sender_mod = await self._verify_moderator_permission(ctx)
+        is_sender_mod = await self._is_function_caller_moderator(ctx)
         if not is_sender_mod:
             self.logger.debug("Requester was not a mod... nothing happened")
             return

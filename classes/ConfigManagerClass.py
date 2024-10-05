@@ -233,6 +233,7 @@ class ConfigManager:
             self.twitch_bot_channel_name = yaml_config['twitch-app']['twitch_bot_channel_name']
             self.twitch_bot_username = yaml_config['twitch-app']['twitch_bot_username']
             self.twitch_bot_display_name = yaml_config['twitch-app']['twitch_bot_display_name']
+            self.twitch_bot_moderators = yaml_config['twitch-app']['twitch_bot_moderators']
             self.num_bot_responses = yaml_config['num_bot_responses']
             self.twitch_bot_operatorname = yaml_config['twitch-app']['twitch_bot_operatorname']
             self.msg_history_limit = yaml_config['msg_history_limit']

@@ -22,10 +22,23 @@ echo APP_BOT_USER_YAML=%APP_BOT_USER_YAML%
 echo input_port_number=%input_port_number%
 echo TWITCH_BOT_ROOT_DIRECTORY=%TWITCH_BOT_ROOT_DIRECTORY%
 
-:: Switch to the specified directory (worktree)
-cd "%TWITCH_BOT_ROOT_DIRECTORY%"
+:: Check if the directory exists before switching to it
+if not exist "%TWITCH_BOT_ROOT_DIRECTORY%" (
+    echo Error: Directory %TWITCH_BOT_ROOT_DIRECTORY% does not exist.
+    exit /b
+)
 
-:: Activate virtual environment from the worktree directory
+:: Print directory contents to verify its accessibility
+echo Listing directory contents:
+dir "%TWITCH_BOT_ROOT_DIRECTORY%"
+
+:: Switch to the specified directory (worktree)
+cd "%TWITCH_BOT_ROOT_DIRECTORY%" || (
+    echo Directory not found: %TWITCH_BOT_ROOT_DIRECTORY%
+    exit /b
+)
+
+:: Activate virtual environment from the main repo
 call "..\chatzilla_ai\venv\Scripts\activate"
 
 :: Set configuration path relative to the worktree directory

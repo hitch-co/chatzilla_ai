@@ -159,10 +159,9 @@ class MessageHandler:
             self.logger.info(f"Message '{message_metadata['content']}' is a command and will not be added to the thread history.")
             return
     
-        # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY FOR BOT RESPONSES, so we don't add bot messages to the message history)
+         # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY FOR BOT RESPONSES, so we don't add bot messages to the message history)
         if message.author is not None and message_metadata['name'] != self.config.twitch_bot_username and message_metadata['name'] != "_unknown":
-            task = AddMessageTask(thread_name, message_content, message_role).to_dict()
-            
+            task = AddMessageTask(thread_name, message_content, message_role)
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
             self.logger.info(f"Message author not the bot '{message_metadata['name']}', message added to queue (thread: {thread_name})")
         else:

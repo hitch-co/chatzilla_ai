@@ -15,7 +15,10 @@ class BaseTask:
             stream_logs=True,
             encoding='UTF-8'
             )
-        
+
+        # Create task_dict during initialization
+        self.task_dict = self.to_dict()
+  
     def to_dict(self):
         return {
             "thread_name": self.thread_name

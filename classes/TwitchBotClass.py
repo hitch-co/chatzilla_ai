@@ -175,14 +175,15 @@ class Bot(twitch_commands.Bot):
         else:
             self.logger.error(f"Thread name '{thread_name}' is not in the list of thread names. Message content: {message_content[0:25]+'...'}")
 
-    async def handle_tasks(self, task: dict):
+    async def handle_tasks(self, task: BaseTask):
         
-        thread_name = task["thread_name"]
-        message_role = task["message_role"]
+        thread_name = task.task_dict.get("thread_name")
+        message_role = task.task_dict.get("message_role")
 
-        if task["type"] == "add_message":
+        if task.task_dict.get("type") == "add_message":
             self.logger.debug(f"3. Handling task type 'add_message' for thread: {task['thread_name']}")
-            content = task["content"]
+            content = task.task_dict.get("content")
+
 
             # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
             try:
@@ -191,10 +192,13 @@ class Bot(twitch_commands.Bot):
                     role=message_role,
                     thread_name=thread_name
                     )
+                task.future.set_result('AddMessageTask Completed')
+
             except Exception as e: 
                 self.logger.error(f"Error occurred in '_add_message_to_specified_thread': {e}", exc_info=True)
-            
-        elif task["type"] == "execute_thread":
+                task.future.set_exception(e)
+
+        elif task.task_dict.get("type") == "execute_thread":
 
             # # NOTE: if we decide to bulk add (to reduce api calls and speedup the app), 
             # #  this is where we should dump message queue into thread history
@@ -203,12 +207,12 @@ class Bot(twitch_commands.Bot):
             #     message_history=message_history
             #     )
  
-            self.logger.debug(f"3. Handling task type 'execute_thread' for Assistant/Thread: {task['assistant_name']}, {task['thread_name']}")
-            assistant_name = task["assistant_name"]
-            thread_instructions = task["thread_instructions"]
-            replacements_dict = task["replacements_dict"]
-            tts_voice = task["tts_voice"]
-            bool_send_channel_message = task["send_channel_message"]          
+            self.logger.debug(f"3. Handling task type 'execute_thread' for Assistant/Thread: {task.task_dict.get('assistant_name')}, {task.task_dict.get('thread_name')}")
+            assistant_name = task.task_dict.get("assistant_name")
+            thread_instructions = task.task_dict.get("thread_instructions")
+            replacements_dict = task.task_dict.get("replacements_dict")
+            tts_voice = task.task_dict.get("tts_voice")
+            bool_send_channel_message = task.task_dict.get("send_channel_message")          
             
             # Execute the thread
             try:
@@ -218,10 +222,12 @@ class Bot(twitch_commands.Bot):
                     thread_instructions=thread_instructions,
                     replacements_dict=replacements_dict
                 )
+                task.future.set_result('ExecuteThreadTask Completed')
+
             except Exception as e:
+                task.future.set_exception(e)
                 self.logger.error(f"Error occurred in 'execute_thread': {e}")
                 gpt_response = None
-                raise f"Error occurred in 'execute_thread': {e}"
 
             # If the thread name is not chatformemsgs, add the message to the thread
             if thread_name != 'chatformemsgs':
@@ -244,12 +250,12 @@ class Bot(twitch_commands.Bot):
                 except Exception as e:
                     self.logger.error(f"Error occurred in 'send_output_message_and_voice': {e}")
                 self.logger.debug("Thread executed...")
-                self.logger.debug(f"'{task['type']}' task handled for thread: {thread_name}") 
+                self.logger.debug(f"'{task.task_dict.get('type')}' task handled for thread: {thread_name}") 
             else:
-                self.logger.error(f"Gpt response is None, this should not happen.  Task: {task}")
+                self.logger.error(f"Gpt response is None, this should not happen.  Task: {task.task_dict}")
 
-        elif task["type"] == "send_channel_message":
-            content = task["content"]
+        elif task.task_dict.get("type") == "send_channel_message":
+            content = task.task_dict.get("content")
 
             # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
             await self._add_message_to_specified_thread(
@@ -260,9 +266,9 @@ class Bot(twitch_commands.Bot):
     
             try:
                 await self.chatforme_service.send_output_message_and_voice(
-                    text=task["content"],
+                    text=task.task_dict.get("content"),
                     incl_voice=self.config.tts_include_voice,
-                    voice_name=task["tts_voice"]
+                    voice_name=task.task_dict.get("tts_voice")
                 )
             except Exception as e:
                 self.logger.error(f"Error occurred in 'send_channel_message': {e}")
@@ -530,9 +536,9 @@ class Bot(twitch_commands.Bot):
                         thread_instructions=prompt,
                         replacements_dict=replacements_dict,
                         tts_voice=tts_voice_selected
-                    ).to_dict()
+                    )
 
-                    self.logger.debug(f"Task to add to queue: {task}")
+                    self.logger.debug(f"Task to add to queue: {task.task_dict}")
                     await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
                     self.logger.debug(f"self.newusers_service.users_sent_messages_list: {self.newusers_service.users_sent_messages_list}")
@@ -583,8 +589,8 @@ class Bot(twitch_commands.Bot):
                 thread_instructions=gpt_prompt_text,
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice
-            ).to_dict()
-            self.logger.debug(f"Task to add to queue: {task}")
+            )
+            self.logger.debug(f"Task to add to queue: {task.task_dict}")
         
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
@@ -622,7 +628,7 @@ class Bot(twitch_commands.Bot):
         self.logger.info(f"Transcribed text: {text}")
 
         # Add to thread (This is done to send the voice message to the GPT thread)
-        task = AddMessageTask(thread_name, text, message_role='user').to_dict()
+        task = AddMessageTask(thread_name, text, message_role='user')
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
         replacements_dict = {
@@ -637,8 +643,8 @@ class Bot(twitch_commands.Bot):
             thread_instructions=gpt_prompt_text,
             replacements_dict=replacements_dict,
             tts_voice=tts_voice
-        ).to_dict()
-        self.logger.debug(f"Task to add to queue: {task}")
+        )
+        self.logger.debug(f"Task to add to queue: {task.task_dict}")
 
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
@@ -736,8 +742,8 @@ class Bot(twitch_commands.Bot):
             thread_instructions=chatforme_prompt,
             replacements_dict=replacements_dict,
             tts_voice=tts_voice
-        ).to_dict()
-        self.logger.debug(f"Task to add to queue: {task}")
+        )
+        self.logger.debug(f"Task to add to queue: {task.task_dict}")
 
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
         
@@ -980,8 +986,8 @@ class Bot(twitch_commands.Bot):
                 replacements_dict=replacements_dict,
                 tts_voice=self.current_story_voice,
                 send_channel_message=True
-                ).to_dict()
-            self.logger.debug(f"Task to add to queue: {task}")
+                )
+            self.logger.debug(f"Task to add to queue: {task.task_dict}")
 
             # Add the bullet list to the 'ouatmsgs' thread via queue
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
@@ -1042,8 +1048,8 @@ class Bot(twitch_commands.Bot):
                     thread_instructions=gpt_prompt_final,
                     replacements_dict=replacements_dict,
                     tts_voice=self.current_story_voice
-                ).to_dict()
-                self.logger.debug(f"Task to add to queue: {task}")
+                )
+                self.logger.debug(f"Task to add to queue: {task.task_dict}")
 
                 await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
@@ -1070,7 +1076,7 @@ class Bot(twitch_commands.Bot):
 
         # Add the bullet list to the 'ouatmsgs' thread via queue
         thread_name = 'ouatmsgs'
-        task = AddMessageTask(thread_name, gpt_prompt_text, message_role='user').to_dict()
+        task = AddMessageTask(thread_name, gpt_prompt_text, message_role='user')
 
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
         self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{gpt_prompt_text}'")
@@ -1091,9 +1097,9 @@ class Bot(twitch_commands.Bot):
                     thread_name='ouatmsgs',
                     content=content,
                     tts_voice=self.current_story_voice,
-                ).to_dict()
+                )
 
-                self.logger.debug(f"Task to add to queue: {task}")
+                self.logger.debug(f"Task to add to queue: {task.task_dict}")
                 await self.gpt_thread_mgr.add_task_to_queue('ouatmsgs', task)
             except Exception as e:
                 self.logger.error(f"Error occurred in stopping the story: {e}")
@@ -1144,8 +1150,8 @@ class Bot(twitch_commands.Bot):
                 thread_instructions=chatforme_factcheck_prompt,
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice
-            ).to_dict()
-            self.logger.debug(f"Task to add to queue: {task}")
+            )
+            self.logger.debug(f"Task to add to queue: {task.task_dict}")
 
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
@@ -1327,7 +1333,7 @@ class Bot(twitch_commands.Bot):
                 thread_instructions=selected_prompt,
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice
-            ).to_dict()
-            self.logger.debug(f"Task to add to queue: {task}")
+            )
+            self.logger.debug(f"Task to add to queue: {task.task_dict}")
 
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)

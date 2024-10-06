@@ -62,7 +62,7 @@ class VibeCheckService:
         self.vibechecker_question_session_sleep_time = self.config.vibechecker_question_session_sleep_time
         self.vibechecker_listener_sleep_time = self.config.vibechecker_listener_sleep_time
 
-    def start_vibecheck_session(self):
+    async def start_vibecheck_session(self):
         # Start the vibe check logic (e.g., initiating a task or loop)
         self.is_vibecheck_loop_active = True
         self.loop = asyncio.get_event_loop()
@@ -81,11 +81,11 @@ class VibeCheckService:
             self.vibecheck_ready_event.set()
             pass
         else:
-            self.logger.debug(f"...vibecheck message received from user who is not the vibecheckee ({self.vibecheckee_username})")
+            self.logger.info(f"...vibecheck message received from user who is not the vibecheckee ({self.vibecheckee_username})")
 
     async def stop_vibecheck_session(self):
         if self.vibechecker_task:
-            self._vibecheck_cleanup()
+            await self._vibecheck_cleanup()
             self.vibechecker_task.cancel()
             try:
                 await self.vibechecker_task
@@ -93,7 +93,7 @@ class VibeCheckService:
             except asyncio.CancelledError:
                 self.logger.debug("...vibecheck session stop ran into an error")
 
-    def _vibecheck_cleanup(self):
+    async def _vibecheck_cleanup(self):
         self.is_vibecheck_loop_active = False
         self.vibechecker_interactions_counter = 0
         self.vibechecker_players = {}
@@ -101,6 +101,9 @@ class VibeCheckService:
         self.vibechecker_username = None
         self.vibecheck_ready_event.clear()
         self.logger.info("...vibecheck cleanup is complete")
+
+        await asyncio.sleep(1)
+        self.is_cleanup_in_progress = False
         
     async def _vibechecker_question_session(self):
         self.logger.info(f"...vibechecker_players: {self.vibechecker_players}")
@@ -110,11 +113,11 @@ class VibeCheckService:
         try:
             while self.is_vibecheck_loop_active:
                 self.vibechecker_interactions_counter += 1
-                self.logger.info(f"...starting cycle #{self.vibechecker_interactions_counter} of the Vibechecker ------------")
+                self.logger.info(f"...starting cycle #{self.vibechecker_interactions_counter} of the Vibechecker")
 
                 if self.vibechecker_interactions_counter > self.vibechecker_max_interaction_count:
                     self.logger.debug("...max interaction count reached, stopping vibe check session.")
-                    self._vibecheck_cleanup()
+                    await self._vibecheck_cleanup()
                     break
                 
                 elif self.vibechecker_interactions_counter == 1:

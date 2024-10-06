@@ -133,6 +133,7 @@ class Bot(twitch_commands.Bot):
 
         #Set default loop state
         self.is_ouat_loop_active = False
+        self.vibecheck_service = None
         self.is_vibecheck_loop_active = False
 
         #counters
@@ -151,8 +152,14 @@ class Bot(twitch_commands.Bot):
         self._register_chat_commands()
 
     def _register_chat_commands(self):
-            self.add_command(twitch_commands.command(name='explain', aliases=("p_explain"))(self.explanation_service.explanation_start))
-            self.add_command(twitch_commands.command(name='stopexplain', aliases=("m_stopexplain", 'stopexplanation'))(self.explanation_service.stop_explanation))
+            self.add_command(twitch_commands.command(
+                name='explain', 
+                aliases=("p_explain"))(self.explanation_service.explanation_start)
+                )
+            self.add_command(twitch_commands.command(
+                name='stopexplain', 
+                aliases=("m_stopexplain", 'stopexplanation'))(self.explanation_service.stop_explanation)
+                )
 
     async def _add_message_to_specified_thread(self, message_content: str, role: str, thread_name: str) -> None:
         if thread_name in self.config.gpt_thread_names:
@@ -348,7 +355,7 @@ class Bot(twitch_commands.Bot):
             #NOTE: Should this be a separate task?    
         self.logger.debug("Processing message through the vibecheck service...")
 
-        if hasattr(self, 'vibecheck_service') and self.vibecheck_service is not None:
+        if self.vibecheck_service is not None and self.vibecheck_service.is_vibecheck_loop_active:
             await self.vibecheck_service.process_vibecheck_message(
                 message_username=getattr(message.author, 'name', '_unknown'),
                 message_content=getattr(message, "content", "")
@@ -475,7 +482,7 @@ class Bot(twitch_commands.Bot):
                         user['username'] not in self.config.twitch_bot_channel_name and
                         user['username'] not in self.config.twitch_bot_username and
                         user['username'] not in self.config.twitch_bot_display_name
-                        and user['username'] not in "crubeyawne"
+                        #and user['username'] not in "crubeyawne"
                         #and user['username'] not in "nanovision"
                         #and user['username'] not in mods_list
                         )
@@ -544,14 +551,14 @@ class Bot(twitch_commands.Bot):
     async def _send_channel_message_wrapper(self, message):
         await self.channel.send(message)
 
-    async def _verify_moderator_permission(self, ctx) -> bool:
+    async def _is_function_caller_moderator(self, ctx) -> bool:
         is_sender_mod = False
         command_name = inspect.currentframe().f_back.f_code.co_name
-        self.logger.info(f"ctx.message.author.is_mod???: {ctx.message.author.is_mod}")
         if not ctx.message.author.is_mod:
             await ctx.send(f"Oops, the {command_name} is for mods...")
         elif ctx.message.author.is_mod:
             is_sender_mod = True
+        self.logger.debug(f"...is sender a mod? '{is_sender_mod}'")
         return is_sender_mod
 
     async def _send_hello_world_message(self):
@@ -589,6 +596,12 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='what', aliases=("m_what"))
     async def what(self, ctx):
+    
+        is_sender_mod = await self._is_function_caller_moderator(ctx)
+        if not is_sender_mod:
+            self.logger.debug("Requester was not a mod... nothing happened")
+            return
+    
         gpt_prompt_text = self.config.botears_prompt
         assistant_name = 'chatforme'
         thread_name = 'chatformemsgs'
@@ -659,7 +672,7 @@ class Bot(twitch_commands.Bot):
         self.logger.info(f"Results: {results}")
         
         results_string = ', '.join(sorted(results))
-        self.logger.info(f"Results string: {results_string}")
+        self.logger.debug(f"Results string: {results_string}")
         
         await self._send_channel_message_wrapper(f"Commands include: {results_string}")
 
@@ -673,12 +686,14 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='updatetodo', aliases=("m_updatetodo"))
     async def updatetodo(self, ctx, *args):
-            is_sender_mod = await self._verify_moderator_permission(ctx)
+        is_sender_mod = await self._is_function_caller_moderator(ctx)
+        if not is_sender_mod:
+            self.logger.debug("Requester was not a mod... nothing happened")
+            return
 
-            if is_sender_mod == True:
-                updated_string = ' '.join(args)
-                self.config.gpt_todo_prompt = updated_string
-                self.logger.info(f"updated todo list: {updated_string}")
+        updated_string = ' '.join(args)
+        self.config.gpt_todo_prompt = updated_string
+        self.logger.info(f"updated todo list: {updated_string}")
 
     @twitch_commands.command(name='todo', aliases=("p_todo"))
     async def todo(self, ctx):
@@ -737,8 +752,7 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='last_message', aliases=("m_last_message",))
     async def last_message(self, ctx, *args):
-        # Parse the command arguments
-        is_sender_mod = await self._verify_moderator_permission(ctx)
+        is_sender_mod = await self._is_function_caller_moderator(ctx)
 
         if is_sender_mod == True and args is not None:
             if len(args) == 1:
@@ -756,74 +770,137 @@ class Bot(twitch_commands.Bot):
             # Get content variable from the last message json string
             last_message = json.loads(last_message)
             last_message_content = last_message[0]['content']
+            await self._send_channel_message_wrapper(f"Last message from {user_name}: {last_message_content}")
 
         else:
             self.logger.info(f"Sender is not a mod or incorrect number of arguments {len(args)} were sent, 1 is required.")
-        
-        await self._send_channel_message_wrapper(f"Last message from {user_name}: {last_message_content}")
 
     @twitch_commands.command(name='vc', aliases=("m_vc"))
-    async def vc(self, message, *args):
-        self.vibechecker_interactions_counter = 0
-        self.is_vibecheck_loop_active = True
-    
-        # Extract the bot/checker/checkee (important players) in the convo
-        message_to_check = -2
+    async def vc(self, ctx, *args):
 
-        while True:  # Keep checking messages until a valid one is found
-            try:
-                most_recent_message = self.message_handler.all_msg_history_gptdict[message_to_check]['content']
-                name_start_pos = most_recent_message.find('<<<') + 3
-                name_end_pos = most_recent_message.find('>>>', name_start_pos)
-                self.vibecheckee_username = most_recent_message[name_start_pos:name_end_pos]
+        def _soft_username_match(username, current_users_list) -> str:
+            username = username.lower()  # Convert username to lowercase
+            for user in current_users_list:
+                if username in user.lower():
+                    return user
+            return None
 
-                # Break the loop if the vibecheckee is not 'xyz'
-                users_excluded_from_vibecheck = [
-                    self.config.twitch_bot_username, 
-                    self.config.twitch_bot_display_name,
-                    self.config.twitch_bot_operatorname,
-                    self.config.twitch_bot_channel_name
-                    ]
-                if self.vibecheckee_username not in users_excluded_from_vibecheck:
-                    break
+        def _extract_username_from_message(message, start_marker='<<<', end_marker='>>>') -> str:
+            name_start_pos = message.find(start_marker)
+            if name_start_pos == -1:
+                return None
 
-                # Move to the previous message if the current vibecheckee is 'xyz'
-                message_to_check -= 1
+            name_start_pos += len(start_marker)
 
-            except IndexError:
-                # Handle the case where there are no more messages to check
-                await self._send_channel_message_wrapper(f"You're the only one here, {self.config.twitch_bot_display_name}")
-                return
+            name_end_pos = message.find(end_marker, name_start_pos)
+            if name_end_pos == -1:
+                return None
+            
+            return message[name_start_pos:name_end_pos]
 
-        # Proceed with the rest of the function after finding a valid vibecheckee
-        self.vibechecker_username = message.author.name
+        is_sender_mod = await self._is_function_caller_moderator(ctx)
+        if not is_sender_mod:
+            self.logger.debug("Requester was not a mod... nothing happened")
+            return
+        else:
+            self.logger.debug("Starting vibecheck service...")
+
+        # List of users to exclude from the vibecheck
+        users_excluded_from_vibecheck = [
+            self.config.twitch_bot_username, 
+            self.config.twitch_bot_display_name,
+            self.config.twitch_bot_operatorname,
+            self.config.twitch_bot_channel_name,
+            self.config.twitch_bot_moderators
+            ]
+        
+        # Set the vibecheckee, vibechecker, and vibecheckbot usernames
+        self.vibecheckee_username = None
+        self.vibechecker_username = ctx.author.name
         self.vibecheckbot_username = self.config.twitch_bot_display_name
 
-        self.vibechecker_players = {
-            'vibecheckee_username': self.vibecheckee_username,
-            'vibechecker_username': self.vibechecker_username,
-            'vibecheckbot_username': self.vibecheckbot_username
-        }
+        # Check if the vibecheckee is specified in the command
+        if len(args) == 1:
+            current_users_list = await self.twitch_api.retrieve_active_usernames(
+                    bearer_token = self.config.twitch_bot_access_token
+                    )
+            vibecheckee_username_search = args[0]
+            self.vibecheckee_username = _soft_username_match(vibecheckee_username_search, current_users_list)
+            self.logger.info(f"...Vibecheckee username: {self.vibecheckee_username}")
+
+            if self.vibecheckee_username is None:
+                await self._send_channel_message_wrapper(f"User '{vibecheckee_username_search}' not found in the chat, {self.vibechecker_username}")
+                return
+            
+        # If the vibecheckee is not specified, find the most recent message with a valid user
+        else:
+            message_to_check = -2
+
+            # Extract the bot/checker/checkee (important players) in the convo
+            while len(self.message_handler.all_msg_history_gptdict) > abs(message_to_check):
+                try:
+                    most_recent_message = self.message_handler.all_msg_history_gptdict[message_to_check]['content']
+                    vibecheckee_username = _extract_username_from_message(most_recent_message)
+                    self.logger.info(f"...Vibecheckee username: {self.vibecheckee_username}")
+
+                    # If the vibecheckee is not in the list of excluded users, break the loop
+                    if vibecheckee_username not in users_excluded_from_vibecheck and vibecheckee_username is not None:
+                        self.vibecheckee_username = vibecheckee_username
+                        self.logger.info(f"...Vibecheckee username: {self.vibecheckee_username}")    
+                        break
+                    else:
+                        # Move to the previous message if the current vibecheckee is in the list of excluded users
+                        message_to_check -= 1
+
+                    if abs(message_to_check) >= len(self.message_handler.all_msg_history_gptdict):
+                        await self._send_channel_message_wrapper(f"Could not find a valid user to vibecheck, {self.vibechecker_username}")
+                        return
+                    
+                except Exception as e:
+                    self.logger.error(f"Error occurred in extracting the username from the message: {e}")
+                    return
+        
+        if self.vibecheckee_username is None:
+            await self._send_channel_message_wrapper(f"Could not find a valid user to vibecheck, {self.vibechecker_username}")
+            return
 
         # Start the vibecheck service and then the session
-        self.vibecheck_service = VibeCheckService(
-            message_handler=self.message_handler,
-            gpt_assistant_mgr=self.gpt_assistant_manager,
-            gpt_thread_mgr=self.gpt_thread_mgr,
-            gpt_response_mgr=self.gpt_response_manager,
-            chatforme_service=self.chatforme_service,
-            vibechecker_players=self.vibechecker_players,
-            send_channel_message=self._send_channel_message_wrapper
-            )
-        self.vibecheck_service.start_vibecheck_session()
-
-    async def stop_vibechecker_loop(self) -> None:
-        self.is_vibecheck_loop_active = False
-        self.vibechecker_task.cancel()
         try:
-            await self.vibechecker_task  # Await the task to ensure it's fully cleaned up
-        except asyncio.CancelledError:
-            self.logger.debug("(message from stop_vibechecker_loop()) -- Task was cancelled and cleanup is complete")
+            self.vibecheck_service = VibeCheckService(
+                message_handler=self.message_handler,
+                gpt_assistant_mgr=self.gpt_assistant_manager,
+                gpt_thread_mgr=self.gpt_thread_mgr,
+                gpt_response_mgr=self.gpt_response_manager,
+                chatforme_service=self.chatforme_service,
+                vibechecker_players= {
+                    'vibecheckee_username': self.vibecheckee_username,
+                    'vibechecker_username': self.vibechecker_username,
+                    'vibecheckbot_username': self.vibecheckbot_username
+                },
+                send_channel_message=self._send_channel_message_wrapper
+                )
+        except Exception as e:
+            self.logger.error(f"Error occurred in starting the vibecheck service: {e}")
+            return
+        
+        # Start the vibecheck session
+        await self.vibecheck_service.start_vibecheck_session()
+
+    @twitch_commands.command(name='stop_vc', aliases=("m_stop_vc",))
+    async def stop_vc(self, ctx, *args):
+        # Optional: Check if the user has permission to stop the vibe check
+
+        is_sender_mod = await self._is_function_caller_moderator(ctx)
+        if not is_sender_mod:
+            self.logger.debug("Requester was not a mod... nothing happened")
+            return
+
+        if self.vibecheck_service is not None:
+            await self.vibecheck_service.stop_vibecheck_session()
+            self.vibecheck_service = None  # Reset the reference
+            await ctx.send("The vibe check has been stopped.")
+        else:
+            await ctx.send("There is no active vibe check to stop.")
 
     @twitch_commands.command(name='startstory', aliases=("p_startstory"))
     async def startstory(self, message, *args):
@@ -1086,7 +1163,7 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='update_config', aliases=("m_update_config",))
     async def update_config(self, ctx, *args):
         
-        is_sender_mod = await self._verify_moderator_permission(ctx)
+        is_sender_mod = await self._is_function_caller_moderator(ctx)
         if not is_sender_mod:
             self.logger.debug("Requester was not a mod... nothing happened")
             return

@@ -136,7 +136,7 @@ class ExplanationService:
                 tts_voice = self.current_story_voice
 
                 self.logger.info(f"The self.explanation_counter is currently at {self.explanation_counter} (explanation_max_counter={self.explanation_max_counter})")
-                self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
+                self.logger.info(f"Explanation Service gpt_prompt_final: '{gpt_prompt_final}'")
 
                 replacements_dict = {
                     "wordcount_short":self.config.wordcount_short,

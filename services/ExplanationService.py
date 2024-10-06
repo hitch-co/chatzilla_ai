@@ -31,10 +31,10 @@ class ExplanationService:
 
         # Log message details
         self.logger.info(f"...args: {args}")
-        self.logger.debug("...Logging message object (ctx) details:")
+        self.logger.debug("...logging message object (ctx) details:")
         self.logger.debug(f"...message.author.name: {message.author.name}")
         self.logger.debug(f"...message.content: {message.message.content}")
-        self.logger.debug(f"...Joined args: {' '.join(args)}")
+        self.logger.debug(f"...joined args: {' '.join(args)}")
         self.logger.debug(f"...self.is_explanation_loop_active: {self.is_explanation_loop_active}")
         
         # Ensure that args has at least one element
@@ -44,10 +44,10 @@ class ExplanationService:
             # Check if the first argument is numeric
             if first_arg.isnumeric():
                 self.explanation_max_counter = int(first_arg)
-                self.logger.info(f"...Setting newly requested explanation_max_counter to {self.explanation_max_counter}")
+                self.logger.info(f"...setting newly requested explanation_max_counter to {self.explanation_max_counter}")
                 user_requested_explanation = ' '.join(args[1:])
             else:
-                self.logger.warning(f"...First argument is not numeric: {first_arg}")
+                self.logger.warning(f"...first argument is not numeric: {first_arg}")
 
                 #Check to make sure not empty string or empty inputs
                 if args == [''] or args == [' ']:
@@ -72,13 +72,13 @@ class ExplanationService:
             self.current_story_voice = self.config.tts_voice_story
 
             # Log the story details
-            self.logger.info(f"...A explanation was started by {message.author.name} ({message.author.id})")
+            self.logger.info(f"...an explanation was started by {message.author.name} ({message.author.id})")
             self.logger.info(f"...thread_name and assistant_name: {thread_name}, {assistant_name}")
             self.logger.info(f"...user_requested_explanation: {user_requested_explanation}")
             self.logger.info(f"...current_story_voice: {self.current_story_voice}")
 
             if user_requested_explanation is not None:   
-                self.logger.info(f"...This is the requested explanation: {user_requested_explanation}")
+                self.logger.info(f"...this is the requested explanation: {user_requested_explanation}")
 
             gpt_prompt_text = self.config.explanation_user_opening_summary_prompt + " " + self.config.explanation_suffix    
             replacements_dict = {
@@ -97,8 +97,8 @@ class ExplanationService:
                 thread_instructions=gpt_prompt_text,
                 replacements_dict=replacements_dict,
                 tts_voice=self.current_story_voice
-                ).to_dict()
-            self.logger.debug(f"Task to add to queue: {task}")
+                )
+            self.logger.debug(f"...task to add to queue: {task.task_dict}")
 
             # Add the bullet list to the 'ouatmsgs' thread via queue
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
@@ -108,24 +108,19 @@ class ExplanationService:
         
         #This is the while loop that generates the occurring GPT response
         while True:
-            if self.is_explanation_loop_active is False:
-                self.logger.debug(f"OUAT details: Explanation loop is not active, waiting longer...")
+            if not self.is_explanation_loop_active:
                 await asyncio.sleep(self.loop_sleep_time)
                 continue
 
             else:
                 self.explanation_counter += 1
-                self.logger.info(f"OUAT details: Starting cycle #{self.explanation_counter} of the OUAT Storyteller") 
+                self.logger.info(f"...starting cycle #{self.explanation_counter} of the OUAT Storyteller") 
 
-                #storystarter
+                #explanation_starter, explanation_progressor, explanation_ender
                 if self.explanation_counter <=2:
                     gpt_prompt_detail = self.config.explanation_starter
-
-                #storyprogressor
                 elif self.explanation_counter <= self.config.explanation_progression_number:
                     gpt_prompt_detail = self.config.explanation_progressor
-
-                #storyender
                 elif self.explanation_counter >= self.explanation_max_counter:
                     gpt_prompt_detail = self.config.explanation_ender
 
@@ -135,8 +130,8 @@ class ExplanationService:
                 thread_name = 'ouatmsgs'
                 tts_voice = self.current_story_voice
 
-                self.logger.info(f"The self.explanation_counter is currently at {self.explanation_counter} (explanation_max_counter={self.explanation_max_counter})")
-                self.logger.info(f"Explanation Service gpt_prompt_final: '{gpt_prompt_final}'")
+                self.logger.info(f"...the self.explanation_counter is currently at {self.explanation_counter} (explanation_max_counter={self.explanation_max_counter})")
+                self.logger.info(f"...explanation Service gpt_prompt_final: '{gpt_prompt_final}'")
 
                 replacements_dict = {
                     "wordcount_short":self.config.wordcount_short,
@@ -155,11 +150,18 @@ class ExplanationService:
                     thread_instructions=gpt_prompt_final,
                     replacements_dict=replacements_dict,
                     tts_voice=tts_voice
-                ).to_dict()
-                self.logger.debug(f"Task to add to queue: {task}")
+                )
+                self.logger.debug(f"...task to add to queue: {task.dask_dict}")
 
+                # Add Task to the queue
                 await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
+                # Wait for the task to complete before continuing
+                self.logger.info(f"...waiting for task (cycle {self.explanation_counter}) to complete...")
+                await task.future  # Wait until the task is marked as complete
+                self.logger.info(f"...task (cycle {self.explanation_counter}) completed.")
+
+            # Check if the explanation loop should be stopped
             if self.explanation_counter >= self.explanation_max_counter:
                 await self.stop_explanation_loop()
             else:

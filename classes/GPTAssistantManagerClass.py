@@ -11,7 +11,7 @@ from classes.ConfigManagerClass import ConfigManager
 import modules.gpt_utils as gpt_utils
 
 gpt_base_debug_level = 'DEBUG'
-gpt_thread_mgr_debug_level = 'DEBUG'
+gpt_thread_mgr_debug_level = 'INFO'
 gpt_assistant_mgr_debug_level = 'DEBUG'
 gpt_response_mgr_debug_level = 'INFO'
 
@@ -174,23 +174,21 @@ class GPTThreadManager(GPTBaseClass):
         self.logger.debug(f"Added task to queue for thread '{thread_name}': {task}")
 
     async def task_scheduler(self):
-        self.logger.info("Starting task scheduler...")
         while True:
             self.logger.info("Checking task queues...")
             for thread_name, queue in self.task_queues.items():
                 if not queue.empty():
                     task = await queue.get()
-                    self.logger.info(f"Task found in queue (type: {task['type']})...")
-                    self.logger.debug(f"...executing process_task() with: {task}")
+                    self.logger.info(f"...task found in queue (type: {task['type']})...")
                     await self._process_task(task)
-            await asyncio.sleep(2)
+            await asyncio.sleep(5)
 
     async def _process_task(self, task: dict):
         """
         Process the task before executing. This method includes logging, validation,
         and any other pre-processing steps needed before the task is handled.
         """
-        self.logger.info(f"Scheduler-2: Processing task '{task['type']}' for thread_name: '{task['thread_name']}")
+        self.logger.info(f"...processing task type '{task['type']}' with thread_name: '{task['thread_name']}'")
         self.logger.debug(f"Task details: {task}")
 
         # Basic validation to ensure necessary fields are present

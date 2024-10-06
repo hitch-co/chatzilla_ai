@@ -12,9 +12,9 @@ twitch-app:
   twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read' #user:read:email moderation:read channel:moderate'
   twitch_bot_moderators: ['crubeyawne', 'nanovision']
 twitch-bots:
-  chatforme: ['chatzilla_ai', 'cirenexus']
-  onceuponatime: ['chatzilla_ai', 'cirenexus']
-  vibecheck: ['chatzilla_ai', 'cirenexus']
+  chatforme: ['chatzilla_ai'] #['chatzilla_ai', 'cirenexus']
+  onceuponatime: ['chatzilla_ai'] #['chatzilla_ai', 'cirenexus']
+  vibecheck: ['chatzilla_ai'] #['chatzilla_ai', 'cirenexus']
 
 #CONFIG
 env_filename: 'config.env'

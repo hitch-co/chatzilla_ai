@@ -441,7 +441,7 @@ class GPTResponseManager(GPTBaseClass):
                         role=role, 
                         content=message_content
                     )
-                    self.logger.info(f"Finished adding message to thread ({thread_name}/{thread_id}): Message content {message_content[0:50]}...")
+                    self.logger.info(f"... added message to thread ({thread_name}/{thread_id}): Message content {message_content[0:50]}...")
                     return message_object
         else:
             self.logger.warning(f"Thread '{thread_name}' not found.")

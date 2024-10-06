@@ -554,11 +554,11 @@ class Bot(twitch_commands.Bot):
     async def _is_function_caller_moderator(self, ctx) -> bool:
         is_sender_mod = False
         command_name = inspect.currentframe().f_back.f_code.co_name
-        self.logger.info(f"ctx.message.author.is_mod???: {ctx.message.author.is_mod}")
         if not ctx.message.author.is_mod:
             await ctx.send(f"Oops, the {command_name} is for mods...")
         elif ctx.message.author.is_mod:
             is_sender_mod = True
+        self.logger.debug(f"...is sender a mod? '{is_sender_mod}'")
         return is_sender_mod
 
     async def _send_hello_world_message(self):
@@ -858,27 +858,31 @@ class Bot(twitch_commands.Bot):
                     
                 except Exception as e:
                     self.logger.error(f"Error occurred in extracting the username from the message: {e}")
-                    break
+                    return
         
         if self.vibecheckee_username is None:
             await self._send_channel_message_wrapper(f"Could not find a valid user to vibecheck, {self.vibechecker_username}")
             return
 
         # Start the vibecheck service and then the session
-        self.vibecheck_service = VibeCheckService(
-            message_handler=self.message_handler,
-            gpt_assistant_mgr=self.gpt_assistant_manager,
-            gpt_thread_mgr=self.gpt_thread_mgr,
-            gpt_response_mgr=self.gpt_response_manager,
-            chatforme_service=self.chatforme_service,
-            vibechecker_players= {
-                'vibecheckee_username': self.vibecheckee_username,
-                'vibechecker_username': self.vibechecker_username,
-                'vibecheckbot_username': self.vibecheckbot_username
-            },
-            send_channel_message=self._send_channel_message_wrapper
-            )
-
+        try:
+            self.vibecheck_service = VibeCheckService(
+                message_handler=self.message_handler,
+                gpt_assistant_mgr=self.gpt_assistant_manager,
+                gpt_thread_mgr=self.gpt_thread_mgr,
+                gpt_response_mgr=self.gpt_response_manager,
+                chatforme_service=self.chatforme_service,
+                vibechecker_players= {
+                    'vibecheckee_username': self.vibecheckee_username,
+                    'vibechecker_username': self.vibechecker_username,
+                    'vibecheckbot_username': self.vibecheckbot_username
+                },
+                send_channel_message=self._send_channel_message_wrapper
+                )
+        except Exception as e:
+            self.logger.error(f"Error occurred in starting the vibecheck service: {e}")
+            return
+        
         # Start the vibecheck session
         await self.vibecheck_service.start_vibecheck_session()
 

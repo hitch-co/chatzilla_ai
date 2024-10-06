@@ -151,7 +151,7 @@ class ExplanationService:
                     replacements_dict=replacements_dict,
                     tts_voice=tts_voice
                 )
-                self.logger.debug(f"...task to add to queue: {task.dask_dict}")
+                self.logger.debug(f"...task to add to queue: {task.task_dict}")
 
                 # Add Task to the queue
                 await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)

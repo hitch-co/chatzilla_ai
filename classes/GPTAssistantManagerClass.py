@@ -101,7 +101,7 @@ class GPTAssistantManager(GPTBaseClass):
         )
         self.assistants[assistant_name] = {'object':assistant, 'id':assistant.id}
 
-        self.logger.info(f"Assistant object created successfully for '{assistant_name}' with instructions: {assistant_instructions[0:50]}")
+        self.logger.info(f"Assistant object created successfully for '{assistant_name}' with instructions: {assistant_instructions[0:50]}...")
         self.logger.debug(assistant)
         return assistant
 
@@ -169,7 +169,7 @@ class GPTThreadManager(GPTBaseClass):
                 
         return self.threads
 
-    async def add_task_to_queue(self, thread_name: str, task: BaseTask):
+    async def add_task_to_queue(self, thread_name: str, task: object):
         await self.task_queues[thread_name].put(task)
         self.logger.debug(f"Added task to queue for thread '{thread_name}': {task.task_dict}")
 
@@ -183,7 +183,7 @@ class GPTThreadManager(GPTBaseClass):
                     await self._process_task(task)
             await asyncio.sleep(5)
 
-    async def _process_task(self, task: BaseTask):
+    async def _process_task(self, task: object):
         """
         Process the task before executing. This method includes logging, validation,
         and any other pre-processing steps needed before the task is handled.

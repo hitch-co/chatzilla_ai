@@ -175,13 +175,13 @@ class Bot(twitch_commands.Bot):
         else:
             self.logger.error(f"Thread name '{thread_name}' is not in the list of thread names. Message content: {message_content[0:25]+'...'}")
 
-    async def handle_tasks(self, task: BaseTask):
+    async def handle_tasks(self, task: object):
         
         thread_name = task.task_dict.get("thread_name")
         message_role = task.task_dict.get("message_role")
 
         if task.task_dict.get("type") == "add_message":
-            self.logger.debug(f"3. Handling task type 'add_message' for thread: {task['thread_name']}")
+            self.logger.debug(f"3. Handling task type 'add_message' for thread: {task.task_dict.get('thread_name')}")
             content = task.task_dict.get("content")
 
 
@@ -222,7 +222,6 @@ class Bot(twitch_commands.Bot):
                     thread_instructions=thread_instructions,
                     replacements_dict=replacements_dict
                 )
-                task.future.set_result('ExecuteThreadTask Completed')
 
             except Exception as e:
                 task.future.set_exception(e)
@@ -237,7 +236,6 @@ class Bot(twitch_commands.Bot):
                     thread_name='chatformemsgs'
                     )
 
-
             # Send the GPT response to the channel
             if gpt_response is not None and bool_send_channel_message is True:
                 try:
@@ -247,12 +245,17 @@ class Bot(twitch_commands.Bot):
                         incl_voice=self.config.tts_include_voice,
                         voice_name=tts_voice
                     )
+                    task.future.set_result('ExecuteThreadTask Completed')
+
                 except Exception as e:
                     self.logger.error(f"Error occurred in 'send_output_message_and_voice': {e}")
+                    task.future.set_exception(e)
+
                 self.logger.debug("Thread executed...")
                 self.logger.debug(f"'{task.task_dict.get('type')}' task handled for thread: {thread_name}") 
             else:
                 self.logger.error(f"Gpt response is None, this should not happen.  Task: {task.task_dict}")
+                task.future.set_result('ExecuteThreadTask Completed')
 
         elif task.task_dict.get("type") == "send_channel_message":
             content = task.task_dict.get("content")
@@ -270,8 +273,10 @@ class Bot(twitch_commands.Bot):
                     incl_voice=self.config.tts_include_voice,
                     voice_name=task.task_dict.get("tts_voice")
                 )
+                task.future.set_result('ExecuteThreadTask Completed')
             except Exception as e:
                 self.logger.error(f"Error occurred in 'send_channel_message': {e}")
+                task.future.set_exception(e)
 
     async def event_ready(self):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
@@ -280,9 +285,6 @@ class Bot(twitch_commands.Bot):
         # initialize the event loop
         self.logger.debug(f"Initializing event loop")
         self.loop = asyncio.get_event_loop()
- 
-        # send hello world message
-        await self._send_hello_world_message()
 
         # start newusers loop
         self.logger.debug(f"Starting newusers service")
@@ -307,17 +309,19 @@ class Bot(twitch_commands.Bot):
         # start explanation loop
         self.logger.debug('Starting the explanation service')
         self.loop.create_task(self.explanation_service.explanation_task())
-
-        # Create Assistants
+ 
+        # Create Assistants and Threads
         self.assistants_config = self.config.gpt_assistant_prompts
         self.assistants = self.gpt_assistant_manager.create_assistants(
             assistants_config=self.assistants_config
             )
-
         thread_names = self.config.gpt_thread_names
         self.threads = self.gpt_thread_mgr.create_threads(
             thread_names=thread_names
             )
+        
+        # send hello world message
+        await self._send_hello_world_message()
         
     async def event_message(self, message):
         def clean_message_content(content, command_spellings):

@@ -26,6 +26,9 @@ class ExplanationService:
         self.explanation_counter = 0
         self.explanation_max_counter = self.config.explanation_max_counter_default
 
+        self.thread_name = 'explanationmsgs'
+        self.assistant_name = 'explainer'
+
     async def explanation_start(self, message, *args):
         self.logger.info(f"Starting explanation, self.explanation_counter is at {self.explanation_counter} (of {self.explanation_max_counter})")
 
@@ -65,8 +68,8 @@ class ExplanationService:
                 user_requested_explanation = None
 
             # Set the thread name and assistant name
-            thread_name = 'ouatmsgs'
-            assistant_name = 'storyteller' #NOTE: maybe should be a new explaination assistant instead of storyteller
+            thread_name = self.thread_name
+            assistant_name = self.assistant_name #NOTE: maybe should be a new explaination assistant instead of storyteller
 
             # Randomly select voice/tone/style/theme from list, set replacements dictionary
             self.current_story_voice = self.config.tts_voice_story
@@ -100,7 +103,7 @@ class ExplanationService:
                 )
             self.logger.debug(f"...task to add to queue: {task.task_dict}")
 
-            # Add the bullet list to the 'ouatmsgs' thread via queue
+            # Add the bullet list to the thread via queue
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
             self.is_explanation_loop_active = True
 
@@ -114,7 +117,7 @@ class ExplanationService:
 
             else:
                 self.explanation_counter += 1
-                self.logger.info(f"...starting cycle #{self.explanation_counter} of the OUAT Storyteller") 
+                self.logger.info(f"...starting cycle #{self.explanation_counter} of the Explanation Service loop") 
 
                 #explanation_starter, explanation_progressor, explanation_ender
                 if self.explanation_counter <=2:
@@ -126,8 +129,8 @@ class ExplanationService:
 
                 # Combine prefix and final article content
                 gpt_prompt_final = gpt_prompt_detail + " " + self.config.explanation_suffix
-                assistant_name = 'storyteller'
-                thread_name = 'ouatmsgs'
+                assistant_name = self.assistant_name
+                thread_name = self.thread_name
                 tts_voice = self.current_story_voice
 
                 self.logger.info(f"...the self.explanation_counter is currently at {self.explanation_counter} (explanation_max_counter={self.explanation_max_counter})")

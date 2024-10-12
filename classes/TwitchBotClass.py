@@ -146,7 +146,8 @@ class Bot(twitch_commands.Bot):
 
         # Initialize the twitch bot's channel and user IDs
         self.twitch_bot_client_id = self.config.twitch_bot_client_id
-        self.logger.info("TwitchBotClass initialized")
+        self.logger.info(f"Twitch bot is now initialized")
+        self.logger.debug(f"Twitch bot is now initialized with the following client ID: {self.twitch_bot_client_id}")
 
         # register commands
         self._register_chat_commands()
@@ -189,7 +190,6 @@ class Bot(twitch_commands.Bot):
         if task_type == "add_message":
             # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
             # Note: Only situation where this is used is when a command needs to be sent to the thread
-            
             content = task.task_dict.get("content")
 
             try:
@@ -567,11 +567,14 @@ class Bot(twitch_commands.Bot):
 
                     self.logger.debug(f"Task to add to queue: {task.task_dict}")
                     await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-
                     self.logger.debug(f"self.newusers_service.users_sent_messages_list: {self.newusers_service.users_sent_messages_list}")
                     self.logger.debug(f"users_not_yet_sent_message: {users_not_yet_sent_message_info}")
                     self.logger.info(f"Sent {random_user_type} user task for run. random_user: {random_user}")
 
+                    # Wait for the task to complete before continuing
+                    self.logger.info(f"...waiting for _send_message_to_new_users_task task to complete...")
+                    await task.future  # Wait until the task is marked as complete
+                    self.logger.info(f"..._send_message_to_new_users_task task completed.")
 
                 except Exception as e:
                     self.logger.exception(f"Error occurred in sending {random_user_type} user message: {e}")
@@ -658,6 +661,11 @@ class Bot(twitch_commands.Bot):
         task = AddMessageTask(thread_name, text, message_role='user')
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
+        # Wait for the task to complete before continuing
+        self.logger.info(f"...waiting for 'what' tasks AddMessageTask to complete...")
+        await task.future  # Wait until the task is marked as complete
+        self.logger.info(f"...'what' tasks AddMessageTask completed.")
+
         replacements_dict = {
             "wordcount_medium": self.config.wordcount_medium,
             "botears_questioncomment": text
@@ -674,6 +682,11 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(f"Task to add to queue: {task.task_dict}")
 
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+
+        # Wait for the task to complete before continuing
+        self.logger.info(f"...waiting for 'what' task to complete...")
+        await task.future  # Wait until the task is marked as complete
+        self.logger.info(f"...'what' task completed.")
 
     @twitch_commands.command(name='commands', aliases=["p_commands"])
     async def showcommands(self, ctx):
@@ -774,6 +787,9 @@ class Bot(twitch_commands.Bot):
 
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
         
+    # TODO: it seems like creating a task is a good idea as each individual task
+    # is effectrively goign to be executed asyncronously... rather than getting blocked 
+    #   Other option is potentially the process task method instead
     @twitch_commands.command(name='chat', aliases=("p_chat"))
     async def chatforme(self, ctx=None, *args):
         if args is None or len(args) == 0:
@@ -781,7 +797,7 @@ class Bot(twitch_commands.Bot):
         else:
             text_input_from_user = ' '.join(args)
 
-        self.loop.create_task(self._chatforme_main(text_input_from_user)) #does a task really need to be created here?  Maybe should use process task method instead
+        self.loop.create_task(self._chatforme_main(text_input_from_user))
 
     @twitch_commands.command(name='last_message', aliases=("m_last_message",))
     async def last_message(self, ctx, *args):
@@ -1020,9 +1036,22 @@ class Bot(twitch_commands.Bot):
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
             self.is_ouat_loop_active = True
 
+            # Wait for the task to complete before continuing
+            self.logger.info(f"...waiting for story task (cycle {self.ouat_counter}) to complete...")
+            await task.future  # Wait until the task is marked as complete
+            self.logger.info(f"...task (cycle {self.ouat_counter}) completed.")
+
+        else:
+            # Optionally, send a message to the channel that a story is already in progress
+            await self._send_channel_message_wrapper("A story is already in progress...")
+            self.logger.info("A story is already in progress...")
+
     async def ouat_storyteller_task(self):
         self.article_generator = ArticleGeneratorClass.ArticleGenerator(rss_link=self.config.newsarticle_rss_feed)
         self.article_generator.fetch_articles()
+
+        assistant_name = 'storyteller'
+        thread_name = 'ouatmsgs'
 
         #This is the while loop that generates the occurring GPT response
         while True:
@@ -1048,8 +1077,6 @@ class Bot(twitch_commands.Bot):
 
                 # Combine prefix and final article content
                 gpt_prompt_final = self.config.storyteller_storysuffix_prompt + " " + gpt_prompt_final
-                assistant_name = 'storyteller'
-                thread_name = 'ouatmsgs'
 
                 self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (ouat_story_max_counter={self.ouat_story_max_counter})")
                 self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")
@@ -1080,6 +1107,12 @@ class Bot(twitch_commands.Bot):
 
                 await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
+                # Wait for the task to complete before continuing
+                self.logger.info(f"...waiting for story task (cycle {self.ouat_counter}) to complete...")
+                await task.future  # Wait until the task is marked as complete
+                self.logger.info(f"...task (cycle {self.ouat_counter}) completed.")
+
+
             if self.ouat_counter >= self.ouat_story_max_counter:
                 await self.stop_ouat_loop()
             else:
@@ -1106,6 +1139,12 @@ class Bot(twitch_commands.Bot):
         task = AddMessageTask(thread_name, gpt_prompt_text, message_role='user')
 
         await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+
+        # Wait for the task to complete before continuing
+        self.logger.info(f"...waiting for task add_to_story to complete...")
+        await task.future  # Wait until the task is marked as complete
+        self.logger.info(f"...task add_to_story completed.")
+
         self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{gpt_prompt_text}'")
 
     @twitch_commands.command(name='extendstory', aliases=("p_extendstory"))
@@ -1128,6 +1167,12 @@ class Bot(twitch_commands.Bot):
 
                 self.logger.debug(f"Task to add to queue: {task.task_dict}")
                 await self.gpt_thread_mgr.add_task_to_queue('ouatmsgs', task)
+
+                # Wait for the task to complete before continuing
+                self.logger.info(f"...waiting for stop story taskto complete...")
+                await task.future  # Wait until the task is marked as complete
+                self.logger.info(f"...stop story task completed.")
+
             except Exception as e:
                 self.logger.error(f"Error occurred in stopping the story: {e}")
             
@@ -1135,8 +1180,8 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='endstory', aliases=("m_endstory"))
     async def endstory(self, ctx):
-        if self.ouat_counter >= 1:
-            self.ouat_counter = self.ouat_story_max_counter - 1
+        if self.ouat_counter > 0:
+            self.ouat_counter = self.ouat_story_max_counter # May cause two endstory commands to sent
             self.logger.info(f"Story is being ended by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}")
 
     async def stop_ouat_loop(self) -> None:
@@ -1182,6 +1227,11 @@ class Bot(twitch_commands.Bot):
 
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
+            # Wait for the task to complete before continuing
+            self.logger.info(f"...waiting for factcheck task to complete...")
+            await task.future  # Wait until the task is marked as complete
+            self.logger.info(f"...factcheck task completed.")
+
         except Exception as e:
             return self.logger.error(f"error with chatforme in twitchbotclass: {e}")
 
@@ -1196,6 +1246,7 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='update_config', aliases=("m_update_config",))
     async def update_config(self, ctx, *args):
         
+        self.logger.info(f"Updating config variable ...")
         is_sender_mod = await self._is_function_caller_moderator(ctx)
         if not is_sender_mod:
             self.logger.debug("Requester was not a mod... nothing happened")
@@ -1252,7 +1303,7 @@ class Bot(twitch_commands.Bot):
         #     await self.channel.send(f"Invalid value type for '{config_var}'. Expected {expected_type.__name__}.")
         except Exception as e:
             self.logger.error(f"Error occurred in !update_config: {e}")
-            await self.channel.send("No change made, see log for details.")
+            await self.channel.send("No change made, see log for details...")
 
     def _pick_random_category(self, data: dict):
         # Pick a random category (like 'historicalContexts', 'categories', etc.)
@@ -1364,3 +1415,8 @@ class Bot(twitch_commands.Bot):
             self.logger.debug(f"Task to add to queue: {task.task_dict}")
 
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+
+            # Wait for the task to complete before continuing
+            self.logger.info(f"...waiting for randomfact task to complete...")
+            await task.future
+            self.logger.info(f"...randomfact task completed.")

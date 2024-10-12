@@ -53,7 +53,7 @@ class CreateExecuteThreadTask(BaseTask):
             thread_instructions: str,
             replacements_dict: dict,
             tts_voice: str,
-            send_channel_message=True,
+            send_channel_message: bool = True,
             message_role: str = 'assistant'
             ):
         super().__init__(thread_name)

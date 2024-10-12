@@ -169,6 +169,8 @@ class GPTThreadManager(GPTBaseClass):
                 
         return self.threads
 
+    # TODO: Anything from here down can be moved directly to twithcbotclass, or
+    #   to a new class that is imported into TwitchBotClass
     async def add_task_to_queue(self, thread_name: str, task: object):
         await self.task_queues[thread_name].put(task)
         self.logger.debug(f"Added task to queue for thread '{thread_name}': {task.task_dict}")

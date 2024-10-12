@@ -50,7 +50,7 @@ class TwitchAPI:
             self.config.twitch_broadcaster_user_id = None
 
     def _get_and_set_user_id(self, bearer_token, login_name):
-        self.logger.info(f"Getting bot's user ID using token: {bearer_token}")
+        self.logger.debug(f"Getting bot's user ID using token...")
 
         # Twitch API authentication headers
         HEADERS = {

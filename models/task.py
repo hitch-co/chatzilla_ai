@@ -15,11 +15,12 @@ class BaseTask:
             stream_logs=True,
             encoding='UTF-8'
             )
-        
+
     def to_dict(self):
+        # Ensure the thread_name is always included in the dictionary
         return {
             "thread_name": self.thread_name
-            }
+        }
 
 class AddMessageTask(BaseTask):
     def __init__(
@@ -30,6 +31,9 @@ class AddMessageTask(BaseTask):
         super().__init__(thread_name)
         self.content = content
         self.message_role = message_role
+
+        # Create task_dict during initialization
+        self.task_dict = self.to_dict()
 
     def to_dict(self) -> dict:
         task_dict = super().to_dict()
@@ -49,7 +53,7 @@ class CreateExecuteThreadTask(BaseTask):
             thread_instructions: str,
             replacements_dict: dict,
             tts_voice: str,
-            send_channel_message=True,
+            send_channel_message: bool = True,
             message_role: str = 'assistant'
             ):
         super().__init__(thread_name)
@@ -59,6 +63,9 @@ class CreateExecuteThreadTask(BaseTask):
         self.tts_voice = tts_voice
         self.send_channel_message = send_channel_message
         self.message_role = message_role
+
+        # Create task_dict during initialization
+        self.task_dict = self.to_dict()
 
     def to_dict(self) -> dict:
         task_dict = super().to_dict()
@@ -86,6 +93,9 @@ class CreateSendChannelMessageTask(BaseTask): # TODO: Unsure if needed (base tas
         self.content = content
         self.tts_voice = tts_voice
         self.message_role = message_role
+
+        # Create task_dict during initialization
+        self.task_dict = self.to_dict()
 
     def to_dict(self) -> dict:
         task_dict = super().to_dict()  

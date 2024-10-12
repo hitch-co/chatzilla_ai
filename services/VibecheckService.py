@@ -5,7 +5,6 @@ from classes.ConfigManagerClass import ConfigManager
 
 from my_modules.my_logging import create_logger
 from models.task import AddMessageTask, CreateExecuteThreadTask
-from models.task import CreateExecuteThreadTask
 
 runtime_logger_level = 'DEBUG'
 
@@ -75,7 +74,7 @@ class VibeCheckService:
             self.logger.info(f"...vibecheck message received from {message_username} with content: {message_content}")
 
             # Add the message to the 'vibecheckmsgs' thread via queue
-            task = AddMessageTask(self.vibecheck_thread_name, message_content).to_dict()
+            task = AddMessageTask(self.vibecheck_thread_name, message_content)
             await self.gpt_thread_mgr.add_task_to_queue(self.vibecheck_thread_name, task)
 
             self.vibecheck_ready_event.set()
@@ -148,7 +147,7 @@ class VibeCheckService:
                     thread_instructions=vibechecker_prompt,
                     replacements_dict=replacements_dict,
                     tts_voice=tts_voice
-                ).to_dict()
+                )
                 await self.gpt_thread_mgr.add_task_to_queue(self.vibecheck_thread_name, task)
 
                 # Wait for either the event to be set or the timer to run out

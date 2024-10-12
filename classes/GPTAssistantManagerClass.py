@@ -101,7 +101,7 @@ class GPTAssistantManager(GPTBaseClass):
         )
         self.assistants[assistant_name] = {'object':assistant, 'id':assistant.id}
 
-        self.logger.info(f"Assistant object created successfully for '{assistant_name}' with instructions: {assistant_instructions[0:50]}")
+        self.logger.info(f"Assistant object created successfully for '{assistant_name}' with instructions: {assistant_instructions[0:75]}...")
         self.logger.debug(assistant)
         return assistant
 
@@ -169,9 +169,11 @@ class GPTThreadManager(GPTBaseClass):
                 
         return self.threads
 
-    async def add_task_to_queue(self, thread_name: str, task: dict):
+    # TODO: Anything from here down can be moved directly to twithcbotclass, or
+    #   to a new class that is imported into TwitchBotClass
+    async def add_task_to_queue(self, thread_name: str, task: object):
         await self.task_queues[thread_name].put(task)
-        self.logger.debug(f"Added task to queue for thread '{thread_name}': {task}")
+        self.logger.debug(f"Added task to queue for thread '{thread_name}': {task.task_dict}")
 
     async def task_scheduler(self):
         while True:
@@ -179,27 +181,27 @@ class GPTThreadManager(GPTBaseClass):
             for thread_name, queue in self.task_queues.items():
                 if not queue.empty():
                     task = await queue.get()
-                    self.logger.info(f"...task found in queue (type: {task['type']})...")
+                    self.logger.info(f"...task found in queue (type: {task.task_dict.get('type')})...")
                     await self._process_task(task)
             await asyncio.sleep(5)
 
-    async def _process_task(self, task: dict):
+    async def _process_task(self, task: object):
         """
         Process the task before executing. This method includes logging, validation,
         and any other pre-processing steps needed before the task is handled.
         """
-        self.logger.info(f"...processing task type '{task['type']}' with thread_name: '{task['thread_name']}'")
-        self.logger.debug(f"Task details: {task}")
+        self.logger.info(f"...processing task type '{task.task_dict.get('type')}' with thread_name: '{task.task_dict.get('thread_name')}'")
+        self.logger.debug(f"Task details: {task.task_dict}")
 
         # Basic validation to ensure necessary fields are present
-        if not task.get('type') or not task.get('thread_name'):
+        if not task.task_dict.get('type') or not task.task_dict.get('thread_name'):
             self.logger.error("...Task missing required fields. Task will be skipped.")
-            self.logger.error(f"...Invalid task: {task}")
+            self.logger.error(f"...Invalid task: {task.task_dict}")
             raise ValueError("Task missing required fields. Task will be skipped.")
 
         # Check if the on_task_ready callback is set and invoke it to handle the task execution
         if self.on_task_ready:
-            self.logger.debug(f"...Invoking task handler for task associated with thread name, execution: {task['thread_name']}, {task['type']}")
+            self.logger.debug(f"...Invoking task handler for task associated with thread name, execution: {task.task_dict.get('thread_name')}, {task.task_dict.get('type')}")
             await self.on_task_ready(task)
         else:
             self.logger.warning("...No task handler has been set. Unable to execute task.")

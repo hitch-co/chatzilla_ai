@@ -150,7 +150,7 @@ chatforme_factcheck:
 #################################################################
 #################################################################
 #CHATFORME PARAMS
-msg_history_limit: 100
+msg_history_limit: 150
 num_bot_responses: 1
 wordcounts:
   short: 21
@@ -248,10 +248,10 @@ formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for
 #########################
 #########################
 #OUAT Params
-ouat_message_recurrence_seconds: 15
-ouat_story_progression_number: 2
-ouat_story_wrapup_number: 3
-ouat_story_max_counter_default: 4
+ouat_message_recurrence_seconds: 22
+ouat_story_progression_number: 3
+ouat_story_wrapup_number: 5
+ouat_story_max_counter_default: 6
 
 
 #########################
@@ -265,6 +265,7 @@ gpt_thread_names:
   - "chatformemsgs"
   - "ouatmsgs"
   - "vibecheckmsgs"
+  - "explanationmsgs"
 
 ## GPT Assistant Manager Prompts
 gpt_assistant_prompts:
@@ -275,6 +276,8 @@ gpt_assistant_prompts:
     each point is unique. In the new bullet pointed list, make sure to erase 
     mentions of news outlets, and replace sensitive topics related to 
     person/country/location/religion names with made up names if necessary."
+  explainer: "You are a bot designed to explain the users question one line at a 
+    time. Responses have a maximum length of 20 words." 
   storyteller: "You are a bot designed to tell stories one line at a time.  Be 
     succinct and clear, develop plotlines where possible.  Continue a previous 
     thought if relevant.  Be confrontational, respond briefly. Responses have a 
@@ -461,9 +464,9 @@ returningusers_msg_prompt: "Say hi and tag @{random_new_user}, specifically welc
 #########################
 #Vibechecker prompts
 vibechecker_max_interaction_count: 5
-vibechecker_message_wordcount: 20
-vibechecker_listener_sleep_time: 4
-vibechecker_question_session_sleep_time: 75
+vibechecker_message_wordcount: 25
+vibechecker_listener_sleep_time: 6
+vibechecker_question_session_sleep_time: 60
 formatted_gpt_vibecheck_alert: |
   Let {vibecheckee_username} know that they have been selected for a vibe check. They should know that:
   - They'll be asked a few short questions to see whether or not they are a bot.

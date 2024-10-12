@@ -177,28 +177,35 @@ class Bot(twitch_commands.Bot):
 
     async def handle_tasks(self, task: object):
         
-        thread_name = task.task_dict.get("thread_name")
-        message_role = task.task_dict.get("message_role")
+        try:
+            task_type = task.task_dict.get("type")
+            thread_name = task.task_dict.get("thread_name")
+            message_role = task.task_dict.get("message_role")
+            self.logger.info(f"Handling task type '{task_type}' for thread: {thread_name}")
 
-        if task.task_dict.get("type") == "add_message":
-            self.logger.debug(f"3. Handling task type 'add_message' for thread: {task.task_dict.get('thread_name')}")
+        except Exception as e:
+            self.logger.info(f"Error occurred in 'handle_tasks': {e}")
+
+        if task_type == "add_message":
+            # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
+            # Note: Only situation where this is used is when a command needs to be sent to the thread
+            
             content = task.task_dict.get("content")
 
-
-            # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
             try:
                 await self._add_message_to_specified_thread(
                     message_content=content, 
                     role=message_role,
                     thread_name=thread_name
                     )
-                task.future.set_result('AddMessageTask Completed')
+                task.future.set_result('...AddMessageTask Completed')
+                self.logger.info(f"...'{task_type}' task handled for thread: {thread_name}")
 
             except Exception as e: 
-                self.logger.error(f"Error occurred in '_add_message_to_specified_thread': {e}", exc_info=True)
+                self.logger.error(f"...Error occurred in '_add_message_to_specified_thread': {e}", exc_info=True)
                 task.future.set_exception(e)
 
-        elif task.task_dict.get("type") == "execute_thread":
+        elif task_type == "execute_thread":
 
             # # NOTE: if we decide to bulk add (to reduce api calls and speedup the app), 
             # #  this is where we should dump message queue into thread history
@@ -207,7 +214,6 @@ class Bot(twitch_commands.Bot):
             #     message_history=message_history
             #     )
  
-            self.logger.debug(f"3. Handling task type 'execute_thread' for Assistant/Thread: {task.task_dict.get('assistant_name')}, {task.task_dict.get('thread_name')}")
             assistant_name = task.task_dict.get("assistant_name")
             thread_instructions = task.task_dict.get("thread_instructions")
             replacements_dict = task.task_dict.get("replacements_dict")
@@ -222,19 +228,14 @@ class Bot(twitch_commands.Bot):
                     thread_instructions=thread_instructions,
                     replacements_dict=replacements_dict
                 )
+                self.logger.info(f"...GPT Response successfully generated for thread: {thread_name}")
+                self.logger.debug(f"...GPT response: {gpt_response}")
 
             except Exception as e:
-                task.future.set_exception(e)
-                self.logger.error(f"Error occurred in 'execute_thread': {e}")
                 gpt_response = None
-
-            # If the thread name is not chatformemsgs, add the message to the thread
-            if thread_name != 'chatformemsgs':
-                await self._add_message_to_specified_thread(
-                    message_content=gpt_response, 
-                    role=message_role, 
-                    thread_name='chatformemsgs'
-                    )
+                message = f"...Error occurred in '{task_type}': {e}"
+                task.future.set_exception(message)
+                self.logger.error(message)
 
             # Send the GPT response to the channel
             if gpt_response is not None and bool_send_channel_message is True:
@@ -245,38 +246,60 @@ class Bot(twitch_commands.Bot):
                         incl_voice=self.config.tts_include_voice,
                         voice_name=tts_voice
                     )
-                    task.future.set_result('ExecuteThreadTask Completed')
+                    message = f"...'{task_type}' task handled for thread: {thread_name}. Send channel message is True"
+                    task.future.set_result(message)
+                    self.logger.info(message) 
 
                 except Exception as e:
-                    self.logger.error(f"Error occurred in 'send_output_message_and_voice': {e}")
-                    task.future.set_exception(e)
+                    message = f"...Error occurred in 'send_output_message_and_voice': {e}"
+                    self.logger.error(message)
+                    task.future.set_exception(message)
 
-                self.logger.debug("Thread executed...")
-                self.logger.debug(f"'{task.task_dict.get('type')}' task handled for thread: {thread_name}") 
-            else:
-                self.logger.error(f"Gpt response is None, this should not happen.  Task: {task.task_dict}")
-                task.future.set_result('ExecuteThreadTask Completed')
-
-        elif task.task_dict.get("type") == "send_channel_message":
+            if gpt_response is None:
+                message = f"...Gpt response is None, this should not happen.  Task: {task.task_dict}"
+                self.logger.error(message)
+                task.future.set_exception(message)
+            
+            if bool_send_channel_message is False:
+                message = f"...'{task_type}' task handled for thread: {thread_name}. Send channel message is False"
+                task.future.set_result(message)
+                self.logger.info(message)
+            
+        elif task_type == "send_channel_message":
             content = task.task_dict.get("content")
+            tts_voice = task.task_dict.get("tts_voice")
 
-            # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
-            await self._add_message_to_specified_thread(
-                message_content=content, 
-                role=message_role, 
-                thread_name=thread_name
-                )
-    
+            try:
+                # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
+                await self._add_message_to_specified_thread(
+                    message_content=content, 
+                    role=message_role, 
+                    thread_name=thread_name
+                    )
+            except Exception as e:
+                message = f"...Error occurred in 'add_message_to_thread': {e}"
+                self.logger.error(message)
+                task.future.set_exception(message)
+
             try:
                 await self.chatforme_service.send_output_message_and_voice(
-                    text=task.task_dict.get("content"),
+                    text=content,
                     incl_voice=self.config.tts_include_voice,
-                    voice_name=task.task_dict.get("tts_voice")
+                    voice_name=tts_voice
                 )
-                task.future.set_result('ExecuteThreadTask Completed')
+                message = f"...'{task_type}' task handled for thread: {thread_name}"
+                task.future.set_result(message)
+                self.logger.info(message)
+
             except Exception as e:
-                self.logger.error(f"Error occurred in 'send_channel_message': {e}")
-                task.future.set_exception(e)
+                message = f"...Error occurred in 'send_channel_message': {e}"
+                self.logger.error(message)
+                task.future.set_exception(message)
+        
+        else:
+            message = f"Unknown task type 'task_type' found, this should not happen"
+            self.logger.info(message)  
+            self.future.set_exception(message)
 
     async def event_ready(self):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)

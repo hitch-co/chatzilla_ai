@@ -256,6 +256,13 @@ class ConfigManager:
             self.logger.error(f"Error in yaml_helloworld_config(): {e}")
 
     def yaml_ouat_config(self, yaml_config):
+
+        def set_story_progression_number(max_counter):
+            progression_number = min(max(3, -(-max_counter // 4)), 10)
+            abs(progression_number)
+
+            return progression_number
+            
         try:
             # News Article Feed/Prompts
             self.newsarticle_rss_feed = yaml_config['twitch-ouat']['newsarticle_rss_feed']
@@ -274,8 +281,8 @@ class ConfigManager:
 
             # OUAT Progression flow / Config
             self.ouat_message_recurrence_seconds = yaml_config['ouat_message_recurrence_seconds']
-            self.ouat_story_progression_number = yaml_config['ouat_story_progression_number']
             self.ouat_story_max_counter_default = yaml_config['ouat_story_max_counter_default']
+            self.ouat_story_progression_number = set_story_progression_number(self.ouat_story_max_counter_default)
 
             # GPT Writing Style/Theme/Tone Paramaters
             self.writing_tone = yaml_config.get('ouat-writing-parameters', {}).get('writing_tone', 'no specified writing tone')

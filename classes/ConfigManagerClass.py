@@ -258,11 +258,29 @@ class ConfigManager:
     def yaml_ouat_config(self, yaml_config):
 
         def set_story_progression_number(max_counter):
-            progression_number = min(max(3, -(-max_counter // 4)), 10)
-            abs(progression_number)
-
+            if max_counter < 5:
+                progression_number = max_counter - 2
+            else:
+                progression_number = int(max_counter * 0.60)
+            progression_number = max(1, min(progression_number, max_counter - 3))
             return progression_number
-            
+        
+        def set_story_climax_number(max_counter, progression_number):
+            if max_counter < 5:
+                climax_number = max_counter - 1
+            else:
+                climax_number = int(max_counter * 0.75)
+            climax_number = max(progression_number + 1, min(climax_number, max_counter - 2))
+            return climax_number
+
+        def set_story_finisher_number(max_counter, climax_number):
+            if max_counter < 5:
+                finisher_number = max_counter - 1
+            else:
+                finisher_number = int(max_counter * 0.90)
+            finisher_number = max(climax_number + 1, min(finisher_number, max_counter - 1))
+            return finisher_number
+    
         try:
             # News Article Feed/Prompts
             self.newsarticle_rss_feed = yaml_config['twitch-ouat']['newsarticle_rss_feed']
@@ -274,6 +292,7 @@ class ConfigManager:
             self.storyteller_storystarter_prompt = yaml_config['gpt_thread_prompts']['story_starter']
             self.storyteller_storyprogressor_prompt = yaml_config['gpt_thread_prompts']['story_progressor']
             self.storyteller_storyfinisher_prompt = yaml_config['gpt_thread_prompts']['story_finisher']
+            self.storyteller_storyclimax_prompt = yaml_config['gpt_thread_prompts']['story_climaxer']
             self.storyteller_storyender_prompt = yaml_config['gpt_thread_prompts']['story_ender']
             self.ouat_prompt_addtostory_prefix = yaml_config['gpt_thread_prompts']['story_addtostory_prefix']
             self.randomfact_conversation_director = yaml_config['gpt_thread_prompts']['conversation_director']
@@ -283,6 +302,8 @@ class ConfigManager:
             self.ouat_message_recurrence_seconds = yaml_config['ouat_message_recurrence_seconds']
             self.ouat_story_max_counter_default = yaml_config['ouat_story_max_counter_default']
             self.ouat_story_progression_number = set_story_progression_number(self.ouat_story_max_counter_default)
+            self.ouat_story_climax_number = set_story_climax_number(self.ouat_story_max_counter_default, self.ouat_story_progression_number)
+            self.ouat_story_finisher_number = set_story_finisher_number(self.ouat_story_max_counter_default, self.ouat_story_climax_number)
 
             # GPT Writing Style/Theme/Tone Paramaters
             self.writing_tone = yaml_config.get('ouat-writing-parameters', {}).get('writing_tone', 'no specified writing tone')

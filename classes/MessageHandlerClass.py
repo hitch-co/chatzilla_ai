@@ -165,10 +165,10 @@ class MessageHandler:
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
             self.logger.info(f"Message author not the bot '{message_metadata['name']}', message added to queue (thread: {thread_name})")
 
-            # Wait for the task to complete before continuing
-            self.logger.info(f"...waiting for add_to_chatformemsgs_thread_history task to complete...")
-            await task.future  # Wait until the task is marked as complete
-            self.logger.info(f"...add_to_chatformemsgs_thread_history task completed.")
+            # # Wait for the task to complete before continuing
+            # self.logger.info(f"...waiting for add_to_chatformemsgs_thread_history task to complete...")
+            # await task.future  # Wait until the task is marked as complete
+            # self.logger.info(f"...add_to_chatformemsgs_thread_history task completed.")
 
         else:
             self.logger.info(f"Message author is the bot '{message_metadata['name']}', messager not added to queue.")

@@ -200,7 +200,7 @@ class Bot(twitch_commands.Bot):
                     role=message_role,
                     thread_name=thread_name
                     )
-                task.future.set_result('...AddMessageTask Completed')
+                task.future.set_result(f"...'{task_type}' Completed")
                 self.logger.info(f"...'{task_type}' task handled for thread: {thread_name}")
 
             except Exception as e: 
@@ -311,9 +311,9 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(f"Initializing event loop")
         self.loop = asyncio.get_event_loop()
 
-        # start newusers loop
-        self.logger.debug(f"Starting newusers service")
-        self.loop.create_task(self._send_message_to_new_users_task())
+        # # start newusers loop
+        # self.logger.debug(f"Starting newusers service")
+        # self.loop.create_task(self._send_message_to_new_users_task())
 
         # start OUAT loop
         self.logger.debug(f"Starting OUAT service")
@@ -343,8 +343,8 @@ class Bot(twitch_commands.Bot):
             thread_names=self.config.gpt_thread_names
             )
         
-        # # send hello world message
-        # await self._send_hello_world_message()
+        # send hello world message
+        await self._send_hello_world_message()
         
     async def event_message(self, message):
         def clean_message_content(content, command_spellings):
@@ -1037,20 +1037,24 @@ class Bot(twitch_commands.Bot):
                 self.ouat_counter += 1
                 self.logger.info(f"OUAT details: Starting cycle #{self.ouat_counter} of the OUAT Storyteller") 
 
-                #storyprogressor
+                # Story progressor
                 if self.ouat_counter <= self.config.ouat_story_progression_number:
-                    gpt_prompt_final = self.config.storyteller_storyprogressor_prompt
+                    gpt_prompt = self.config.storyteller_storyprogressor_prompt
 
-                #storyfinisher
-                elif self.ouat_counter < self.ouat_story_max_counter:
-                    gpt_prompt_final = self.config.storyteller_storyfinisher_prompt
+                # Story climax
+                elif self.ouat_counter <= self.config.ouat_story_climax_number:
+                    gpt_prompt = self.config.storyteller_storyclimax_prompt
 
-                #storyender
+                # Story finisher
+                elif self.ouat_counter <= self.config.ouat_story_finisher_number:
+                    gpt_prompt = self.config.storyteller_storyfinisher_prompt
+
+                # Story ender
                 elif self.ouat_counter == self.ouat_story_max_counter:
-                    gpt_prompt_final = self.config.storyteller_storyender_prompt
+                    gpt_prompt = self.config.storyteller_storyender_prompt
 
                 # Combine prefix and final article content
-                gpt_prompt_final = self.config.storyteller_storysuffix_prompt + " " + gpt_prompt_final
+                gpt_prompt_final = self.config.storyteller_storysuffix_prompt + " " + gpt_prompt
 
                 self.logger.info(f"The self.ouat_counter is currently at {self.ouat_counter} (ouat_story_max_counter={self.ouat_story_max_counter})")
                 self.logger.info(f"The story has been initiated with the following storytelling parameters:\n-{self.selected_writing_style}\n-{self.selected_writing_tone}\n-{self.selected_theme}")

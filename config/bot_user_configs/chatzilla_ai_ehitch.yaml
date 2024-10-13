@@ -249,7 +249,6 @@ formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for
 #########################
 #OUAT Params
 ouat_message_recurrence_seconds: 22
-ouat_story_progression_number: 3
 ouat_story_max_counter_default: 6
 
 
@@ -320,9 +319,18 @@ gpt_thread_prompts:
   story_progressor: "Your job is to start to progress the story without 
     repeating or reiterating known facts.  Develop the story/characters/etc.
     "
-  story_finisher: "Your job is to start to wrap up the story without repeating 
-    or reiterating known facts.  Start to create some closure on existing plotlines.
-    "
+  story_climaxer: "You've reached the climax of the story. Tension is at its 
+    peak, and now is the time for the characters and plotlines to collide in the 
+    most dramatic way possible. Push the main plot to its breaking point without 
+    resolving it yet. Raise the stakes, create urgency, and make the reader eager 
+    to see how it all unfolds. Be vivid and intense, but hold off from wrapping 
+    anything up just yet."
+
+  story_finisher: "The story is beginning to wrap up. Start tying up loose ends, 
+    resolving secondary plotlines, and creating a path toward the conclusion. 
+    Don't rush to finish everything, but make sure the audience can feel that the 
+    story is moving toward its inevitable end."
+
   story_ender: "This is the last line of the story, close out any plotlines. No 
     sequels, this is the end of the story. Include your story response and then 
     after it the sentence 'The end.'

@@ -116,10 +116,14 @@ class GPTAssistantManager(GPTBaseClass):
         }
 
         self.logger.info('Creating GPT Assistants')
+
+        # Get suffix one from assistants_config
+        suffix_1 = assistants_config.get('suffix_1', '')
+
         for assistant_name, prompt in assistants_config.items():
             self._create_assistant(
                 assistant_name=assistant_name,
-                assistant_instructions=prompt,
+                assistant_instructions=prompt + suffix_1,
                 replacements_dict=replacements_dict,
                 assistant_type='code_interpreter',
                 assistant_model=self.yaml_data.gpt_model
@@ -462,7 +466,7 @@ class GPTResponseManager(GPTBaseClass):
 #     # Configuration and API key setup
 #     ConfigManager().initialize(yaml_filepath=r'C:\_repos\chatzilla_ai\config\config.yaml')
 #     config = ConfigManager.get_instance()
-#     assistants_config = config.gpt_assistant_prompts
+#     assistants_config = config.gpt_assistants_config
 #     thread_names = config.gpt_thread_names
 
 #     # Set up your GPTThreadManager and other components

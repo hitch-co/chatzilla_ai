@@ -96,7 +96,6 @@ class ConfigManager:
                 self.yaml_vibecheck_config(yaml_config)
 
                 self.yaml_helloworld_config(yaml_config)
-                self.yaml_todo_config(yaml_config)
 
                 self.yaml_randomfact_json(yaml_config)
                 self.yaml_factchecker_config(yaml_config)
@@ -255,15 +254,6 @@ class ConfigManager:
             self.helloworld_message_wordcount = yaml_config['helloworld_message_wordcount']
         except Exception as e:
             self.logger.error(f"Error in yaml_helloworld_config(): {e}")
-
-    def yaml_todo_config(self, yaml_config):
-        try:
-            # GPT todo command prompts:
-            self.gpt_todo_prompt = yaml_config['gpt_todo_prompt']
-            self.gpt_todo_prompt_prefix = yaml_config['gpt_todo_prompt_prefix']
-            self.gpt_todo_prompt_suffix = yaml_config['gpt_todo_prompt_suffix']
-        except Exception as e:
-            self.logger.error(f"Error in yaml_todo_config(): {e}")
 
     def yaml_ouat_config(self, yaml_config):
         try:

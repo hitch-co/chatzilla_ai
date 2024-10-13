@@ -87,9 +87,17 @@ class BQUploader:
             user_login: str, 
             interactions_table_id: str, 
             users_table_id: str, 
-            limit: int = 5
+            limit: int = 5,
+            and_clauses: list[str] = []
             ) -> str:
         
+        # Join the and_clauses if they exist, otherwise leave empty
+        if and_clauses:
+            and_clause_text = ' AND '.join(and_clauses)
+            and_clause_text = f"AND {and_clause_text}"  # Prefix with AND if clauses exist
+        else:
+            and_clause_text = ''  # No AND if there are no clauses
+
         query = f"""
             SELECT
                 CAST(ui.timestamp as string) as timestamp,
@@ -98,6 +106,8 @@ class BQUploader:
             FROM `{interactions_table_id}` ui
             JOIN `{users_table_id}` u ON ui.user_id = u.user_id
             WHERE lower(u.user_login) = lower('{user_login}')
+                {and_clause_text}
+                and ui.content not like '%!remindme%'
             ORDER BY ui.timestamp DESC
             LIMIT {limit}
             """
@@ -188,7 +198,7 @@ if __name__ == '__main__':
 
     # Test the fetch_user_chat_history_from_bq method
     test_list_of_chat_history = chatdataclass.fetch_user_chat_history_from_bq(
-        user_login='mynameiskhan1090', 
+        user_login='ehitch', 
         interactions_table_id='eh-talkzilla-ai.TalkzillaAI_UserData.user_interactions',
         users_table_id='eh-talkzilla-ai.TalkzillaAI_UserData.users', 
         limit=15

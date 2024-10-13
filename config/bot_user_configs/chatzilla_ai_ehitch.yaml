@@ -250,7 +250,6 @@ formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for
 #OUAT Params
 ouat_message_recurrence_seconds: 22
 ouat_story_progression_number: 3
-ouat_story_wrapup_number: 5
 ouat_story_max_counter_default: 6
 
 

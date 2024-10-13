@@ -336,13 +336,11 @@ class Bot(twitch_commands.Bot):
         self.loop.create_task(self.explanation_service.explanation_task())
  
         # Create Assistants and Threads
-        self.assistants_config = self.config.gpt_assistant_prompts
         self.assistants = self.gpt_assistant_manager.create_assistants(
-            assistants_config=self.assistants_config
+            assistants_config=self.config.gpt_assistants_config
             )
-        thread_names = self.config.gpt_thread_names
         self.threads = self.gpt_thread_mgr.create_threads(
-            thread_names=thread_names
+            thread_names=self.config.gpt_thread_names
             )
         
         # # send hello world message

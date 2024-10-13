@@ -182,7 +182,7 @@ class ConfigManager:
             self.logger.error(f"Error in yaml_gpt_config(): {e}")
 
     def yaml_gpt_assistant_config(self, yaml_config):
-        self.gpt_assistant_prompts = yaml_config['gpt_assistant_prompts']
+        self.gpt_assistants_config = yaml_config['gpt_assistants_config']
         self.assistant_response_max_length = yaml_config['openai-api']['assistant_response_max_length']
 
     def yaml_gpt_thread_config(self, yaml_config):
@@ -405,5 +405,5 @@ if __name__ == "__main__":
     print(config.env_file_directory)
     print(config.tts_data_folder)
     print(config.tts_file_name)
-    print(config.gpt_assistant_prompts)
+    print(config.gpt_assistants_config)
     print(config.newusers_sleep_time)

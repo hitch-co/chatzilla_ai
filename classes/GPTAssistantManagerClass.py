@@ -462,7 +462,7 @@ class GPTResponseManager(GPTBaseClass):
 #     # Configuration and API key setup
 #     ConfigManager().initialize(yaml_filepath=r'C:\_repos\chatzilla_ai\config\config.yaml')
 #     config = ConfigManager.get_instance()
-#     assistants_config = config.gpt_assistant_prompts
+#     assistants_config = config.gpt_assistants_config
 #     thread_names = config.gpt_thread_names
 
 #     # Set up your GPTThreadManager and other components

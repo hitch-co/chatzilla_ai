@@ -268,7 +268,7 @@ gpt_thread_names:
   - "explanationmsgs"
 
 ## GPT Assistant Manager Prompts
-gpt_assistant_prompts:
+gpt_assistants_config:
   article_summarizer: "The user is going to share with you an article.  Create 5
     short bullet points based on the artile summary shared with you.  Two of 
     those bullet points should be designed to make the story more exciting, for 

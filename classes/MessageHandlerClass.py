@@ -72,8 +72,8 @@ class MessageHandler:
             ("nonbot_temp_msg_history", self.nonbot_temp_msg_history, self.msg_history_limit),
             ("all_msg_history_gptdict", self.all_msg_history_gptdict, self.msg_history_limit)
         ]
-        for name, msg_history, limit in message_histories:
-            self._pop_message_from_message_history(msg_history_list_dict=msg_history, msg_history_limit=limit)
+        for name, msg_history, msg_history_limit in message_histories:
+            self._pop_message_from_message_history(msg_history_list_dict=msg_history, msg_history_limit=msg_history_limit)
             if msg_history:
                 self.logger.debug(f"Log history cleaned for {name}. Preview of latest message:")
                 self.logger.debug(f"{msg_history[-1]}")

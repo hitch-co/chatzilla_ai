@@ -116,10 +116,14 @@ class GPTAssistantManager(GPTBaseClass):
         }
 
         self.logger.info('Creating GPT Assistants')
+
+        # Get suffix one from assistants_config
+        suffix_1 = assistants_config.get('suffix_1', '')
+
         for assistant_name, prompt in assistants_config.items():
             self._create_assistant(
                 assistant_name=assistant_name,
-                assistant_instructions=prompt,
+                assistant_instructions=prompt + suffix_1,
                 replacements_dict=replacements_dict,
                 assistant_type='code_interpreter',
                 assistant_model=self.yaml_data.gpt_model

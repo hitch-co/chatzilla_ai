@@ -438,10 +438,7 @@ class Bot(twitch_commands.Bot):
                 "name": command_name,
                 "aliases": aliases,
             }
-            #has more than just aliases?
             self.logger.info(f"command_obj: {command_obj}")
-            
-            #result
             self.logger.debug(f"Command info: {command_info}")
             commands_info.append(command_info)
         return commands_info
@@ -540,7 +537,7 @@ class Bot(twitch_commands.Bot):
                         user_login=random_user_name,
                         interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
                         users_table_id=self.config.talkzillaai_userdata_table_id,
-                        limit=15
+                        limit=self.config.newusers_max_bot_memory
                     )
                 else:
                     user_specific_chat_history = "none"
@@ -623,6 +620,54 @@ class Bot(twitch_commands.Bot):
             self.logger.debug(f"Task to add to queue: {task.task_dict}")
         
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+
+    @twitch_commands.command(name='remindme')
+    async def remind_me(self, ctx, *args):
+        thread_name = 'remindmemsgs'
+        assistant_name = 'reminderer'
+        tts_voice = self.config.tts_voice_default
+        gpt_remindme_prompt = self.config.gpt_remindme_prompt
+
+        user_name = ctx.message.author.name  # Get the command caller's username
+
+        # Fetch chat history with messages containing the word 'remind', prioritize by timestamp
+        chat_history = self.bq_uploader.fetch_user_chat_history_from_bq(
+            user_login=user_name,
+            interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
+            users_table_id=self.config.talkzillaai_userdata_table_id,
+            limit=5,  # Fetch recent messages (adjust limit as needed)
+            and_clauses=["LOWER(ui.content) LIKE '%remind%'"]  # Filter messages with 'remind'
+        )
+
+        # Parse the chat history JSON
+        chat_history = json.loads(chat_history)
+
+        # Sort chat history by timestamp (most recent first) if not already done by BQ query
+        chat_history.sort(key=lambda msg: msg['timestamp'], reverse=True)
+
+        # Create the gpt_remindme_input by combining messages, prioritizing recent ones
+        if chat_history:
+            # Format the messages with timestamp and content
+            gpt_remindme_input = '\n'.join([f"{i+1}. [{msg['timestamp']}] {msg['content']}." for i, msg in enumerate(chat_history)])
+        else:
+            gpt_remindme_input = "No reminders found in the user's chat history."
+
+        replacements_dict = {
+            "wordcount_medium":self.config.wordcount_medium,
+            "gpt_remindme_input":gpt_remindme_input,
+        }
+
+        # Add a executeTask to the queue
+        task = CreateExecuteThreadTask(
+            thread_name=thread_name,
+            assistant_name=assistant_name,
+            thread_instructions=gpt_remindme_prompt,
+            replacements_dict=replacements_dict,
+            tts_voice=tts_voice
+        )
+        self.logger.debug(f"Task to add to queue: {task.task_dict}")
+
+        await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
 
     @twitch_commands.command(name='getstats', aliases=("p_getstats", "stats"))
     async def get_command_stats(self, ctx):
@@ -723,8 +768,8 @@ class Bot(twitch_commands.Bot):
         await self._send_channel_message_wrapper(f"Commands include: {results_string}")
 
     @twitch_commands.command(name='specs', aliases=("p_specs"))
-    async def discord(self, ctx):
-        await self._send_channel_message_wrapper("i7-13700K || RTX 4070 Ti OC || 64GB DDR5 6400MHz || ASUS ROG Strix Z790-F")
+    async def specs(self, ctx):
+        await self._send_channel_message_wrapper(f"This is {self.config.twitch_bot_channel_name}'s rig: i7-13700K || RTX 4070 Ti OC || 64GB DDR5 6400MHz || ASUS ROG Strix Z790-F")
 
     @twitch_commands.command(name='discord', aliases=("p_discord"))
     async def discord(self, ctx):

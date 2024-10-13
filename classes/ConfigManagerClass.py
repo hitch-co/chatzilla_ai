@@ -94,6 +94,7 @@ class ConfigManager:
                 self.yaml_chatforme_config(yaml_config)
                 self.yaml_ouat_config(yaml_config)
                 self.yaml_vibecheck_config(yaml_config)
+                self.yaml_remindme_config(yaml_config)
 
                 self.yaml_helloworld_config(yaml_config)
 
@@ -219,12 +220,21 @@ class ConfigManager:
             self.newusers_sleep_time = yaml_config['newusers_sleep_time']
             self.newusers_msg_prompt = yaml_config['newusers_msg_prompt']
             self.returningusers_msg_prompt = yaml_config['returningusers_msg_prompt']
+            self.newusers_max_bot_memory = yaml_config['newusers_max_bot_memory']
             self.vibechecker_message_wordcount = str(yaml_config['vibechecker_message_wordcount'])
             self.vibechecker_question_session_sleep_time = yaml_config['vibechecker_question_session_sleep_time']
             self.vibechecker_listener_sleep_time = yaml_config['vibechecker_listener_sleep_time']
             self.formatted_gpt_vibecheck_alert = yaml_config['formatted_gpt_vibecheck_alert']
         except Exception as e:
             self.logger.error(f"Error in yaml_vibecheck_config(): {e}")
+
+    def yaml_remindme_config(self, yaml_config):
+        try:
+            self.gpt_remindme_message_wordcount = yaml_config['gpt_remindme_prompts']['gpt_remindme_message_wordcount']
+            self.gpt_remindme_prompt = yaml_config['gpt_remindme_prompts']['gpt_remindme_prompt']
+            self.gpt_remindme_reminder_limit = yaml_config['gpt_remindme_prompts']['gpt_remindme_reminder_limit']
+        except Exception as e:
+            self.logger.error(f"Error in yaml_remindme_config(): {e}")
 
     def yaml_twitchbot_config(self, yaml_config):
         try:

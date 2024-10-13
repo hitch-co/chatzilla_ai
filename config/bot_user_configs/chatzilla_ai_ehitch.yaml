@@ -255,8 +255,6 @@ ouat_story_max_counter_default: 6
 #########################
 #########################
 #GPT Assistant Manager
-gpt_assistant_config:
-  assistant_type: "code_interpreter"
 
 # gpt thread_names
 gpt_thread_names:
@@ -264,6 +262,7 @@ gpt_thread_names:
   - "ouatmsgs"
   - "vibecheckmsgs"
   - "explanationmsgs"
+  - "remindmemsgs"
 
 ## GPT Assistant Manager Prompts
 gpt_assistants_config:
@@ -287,6 +286,8 @@ gpt_assistants_config:
   vibechecker: "You are a bot designed to vibecheck the users last question or 
     comment."
   newuser_shoutout: "You are a bot designed to welcome new users to the chat."
+  reminderer: "You are a bot designed to remind users of their previous 
+    messages."
   suffix_1: "Be confrontational, respond briefly. Do not repeat yourself. 
     Unless stated otherwise, responses have a maximum length of 25 words."
 
@@ -297,6 +298,7 @@ gpt_thread_prompts:
     if not. If there is no visible chat history, still build the json but 
     response_type should be 'fact'. Include 'content' to elaborate on the 
     decision."
+
   aboutme_prompt: "this is the stuff about me"
   
   shorten_response_length: "shorten this message to 25 words.  Make no 
@@ -395,6 +397,17 @@ gpt_explain_prompts:
   
   explanation_suffix: "This should be a single message response directly without any prefix. Be succinct and {wordcount_short} words max. It's very im portant that you explicitly add the suffix '({explanation_counter} of {explanation_max_counter})' exactly to the end of your message so users know where we are in the explanation."
   
+gpt_remindme_prompts:
+  gpt_remindme_prompt:
+    "The user has asked to be reminded about the following messages: 
+    '{gpt_remindme_input}'. Summarize only the reminders that are clear and easy 
+    to understand. If any reminder is unclear, just ignore it. If there are no 
+    clear reminders at all, let the user know. Keep your response under 
+    {wordcount_medium} words. If possible, add a witty or playful comment about 
+    the reminder."
+
+  gpt_remindme_message_wordcount: 30
+  gpt_remindme_reminder_limit: 5
 
 #########################
 #########################
@@ -455,6 +468,7 @@ returningusers_msg_prompt: "Say hi and tag @{random_new_user}, specifically welc
   
   chat history: '{user_specific_chat_history}' (if applicable)
   "
+newusers_max_bot_memory: 50
 
 
 #########################

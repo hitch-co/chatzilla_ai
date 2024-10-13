@@ -153,9 +153,9 @@ chatforme_factcheck:
 msg_history_limit: 150
 num_bot_responses: 1
 wordcounts:
-  short: 21
-  medium: 27
-  long: 40
+  short: 23
+  medium: 29
+  long: 43
 
 chatforme_prompts:
   standard: >
@@ -483,15 +483,3 @@ formatted_gpt_viberesult_prompt: |
   Conditions:
   - If {vibecheckee_username} hasn't answered any of your questions, they are a bot!
   - Be brief and use less than {vibecheck_message_wordcount} words in your response.
-
-
-#########################
-#########################
-#TODO Prompt
-gpt_todo_prompt_prefix: "Summarize my todo list in a short sentence. Today I'm working on:"
-gpt_todo_prompt: "Ask and find out!"
-gpt_todo_prompt_suffix: "Be brief and less than {wordcount_short} words max.  Don't 
-  repeat yourself.  If there doesn't appear to be a task list, just say we're
-  plugging away on some fun things and to ask for more details if you're curious.
-  "
-

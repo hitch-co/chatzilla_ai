@@ -132,7 +132,8 @@ class GPTChatCompletion:
         self.logger.debug(f"messages submitted to GPT ChatCompletion:")
         self.logger.debug(messages)
 
-        #Call to OpenAI #TODO: This loop is wonky.  Should probably divert to a 'while' statement
+        #Call to OpenAI 
+        # TODO: This loop is wonky.  Should probably divert to a 'while' statement
         for attempt in range(max_attempts):
             self.logger.debug(f"THIS IS ATTEMPT #{attempt + 1}")
             try:

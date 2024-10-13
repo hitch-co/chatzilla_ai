@@ -119,7 +119,8 @@ class Bot(twitch_commands.Bot):
             message_handler=self.message_handler
             )
 
-        #Taken from app authentication class() #TODO: Reudndant with twitchAPI?
+        #Taken from app authentication class() 
+        # TODO: Reudndant with twitchAPI?
         self.twitch_auth = twitch_auth
 
         # Grab the TwitchAPI class and set the bot/broadcaster/moderator IDs
@@ -128,7 +129,8 @@ class Bot(twitch_commands.Bot):
         #Google Service Account Credentials & BQ Table IDs
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = self.config.google_application_credentials_file
         
-        #Get historic stream viewers (TODO: Should mb be refreshed more frequently)
+        #Get historic stream viewers
+        # TODO: Should mb be refreshed more frequently)
         self.historic_users_at_start_of_session = self.bq_uploader.fetch_unique_usernames_from_bq_as_list()
 
         #Set default loop state
@@ -343,8 +345,8 @@ class Bot(twitch_commands.Bot):
             thread_names=thread_names
             )
         
-        # send hello world message
-        await self._send_hello_world_message()
+        # # send hello world message
+        # await self._send_hello_world_message()
         
     async def event_message(self, message):
         def clean_message_content(content, command_spellings):
@@ -394,7 +396,7 @@ class Bot(twitch_commands.Bot):
                 message_content=getattr(message, "content", "")
                 )
 
-        #TODO: Steps 3 and 4 should probably be added to a task so they can run on a separate thread
+        # TODO: Steps 3 and 4 should probably be added to a task so they can run on a separate thread
         # 3. Get chatter data, store in queue, generate query for sending to BQ
         # 4. Send the data to BQ when queue is full.  Clear queue when done
         if len(self.message_handler.message_history_raw)>=2:
@@ -729,32 +731,6 @@ class Bot(twitch_commands.Bot):
     @twitch_commands.command(name='discord', aliases=("p_discord"))
     async def discord(self, ctx):
         await self._send_channel_message_wrapper("This is the discord channel, come say hello but, ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")
-
-    @twitch_commands.command(name='updatetodo', aliases=("m_updatetodo"))
-    async def updatetodo(self, ctx, *args):
-        is_sender_mod = await self._is_function_caller_moderator(ctx)
-        if not is_sender_mod:
-            self.logger.debug("Requester was not a mod... nothing happened")
-            return
-
-        updated_string = ' '.join(args)
-        self.config.gpt_todo_prompt = updated_string
-        self.logger.info(f"updated todo list: {updated_string}")
-
-    @twitch_commands.command(name='todo', aliases=("p_todo"))
-    async def todo(self, ctx):
-        replacements_dict = {
-            "wordcount_short": self.config.wordcount_short,
-            'param_in_text':'variable_from_scope'
-            }
-        gpt_prompt_text = self.config.gpt_todo_prompt_prefix + self.config.gpt_todo_prompt + self.config.gpt_todo_prompt_suffix
-
-        todo = await self.gpt_chatcompletion.make_singleprompt_gpt_response(
-            prompt_text=gpt_prompt_text, 
-            replacements_dict=replacements_dict
-            )
-        
-        return todo
 
     async def _chatforme_main(self, text_input_from_user=None):
         assistant_name = 'chatforme'

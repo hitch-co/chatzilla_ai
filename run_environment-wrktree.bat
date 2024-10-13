@@ -44,9 +44,6 @@ call "..\chatzilla_ai\venv\Scripts\activate"
 :: Set configuration path relative to the worktree directory
 set BOT_USER_CONFIG_PATH=%TWITCH_BOT_ROOT_DIRECTORY%\config\bot_user_configs\%APP_BOT_USER_YAML%
 
-:: Default prompt if not in interactive mode
-set gpt_todo_prompt="Just plugging away, ask for details if you want to know more"
-
 :: Set the game to be played
 set /p selected_game=What game are you playing today? (default:'no_game_selected'):
 if "%selected_game%"=="" set selected_game=no_game_selected

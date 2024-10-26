@@ -1,9 +1,8 @@
 import json
+import hashlib
 
 from google.api_core.exceptions import GoogleAPIError
-
 from classes.ConfigManagerClass import ConfigManager
-
 from my_modules import my_logging
 
 runtime_debug_level = 'INFO'
@@ -112,7 +111,11 @@ class BQUploader:
         json_results = json.dumps(results)
 
         return json_results
-    
+
+    def generate_message_id(self, channel: str, user_id: str, timestamp: str, content: str) -> str:
+        unique_string = f"{channel}_{user_id}_{timestamp}_{content}"
+        return hashlib.md5(unique_string.encode()).hexdigest()
+
     def generate_twitch_user_interactions_records_for_bq(self, records: list[dict]) -> list[dict]:
         rows_to_insert = []
         for record in records:
@@ -122,6 +125,14 @@ class BQUploader:
             timestamp = record.get('timestamp')
             user_badges = record.get('badges')
             color = record.get('tags').get('color', '') if record.get('tags') else ''
+            interaction_type = record.get('interaction_type')
+            
+            message_id = self.generate_message_id(
+                channel=channel, 
+                user_id=user_id, 
+                timestamp=timestamp, 
+                content=content
+            )
             
             row = {
                 "user_id": user_id,
@@ -129,13 +140,15 @@ class BQUploader:
                 "content": content,
                 "timestamp": timestamp,
                 "user_badges": user_badges,
-                "color": color                
+                "color": color,
+                "interaction_type": interaction_type,
+                "message_id": message_id            
             }
             rows_to_insert.append(row)
 
         self.logger.debug("These are the user interactions records (rows_to_insert):")
         self.logger.debug(rows_to_insert[0:2])
-        return rows_to_insert   
+        return rows_to_insert
 
     def send_recordsjob_to_bq(self, table_id, records:list[dict]) -> None:
         table = self.bq_client.get_table(table_id)

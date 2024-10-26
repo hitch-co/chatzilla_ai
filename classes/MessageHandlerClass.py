@@ -37,7 +37,7 @@ class MessageHandler:
         self.chatforme_msg_history = []
         self.nonbot_temp_msg_history = []
 
-    def _get_message_metadata(self, message) -> None:
+    def _get_message_metadata(self, message, interaction_type='message') -> None:
 
         self.logger.debug(f"Getting message metadata for message.author: {message.author}")
         message_metadata = {
@@ -49,8 +49,15 @@ class MessageHandler:
             'timestamp': getattr(message, 'timestamp', None).strftime('%Y-%m-%d %H:%M:%S') if getattr(message, 'timestamp', None) else '',
             'tags': message.tags if hasattr(message, 'tags') else {},
             'content': f'{getattr(message, "content", "")}',
-            'role': None #generated below
+            'role': None, #generated below
+            'interaction_type': None, #generated below
         }
+        
+        # If message starts with ! or contains @chatzilla_ai, interaction_type is a command 
+        if getattr(message, "content", "").startswith('!') or self.config.twitch_bot_display_name in getattr(message, "content", ""):
+            message_metadata['interaction_type'] = 'command'
+        else:
+            message_metadata['interaction_type'] = interaction_type
 
         if message.author is not None:          
             message_metadata['role'] = 'user'

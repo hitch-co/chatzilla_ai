@@ -343,8 +343,8 @@ class Bot(twitch_commands.Bot):
             thread_names=self.config.gpt_thread_names
             )
         
-        # send hello world message
-        await self._send_hello_world_message()
+        # # send hello world message
+        # await self._send_hello_world_message()
         
     async def event_message(self, message):
         def clean_message_content(content, command_spellings):
@@ -405,7 +405,9 @@ class Bot(twitch_commands.Bot):
                 )
 
             self.bq_uploader.execute_query_on_bigquery(query=channel_viewers_queue_query)            
-            viewer_interaction_records = self.bq_uploader.generate_twitch_user_interactions_records_for_bq(records=self.message_handler.message_history_raw)
+            viewer_interaction_records = self.bq_uploader.generate_twitch_user_interactions_records_for_bq(
+                records=self.message_handler.message_history_raw
+                )
 
             self.logger.debug(f"viewer_interaction_records: {viewer_interaction_records}")
 

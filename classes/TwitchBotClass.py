@@ -311,9 +311,9 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(f"Initializing event loop")
         self.loop = asyncio.get_event_loop()
 
-        # # start newusers loop
-        # self.logger.debug(f"Starting newusers service")
-        # self.loop.create_task(self._send_message_to_new_users_task())
+        # start newusers loop
+        self.logger.debug(f"Starting newusers service")
+        self.loop.create_task(self._send_message_to_new_users_task())
 
         # start OUAT loop
         self.logger.debug(f"Starting OUAT service")
@@ -343,8 +343,8 @@ class Bot(twitch_commands.Bot):
             thread_names=self.config.gpt_thread_names
             )
         
-        # # send hello world message
-        # await self._send_hello_world_message()
+        # send hello world message
+        await self._send_hello_world_message()
         
     async def event_message(self, message):
         def clean_message_content(content, command_spellings):

@@ -429,7 +429,7 @@ class Bot(twitch_commands.Bot):
         
         self.logger.debug("THIS IS THE TASK QUEUE:")
         self.logger.debug(self.gpt_thread_mgr.task_queues)
-        self.logger.info("MESSAGE PROCESSED: Processing message...")      
+        self.logger.info("MESSAGE PROCESSED: Done processing message")     
         self.logger.info("---------------------------------------")
 
     def retrieve_registered_commands_info(self):
@@ -542,7 +542,7 @@ class Bot(twitch_commands.Bot):
                         user_login=random_user_name,
                         interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
                         users_table_id=self.config.talkzillaai_userdata_table_id,
-                        limit=15
+                        limit=75
                     )
                 else:
                     user_specific_chat_history = "none"
@@ -1301,9 +1301,7 @@ class Bot(twitch_commands.Bot):
         except json.JSONDecodeError:
             return False
         
-    async def randomfact_task(self):
-
-        def format_chat_history(chat_history: list[dict]) -> str:
+    def _format_chat_history(chat_history: list[dict]) -> str:
             formatted_messages = []
             for message in chat_history:
                 role = message.get('role', 'unknown')
@@ -1311,6 +1309,7 @@ class Bot(twitch_commands.Bot):
                 formatted_messages.append(f"Role: {role}, Content: {content}")
             return "\n".join(formatted_messages)
         
+    async def randomfact_task(self):
         while True:
             await adjustable_sleep_task.adjustable_sleep_task(self.config, 'randomfact_sleeptime')
 
@@ -1329,7 +1328,7 @@ class Bot(twitch_commands.Bot):
 
             # Make singleprompt_gpt_response
             conversation_director_prompt = self.config.randomfact_conversation_director
-            chat_history = format_chat_history(self.message_handler.all_msg_history_gptdict)
+            chat_history = self._format_chat_history(self.message_handler.all_msg_history_gptdict)
             replacements_dict={
                 'wordcount_short':self.config.wordcount_short,
                 'twitch_bot_display_name':self.config.twitch_bot_display_name,
@@ -1356,16 +1355,18 @@ class Bot(twitch_commands.Bot):
                 if response['response_type'] == 'respond':
                     selected_prompt = self.config.randomfact_prompt
                 elif response['response_type'] == 'fact':
-                    selected_prompt = self.config.randomfact_prompt
+                    selected_prompt = self.config.randomfact_response
                 else:
                     self.logger.warning(f"Error occurred in 'randomfact_task': response.response_type is not 'respond' or 'fact'")
                     selected_prompt = self.config.randomfact_prompt
             else:
-                self.logger.warning("Received response is not valid JSON")
+                self.logger.error("Received response is not valid JSON")
                 # Handle the case where the response is not valid JSON
                 selected_prompt = "An error occurred while processing the response."
 
-            self.logger.debug(f"Thread Instructions (selected prompt): {selected_prompt[0:50]}")
+            self.logger.info(f"Randomfact task response['response_type']: {response['response_type']}")
+            self.logger.info(f"Randomfact task selected prompt: {selected_prompt}")
+            self.logger.info(f"Thread Instructions (selected prompt): {selected_prompt[0:50]}")
             self.logger.debug(f"Selected topic: {topic}, Selected subtopic: {subtopic}")
             self.logger.debug(f"Selected area: {area}, Selected subarea: {subarea}")
             self.logger.debug(f"Selected random_character_a_to_z: {random_character_a_to_z}")

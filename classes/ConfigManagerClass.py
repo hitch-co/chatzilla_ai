@@ -326,9 +326,8 @@ class ConfigManager:
             self.randomfact_sleeptime = yaml_config['chatforme_randomfacts']['randomfact_sleeptime']
             self.randomfact_selected_game = os.getenv('selected_game')
                             
-            # Set selected_type to 'standard' if randomfact_selected_game is None
+            # Set random fact prompt and response based on selected game
             self.logger.info(f"randomfact_selected_game: {self.randomfact_selected_game}")
-            selected_type = 'standard'
             if self.randomfact_selected_game == 'no_game_selected':
                 selected_type = 'standard'
             elif self.randomfact_selected_game != 'no_game_selected' and self.randomfact_selected_game is not None:
@@ -340,14 +339,15 @@ class ConfigManager:
                 selected_type = 'standard'
             self.logger.info(f"Selected_type is {selected_type} and randomfact_selected_game is {self.randomfact_selected_game}")
 
-            # Get random fact topics and areas json file paths
-            self.randomfact_topics_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['topics_injection_file_path']
-            self.randomfact_areas_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['areas_injection_file_path']
             self.randomfact_prompt = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_prompt']
             self.randomfact_response = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_response']
 
+            # Get random fact topics and areas json file paths
+            self.randomfact_topics_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['topics_injection_file_path']
             with open(self.randomfact_topics_json, 'r') as file:
                 self.randomfact_topics = yaml.safe_load(file)
+
+            self.randomfact_areas_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['areas_injection_file_path']
             with open(self.randomfact_areas_json, 'r') as file:
                 self.randomfact_areas = yaml.safe_load(file)
 

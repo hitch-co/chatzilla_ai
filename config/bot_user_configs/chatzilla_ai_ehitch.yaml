@@ -291,12 +291,21 @@ gpt_assistants_config:
     Unless stated otherwise, responses have a maximum length of 25 words."
 
 gpt_thread_prompts:
-  conversation_director: "Given the following conversation history: 
-    {chat_history} , decide the response type: Return a JSON object where 
-    'response_type' can be 'respond' if the last message is a question or 'fact' 
-    if not. If there is no visible chat history, still build the json but 
-    response_type should be 'fact'. Include 'content' to elaborate on the 
-    decision."
+  conversation_director: |
+    "You are a part of a control flow program that dictates 
+    whether or not a chatbot should engage in a conversation or share a generic fact. 
+    Given the following conversation history: {chat_history}, decide the 'response_type'.
+
+    Return only a JSON object in the following format:
+    {
+        'response_type': '<respond or fact>',
+        'content': '<brief explanation for decision>'
+    }
+
+    Set 'response_type' to 'respond' if the conversation seems like a question or 
+    engagement where your response could add value. Set it to 'fact' if the bot 
+    should share a general fact instead. If there is no visible chat history, 
+    set 'response_type' to 'fact'."
   aboutme_prompt: "this is the stuff about me"
   
   shorten_response_length: "shorten this message to 25 words.  Make no 

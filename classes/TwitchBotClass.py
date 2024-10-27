@@ -1301,7 +1301,7 @@ class Bot(twitch_commands.Bot):
         except json.JSONDecodeError:
             return False
         
-    def _format_chat_history(chat_history: list[dict]) -> str:
+    def _format_chat_history(self, chat_history: list[dict]) -> str:
             formatted_messages = []
             for message in chat_history:
                 role = message.get('role', 'unknown')

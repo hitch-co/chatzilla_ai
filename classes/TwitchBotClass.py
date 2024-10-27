@@ -476,7 +476,6 @@ class Bot(twitch_commands.Bot):
 
         while True:
             await adjustable_sleep_task.adjustable_sleep_task(self.config, 'newusers_sleep_time')
-            self.logger.debug("---------------------------------------")
             self.logger.info("Checking for new users...")
 
             # Get the current users in the channel
@@ -484,7 +483,7 @@ class Bot(twitch_commands.Bot):
                 current_users_list = await self.twitch_api.retrieve_active_usernames(
                     bearer_token = self.config.twitch_bot_access_token
                     )
-                self.logger.info(f"Current users retrieved: {current_users_list}")  
+                self.logger.debug(f"Current users retrieved: {current_users_list}")  
             except Exception as e:
                 self.logger.error(f"Failed to retrieve active users from Twitch API: {e}")
                 current_users_list = []
@@ -493,7 +492,7 @@ class Bot(twitch_commands.Bot):
             self.current_users_list = list(set(self.current_users_list + current_users_list))
 
             if not self.current_users_list:
-                self.logger.info("No users in self.current_users_list, skipping this iteration.")
+                self.logger.debug("No users in self.current_users_list, skipping this iteration.")
                 continue
 
             # Identify list of users who are new to the channel and have not yet been sent a message
@@ -502,8 +501,6 @@ class Bot(twitch_commands.Bot):
                 current_users_list = self.current_users_list,
                 users_sent_messages_list = self.newusers_service.users_sent_messages_list
             )
-
-            self.logger.info("New users found in self.current_users_list, starting new users message...")
 
             self.logger.debug(f"Long-running Current users list: {current_users_list}")
             self.logger.debug(f"Users sent messages list: {self.newusers_service.users_sent_messages_list}")
@@ -522,13 +519,12 @@ class Bot(twitch_commands.Bot):
                         #and user['username'] not in mods_list
                         )
                 ]
-                self.logger.debug(f"Eligible users to send a message: {eligible_users}")
+                self.logger.debug(f"{len(eligible_users)} eligible users to send a message: {eligible_users}")
             else:
                 self.logger.info("No eligible users to send a message.")
                 continue
      
             if eligible_users:
-                self.logger.info(f"Eligible users found: {len(eligible_users)}")
                 random_user = random.choice(eligible_users)  
                 random_user_type = random_user['usertype']
                 random_user_name = random_user['username'] 
@@ -583,7 +579,7 @@ class Bot(twitch_commands.Bot):
                     continue
 
             else:
-                self.logger.info(f"Eligible users list is empty.  eligible_users: {eligible_users}")
+                self.logger.debug(f"Eligible users list is empty.  eligible_users: {eligible_users}")
                 continue
 
     async def _send_channel_message_wrapper(self, message):
@@ -1341,31 +1337,39 @@ class Bot(twitch_commands.Bot):
                 }
             
             # Do not make this a task, as clutter in the task queue could make randomfact behave unpredictably
-            response_text = await self.gpt_chatcompletion.make_singleprompt_gpt_response(
-                prompt_text=conversation_director_prompt,
-                replacements_dict=replacements_dict,
-                model=self.config.gpt_model_davinci
-                )
+            try:
+                response_text = await self.gpt_chatcompletion.make_singleprompt_gpt_response(
+                    prompt_text=conversation_director_prompt,
+                    replacements_dict=replacements_dict,
+                    model=self.config.gpt_model_davinci
+                    )
+                self.logger.debug(f"conversation_director_prompt response_text: {response_text}")
+                    
+                # Strip backticks and json tag if present
+                response_text = response_text.strip().strip('```').strip('json').strip()
 
-            # Strip backticks and json tag if present
-            response_text = response_text.strip().strip('```').strip('json').strip()
+                if self._is_valid_json(response_text):
+                    response = json.loads(response_text)
+                    self.logger.info(f"Randomfact task response['response_type']: {response['response_type']}")
 
-            if self._is_valid_json(response_text):
-                response = json.loads(response_text)
-                if response['response_type'] == 'respond':
-                    selected_prompt = self.config.randomfact_prompt
-                elif response['response_type'] == 'fact':
-                    selected_prompt = self.config.randomfact_response
+                    if response['response_type'] == 'respond':
+                        selected_prompt = self.config.randomfact_response
+                    elif response['response_type'] == 'fact':
+                        selected_prompt = self.config.randomfact_prompt
+                    else:
+                        self.logger.warning(f"Error occurred in 'randomfact_task': response.response_type is not 'respond' or 'fact'")
+                        selected_prompt = self.config.randomfact_prompt
                 else:
-                    self.logger.warning(f"Error occurred in 'randomfact_task': response.response_type is not 'respond' or 'fact'")
-                    selected_prompt = self.config.randomfact_prompt
-            else:
-                self.logger.error("Received response is not valid JSON")
-                # Handle the case where the response is not valid JSON
-                selected_prompt = "An error occurred while processing the response."
+                    self.logger.error("Received response is not valid JSON")
+                    # Handle the case where the response is not valid JSON
+                    selected_prompt = "An error occurred while processing the response."
 
-            self.logger.info(f"Randomfact task response['response_type']: {response['response_type']}")
-            self.logger.info(f"Randomfact task selected prompt: {selected_prompt}")
+            except Exception as e:
+                self.logger.error(f"Error occurred in 'randomfact_task': {e}")
+                self.logger.info(f"Setting response_text to 'fact'...")
+                selected_prompt = self.config.randomfact_response
+
+
             self.logger.info(f"Thread Instructions (selected prompt): {selected_prompt[0:50]}")
             self.logger.debug(f"Selected topic: {topic}, Selected subtopic: {subtopic}")
             self.logger.debug(f"Selected area: {area}, Selected subarea: {subarea}")

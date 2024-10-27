@@ -56,16 +56,26 @@ class GPTChatCompletion:
         self.logger.info(f"model: {model}")
         
         try:
-            prompt_text = gpt_utils.replace_prompt_text(
-                logger = self.logger,
-                prompt_template=prompt_text,
-                replacements = replacements_dict
+            try:
+                # Ensure replacements_dict is not None and has all required keys.
+                replacements_dict = replacements_dict or {}
+                
+                prompt_text_clean = gpt_utils.replace_prompt_text(
+                    prompt_template=prompt_text,
+                    replacements=replacements_dict
                 )
+            except Exception as e:
+                self.logger.error(f"Error occurred in 'replace_prompt_text': {e}")
+                return "Error in generating response due to replacement issue."
             
-            prompt_listdict = self._make_string_gptlistdict(
-                prompt_text=prompt_text,
-                prompt_text_role='user'
-                )
+            try:
+                prompt_listdict = self._make_string_gptlistdict(
+                    prompt_text=prompt_text_clean,
+                    prompt_text_role='user'
+                    )
+            except Exception as e:
+                self.logger.error(f"Error occurred in '_make_string_gptlistdict': {e}")
+
             try:
                 gpt_response = self._openai_gpt_chatcompletion(
                     messages=prompt_listdict,
@@ -73,10 +83,11 @@ class GPTChatCompletion:
                     )
             except Exception as e:
                 self.logger.error(f"Error occurred in '_openai_gpt_chatcompletion': {e}")        
+
         except Exception as e:
             self.logger.error(f"Error occurred in 'make_singleprompt_gpt_response': {e}")
 
-        self.logger.info(f"prompt_text: {prompt_text}")
+        self.logger.info(f"prompt_text: {prompt_text_clean}")
         self.logger.info(f"final gpt_response: {gpt_response}")
         return gpt_response
     

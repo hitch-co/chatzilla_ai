@@ -296,11 +296,9 @@ gpt_thread_prompts:
     whether or not a chatbot should engage in a conversation or share a generic fact. 
     Given the following conversation history: {chat_history}, decide the 'response_type'.
 
-    Return only a JSON object in the following format:
-    {
+    Return only a JSON object with the following keys and values (values to be determined in your response):
         'response_type': '<respond or fact>',
         'content': '<brief explanation for decision>'
-    }
 
     Set 'response_type' to 'respond' if the conversation seems like a question or 
     engagement where your response could add value. Set it to 'fact' if the bot 

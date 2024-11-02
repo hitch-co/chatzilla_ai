@@ -86,7 +86,7 @@ class BQUploader:
             user_login: str, 
             interactions_table_id: str, 
             users_table_id: str, 
-            limit: int = 5
+            limit: int = 750
             ) -> str:
         
         query = f"""
@@ -94,6 +94,7 @@ class BQUploader:
                 CAST(ui.timestamp as string) as timestamp,
                 u.user_login,
                 ui.content,
+                ui.message_id
             FROM `{interactions_table_id}` ui
             JOIN `{users_table_id}` u ON ui.user_id = u.user_id
             WHERE lower(u.user_login) = lower('{user_login}')
@@ -105,13 +106,25 @@ class BQUploader:
         results = [{
             "timestamp": row.timestamp, 
             "user_login": row.user_login, 
-            "content": row.content
+            "content": row.content,
+            "message_id": row.message_id
             } for row in query_job]
 
         json_results = json.dumps(results)
 
         return json_results
 
+    def fetch_message_by_id(self, message_ids: list[str], interactions_table_id: str) -> list[dict]:
+        # Query to fetch messages by ID
+        query = f"""
+            SELECT message_id, content, timestamp, user_id
+            FROM `{interactions_table_id}`
+            WHERE message_id IN UNNEST({message_ids})
+        """
+        query_job = self.bq_client.query(query)
+        results = [{"message_id": row.message_id, "content": row.content, "timestamp": row.timestamp} for row in query_job]
+        return results
+    
     def generate_message_id(self, channel: str, user_id: str, timestamp: str, content: str) -> str:
         unique_string = f"{channel}_{user_id}_{timestamp}_{content}"
         return hashlib.md5(unique_string.encode()).hexdigest()
@@ -200,11 +213,10 @@ if __name__ == '__main__':
     chatdataclass = BQUploader(bq_client)
 
     # Test the fetch_user_chat_history_from_bq method
-    test_list_of_chat_history = chatdataclass.fetch_user_chat_history_from_bq(
+    test_list_of_chat_history_json = chatdataclass.fetch_user_chat_history_from_bq(
         user_login='mynameiskhan1090', 
         interactions_table_id='eh-talkzilla-ai.TalkzillaAI_UserData.user_interactions',
         users_table_id='eh-talkzilla-ai.TalkzillaAI_UserData.users', 
         limit=15
-        )
-    
+        )    
     print(test_list_of_chat_history)

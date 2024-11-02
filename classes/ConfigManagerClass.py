@@ -218,6 +218,7 @@ class ConfigManager:
             self.formatted_gpt_viberesult_prompt = yaml_config['formatted_gpt_viberesult_prompt']
             self.newusers_sleep_time = yaml_config['newusers_sleep_time']
             self.newusers_msg_prompt = yaml_config['newusers_msg_prompt']
+            self.newusers_faiss_default_query = yaml_config['newusers_faiss_default_query']
             self.returningusers_msg_prompt = yaml_config['returningusers_msg_prompt']
             self.vibechecker_message_wordcount = str(yaml_config['vibechecker_message_wordcount'])
             self.vibechecker_question_session_sleep_time = yaml_config['vibechecker_question_session_sleep_time']

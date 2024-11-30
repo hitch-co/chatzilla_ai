@@ -61,6 +61,7 @@ class GPTChatCompletion:
                 replacements_dict = replacements_dict or {}
                 
                 prompt_text_clean = gpt_utils.replace_prompt_text(
+                    logger=self.logger,
                     prompt_template=prompt_text,
                     replacements=replacements_dict
                 )

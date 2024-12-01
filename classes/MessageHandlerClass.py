@@ -143,8 +143,11 @@ class MessageHandler:
         if len(msg_history_list_dict) > msg_history_limit:
             msg_history_list_dict.pop(0)
 
-    async def add_to_chatformemsgs_thread_history(self, message_metadata: dict):  
-        thread_name='chatformemsgs'
+    async def add_to_thread_history(
+            self, 
+            thread_name, 
+            message_metadata: dict
+            ):  
 
         # Grab and write metadata, add users to users list
         message_role = message_metadata['role']

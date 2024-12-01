@@ -79,12 +79,25 @@ class FAISSService:
         self.user_id_map.clear()
 
         # Encode and add user messages
+        if not messages:
+            self.logger.info("No messages provided for user index. Defaulting to empty results.")
+            return []
+
         contents = [msg['content'] for msg in messages]
         ids = [msg['message_id'] for msg in messages]
         
+        if not contents:  # Ensure contents are not empty
+            self.logger.warning("No valid message content found. Skipping FAISS operations.")
+            return []
+
         embeddings = self.model.encode(contents, convert_to_tensor=False)
         embeddings_np = np.array(embeddings).astype('float32')
-        
+
+        # Ensure embeddings are not empty or malformed
+        if embeddings_np.ndim != 2 or embeddings_np.shape[0] == 0:
+            self.logger.warning("Generated embeddings are empty or malformed. Skipping FAISS operations.")
+            return []
+
         self.user_index.add(embeddings_np)
         for i, message_id in enumerate(ids):
             self.user_id_map[i] = message_id
@@ -94,4 +107,4 @@ class FAISSService:
             query, 
             index=self.user_index, 
             id_map=self.user_id_map
-            )
+        )

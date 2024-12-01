@@ -1,7 +1,7 @@
 from classes.ConfigManagerClass import ConfigManager
 from models.task import AddMessageTask
-
 from my_modules import my_logging
+import hashlib
 
 runtime_logger_level = 'INFO'
 
@@ -31,26 +31,43 @@ class MessageHandler:
         self.message_history_raw = []
         self.all_msg_history_gptdict = []
 
-        # Message History Lists
-        self.ouat_msg_history = []
-        self.explanation_msg_history = []
-        self.chatforme_msg_history = []
-        self.nonbot_temp_msg_history = []
+    def _generate_message_id(self, channel: str, user_id: str, timestamp: str, content: str) -> str:
+        unique_string = f"{channel}_{user_id}_{timestamp}_{content}"
+        return hashlib.md5(unique_string.encode()).hexdigest()
 
-    def _get_message_metadata(self, message, interaction_type='message') -> None:
+    def _get_message_metadata(self, message: object, interaction_type='message') -> dict:
+        badges = getattr(message.tags, 'badges', '_none')
+        name = getattr(message.author, 'name', '_unknown')
+        user_id = getattr(message.author, 'id', '_unknown')
+        message_author = getattr(message, 'author', '_unknown')
+        display_name = getattr(message.author, 'display_name', '_unknown')  
+        channel = getattr(message.channel, 'name', '_unknown')
+        timestamp = getattr(message, 'timestamp', None).strftime('%Y-%m-%d %H:%M:%S') if getattr(message, 'timestamp', None) else ''
+        tags = message.tags if hasattr(message, 'tags') else {}
+        content = f'{getattr(message, "content", "")}'
+        raw_data = getattr(message, 'raw_data', '_unknown')
 
-        self.logger.debug(f"Getting message metadata for message.author: {message.author}")
+        message_id = self._generate_message_id(
+            channel=channel,
+            user_id=user_id,
+            timestamp=timestamp,
+            content=content
+        )
+
         message_metadata = {
-            'badges': getattr(message.tags, 'badges', '_none'),
-            'name': getattr(message.author, 'name', '_unknown'),
-            'user_id': getattr(message.author, 'id', ''),
-            'display_name': getattr(message.author, 'display_name', '_unknown'),
-            'channel': getattr(message.channel, 'name', '_unknown'),
-            'timestamp': getattr(message, 'timestamp', None).strftime('%Y-%m-%d %H:%M:%S') if getattr(message, 'timestamp', None) else '',
-            'tags': message.tags if hasattr(message, 'tags') else {},
-            'content': f'{getattr(message, "content", "")}',
+            'badges': badges,
+            'name': name,
+            'user_id': user_id,
+            'display_name': display_name,
+            'channel': channel,
+            'timestamp': timestamp,
+            'tags': tags,
+            'content': content,
             'role': None, #generated below
             'interaction_type': None, #generated below
+            'raw_data': raw_data,
+            'message_author': message_author,
+            'message_id': message_id
         }
         
         # If message starts with ! or contains @chatzilla_ai, interaction_type is a command 
@@ -59,24 +76,20 @@ class MessageHandler:
         else:
             message_metadata['interaction_type'] = interaction_type
 
-        if message.author is not None:          
+        if message_author is not None:          
             message_metadata['role'] = 'user'
-            message_metadata['content'] = message_metadata['content']
+            message_metadata['content'] = content
 
-        elif message.author is None: 
-            message_metadata['name'] = self._extract_name_from_message(message)
+        elif message_author is None: 
+            message_metadata['name'] = self._extract_name_from_message(raw_data)
             message_metadata['role'] = 'assistant'
-            message_metadata['content'] = message.content
+            message_metadata['content'] = content
 
         return message_metadata
 
     def _cleanup_message_history(self):
         # Cleanup message histories for GPT
         message_histories = [
-            ("ouat_msg_history", self.ouat_msg_history, self.msg_history_limit),
-            ("explanation_msg_history", self.explanation_msg_history, self.msg_history_limit),
-            ("chatforme_msg_history", self.chatforme_msg_history, self.msg_history_limit),
-            ("nonbot_temp_msg_history", self.nonbot_temp_msg_history, self.msg_history_limit),
             ("all_msg_history_gptdict", self.all_msg_history_gptdict, self.msg_history_limit)
         ]
         for name, msg_history, limit in message_histories:
@@ -97,32 +110,32 @@ class MessageHandler:
         users_in_messages_list_text = "'"+", ".join(user_list)+"'"
         self.users_in_messages_list_text = users_in_messages_list_text
 
-    def _extract_name_from_message(self, message):
-        message_rawdata = message.raw_data
+    def _extract_name_from_message(self, message_rawdata):
 
         start_index = message_rawdata.find(":") + 1
         end_index = message_rawdata.find("!")
 
         if start_index == 0 or end_index == -1:
-            self.logger.debug(f"No message_extracted_name found.  This is message.raw_data:")
-            self.logger.debug(message.raw_data)
-            return 'unknown_name - see message.raw_data for details'
+            self.logger.debug(f"No message_extracted_name found.  This is message_rawdata:")
+            self.logger.debug(message_rawdata)
+            return 'unknown_name - see message_rawdata for details'
         else:
             message_extracted_name = message_rawdata[start_index:end_index]
             self.logger.debug(f"This is the message_extracted_name: {message_extracted_name}:")
-            self.logger.debug(message.raw_data)
+            self.logger.debug(message_rawdata)
             return message_extracted_name
 
     def _create_gpt_message_dict_from_strings(
             self,
             content,
             role='user',
-            name='unknown'
+            name='unknown',
+            timestamp='unknown'
             ):
         if role == 'system':
-            gpt_ready_msg_dict = {'role': role, 'content': f'{content}'}
+            gpt_ready_msg_dict = {'role': role, 'content': f'<<<bot>>>: ({timestamp}) {content}'}
         if role in ['user','assistant']:
-            gpt_ready_msg_dict = {'role': role, 'content': f'<<<{name}>>>: {content}'}
+            gpt_ready_msg_dict = {'role': role, 'content': f'<<<{name}>>>: ({timestamp}) {content}'}
 
         return gpt_ready_msg_dict
     
@@ -130,58 +143,40 @@ class MessageHandler:
         if len(msg_history_list_dict) > msg_history_limit:
             msg_history_list_dict.pop(0)
 
-    def _parse_message_metadata(self, message):
-        message_metadata = self._get_message_metadata(message)
-        role = message_metadata['role']
-        message_username = message_metadata['name']
-        message_content = message_metadata['content']
-        self.logger.debug("This is the message_metadata")
-        self.logger.debug(message_metadata)
-        self.logger.debug(f"message_username: {message_username}")
-        self.logger.debug(f"message content: {message_content}")
-
-        # Add all to list for return
-        message_metadata = {
-            'role': role,
-            'name': message_username,
-            'content': message_content
-        }
-        return message_metadata
-
-    async def add_to_chatformemsgs_thread_history(self, message):  
+    async def add_to_chatformemsgs_thread_history(self, message_metadata: dict):  
         thread_name='chatformemsgs'
 
         # Grab and write metadata, add users to users list
-        message_metadata = self._get_message_metadata(message)
         message_role = message_metadata['role']
         message_username = message_metadata['name']
-        message_content_raw = message_metadata['content']
-        message_content = message_username+": "+message_content_raw
+        message_content = message_metadata['content']
+        message_content_w_username = message_username+": "+message_content
 
         self.logger.info(f"Adding message to queues...")
         self.logger.debug("This is the message_metadata: {}".format(message_metadata))
 
         # Check for commands that should not be added to the thread history
-        if message_metadata['content'].startswith('!'):
-            self.logger.info(f"Message '{message_metadata['content']}' is a command and will not be added to the thread history.")
+        if message_content.startswith('!'):
+            self.logger.info(f"Message '{message_content}' is a command and will not be added to the thread history.")
             return
     
          # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY FOR BOT RESPONSES, so we don't add bot messages to the message history)
-        if message.author is not None and message_metadata['name'] != self.config.twitch_bot_username and message_metadata['name'] != "_unknown":
-            task = AddMessageTask(thread_name, message_content, message_role)
+        if message_metadata['message_author'] is not None and message_username != self.config.twitch_bot_username and message_metadata['name'] != "_unknown":
+            task = AddMessageTask(thread_name, message_content_w_username, message_role)
             await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-            self.logger.info(f"Message author not the bot '{message_metadata['name']}', message added to queue (thread: {thread_name})")
+            self.logger.info(f"Message author not the bot '{message_username}', message added to queue (thread: {thread_name})")
 
             # # Wait for the task to complete before continuing
-            # self.logger.info(f"...waiting for add_to_chatformemsgs_thread_history task to complete...")
-            # await task.future  # Wait until the task is marked as complete
-            # self.logger.info(f"...add_to_chatformemsgs_thread_history task completed.")
+            # Doesn't work because of some async issue
+            # await task.future 
 
         else:
-            self.logger.info(f"Message author is the bot '{message_metadata['name']}', messager not added to queue.")
+            self.logger.info(f"Message author is the bot '{message_username}', messager not added to queue.")
 
-    async def add_to_appropriate_message_history(self, message):
-        message_metadata = self._get_message_metadata(message)
+    # TODO: This is almost ready for deprecation.  Need to decide if its possible
+    # to use the GPT response manager to handle all message history or optionally
+    # use the faiss service to handle message history.
+    async def add_to_appropriate_message_history(self, message_metadata: dict):
 
         # Add user to users list
         self._add_user_to_users_in_messages_list(message_metadata)
@@ -194,25 +189,18 @@ class MessageHandler:
         gpt_ready_msg_dict = self._create_gpt_message_dict_from_strings(
             role=message_metadata['role'],
             name=message_metadata['name'],
-            content=message_metadata['content']
+            content=message_metadata['content'],
+            timestamp=message_metadata['timestamp']
             )
 
         #Apply message dict to msg histories
         self.message_history_raw.append(message_metadata)
-        self.chatforme_msg_history.append(gpt_ready_msg_dict)
         self.all_msg_history_gptdict.append(gpt_ready_msg_dict)
-
-        if message.author is not None:
-            self.nonbot_temp_msg_history.append(gpt_ready_msg_dict)
-        elif message.author is None: 
-            self.ouat_msg_history.append(gpt_ready_msg_dict)
-            self.explanation_msg_history.append(gpt_ready_msg_dict)
 
         #cleanup msg histories for GPT
         self._cleanup_message_history()
         self.logger.info("Message added to message histories")
         self.logger.info(f"Preview of latest 2 messages in message histories ({len(self.all_msg_history_gptdict)} total):")
-        self.logger.info(f"chatforme_msg_history: {self.all_msg_history_gptdict[-1]}")
 
 if __name__ == '__main__':
     print("loaded MessageHandlerClass.py")

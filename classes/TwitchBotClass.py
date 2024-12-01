@@ -347,7 +347,10 @@ class Bot(twitch_commands.Bot):
         await self._send_hello_world_message()
         
     async def event_message(self, message):
-        def clean_message_content(content, command_spellings):
+
+        thread_name = 'chatformemsgs'
+
+        def _clean_message_content(content, command_spellings) -> str:
             content_temp = content
             if content.startswith('!'):
                 words = content.split(' ')
@@ -363,26 +366,34 @@ class Bot(twitch_commands.Bot):
 
         self.logger.info("---------------------------------------")
         self.logger.info("MESSAGE RECEIVED: Processing message...")
-        self.logger.info(f"Message from: {message.author}")
-        self.logger.info(f"Message content: '{message.content}'")
-        self.logger.debug(f"This is the message object:")
-        self.logger.debug(message)
 
-        # 1. This is the control flow function for creating message histories
-        # NOTE: SHould this be awaited to ensure accurate response from GPT in #1b?
-        message.content = clean_message_content(
+        # Get message metadata
+        message_metadata = self.message_handler._get_message_metadata(message)
+        message_metadata['content'] = _clean_message_content(
             message.content,
             self.config.command_spellcheck_terms
             )
-        
+
+        self.logger.info(f"Message from: {message_metadata['message_author']}")
+        self.logger.info(f"Message content: '{message_metadata['content']}'")
+        self.logger.debug(f"This is the message object {message_metadata}")
+
         # 1b. Add the message to the appropriate message history (not to be confused with the thread history)
-        await self.message_handler.add_to_appropriate_message_history(message)
-        if message.author is not None:
-            await self.message_handler.add_to_chatformemsgs_thread_history(message=message)
+        await self.message_handler.add_to_appropriate_message_history(message_metadata)
+        if message_metadata['message_author'] is not None:
+            await self.message_handler.add_to_thread_history(
+                thread_name=thread_name,
+                message_metadata=message_metadata
+                )
+            
+            # TODO / NOTE: Could move this directly inside the 'add_to_apprioriate...' method 
+            self.logger.info(f"type(message_metadata) sent to add_message_to_index: {type(message_metadata)}")
+            self.logger.info(f"message_metadata sent to add_message_to_index: {message_metadata}")
+            await self.faiss_service.add_message_to_index(message_metadata)
 
         # 1c. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
-        if self.config.twitch_bot_username in message.content and "!chat" not in message.content and message.author is not None:
-            await self._chatforme_main(message.content)
+        if self.config.twitch_bot_username in message_metadata['content'] and "!chat" not in message_metadata['content'] and message.author is not None:
+            await self._chatforme_main(message_metadata['content'])
 
         # 2. Process the message through the vibecheck service.
             #NOTE: Should this be a separate task?    
@@ -390,8 +401,8 @@ class Bot(twitch_commands.Bot):
 
         if self.vibecheck_service is not None and self.vibecheck_service.is_vibecheck_loop_active:
             await self.vibecheck_service.process_vibecheck_message(
-                message_username=getattr(message.author, 'name', '_unknown'),
-                message_content=getattr(message, "content", "")
+                message_username=message_metadata['name'],
+                message_content=message_metadata['content']
                 )
 
         # TODO: Steps 3 and 4 should probably be added to a task so they can run on a separate thread
@@ -424,7 +435,7 @@ class Bot(twitch_commands.Bot):
             self.twitch_api.channel_viewers_queue.clear()
 
         # 5. self.handle_commands runs through bot commands
-        if message.author is not None:
+        if message_metadata['message_author'] is not None:
             await self.handle_commands(message)
         
         self.logger.debug("THIS IS THE TASK QUEUE:")

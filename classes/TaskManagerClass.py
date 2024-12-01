@@ -20,19 +20,3 @@ class TaskManager:
         """Adds a task to the queue and waits for its completion."""
         await self._add_task_to_queue(thread_name, task)
         await self._wait_for_task_completion(task, description)
-
-    # async def execute_add_message_task(self, thread_name, content, message_role="user"):
-    #     """Creates, queues, and waits for an AddMessageTask to complete."""
-    #     task = AddMessageTask(thread_name, content, message_role)
-    #     await self.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask")
-
-    # async def execute_thread_task(self, thread_name, assistant_name, instructions, replacements, voice, description="ExecuteThreadTask"):
-    #     """Creates, queues, and waits for an ExecuteThreadTask to complete."""
-    #     task = CreateExecuteThreadTask(
-    #         thread_name=thread_name,
-    #         assistant_name=assistant_name,
-    #         thread_instructions=instructions,
-    #         replacements_dict=replacements,
-    #         tts_voice=voice
-    #     )
-    #     await self.add_task_to_queue_and_execute(thread_name, task, description)

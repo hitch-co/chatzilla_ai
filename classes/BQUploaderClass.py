@@ -103,16 +103,14 @@ class BQUploader:
             """
         query_job = self.bq_client.query(query)
 
-        results = [{
+        str_results = [{
             "timestamp": row.timestamp, 
             "user_login": row.user_login, 
             "content": row.content,
             "message_id": row.message_id
             } for row in query_job]
-
-        json_results = json.dumps(results)
-
-        return json_results
+        self.logger.info(f"type of str_results: {type(str_results)}")
+        return str_results
 
     def fetch_message_by_id(self, message_ids: list[str], interactions_table_id: str) -> list[dict]:
         # Query to fetch messages by ID
@@ -125,9 +123,9 @@ class BQUploader:
         results = [{"message_id": row.message_id, "content": row.content, "timestamp": row.timestamp} for row in query_job]
         return results
     
-    def generate_message_id(self, channel: str, user_id: str, timestamp: str, content: str) -> str:
-        unique_string = f"{channel}_{user_id}_{timestamp}_{content}"
-        return hashlib.md5(unique_string.encode()).hexdigest()
+    # def generate_message_id(self, channel: str, user_id: str, timestamp: str, content: str) -> str:
+    #     unique_string = f"{channel}_{user_id}_{timestamp}_{content}"
+    #     return hashlib.md5(unique_string.encode()).hexdigest()
 
     def generate_twitch_user_interactions_records_for_bq(self, records: list[dict]) -> list[dict]:
         rows_to_insert = []
@@ -135,17 +133,18 @@ class BQUploader:
             user_id = record.get('user_id')
             channel = record.get('channel')
             content = record.get('content')
+            message_id = record.get('message_id')
             timestamp = record.get('timestamp')
             user_badges = record.get('badges')
             color = record.get('tags').get('color', '') if record.get('tags') else ''
             interaction_type = record.get('interaction_type')
             
-            message_id = self.generate_message_id(
-                channel=channel, 
-                user_id=user_id, 
-                timestamp=timestamp, 
-                content=content
-            )
+            # message_id = self.generate_message_id(
+            #     channel=channel, 
+            #     user_id=user_id, 
+            #     timestamp=timestamp, 
+            #     content=content
+            # )
             
             row = {
                 "user_id": user_id,

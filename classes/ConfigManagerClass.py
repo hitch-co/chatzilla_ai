@@ -184,6 +184,7 @@ class ConfigManager:
     def yaml_gpt_assistant_config(self, yaml_config):
         self.gpt_assistants_config = yaml_config['gpt_assistants_config']
         self.assistant_response_max_length = yaml_config['openai-api']['assistant_response_max_length']
+        self.gpt_assistants_suffix = yaml_config['gpt_assistants_suffix']
 
     def yaml_gpt_thread_config(self, yaml_config):
         self.gpt_thread_names = yaml_config['gpt_thread_names']
@@ -416,7 +417,6 @@ if __name__ == "__main__":
     config = main(yaml_filepath)
     print(config)
 
-    print(config.returningusers_msg_prompt)
     print(config.randomfact_sleeptime)
 
     with open(config.randomfact_topics_json, 'r') as file:

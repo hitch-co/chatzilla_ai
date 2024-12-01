@@ -17,12 +17,11 @@ app = Flask(__name__)
 yaml_filepath= os.getenv('BOT_USER_CONFIG_PATH')
 ConfigManager.initialize(yaml_filepath=yaml_filepath)
 config = ConfigManager.get_instance()
-config.tts_model
 
 # Setup logger
 logger = create_logger(
     dirname='log',
-    logger_name='_logger_root_app',
+    logger_name='twitch_bot.py',
     debug_level=runtime_logger_level,
     mode='w'
 )

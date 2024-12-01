@@ -10,11 +10,19 @@ def replace_prompt_text(logger, prompt_template, replacements=None):
     Returns:
     str: The prompt text with placeholders replaced by actual values.
     """
-    if replacements:
-        replaced_text = prompt_template.format(**replacements)
-    else:
-        replaced_text = prompt_template
+    try:
+        if replacements:
+            try:
+                replaced_text = prompt_template.format(**replacements)
+            except:
+                logger.warning("Error replacing prompt text with format method. Using original prompt_template.")
+                replaced_text = prompt_template
+        else:
+            replaced_text = prompt_template
 
-    logger.debug(f"replacements: {replacements}")
-    logger.debug(f"replaced_text: {replaced_text[:75]}")
+        logger.debug(f"replacements: {replacements}")
+        logger.debug(f"replaced_text: {replaced_text[:75]}")
+    except Exception as e:
+        logger.error(f"Error replacing prompt text: {e}")
+
     return replaced_text

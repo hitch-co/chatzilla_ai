@@ -30,10 +30,32 @@ spellcheck_commands_filename: 'config\command_spellcheck_terms.json'
 #########################
 #OpenAI
 openai-api:
-  assistant_model: "gpt-4o" #"gpt-4-1106-preview" # #"gpt-4-0613" #"gpt-3.5-turbo"
-  assistant_model_davinci: "code-davinci" #"gpt-3.5-turbo"
+  
+  assistant_model: "gpt-4-0613"
+    #notes: works fine (no json, and is expensive)
+  # assistant_model: "gpt-4o-mini"
+    #notes: Can't be used with v1
+  #assistant_model: "chatgpt-4o-latest"
+    #notes: Probably can't be used with V1
+  # assistant_model: "gpt-4o-2024-08-06"
+    #notes: can't be used with V1
+  #assistant_model: "gpt-4-0613"
+    #notes: Works fine (json does not work)
+  #assistant_model: "gpt-4-1106-preview" 
+    #notes: Does an OK job at moving back to 'fact' after 2-3 messages
+  #assistant_model: "gpt-4o" 
+  #assistant_model: "gpt-4-0613" 
+  #assistant_model: "gpt-3.5-turbo"
+  
+  # assistant_model_davinci: "code-davinci" 
+  #   #notes: 
+  #assistant_model_davinci:"gpt-4-0613" 
+    #notes: does not do json very well
+  assistant_model_davinci: "gpt-4-1106-preview"
+    #notes: 
+  
   assistant_response_max_length: 300
-  tts_include_voice: True
+  tts_include_voice: False
   tts_model: "tts-1" #tts-2 has higher latency
   tts_voice: "nova"
   tts_volume: .4
@@ -73,7 +95,7 @@ twitch-ouat:
 #########################
 #CHATFORME RANDOM FACTS & FACTCHECK
 chatforme_randomfacts:
-  randomfact_sleeptime: 300
+  randomfact_sleeptime: 275
   randomfact_types:
     game: # Game is set in run_envirionment.bat (i.e. input prompt after launching the bot)
       randomfact_prompt: "Your name is {twitch_bot_display_name}.  Share a fact 
@@ -91,27 +113,21 @@ chatforme_randomfacts:
       areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_categories_and_areas.json'
 
     standard:
-      randomfact_prompt: "Share a wild/controversial/lesser known fact (using roughly 
+      randomfact_prompt: "Share a random/wild/controversial/lesser known fact (using roughly 
         {wordcount_short} words) or insight about {randomfact_topic} that begins with the 
         letter '{random_character_a_to_z}' and relates to {randomfact_subtopic} from the 
         {area} era, particularly {subarea}. Aim for around {wordcount_short} words, blending 
         edgy and thoughtful perspectives. We often stray from the mainstream views. Remember, 
         we appreciate a bit of good fun in the debate! 
 
-        You have access to the chat history in this thread. Use it to inform your responses. 
-        If relevant, reference or build upon previous chat messages to enhance the conversation. 
-        Do this when it adds value to the current context, but your primary goal is still to share 
-        facts. You can occasionally respond if there is a meaningful opportunity to contribute to 
-        the conversation—do this sparingly. 
-
-        It's important that you realize the context of this chat.  This is 
-        during a live stream, and it's possible you'll be ignored. If no one 
-        responds, continue sharing facts about a topic as discussed. 
-        
         Don't mention the letter or category you're working with, 
         just present the information seamlessly."
 
-      randomfact_response: "Looks like there's a conversation happening.  Maybe we can add a small bit of insight into what's beeing said or we can fact check the conversation or we can (sparingly) change the topic only slightly. Be sure to respond in less than {wordcount_short} words."
+      randomfact_response: |
+        "Looks like there's a conversation happening.  Maybe we can add a small 
+        bit of insight into what's beeing said or we can fact check the 
+        conversation or we can (sparingly) change the topic only slightly. Be 
+        sure to respond in less than {wordcount_short} words."
       topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_topics_and_subtopics.json'
       areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_eras_and_timeperiods.json'
 
@@ -287,25 +303,90 @@ gpt_assistants_config:
   vibechecker: "You are a bot designed to vibecheck the users last question or 
     comment."
   newuser_shoutout: "You are a bot designed to welcome new users to the chat."
-  suffix_1: "Be confrontational, respond briefly. Do not repeat yourself. 
-    Unless stated otherwise, responses have a maximum length of 25 words."
+
+gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
+  Unless stated otherwise, responses have a maximum length of 25 words. Don't 
+  or call out too explicitly when you've made an error, the show must go on!
+  Don't prefix your response with anything, just respond directly."
 
 gpt_thread_prompts:
   conversation_director: |
-    "You are a part of a control flow program that dictates 
-    whether or not a chatbot should engage in a conversation or share a generic fact. 
-    Given the following conversation history: {chat_history}, decide the 'response_type'.
+    You are a control flow system tasked with determining if a chatbot should engage directly in a Twitch chat or provide a neutral fact instead. Using the provided conversation history: `{chat_history}`, output a JSON object with these two attributes:
 
-    Return only a JSON object in the following format:
-    {
-        'response_type': '<respond or fact>',
-        'content': '<brief explanation for decision>'
-    }
+    1. `"response_type": "<respond or fact>"`
+    2. `"content": "<brief explanation for decision>"`
 
-    Set 'response_type' to 'respond' if the conversation seems like a question or 
-    engagement where your response could add value. Set it to 'fact' if the bot 
-    should share a general fact instead. If there is no visible chat history, 
-    set 'response_type' to 'fact'."
+    **Guidelines for Decision-Making:**
+
+    1. **Default to "fact":**
+        - Assume questions are directed to the streamer unless explicitly directed to the bot (e.g., mentions of "the bot," "chatzilla ai," or variations).
+        - If no user has directly engaged the bot, or if questions lack specific references to the bot, choose `"fact"`.
+        - Use `"fact"` to contribute neutral, informative content without dominating the chat.
+
+    2. **When to use "respond":**
+        - Only set `"response_type": "respond"` if:
+            - A user directly addresses the bot or mentions "the bot" explicitly.
+            - The bot's response adds significant value to the conversation, such as clarifying confusion or answering direct inquiries.
+            - There is clear conversational intent toward the bot, not the streamer or other users.
+
+    3. **Avoid Dominating the Chat:**
+        - If the bot was the last speaker and no one responded, default to `"fact"` to avoid repetition or over-participation.
+        - Do not assume conversational dominance by responding to every user input.
+        - Avoid over-engaging in active discussions unless your response explicitly enriches the chat.
+
+    4. **Contextual Awareness:**
+        - Assume most questions are for the streamer or other users unless the chat explicitly directs them to the bot.
+        - If the chat does not contain active engagement, questions, or a clear need for the bot's input, default to `"fact"`.
+
+    **Output Requirements:**
+    - Your output must be a valid JSON object as follows:
+        ```json
+        {
+            "response_type": "fact",
+            "content": "The bot defaulted to sharing a neutral fact as the conversation does not clearly require its engagement."
+        }
+        ```
+    - Always return JSON, never plain text or other output formats.
+
+    **Additional Notes:**
+    - Your role is peripheral, and you should contribute sparingly.
+    - Be selective about engaging in conversations and use `"fact"` as the safer choice unless directed otherwise.
+    - Never assume conversational importance for the bot in general chat discussions.
+    
+  # You are part of a control flow system that decides if the chatbot should 
+  # engage directly or share a general fact. Using the following conversation 
+  # history: '{chat_history}', determine the 'response_type' as follows:
+
+  # Output only a JSON object with these two attributes:
+  #     "response_type': "<respond or fact>",
+  #     "content': "<brief explanation for decision>""
+
+  # Guidelines:
+  # - In 100% of cases your response should be a json object as described, not a text output
+  # - You will know a user is talkign about you if they mention "the bot" or "chatzilla ai"
+  # - Questions are not normally directed at you, unless they mention you or "the bot" 
+  # - Set 'response_type' to 'respond' only if the conversation clearly invites 
+  #   engagement or would benefit from direct interaction.
+  # - If the assistant has been regularly sharing facts, set 'response_type' to 'fact'
+  # - If the conversation lacks questions or active engagement, set 'response_type' 
+  #   to 'fact' for a neutral, informative contribution.
+  # - If you were the last speaker and no one responded, choose 'fact' to avoid 
+  #   repetition.
+  # - Even if a conversation was previously active, respond only when it adds 
+  #   clear value—otherwise, default to 'fact.'
+  # - When users don’t acknowledge your responses or questions, assume 'fact' is 
+  #   appropriate.
+  # - Again, you're not a significant part of this conversation, so use 'fact' 
+  #   more often than 'respond' to avoid dominating the chat.
+  # - Don't get sucked into the conversation; response should be 'fact' unless 
+  #   the conversation clearly invites engagement.
+  # - Don't be a victim by responding to every message. Reponse value should be 
+  #   'fact' unless the conversation clearly invites engagement.
+
+  # Note:
+  # 'response_type' should default to 'fact' more often than 'respond,' aligning 
+  # with the bot's informational role in ongoing streams.
+    
   aboutme_prompt: "this is the stuff about me"
   
   shorten_response_length: "shorten this message to 25 words.  Make no 
@@ -387,7 +468,12 @@ gpt_explain_prompts:
   explanation_max_counter_default: 5
   explanation_message_recurrence_seconds: 8
 
-  explanation_starter: "As an explainer, take the topic last seen (or as seen in the conversation history) and introduce the main points clearly. Assume the reader knows nothing about the topic. If the user’s query is unclear or references something like 'the most recent story,' 'conversation,' or 'message,' refer back to the recent conversation history to infer what they want explained. Provide a concise and engaging overview. Remember that users may implicitly ask about recent conversations if they don't explicitly mention a specific topic."
+  explanation_starter: "As an explainer, introduce the main points we're explaining 
+    clearly. Assume the reader knows nothing about the topic. If the user's query is unclear or references 
+    something like 'the most recent story,' 'conversation,' or 'message,' refer back 
+    to the recent conversation history to infer what they want explained. Provide a 
+    concise and engaging overview. Remember that users may implicitly ask about 
+    recent conversations if they don't explicitly mention a specific topic."
   
   explanation_progressor: "Your job is to build on and elaborate on the most important the previous points without repeating or reiterating facts that have already been shared, but are allowed to step in and correct previously stated points about the topic. Develop the explanation further by adding new information and details. As you progress, start summarizing the key points and provide any final insights or conclusions to wrap up the explanation."
   
@@ -396,7 +482,11 @@ gpt_explain_prompts:
   explanation_additional_detail_addition: "Ensure to include this new detail as a main part of the explanation: "
   
   explanation_user_opening_summary_prompt: >
-    "Create an opening summary based on the [user_requested_explanation]. If the [user_requested_explanation] is vague or references 'the most recent story/conversation,' refer to the most recent messages in the conversation history for context. Include key points that will be expanded upon in the explanation, and spice up the summary with intriguing facts or compelling information to engage the audience. Keep your newly created summary less than {wordcount_long} words in length.
+    "Create an opening summary based on the [user_requested_explanation]. If the 
+    [user_requested_explanation] is vague or references 'the most recent story/conversation,' 
+    refer to the most recent messages in the conversation history for context. Include 
+    key points that will be expanded upon in the explanation, and spice up the summary with 
+    intriguing facts or compelling information to engage the audience. Keep your newly created summary less than {wordcount_long} words in length.
 
     [user_requested_explanation]:
     '{user_requested_explanation}'
@@ -438,7 +528,7 @@ ouat-writing-parameters:
 newusers_sleep_time: 5
 #returningusers_sleep_time: 15
 newusers_faiss_default_query: "{random_user_name} discussed some recent projects/topics/concepts or asked for a reminder. They might ahve also had some hot takes on some things."
-newusers_msg_prompt: "Say hi and tag using a @{random_new_user}, welcoming them to the chat on behalf 
+newusers_msg_prompt: "Say hi and tag @{random_new_user}, welcoming them to the chat on behalf 
   of ehitch. Keep the message to {wordcount_medium} words max. Since it's their first time 
   here (or first in a long time), greet them warmly and make them feel welcome.
 
@@ -452,7 +542,7 @@ newusers_msg_prompt: "Say hi and tag using a @{random_new_user}, welcoming them 
   interactions.
   "
 
-returningusers_msg_prompt: "Say hi and tag @{random_new_user}, specifically welcoming them back 
+returningusers_msg_prompt: "Say hi and tag @{random_new_user} in this twitch chat, specifically welcoming them back 
   to the chat on behalf of ehitch. Keep the message to {wordcount_medium} words max. Since 
   they're a returning user, try to make the message more personal by referencing something 
   from their previous chat history if it's available.
@@ -475,7 +565,7 @@ vibechecker_message_wordcount: 25
 vibechecker_listener_sleep_time: 6
 vibechecker_question_session_sleep_time: 60
 formatted_gpt_vibecheck_alert: |
-  Let {vibecheckee_username} know that they have been selected for a vibe check. They should know that:
+  Let {vibecheckee_username} know (tagging them with @{vibecheckee_username} in this twitch chat) that they have been selected for a vibe check. They should know that:
   - They'll be asked a few short questions to see whether or not they are a bot.
   - They should try to give some clear, short answers to show they aren't bots.
 

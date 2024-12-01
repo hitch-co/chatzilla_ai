@@ -87,7 +87,7 @@ class BQUploader:
             interactions_table_id: str, 
             users_table_id: str, 
             limit: int = 750
-            ) -> str:
+            ) -> list[dict]:
         
         query = f"""
             SELECT
@@ -218,4 +218,4 @@ if __name__ == '__main__':
         users_table_id='eh-talkzilla-ai.TalkzillaAI_UserData.users', 
         limit=15
         )    
-    print(test_list_of_chat_history)
+    print(test_list_of_chat_history_json)

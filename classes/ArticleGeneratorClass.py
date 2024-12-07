@@ -14,7 +14,7 @@ class ArticleGenerator:
 
         self.logger = create_logger(
             dirname='log', 
-            logger_name='_logger_ArticleGenerator',
+            logger_name='ArticleGeneratorClass',
             debug_level='INFO',
             mode='w',
             stream_logs=True

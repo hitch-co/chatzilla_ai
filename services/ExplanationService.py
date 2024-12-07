@@ -3,6 +3,7 @@ import random
 
 from my_modules.my_logging import create_logger
 from classes.ConfigManagerClass import ConfigManager
+from classes.TaskManagerClass import TaskManager
 
 from models.task import CreateExecuteThreadTask
 
@@ -28,6 +29,12 @@ class ExplanationService:
 
         self.thread_name = 'explanationmsgs'
         self.assistant_name = 'explainer'
+
+        #initialize the task manager
+        self.task_manager = TaskManager(
+            gpt_thread_mgr=self.gpt_thread_mgr, 
+            logger=self.logger
+            )
 
     async def explanation_start(self, message, *args):
         self.logger.info(f"Starting explanation, self.explanation_counter is at {self.explanation_counter} (of {self.explanation_max_counter})")
@@ -104,7 +111,7 @@ class ExplanationService:
             self.logger.debug(f"...task to add to queue: {task.task_dict}")
 
             # Add the bullet list to the thread via queue
-            await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+            await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'explanation_start'")
             self.is_explanation_loop_active = True
 
     async def explanation_task(self):
@@ -154,15 +161,7 @@ class ExplanationService:
                     replacements_dict=replacements_dict,
                     tts_voice=tts_voice
                 )
-                self.logger.debug(f"...task to add to queue: {task.task_dict}")
-
-                # Add Task to the queue
-                await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-
-                # Wait for the task to complete before continuing
-                self.logger.info(f"...waiting for task (cycle {self.explanation_counter}) to complete...")
-                await task.future  # Wait until the task is marked as complete
-                self.logger.info(f"...task (cycle {self.explanation_counter}) completed.")
+                await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'explanation_task'")
 
             # Check if the explanation loop should be stopped
             if self.explanation_counter >= self.explanation_max_counter:

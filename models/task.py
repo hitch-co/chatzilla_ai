@@ -24,7 +24,8 @@ class BaseTask:
 
 class AddMessageTask(BaseTask):
     def __init__(
-            self, thread_name: str, 
+            self, 
+            thread_name: str, 
             content: str, 
             message_role: str = 'user'
             ):

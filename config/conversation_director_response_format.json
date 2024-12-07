@@ -1,0 +1,16 @@
+{
+    "type": "object",
+    "properties": {
+        "response_type": {
+            "type": "string",
+            "enum": ["respond", "fact"],
+            "description": "Determines if the chatbot should engage ('respond') or provide a neutral fact ('fact'). Default to 'fact' unless a user explicitly mentions or addresses the bot, the bot's input adds significant value, or it is clear the bot is being addressed. Assume most questions are for the streamer or other users unless explicitly directed to the bot (remember, the bot can't see the streamers voice responses). If no user has engaged the bot, default to 'fact'. Use 'fact' if the bot was the last speaker and no response followed. Avoid assuming conversational importance in general chat discussions by defaultingto 'fact' if not certain."
+        },
+        "reasoning": {
+            "type": "string",
+            "description": "A brief explanation for the decision about why 'respond' or 'fact' was chosen, considering whether the bot was explicitly addressed, whether the bot could potentailly add value to the conversation, or whether the conversation context supports neutral, peripheral contribution."
+        }
+    },
+    "required": ["response_type", "reasoning"],
+    "additionalProperties": false
+}

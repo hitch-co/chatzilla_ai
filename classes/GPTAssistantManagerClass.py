@@ -12,7 +12,7 @@ import modules.gpt_utils as gpt_utils
 
 gpt_base_debug_level = 'DEBUG'
 gpt_thread_mgr_debug_level = 'INFO'
-gpt_assistant_mgr_debug_level = 'DEBUG'
+gpt_assistant_mgr_debug_level = 'INFO'
 gpt_response_mgr_debug_level = 'INFO'
 
 class GPTBaseClass:
@@ -118,12 +118,13 @@ class GPTAssistantManager(GPTBaseClass):
         self.logger.info('Creating GPT Assistants')
 
         # Get suffix one from assistants_config
-        suffix_1 = assistants_config.get('suffix_1', '')
+        gpt_assistants_suffix = self.yaml_data.gpt_assistants_suffix
 
         for assistant_name, prompt in assistants_config.items():
+            final_prompt = prompt + gpt_assistants_suffix
             self._create_assistant(
                 assistant_name=assistant_name,
-                assistant_instructions=prompt + suffix_1,
+                assistant_instructions=final_prompt,
                 replacements_dict=replacements_dict,
                 assistant_type='code_interpreter',
                 assistant_model=self.yaml_data.gpt_model
@@ -140,7 +141,8 @@ class GPTThreadManager(GPTBaseClass):
             stream_logs=True
         )
         self.threads: Dict[str, dict] = {}  # Thread name to thread info mapping
-        self.task_queues: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)
+        self.task_queues: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue) # Thread name to task queue mapping
+        self.task_queue_lock = asyncio.Lock()
         self.on_task_ready: Callable[[Dict], None] = None
         self.loop = asyncio.get_event_loop()
 
@@ -170,23 +172,44 @@ class GPTThreadManager(GPTBaseClass):
                 self._create_thread(thread_name)
             else:
                 self.logger.warning(f"Thread '{thread_name}' already exists")
-                
+
+        self.logger.info(f"...threads created: {self.threads}")        
         return self.threads
 
-    # TODO: Anything from here down can be moved directly to twithcbotclass, or
-    #   to a new class that is imported into TwitchBotClass
+    # TODO: Anything from here down can be moved directly to TaskManagerClass
     async def add_task_to_queue(self, thread_name: str, task: object):
         await self.task_queues[thread_name].put(task)
         self.logger.debug(f"Added task to queue for thread '{thread_name}': {task.task_dict}")
+        self.logger.debug(f"Queue for thread '{thread_name}': {self.task_queues[thread_name]}")
 
     async def task_scheduler(self):
+        """
+        Continuously checks task queues and processes tasks in a FIFO order.
+        Marks tasks as done after processing to keep the queue state consistent.
+        """
         while True:
             self.logger.info("Checking task queues...")
-            for thread_name, queue in self.task_queues.items():
+
+            async with self.task_queue_lock:
+                task_queues_snapshot = list(self.task_queues.items())
+
+            self.logger.info("Task Queue Status:")
+            for thread_name, queue in task_queues_snapshot:
+                self.logger.info(f"Thread: {thread_name}, Queue Size: {queue.qsize()}, Pending Tasks: {queue._unfinished_tasks}")
+
+            for thread_name, queue in task_queues_snapshot:
                 if not queue.empty():
                     task = await queue.get()
                     self.logger.info(f"...task found in queue (type: {task.task_dict.get('type')})...")
-                    await self._process_task(task)
+
+                    try:
+                        await self._process_task(task)
+                    except Exception as e:
+                        self.logger.error(f"Error processing task (type: {task.task_dict.get('type')}): {e}", exc_info=True)
+                    finally:
+                        queue.task_done()
+
+            # Sleep before checking the queue again
             await asyncio.sleep(5)
 
     async def _process_task(self, task: object):
@@ -281,12 +304,12 @@ class GPTResponseManager(GPTBaseClass):
             A list of response thread messages.
         """
         try:
-            thread_instructions = gpt_utils.replace_prompt_text(
+            final_thread_instructions = gpt_utils.replace_prompt_text(
                 logger=self.logger,
                 prompt_template=thread_instructions,
                 replacements=replacements_dict
                 )
-            self.logger.info(f"This is the final thread_instructions: {thread_instructions}")
+            self.logger.debug(f"This is the final thread_instructions: {final_thread_instructions}")
         except Exception as e:
             self.logger.error(f"Error replacing prompt text with replacements_dict")
             self.logger.error(e)
@@ -296,7 +319,7 @@ class GPTResponseManager(GPTBaseClass):
             run = self.gpt_client.beta.threads.runs.create(
                 thread_id=thread_id,
                 assistant_id=assistant_id,
-                instructions=thread_instructions
+                instructions=final_thread_instructions
             )
             self.logger.debug("This is the 'run' object:")
             self.logger.debug(run)

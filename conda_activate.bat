@@ -1,0 +1,1 @@
+C:\Users\Admin\Miniconda3\condabin\conda.bat activate faiss_test

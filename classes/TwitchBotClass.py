@@ -1330,58 +1330,65 @@ class Bot(twitch_commands.Bot):
             thread_name = 'chatformemsgs'
             tts_voice = self.config.tts_voice_randomfact
 
-            # Correctly pass the topics data structure to _pick_random_category
+            # Correctly pass the topics data structure to _pick_random_category and set a random character (used for 'fact' responses)
             topic, subtopic = self._pick_random_category(data=self.config.randomfact_topics)
             area, subarea = self._pick_random_category(data=self.config.randomfact_areas)
-
-            #Generate random character from a to z
             random_character_a_to_z = random.choice('abcdefghijklmnopqrstuvwxyz')
 
-            # Make singleprompt_gpt_response
-            conversation_director_prompt = self.config.randomfact_conversation_director
-            chat_history = self._format_chat_history(self.message_handler.all_msg_history_gptdict)
-            replacements_dict={
-                'wordcount_short':self.config.wordcount_short,
-                'twitch_bot_display_name':self.config.twitch_bot_display_name,
-                'randomfact_topic':topic,
-                'randomfact_subtopic':subtopic,
-                'area':area,
-                'subarea':subarea,
-                'param_in_text':'variable_from_scope',
-                'chat_history':chat_history
-                }
-            
-            # Do not make this a task, as clutter in the task queue could make randomfact behave unpredictably
-            response_text = await self.gpt_chatcompletion.make_singleprompt_gpt_response(
-                prompt_text=conversation_director_prompt,
-                replacements_dict=replacements_dict,
-                model=self.config.gpt_model_davinci
-                )
-
-            # Strip backticks and json tag if present
-            response_text = response_text.strip().strip('```').strip('json').strip()
-
-            if self._is_valid_json(response_text):
-                response = json.loads(response_text)
-                if response['response_type'] == 'respond':
-                    selected_prompt = self.config.randomfact_prompt
-                elif response['response_type'] == 'fact':
-                    selected_prompt = self.config.randomfact_response
-                else:
-                    self.logger.warning(f"Error occurred in 'randomfact_task': response.response_type is not 'respond' or 'fact'")
-                    selected_prompt = self.config.randomfact_prompt
-            else:
-                self.logger.error("Received response is not valid JSON")
-                # Handle the case where the response is not valid JSON
-                selected_prompt = "An error occurred while processing the response."
-
-            self.logger.info(f"Randomfact task response['response_type']: {response['response_type']}")
-            self.logger.info(f"Randomfact task selected prompt: {selected_prompt}")
-            self.logger.info(f"Thread Instructions (selected prompt): {selected_prompt[0:50]}")
             self.logger.debug(f"Selected topic: {topic}, Selected subtopic: {subtopic}")
             self.logger.debug(f"Selected area: {area}, Selected subarea: {subarea}")
             self.logger.debug(f"Selected random_character_a_to_z: {random_character_a_to_z}")
             self.logger.debug(f"Selected random voice: {tts_voice}")
+
+            # Prep for the GPT response
+            chat_history = self.message_handler.all_msg_history_gptdict[-10:] if self.message_handler.all_msg_history_gptdict else []
+
+            # # Make singleprompt_gpt_response
+            # conversation_director_prompt = self.config.randomfact_conversation_director
+            
+            # # TODO: Good place for FAIZZ (get off the teet of the all_msg_history)
+            # # TODO: Don't really need the chat history here (see: faizz 
+            # # implemenatation), I think we can let the GPT model handle the 
+            # # context of the conversation or pass the chat history via faizz
+
+            # replacements_dict={
+            #     'wordcount_short':self.config.wordcount_short,
+            #     'twitch_bot_display_name':self.config.twitch_bot_display_name,
+            #     'randomfact_topic':topic,
+            #     'randomfact_subtopic':subtopic,
+            #     'area':area,
+            #     'subarea':subarea,
+            #     'param_in_text':'variable_from_scope',
+            #     'chat_history':chat_history
+            #     }
+
+            response_data = await self.gpt_chatcompletion.make_singleprompt_gpt_response_json(
+                model=self.config.gpt_model_davinci,
+                chat_history=chat_history,
+                schema=self.config.randomfact_conversation_director_json
+            )
+
+            if response_data['response_type'] == 'respond':
+                response_type_result = 'respond'
+            elif response_data['response_type'] == 'fact':
+                response_type_result = 'fact'
+            else:
+                self.logger.warning(f"Error occurred in 'randomfact_task': response.response_type is not 'respond' or 'fact'")
+                response_type_result = 'fact'
+
+            if response_type_result == 'respond':
+                selected_prompt = self.config.randomfact_response
+            elif response_type_result == 'fact':
+                selected_prompt = self.config.randomfact_prompt
+                task = AddMessageTask(
+                    thread_name=thread_name,
+                    message_role='assistant',
+                    content='''(No conversation happening here.  Your next set of instructions will 
+                    be to share a fact.  Do so as instructed without acknowledging this message)'''
+                )
+                await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask 'randomfact_task'")
+
+            self.logger.debug(f"selected_prompt: {selected_prompt[0:50]}")
 
             replacements_dict = {
                 "wordcount_short":self.config.wordcount_short,
@@ -1404,11 +1411,4 @@ class Bot(twitch_commands.Bot):
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice
             )
-            self.logger.debug(f"Task to add to queue: {task.task_dict}")
-
-            await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-
-            # Wait for the task to complete before continuing
-            self.logger.info(f"...waiting for randomfact task to complete...")
-            await task.future
-            self.logger.info(f"...randomfact task completed.")
+            await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'randomfact_task'")

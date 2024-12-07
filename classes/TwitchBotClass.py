@@ -498,7 +498,6 @@ class Bot(twitch_commands.Bot):
 
         while True:
             await adjustable_sleep_task.adjustable_sleep_task(self.config, 'newusers_sleep_time')
-            self.logger.debug("---------------------------------------")
             self.logger.info("Checking for new users...")
 
             # Get the current users in the channel

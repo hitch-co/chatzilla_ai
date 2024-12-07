@@ -82,10 +82,11 @@ class GPTChatCompletion:
                 self.logger.info(f"...Generated GPT response: {gpt_response}")
             except Exception as e:
                 self.logger.error(f"Error occurred in '_openai_gpt_chatcompletion': {e}")        
+
         except Exception as e:
             self.logger.error(f"Error occurred in 'make_singleprompt_gpt_response': {e}", exc_info=True)
 
-        self.logger.info(f"prompt_text: {prompt_text}")
+        self.logger.info(f"prompt_text: {prompt_text_clean}")
         self.logger.info(f"final gpt_response: {gpt_response}")
         return gpt_response
     

@@ -1,14 +1,10 @@
 
-import os
 import requests
 import openai
-import tiktoken
 from typing import List
 import re
 import asyncio
 import json
-
-from jsonschema import validate, ValidationError
 
 from classes.ConfigManagerClass import ConfigManager
 
@@ -82,14 +78,45 @@ class GPTChatCompletion:
                 self.logger.info(f"...Generated GPT response: {gpt_response}")
             except Exception as e:
                 self.logger.error(f"Error occurred in '_openai_gpt_chatcompletion': {e}")        
-
         except Exception as e:
             self.logger.error(f"Error occurred in 'make_singleprompt_gpt_response': {e}", exc_info=True)
 
-        self.logger.info(f"prompt_text: {prompt_text_clean}")
+        self.logger.info(f"prompt_text: {prompt_text}")
         self.logger.info(f"final gpt_response: {gpt_response}")
         return gpt_response
-    
+
+    async def make_singleprompt_gpt_response_json(self, model, chat_history, schema) -> dict:
+        self.logger.info(f"Entered 'make_singleprompt_gpt_response_json', result will be 'fact' or 'respond'")
+        
+        if chat_history is None:
+            chat_history = [
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant. There is no prior chat history."
+                }
+            ]
+        
+        response_text_full = self.gpt_client.chat.completions.create(
+            model=model,
+            messages=chat_history,
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "conversation_director",
+                    "schema": schema,
+                    "strict": True
+                }
+            }
+        )
+
+        self.logger.info(f"...chat_history: \n{chat_history}")
+        self.logger.debug(f"...response_text_full: {response_text_full}")
+        response_data = json.loads(response_text_full.choices[0].message.content)
+        self.logger.info(f"...response_type: {response_data['response_type']}")
+        self.logger.info(f"...reasoning: {response_data['reasoning']}")
+
+        return response_data
+
     def _openai_gpt_chatcompletion(
             self,
             messages: list[dict],
@@ -189,38 +216,6 @@ class GPTChatCompletion:
         gpt_response_text = _strip_prefix(gpt_response_text)
         
         return gpt_response_text
-
-    async def make_singleprompt_gpt_response_json(self, model, chat_history, schema) -> dict:
-        self.logger.info(f"Entered 'make_singleprompt_gpt_response_json', result will be 'fact' or 'respond'")
-        
-        if chat_history is None:
-            chat_history = [
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant. There is no prior chat history."
-                }
-            ]
-        
-        response_text_full = self.gpt_client.chat.completions.create(
-            model=model,
-            messages=chat_history,
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "conversation_director",
-                    "schema": schema,
-                    "strict": True
-                }
-            }
-        )
-
-        self.logger.info(f"...chat_history: \n{chat_history}")
-        self.logger.debug(f"...response_text_full: {response_text_full}")
-        response_data = json.loads(response_text_full.choices[0].message.content)
-        self.logger.info(f"...response_type: {response_data['response_type']}")
-        self.logger.info(f"...reasoning: {response_data['reasoning']}")
-
-        return response_data
 
     def _make_string_gptlistdict(
             self,

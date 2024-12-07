@@ -31,6 +31,7 @@ spellcheck_commands_filename: 'config\command_spellcheck_terms.json'
 #OpenAI
 openai-api:
   
+  #######################################
   assistant_model: "gpt-4-0613"
     #notes: works fine (no json, and is expensive)
   # assistant_model: "gpt-4o-mini"
@@ -47,13 +48,17 @@ openai-api:
   #assistant_model: "gpt-4-0613" 
   #assistant_model: "gpt-3.5-turbo"
   
+  ########################################
   # assistant_model_davinci: "code-davinci" 
   #   #notes: 
   #assistant_model_davinci:"gpt-4-0613" 
     #notes: does not do json very well
-  assistant_model_davinci: "gpt-4-1106-preview"
+  # assistant_model_davinci: "gpt-4-1106-preview"
+  #   #notes: maybe troubles doing json stuff...
+  assistant_model_davinci: "gpt-4o-mini"
     #notes: 
   
+  ########################################
   assistant_response_max_length: 300
   tts_include_voice: False
   tts_model: "tts-1" #tts-2 has higher latency
@@ -95,7 +100,7 @@ twitch-ouat:
 #########################
 #CHATFORME RANDOM FACTS & FACTCHECK
 chatforme_randomfacts:
-  randomfact_sleeptime: 275
+  randomfact_sleeptime: 300
   randomfact_types:
     game: # Game is set in run_envirionment.bat (i.e. input prompt after launching the bot)
       randomfact_prompt: "Your name is {twitch_bot_display_name}.  Share a fact 
@@ -310,6 +315,7 @@ gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yours
   Don't prefix your response with anything, just respond directly."
 
 gpt_thread_prompts:
+  conversation_director_json_filepath: "C:/_repos/chatzilla_ai/config/conversation_director_response_format.json"
   conversation_director: |
     You are a control flow system tasked with determining if a chatbot should engage directly in a Twitch chat or provide a neutral fact instead. Using the provided conversation history: `{chat_history}`, output a JSON object with these two attributes:
 

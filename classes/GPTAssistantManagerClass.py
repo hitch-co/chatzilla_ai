@@ -179,24 +179,8 @@ class GPTThreadManager(GPTBaseClass):
     # TODO: Anything from here down can be moved directly to TaskManagerClass
     async def add_task_to_queue(self, thread_name: str, task: object):
         await self.task_queues[thread_name].put(task)
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
         self.logger.debug(f"Added task to queue for thread '{thread_name}': {task.task_dict}")
         self.logger.debug(f"Queue for thread '{thread_name}': {self.task_queues[thread_name]}")
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
 
     async def task_scheduler(self):
         """

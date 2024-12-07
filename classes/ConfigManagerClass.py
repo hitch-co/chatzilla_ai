@@ -72,45 +72,131 @@ class ConfigManager:
             with open(yaml_full_path, 'r') as file:
                 self.logger.debug("loading individual configs...")
                 yaml_config = yaml.safe_load(file)
-
-                self.update_config_from_yaml(yaml_config)
-
-                self.yaml_twitchbot_config(yaml_config)
-                
-                self.yaml_depinjector_config(yaml_config)
-
-                self.update_spellcheck_config(yaml_config)
-
-                self.yaml_gcp_config(yaml_config)
-                
-                self.yaml_botears_config(yaml_config)
-
-                self.yaml_gpt_config(yaml_config)
-                self.yaml_gpt_voice_config(yaml_config)
-                self.yaml_gpt_explain_config(yaml_config)
-                self.yaml_gpt_thread_config(yaml_config)
-                self.yaml_gpt_assistant_config(yaml_config)
-                
-                self.yaml_chatforme_config(yaml_config)
-                self.yaml_ouat_config(yaml_config)
-                self.yaml_vibecheck_config(yaml_config)
-
-                self.yaml_helloworld_config(yaml_config)
-
-                self.yaml_randomfact_json(yaml_config)
-                self.yaml_factchecker_config(yaml_config)
-
-                self.yaml_tts_config(yaml_config)
-
-                # Print important configuration settings  
-                self.print_config()
-        
         except FileNotFoundError as e:
-            self.logger.error(f"Error setting YAML configuration: {e}")
+            self.logger.error(f"Error in load_yaml_config(): {e}")
+            raise
         except yaml.YAMLError as e:
-            self.logger.error(f"Error parsing YAML configuration: {e}")
+            self.logger.error(f"Error in load_yaml_config(): {e}")
+            raise
         except Exception as e:
             self.logger.error(f"Error in load_yaml_config(): {e}")
+            raise
+
+        try:
+            self.update_config_from_yaml(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in update_config_from_yaml(): {e}")
+            raise
+        
+        try:
+            self.yaml_twitchbot_config(yaml_config) 
+        except Exception as e:
+            self.logger.error(f"Error in yaml_twitchbot_config(): {e}")
+            raise
+
+        try:
+            self.yaml_depinjector_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_depinjector_config(): {e}")
+            raise
+
+        try:
+            self.update_spellcheck_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in update_spellcheck_config(): {e}")
+            raise
+
+        try:
+            self.yaml_gcp_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_gcp_config(): {e}")
+            raise
+
+        try:       
+            self.yaml_botears_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_botears_config(): {e}")
+            raise
+
+        try:
+            self.yaml_gpt_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_gpt_config(): {e}")
+            raise
+
+        try:
+            self.yaml_gpt_voice_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_gpt_voice_config(): {e}")
+            raise
+
+        try:
+            self.yaml_gpt_explain_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_gpt_explain_config(): {e}")      
+            raise
+
+        try:
+            self.yaml_gpt_thread_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_gpt_thread_config(): {e}")
+            raise
+
+        try:
+            self.yaml_gpt_assistant_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_gpt_assistant_config(): {e}")
+            raise
+
+        try:
+            self.yaml_chatforme_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_chatforme_config(): {e}")
+            raise
+
+        try:
+            self.yaml_ouat_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_ouat_config(): {e}")
+            raise
+
+        try:
+            self.yaml_vibecheck_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_vibecheck_config(): {e}")
+            raise
+        
+        try:
+            self.yaml_helloworld_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_helloworld_config(): {e}")
+            raise
+
+        try:
+            self.yaml_randomfact_conversation_director(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_randomfact_conversation_director(): {e}")
+            raise
+
+        try:
+            self.yaml_factchecker_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_factchecker_config(): {e}")
+            raise
+
+        try:
+            self.yaml_tts_config(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_tts_config(): {e}")
+            raise
+
+        try:
+            self.yaml_randomfact_json(yaml_config)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_randomfact_json(): {e}")
+            raise
+ 
+        self.print_config()
 
     def set_env_file_variables(self):
         if self.env_file_directory and self.env_file_name:
@@ -297,7 +383,6 @@ class ConfigManager:
             self.storyteller_storyclimax_prompt = yaml_config['gpt_thread_prompts']['story_climaxer']
             self.storyteller_storyender_prompt = yaml_config['gpt_thread_prompts']['story_ender']
             self.ouat_prompt_addtostory_prefix = yaml_config['gpt_thread_prompts']['story_addtostory_prefix']
-            self.randomfact_conversation_director = yaml_config['gpt_thread_prompts']['conversation_director']
             self.aboutme_prompt = yaml_config['gpt_thread_prompts']['aboutme_prompt']
 
             # OUAT Progression flow / Config
@@ -322,6 +407,16 @@ class ConfigManager:
             self.tts_volume = yaml_config['openai-api']['tts_volume']
         except Exception as e:
             self.logger.error(f"Error in yaml_depinjector_config(): {e}")
+
+    def yaml_randomfact_conversation_director(self, yaml_config):
+        self.randomfact_conversation_director = yaml_config['gpt_thread_prompts']['conversation_director']
+        self.randomfact_conversation_director_json_path = yaml_config['gpt_thread_prompts']['conversation_director_json_filepath']
+
+        try:
+            with open(self.randomfact_conversation_director_json_path, 'r') as file:
+                self.randomfact_conversation_director_json = yaml.safe_load(file)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_randomfact_conversation_director(): {e}")
 
     def yaml_randomfact_json(self, yaml_config):
         try:
@@ -405,17 +500,13 @@ class ConfigManager:
             encoding='UTF-8'
             )
 
-def main(yaml_filepath):
-    ConfigManager.initialize(yaml_filepath)
-    config = ConfigManager.get_instance()
-    return config
-
 if __name__ == "__main__":
-    yaml_filepath = r'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml'
+    #yaml_filepath = r'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml'
+    yaml_filepath = r'C:\_repos\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml'
     print(f"yaml_filepath_type: {type(yaml_filepath)}")
 
-    config = main(yaml_filepath)
-    print(config)
+    ConfigManager.initialize(yaml_filepath=yaml_filepath)
+    config = ConfigManager.get_instance()
 
     print(config.randomfact_sleeptime)
 
@@ -426,13 +517,15 @@ if __name__ == "__main__":
     print(f"RANDOMFACT_TOPICS: {randomfact_topics}")
     print(f"RANDOMFACT_AREAS: {randomfact_areas}")
     
-    # Get random fact topics and areas json file paths
     print(config.randomfact_topics_json)
     print(config.randomfact_areas_json)
     print(config.randomfact_prompt)
-
     print(config.env_file_directory)
     print(config.tts_data_folder)
     print(config.tts_file_name)
     print(config.gpt_assistants_config)
     print(config.newusers_sleep_time)
+    print(config.gpt_assistants_suffix)
+    print(config.randomfact_conversation_director)
+    print(config.randomfact_conversation_director_json_path)
+    print(config.randomfact_conversation_director_json)

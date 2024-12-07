@@ -18,6 +18,7 @@ from classes.TwitchAPI import TwitchAPI
 # from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
 from classes.GPTChatCompletionClass import GPTChatCompletion
+from classes.TaskManagerClass import TaskManager
 
 from services.VibecheckService import VibeCheckService
 from services.NewUsersService import NewUsersService
@@ -26,8 +27,10 @@ from services.AudioService import AudioService
 from services.BotEarsService import BotEars
 from services.SpeechToTextService import SpeechToTextService
 from services.ExplanationService import ExplanationService
+from services.FaissService import FAISSService
 
 runtime_logger_level = 'INFO'
+
 class Bot(twitch_commands.Bot):
     loop_sleep_time = 4
 
@@ -70,6 +73,9 @@ class Bot(twitch_commands.Bot):
         self.tts_client = tts_client
         self.message_handler = message_handler
 
+        # Initialize the FAISSService
+        self.faiss_service = FAISSService()
+
         # Initialize the GPTChatCompletion class
         self.gpt_chatcompletion = GPTChatCompletion(
             gpt_client=self.gpt_client,
@@ -83,6 +89,12 @@ class Bot(twitch_commands.Bot):
         self.gpt_thread_mgr = gpt_thread_mgr
         self.gpt_thread_mgr.on_task_ready = self.handle_tasks
         self.loop.create_task(self.gpt_thread_mgr.task_scheduler())
+
+        # Initialize the TaskManager
+        self.task_manager = TaskManager(
+            gpt_thread_mgr=self.gpt_thread_mgr,
+            logger=self.logger
+            )
 
         # Create response manager
         self.gpt_response_manager = gpt_response_mgr
@@ -278,6 +290,7 @@ class Bot(twitch_commands.Bot):
                     role=message_role, 
                     thread_name=thread_name
                     )
+
             except Exception as e:
                 message = f"...Error occurred in 'add_message_to_thread': {e}"
                 self.logger.error(message)
@@ -311,10 +324,6 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(f"Initializing event loop")
         self.loop = asyncio.get_event_loop()
 
-        # start newusers loop
-        self.logger.debug(f"Starting newusers service")
-        self.loop.create_task(self._send_message_to_new_users_task())
-
         # start OUAT loop
         self.logger.debug(f"Starting OUAT service")
         self.loop.create_task(self.ouat_storyteller_task())
@@ -343,6 +352,10 @@ class Bot(twitch_commands.Bot):
             thread_names=self.config.gpt_thread_names
             )
         
+        # start newusers loop
+        self.logger.debug(f"Starting newusers service")
+        self.loop.create_task(self._send_message_to_new_users_task())
+
         # send hello world message
         await self._send_hello_world_message()
         
@@ -437,9 +450,7 @@ class Bot(twitch_commands.Bot):
         # 5. self.handle_commands runs through bot commands
         if message_metadata['message_author'] is not None:
             await self.handle_commands(message)
-        
-        self.logger.debug("THIS IS THE TASK QUEUE:")
-        self.logger.debug(self.gpt_thread_mgr.task_queues)
+
         self.logger.info("MESSAGE PROCESSED: Done processing message")     
         self.logger.info("---------------------------------------")
 
@@ -495,7 +506,7 @@ class Bot(twitch_commands.Bot):
                 current_users_list = await self.twitch_api.retrieve_active_usernames(
                     bearer_token = self.config.twitch_bot_access_token
                     )
-                self.logger.info(f"Current users retrieved: {current_users_list}")  
+                self.logger.info(f"...Current users retrieved: {current_users_list}")  
             except Exception as e:
                 self.logger.error(f"Failed to retrieve active users from Twitch API: {e}")
                 current_users_list = []
@@ -504,97 +515,103 @@ class Bot(twitch_commands.Bot):
             self.current_users_list = list(set(self.current_users_list + current_users_list))
 
             if not self.current_users_list:
-                self.logger.info("No users in self.current_users_list, skipping this iteration.")
+                self.logger.info("...No users in self.current_users_list, skipping this iteration.")
                 continue
-
+                
             # Identify list of users who are new to the channel and have not yet been sent a message
             users_not_yet_sent_message_info = await self.newusers_service.get_users_not_yet_sent_message(
                 historic_users_list = self.historic_users_at_start_of_session,
                 current_users_list = self.current_users_list,
                 users_sent_messages_list = self.newusers_service.users_sent_messages_list
             )
+            self.logger.debug(f"...Users not yet sent message: {users_not_yet_sent_message_info}")
 
-            self.logger.info("New users found in self.current_users_list, starting new users message...")
-
-            self.logger.debug(f"Long-running Current users list: {current_users_list}")
-            self.logger.debug(f"Users sent messages list: {self.newusers_service.users_sent_messages_list}")
-            self.logger.debug(f"Users not yet sent message: {users_not_yet_sent_message_info}")
-
-            if users_not_yet_sent_message_info:
-                eligible_users = [
-                    user for user in users_not_yet_sent_message_info
-                    if (user['username'] not in self.newusers_service.known_bots and
-                        user['username'] not in self.config.twitch_bot_operatorname and
-                        user['username'] not in self.config.twitch_bot_channel_name and
-                        user['username'] not in self.config.twitch_bot_username and
-                        user['username'] not in self.config.twitch_bot_display_name
-                        #and user['username'] not in "crubeyawne"
-                        #and user['username'] not in "nanovision"
-                        #and user['username'] not in mods_list
-                        )
-                ]
-                self.logger.debug(f"Eligible users to send a message: {eligible_users}")
-            else:
-                self.logger.info("No eligible users to send a message.")
+            if not users_not_yet_sent_message_info:
+                self.logger.info("...No users not yet sent a message.")
                 continue
+
+            eligible_users = [
+                user for user in users_not_yet_sent_message_info
+                if (user['username'] not in self.newusers_service.known_bots
+                    and user['username'] not in self.config.twitch_bot_operatorname
+                    and user['username'] not in self.config.twitch_bot_channel_name
+                    and user['username'] not in self.config.twitch_bot_username
+                    and user['username'] not in self.config.twitch_bot_display_name
+                    #and user['username'] not in "crubeyawne"
+                    #and user['username'] not in "nanovision"
+                    #and user['username'] not in mods_list
+                    )
+            ]       
      
-            if eligible_users:
-                self.logger.info(f"Eligible users found: {len(eligible_users)}")
-                random_user = random.choice(eligible_users)  
-                random_user_type = random_user['usertype']
-                random_user_name = random_user['username'] 
+            if not eligible_users:
+                self.logger.info(f"...No eligible users found after filtering.")
+                continue
 
-                self.newusers_service.users_sent_messages_list.append(random_user_name)
-                self.logger.debug(f"Selected user: {random_user_name} ({random_user_type})")
+            random_user = random.choice(eligible_users)  
+            random_user_type = random_user['usertype']
+            random_user_name = random_user['username'] 
 
-                # Get the user's chat history
-                if random_user_type == "returning":
-                    user_specific_chat_history = self.bq_uploader.fetch_user_chat_history_from_bq(
-                        user_login=random_user_name,
-                        interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
-                        users_table_id=self.config.talkzillaai_userdata_table_id,
-                        limit=75
-                    )
+            self.newusers_service.users_sent_messages_list.append(random_user_name)
+            self.logger.debug(f"...Selected user: {random_user_name} ({random_user_type})")
+
+            # Get the user's chat history
+            if random_user_type == "returning":
+                user_specific_chat_history = self.bq_uploader.fetch_user_chat_history_from_bq(
+                    user_login=random_user_name,
+                    interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
+                    users_table_id=self.config.talkzillaai_userdata_table_id
+                )
+
+                # Log the user-specific chat history sample
+                self.logger.debug(f"...User-specific chat history Type: {type(user_specific_chat_history)}")
+                self.logger.info(f"...User-specific chat history sample: {user_specific_chat_history[0:5]}")
+                
+                # Use FAISS to retrieve the most relevant messages
+                query_final = self.config.newusers_faiss_default_query.replace("{random_user_name}", random_user_name)
+                self.logger.info(f"...FAISS Query message search for '{random_user_name}': {query_final}")
+
+                relevant_message_ids = self.faiss_service.build_and_retrieve_from_user_index(
+                    messages=user_specific_chat_history, query=query_final
+                )
+
+                if not relevant_message_ids:
+                    self.logger.info("No relevant messages retrieved. Defaulting to no chat history message.")
+                    relevant_message_history = ["No chat history available for new users."]
+                    prompt = self.config.newusers_msg_prompt
                 else:
-                    user_specific_chat_history = "none"
-
-                # Create task to send a message to the selected user
-                try:
-                    replacements_dict = {
-                        "random_new_user": random_user_name,
-                        "wordcount_medium": self.config.wordcount_medium,
-                        "user_specific_chat_history": user_specific_chat_history
-                    }
-
-                    # Select the appropriate prompt based on the user type
-                    prompt = self.config.newusers_msg_prompt if random_user_type == "new" else self.config.returningusers_msg_prompt
-
-                    # Add an executeTask to the queue
-                    task = CreateExecuteThreadTask(
-                        thread_name=thread_name,
-                        assistant_name=assistant_name,
-                        thread_instructions=prompt,
-                        replacements_dict=replacements_dict,
-                        tts_voice=tts_voice_selected
-                    )
-
-                    self.logger.debug(f"Task to add to queue: {task.task_dict}")
-                    await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-                    self.logger.debug(f"self.newusers_service.users_sent_messages_list: {self.newusers_service.users_sent_messages_list}")
-                    self.logger.debug(f"users_not_yet_sent_message: {users_not_yet_sent_message_info}")
-                    self.logger.info(f"Sent {random_user_type} user task for run. random_user: {random_user}")
-
-                    # Wait for the task to complete before continuing
-                    self.logger.info(f"...waiting for _send_message_to_new_users_task task to complete...")
-                    await task.future  # Wait until the task is marked as complete
-                    self.logger.info(f"..._send_message_to_new_users_task task completed.")
-
-                except Exception as e:
-                    self.logger.exception(f"Error occurred in sending {random_user_type} user message: {e}")
-                    continue
-
+                    # Retrieve only the relevant messages (no need to re-query BigQuery)
+                    relevant_message_history = [
+                        msg["content"]
+                        for msg in user_specific_chat_history if msg["message_id"] in relevant_message_ids
+                    ]
+                    prompt = self.config.returningusers_msg_prompt
             else:
-                self.logger.info(f"Eligible users list is empty.  eligible_users: {eligible_users}")
+                relevant_message_history = ["No chat history available for new users."]
+                prompt = self.config.newusers_msg_prompt
+
+            self.logger.info(f"type(relevant_message_history): {type(relevant_message_history)}")
+
+            # Create task to send a message to the selected user
+            try:
+                replacements_dict = {
+                    "random_new_user": random_user_name,
+                    "wordcount_medium": self.config.wordcount_medium,
+                    "user_specific_chat_history": relevant_message_history
+                }
+
+                # Add an executeTask to the queue
+                task = CreateExecuteThreadTask(
+                    thread_name=thread_name,
+                    assistant_name=assistant_name,
+                    thread_instructions=prompt,
+                    replacements_dict=replacements_dict,
+                    tts_voice=tts_voice_selected
+                )
+
+                await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'newusers'")
+
+            except Exception as e:
+                self.logger.exception(f"Error occurred in sending {random_user_type} user message: {e}")
                 continue
 
     async def _send_channel_message_wrapper(self, message):
@@ -633,9 +650,7 @@ class Bot(twitch_commands.Bot):
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice
             )
-            self.logger.debug(f"Task to add to queue: {task.task_dict}")
-        
-            await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+            await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'hello_world'")
 
     @twitch_commands.command(name='getstats', aliases=("p_getstats", "stats"))
     async def get_command_stats(self, ctx):
@@ -672,12 +687,7 @@ class Bot(twitch_commands.Bot):
 
         # Add to thread (This is done to send the voice message to the GPT thread)
         task = AddMessageTask(thread_name, text, message_role='user')
-        await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-
-        # Wait for the task to complete before continuing
-        self.logger.info(f"...waiting for 'what' tasks AddMessageTask to complete...")
-        await task.future  # Wait until the task is marked as complete
-        self.logger.info(f"...'what' tasks AddMessageTask completed.")
+        await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask 'what'")
 
         replacements_dict = {
             "wordcount_medium": self.config.wordcount_medium,
@@ -692,14 +702,7 @@ class Bot(twitch_commands.Bot):
             replacements_dict=replacements_dict,
             tts_voice=tts_voice
         )
-        self.logger.debug(f"Task to add to queue: {task.task_dict}")
-
-        await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-
-        # Wait for the task to complete before continuing
-        self.logger.info(f"...waiting for 'what' task to complete...")
-        await task.future  # Wait until the task is marked as complete
-        self.logger.info(f"...'what' task completed.")
+        await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'what'")
 
     @twitch_commands.command(name='commands', aliases=["p_commands"])
     async def showcommands(self, ctx):
@@ -736,12 +739,16 @@ class Bot(twitch_commands.Bot):
         await self._send_channel_message_wrapper(f"Commands include: {results_string}")
 
     @twitch_commands.command(name='specs', aliases=("p_specs"))
-    async def discord(self, ctx):
+    async def specs(self, ctx):
         await self._send_channel_message_wrapper("i7-13700K || RTX 4070 Ti OC || 64GB DDR5 6400MHz || ASUS ROG Strix Z790-F")
 
     @twitch_commands.command(name='discord', aliases=("p_discord"))
     async def discord(self, ctx):
-        await self._send_channel_message_wrapper("This is the discord channel, come say hello but, ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")
+        await self._send_channel_message_wrapper("This is the discord server, come say hello but, ughhhhh, don't mind the mess: https://discord.gg/XdHSKaMFvG")
+
+    @twitch_commands.command(name='github', aliases=("p_github"))
+    async def github(self, ctx):
+        await self._send_channel_message_wrapper("This is the github/repo if you like what you see: https://github.com/hitch-co/chatzilla_ai")
 
     async def _chatforme_main(self, text_input_from_user=None):
         assistant_name = 'chatforme'
@@ -772,7 +779,7 @@ class Bot(twitch_commands.Bot):
         )
         self.logger.debug(f"Task to add to queue: {task.task_dict}")
 
-        await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+        await self.task_manager.add_task_to_queue_and_execute(thread_name, task)
         
     # TODO: it seems like creating a task is a good idea as each individual task
     # is effectrively goign to be executed asyncronously... rather than getting blocked 
@@ -788,29 +795,65 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='last_message', aliases=("m_last_message",))
     async def last_message(self, ctx, *args):
+        """
+        Twitch command to retrieve the last message from a specified user.
+
+        Parameters:
+        - ctx: The Twitch context object.
+        - *args: Command arguments (expects one argument: the username).
+
+        Behavior:
+        - Checks if the sender is a moderator.
+        - Retrieves the last message from the specified user.
+        - Sends the message content to the channel.
+        """
+        # Check if the command sender is a moderator
         is_sender_mod = await self._is_function_caller_moderator(ctx)
 
-        if is_sender_mod == True and args is not None:
-            if len(args) == 1:
+        if is_sender_mod:
+            if len(args) == 1:  # Ensure exactly one argument is passed
                 user_name = args[0]
+                try:
+                    # Fetch the last message from BigQuery
+                    last_message_json = self.bq_uploader.fetch_user_chat_history_from_bq(
+                        user_login=user_name,
+                        interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
+                        users_table_id=self.config.talkzillaai_userdata_table_id,
+                        limit=1
+                    )
+
+                    if last_message_json:  # Ensure there is at least one result
+                        last_message_content = last_message_json[0].get('content', '(No content available)')
+                        await self._send_channel_message_wrapper(
+                            f"Last message from {user_name}: {last_message_content}"
+                        )
+                    else:
+                        # Handle the case where no messages are found
+                        await self._send_channel_message_wrapper(
+                            f"No messages found for user {user_name}."
+                        )
+                except Exception as e:
+                    self.logger.error(f"Error fetching last message for {user_name}: {e}", exc_info=True)
+                    await self._send_channel_message_wrapper(
+                        f"Could not retrieve messages for user {user_name}. Please try again later."
+                    )
             else:
-                self.logger.warning(f"Incorrect number of arguments ({len(args)} were sent, only 1 required)")
-
-            last_message = self.bq_uploader.fetch_user_chat_history_from_bq(
-                user_login=user_name,
-                interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
-                users_table_id=self.config.talkzillaai_userdata_table_id,
-                limit=1
+                # Handle incorrect number of arguments
+                self.logger.warning(
+                    f"Incorrect number of arguments ({len(args)} sent, only 1 required)."
                 )
-            
-            # Get content variable from the last message json string
-            last_message = json.loads(last_message)
-            last_message_content = last_message[0]['content']
-            await self._send_channel_message_wrapper(f"Last message from {user_name}: {last_message_content}")
-
+                await self._send_channel_message_wrapper(
+                    "Usage: !last_message <username>"
+                )
         else:
-            self.logger.info(f"Sender is not a mod or incorrect number of arguments {len(args)} were sent, 1 is required.")
-
+            # Handle case where sender is not a moderator
+            self.logger.info(
+                f"Sender is not a moderator or incorrect number of arguments ({len(args)})."
+            )
+            await self._send_channel_message_wrapper(
+                "You do not have permission to use this command."
+            )
+            
     @twitch_commands.command(name='vc', aliases=("m_vc"))
     async def vc(self, ctx, *args):
 
@@ -950,7 +993,6 @@ class Bot(twitch_commands.Bot):
         if self.ouat_counter == 0:
             self.ouat_story_max_counter = self.config.ouat_story_max_counter_default
             self.ouat_counter += 1
-            self.message_handler.ouat_msg_history.clear()
 
             # Extract the user requested plotline and if '' or ' ', etc. then set to None
             if len(args) > 0:
@@ -1017,17 +1059,8 @@ class Bot(twitch_commands.Bot):
                 tts_voice=self.current_story_voice,
                 send_channel_message=True
                 )
-            self.logger.debug(f"Task to add to queue: {task.task_dict}")
-
-            # Add the bullet list to the 'ouatmsgs' thread via queue
-            await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+            await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'startstory'")
             self.is_ouat_loop_active = True
-
-            # Wait for the task to complete before continuing
-            self.logger.info(f"...waiting for story task (cycle {self.ouat_counter}) to complete...")
-            await task.future  # Wait until the task is marked as complete
-            self.logger.info(f"...task (cycle {self.ouat_counter}) completed.")
-
         else:
             # Optionally, send a message to the channel that a story is already in progress
             await self._send_channel_message_wrapper("A story is already in progress...")
@@ -1066,6 +1099,10 @@ class Bot(twitch_commands.Bot):
                 elif self.ouat_counter == self.ouat_story_max_counter:
                     gpt_prompt = self.config.storyteller_storyender_prompt
 
+                # Default to progressor
+                else:
+                    gpt_prompt = self.config.storyteller_storyprogressor_prompt
+
                 # Combine prefix and final article content
                 gpt_prompt_final = self.config.storyteller_storysuffix_prompt + " " + gpt_prompt
 
@@ -1094,14 +1131,7 @@ class Bot(twitch_commands.Bot):
                     replacements_dict=replacements_dict,
                     tts_voice=self.current_story_voice
                 )
-                self.logger.debug(f"Task to add to queue: {task.task_dict}")
-
-                await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-
-                # Wait for the task to complete before continuing
-                self.logger.info(f"...waiting for story task (cycle {self.ouat_counter}) to complete...")
-                await task.future  # Wait until the task is marked as complete
-                self.logger.info(f"...task (cycle {self.ouat_counter}) completed.")
+                await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'ouat_storyteller'")
 
 
             if self.ouat_counter >= self.ouat_story_max_counter:
@@ -1113,30 +1143,26 @@ class Bot(twitch_commands.Bot):
     async def add_to_story_ouat(self, ctx,  *args):
         self.ouat_counter = self.config.ouat_story_progression_number
         
-        author=ctx.message.author.name
         gpt_prompt_text = ' '.join(args)
         prompt_text_with_prefix = f"{self.config.ouat_prompt_addtostory_prefix}:'{gpt_prompt_text}'"
+
+        # Get the message metadata
+        message_metadata = self.message_handler._get_message_metadata(ctx.message)
 
         #workflow1: get gpt_ready_msg_dict and add message to message history
         gpt_ready_msg_dict = self.message_handler._create_gpt_message_dict_from_strings(
             content=prompt_text_with_prefix,
             role='user',
-            name=author
+            name=message_metadata['message_author'],
+            timestamp=message_metadata['timestamp']
             )
-        self.message_handler.ouat_msg_history.append(gpt_ready_msg_dict)
 
         # Add the bullet list to the 'ouatmsgs' thread via queue
         thread_name = 'ouatmsgs'
         task = AddMessageTask(thread_name, gpt_prompt_text, message_role='user')
+        await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask 'add_to_story_ouat'")
 
-        await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-
-        # Wait for the task to complete before continuing
-        self.logger.info(f"...waiting for task add_to_story to complete...")
-        await task.future  # Wait until the task is marked as complete
-        self.logger.info(f"...task add_to_story completed.")
-
-        self.logger.info(f"A story was added to by {ctx.message.author.name} ({ctx.message.author.id}): '{gpt_prompt_text}'")
+        self.logger.info(f"A story was added to by {message_metadata['message_author']} ({message_metadata['user_id']}): '{gpt_prompt_text}'")
 
     @twitch_commands.command(name='extendstory', aliases=("p_extendstory"))
     async def extend_story(self, ctx, *args) -> None:
@@ -1145,25 +1171,19 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='stopstory', aliases=("m_stopstory"))
     async def stop_story(self, ctx):
+        thread_name='ouatmsgs'
         if self.ouat_counter >= 1:
             self.logger.info(f"Story is being forced to end by {ctx.message.author.name} ({ctx.message.author.id}), counter is at {self.ouat_counter}")
         
             content = "to be continued..."
             try:
                 task = CreateSendChannelMessageTask(
-                    thread_name='ouatmsgs',
+                    thread_name=thread_name,
                     content=content,
                     tts_voice=self.current_story_voice,
                 )
-
-                self.logger.debug(f"Task to add to queue: {task.task_dict}")
-                await self.gpt_thread_mgr.add_task_to_queue('ouatmsgs', task)
-
-                # Wait for the task to complete before continuing
-                self.logger.info(f"...waiting for stop story taskto complete...")
-                await task.future  # Wait until the task is marked as complete
-                self.logger.info(f"...stop story task completed.")
-
+                await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="SendChannelMessageTask 'stop_story'")
+            
             except Exception as e:
                 self.logger.error(f"Error occurred in stopping the story: {e}")
             
@@ -1179,7 +1199,6 @@ class Bot(twitch_commands.Bot):
         self.is_ouat_loop_active = False
         self.ouat_counter = 0
         self.logger.info(f"OUAT loop has been stopped, self.ouat_counter has been reset to {self.ouat_counter}")
-        self.message_handler.ouat_msg_history.clear()
 
     async def _factcheck_main(self, text_input_from_user=None):
 
@@ -1214,14 +1233,7 @@ class Bot(twitch_commands.Bot):
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice
             )
-            self.logger.debug(f"Task to add to queue: {task.task_dict}")
-
-            await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
-
-            # Wait for the task to complete before continuing
-            self.logger.info(f"...waiting for factcheck task to complete...")
-            await task.future  # Wait until the task is marked as complete
-            self.logger.info(f"...factcheck task completed.")
+            await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'factcheck'")
 
         except Exception as e:
             return self.logger.error(f"error with chatforme in twitchbotclass: {e}")
@@ -1290,36 +1302,24 @@ class Bot(twitch_commands.Bot):
 
             setattr(self.config, config_var, value)
             self.logger.info(f"Config variable '{config_var}' has been updated to '{value}'")
-        # except ValueError:
-        #     await self.channel.send(f"Invalid value type for '{config_var}'. Expected {expected_type.__name__}.")
         except Exception as e:
             self.logger.error(f"Error occurred in !update_config: {e}")
             await self.channel.send("No change made, see log for details...")
 
     def _pick_random_category(self, data: dict):
-        # Pick a random category (like 'historicalContexts', 'categories', etc.)
         topic = random.choice(list(data.keys()))
-        
-        # Pick a random item within the selected category
         subtopic = random.choice(data[topic])
         
         return topic, subtopic
 
-    def _is_valid_json(self, response: str) -> bool:
-        try:
-            json.loads(response)
-            return True
-        except json.JSONDecodeError:
-            return False
-        
-    def _format_chat_history(chat_history: list[dict]) -> str:
-            formatted_messages = []
-            for message in chat_history:
-                role = message.get('role', 'unknown')
-                content = message.get('content', '')
-                formatted_messages.append(f"Role: {role}, Content: {content}")
-            return "\n".join(formatted_messages)
-        
+    def _format_chat_history(self, chat_history: list[dict]) -> str:
+        formatted_messages = []
+        for message in chat_history:
+            role = message.get('role', 'unknown')
+            content = message.get('content', '')
+            formatted_messages.append(f"Role: {role}, Content: {content}")
+        return "\n".join(formatted_messages)
+            
     async def randomfact_task(self):
         while True:
             await adjustable_sleep_task.adjustable_sleep_task(self.config, 'randomfact_sleeptime')

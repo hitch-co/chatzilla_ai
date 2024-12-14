@@ -85,38 +85,6 @@ class GPTChatCompletion:
         self.logger.info(f"final gpt_response: {gpt_response}")
         return gpt_response
 
-    async def make_singleprompt_gpt_response_json(self, model, chat_history, schema) -> dict:
-        self.logger.info(f"Entered 'make_singleprompt_gpt_response_json', result will be 'fact' or 'respond'")
-        
-        if chat_history is None:
-            chat_history = [
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant. There is no prior chat history."
-                }
-            ]
-        
-        response_text_full = self.gpt_client.chat.completions.create(
-            model=model,
-            messages=chat_history,
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "conversation_director",
-                    "schema": schema,
-                    "strict": True
-                }
-            }
-        )
-
-        self.logger.info(f"...chat_history: \n{chat_history}")
-        self.logger.debug(f"...response_text_full: {response_text_full}")
-        response_data = json.loads(response_text_full.choices[0].message.content)
-        self.logger.info(f"...response_type: {response_data['response_type']}")
-        self.logger.info(f"...reasoning: {response_data['reasoning']}")
-
-        return response_data
-
     def _openai_gpt_chatcompletion(
             self,
             messages: list[dict],
@@ -254,31 +222,6 @@ if __name__ == '__main__':
     gpt_chat_completion = GPTChatCompletion(gpt_client=gpt_client, yaml_data=config)
 
     ############################
-    # # test1 -- _openai_gpt_chatcompletion_json
-
-    #load json from file
-    with open(r'C:\_repos\chatzilla_ai\config\conversation_director_response_format.json', 'r') as f:
-        conversation_director_response_format = json.load(f)
-    print(f"type: {type(conversation_director_response_format)}")
-    print(conversation_director_response_format)
-
-    messages=[
-        {'role':'user', 'content':'crube: going ok. heading out soonly to visit my cousins'},
-        {'role':'user', 'content':'crube: my computer still screams when it wakes up, but stops after like 5 minutes'},
-        {'role':'user', 'content':'crube: watch football. hang out mostly'}, 
-        {'role':'user', 'content':'ehitch: Yeah wooooh!'}
-        ]
-
-    response = asyncio.run(gpt_chat_completion.make_singleprompt_gpt_response_json(
-        model="gpt-4o-mini", #"gpt-4-1106-preview", #"gpt-4o-mini", #"gpt-4o-2024-08-06", #config.gpt_model_davinci,
-        chat_history=messages,
-        schema=conversation_director_response_format
-        ))
-    
-    print(f"type: {type(response)}")
-    print(response)
-
-    ############################
     # # test2 -- Get models
     # gpt_models = gpt_chat_completion.get_models()
     # print("GPT Models:")
@@ -310,44 +253,3 @@ if __name__ == '__main__':
     # end = time.time()
     # print(f"Time to complete: {end - start}")
     # print(f"This is the GPT Response: {response}")
-
-    ############################
-    # # # Test5 -- call to make_singleprompt_gpt_response_json
-    # # Measure time to complete
-    # start = time.time()
-    # response = asyncio.run(gpt_chat_completion.make_singleprompt_gpt_response_json(
-    #     prompt_text="""You are part of a control flow system that decides if the chatbot should 
-    #     engage directly or share a general fact. Using the following conversation 
-    #     history: '{chat_history}', determine the 'response_type' as follows:
-
-    #     Output only a JSON object with these two attributes:
-    #         'response_type': '<respond or fact>',
-    #         'content': '<brief explanation for decision>'
-
-    #     Guidelines:
-    #     - In 100% of cases your response should be a JSON object as described, not a text output
-    #     - Set 'response_type' to 'respond' only if the conversation clearly invites 
-    #       engagement or would benefit from direct interaction.
-    #     - If the conversation lacks questions or active engagement, set 'response_type' 
-    #       to 'fact' for a neutral, informative contribution.
-    #     - If you were the last speaker and no one responded, choose 'fact' to avoid 
-    #       repetition.
-    #     - Even if a conversation was previously active, respond only when it adds 
-    #       clear value—otherwise, default to 'fact.'
-    #     - When users don’t acknowledge your responses or questions, assume 'fact' is 
-    #       appropriate.
-    #     - Again, you're not a significant part of this conversation, so use 'fact' 
-    #       more often than 'respond' to avoid dominating the chat.
-    #     - Don't get sucked into the conversation; response should be 'fact' unless 
-    #       the conversation clearly invites engagement.
-    #     - Don't be a victim by responding to every message. Response value should be 
-    #       'fact' unless the conversation clearly invites engagement.
-
-    #     Note:
-    #     'response_type' should default to 'fact' more often than 'respond,' aligning 
-    #     with the bot's informational role in ongoing streams.""",
-    #     replacements_dict={'country':'Dubai'},
-    #     model=config.model
-    #     ))
-    # end = time.time()
-

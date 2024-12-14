@@ -951,7 +951,7 @@ class Bot(twitch_commands.Bot):
             self.vibecheck_service = VibeCheckService(
                 message_handler=self.message_handler,
                 gpt_assistant_mgr=self.gpt_assistant_manager,
-                gpt_thread_mgr=self.gpt_thread_mgr,
+                task_manager=self.task_manager,
                 gpt_response_mgr=self.gpt_response_manager,
                 chatforme_service=self.chatforme_service,
                 vibechecker_players= {
@@ -1343,35 +1343,28 @@ class Bot(twitch_commands.Bot):
             self.logger.debug(f"Selected random_character_a_to_z: {random_character_a_to_z}")
             self.logger.debug(f"Selected random voice: {tts_voice}")
 
-            # Execute the function call on the thread and get the assistant's response
-            response_data, response = await self.gpt_function_call_manager.execute_function_call(thread_name, assistant_name='conversationdirector')
-
+            # Execute the function call and handle exceptions gracefully
             try:
-                if response_data['response_type'] == 'respond':
-                    response_type_result = 'respond'
-                elif response_data['response_type'] == 'fact':
-                    response_type_result = 'fact'
-                else:
-                    self.logger.warning(f"Error occurred in 'randomfact_task': response.response_type is not 'respond' or 'fact'.  But the show must go on so response_type_result was set to 'fact'")
-                    response_type_result = 'fact'
+                response_data, response = await self.gpt_function_call_manager.execute_function_call(thread_name, assistant_name='conversationdirector')
+                response_type_result = response_data.get('response_type', 'fact')
             except Exception as e:
-                self.logger.error(f"Error occurred in 'randomfact_task' but the show must go on so response_type_result was set to 'fact': {e}")
+                self.logger.error(f"Error occurred in 'randomfact_task'. Defaulting to 'fact': {e}")
                 response_type_result = 'fact'
 
+            # Set the prompt based on the response type
             if response_type_result == 'respond':
                 selected_prompt = self.config.randomfact_response
-            elif response_type_result == 'fact':
+            else:
                 selected_prompt = self.config.randomfact_prompt
                 task = AddMessageTask(
                     thread_name=thread_name,
                     message_role='assistant',
-                    content='''(No conversation happening here.  Your next set of instructions will 
-                    be to share a fact.  Do so as instructed without acknowledging this message)'''
+                    content='''(No conversation happening here. Your next set of instructions will 
+                    be to share a fact. Do so as instructed without acknowledging this message)'''
                 )
                 await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask 'randomfact_task'")
 
             self.logger.debug(f"selected_prompt: {selected_prompt[0:50]}")
-
             replacements_dict = {
                 "wordcount_short":self.config.wordcount_short,
                 'twitch_bot_display_name':self.config.twitch_bot_display_name,

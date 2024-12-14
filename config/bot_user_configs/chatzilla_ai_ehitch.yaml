@@ -309,13 +309,18 @@ gpt_assistants_config:
     comment."
   newuser_shoutout: "You are a bot designed to welcome new users to the chat."
 
+gpt_assistants_with_functions:
+  conversationdirector: 
+    instructions: 
+      You are a control flow system. You must **always** use the provided function to determine if a chatbot should engage directly in a Twitch chat or provide a neutral fact. Do not generate any text responses; use the function call exclusively.
+    json_file_path: "C:/_repos/chatzilla_ai/config/conversation_director_response_format.json"
+
 gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
   Unless stated otherwise, responses have a maximum length of 25 words. Don't 
   or call out too explicitly when you've made an error, the show must go on!
   Don't prefix your response with anything, just respond directly."
 
 gpt_thread_prompts:
-  conversation_director_json_filepath: "C:/_repos/chatzilla_ai/config/conversation_director_response_format.json"
   conversation_director: |
     You are a control flow system tasked with determining if a chatbot should engage directly in a Twitch chat or provide a neutral fact instead. Using the provided conversation history: `{chat_history}`, output a JSON object with these two attributes:
 

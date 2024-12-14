@@ -43,6 +43,7 @@ class Bot(twitch_commands.Bot):
             gpt_thread_mgr, 
             gpt_assistant_mgr,
             gpt_response_mgr,
+            gpt_function_call_mgr,
             message_handler,
             twitch_auth
             ):
@@ -98,6 +99,9 @@ class Bot(twitch_commands.Bot):
 
         # Create response manager
         self.gpt_response_manager = gpt_response_mgr
+
+        # Create function call manager
+        self.gpt_function_call_manager = gpt_function_call_mgr
 
         # TODO: Could be a good idea to inject these dependencies into the services
         # instantiate the ChatForMeService
@@ -348,16 +352,19 @@ class Bot(twitch_commands.Bot):
         self.assistants = self.gpt_assistant_manager.create_assistants(
             assistants_config=self.config.gpt_assistants_config
             )
+        self.assistants_with_functions = self.gpt_assistant_manager.create_assistants_with_functions(
+            assistants_with_functions=self.config.gpt_assistants_with_functions_config
+            )
         self.threads = self.gpt_thread_mgr.create_threads(
             thread_names=self.config.gpt_thread_names
             )
         
-        # start newusers loop
-        self.logger.debug(f"Starting newusers service")
-        self.loop.create_task(self._send_message_to_new_users_task())
+        # # start newusers loop
+        # self.logger.debug(f"Starting newusers service")
+        # self.loop.create_task(self._send_message_to_new_users_task())
 
-        # send hello world message
-        await self._send_hello_world_message()
+        # # send hello world message
+        # await self._send_hello_world_message()
         
     async def event_message(self, message):
 
@@ -1339,40 +1346,19 @@ class Bot(twitch_commands.Bot):
             self.logger.debug(f"Selected random_character_a_to_z: {random_character_a_to_z}")
             self.logger.debug(f"Selected random voice: {tts_voice}")
 
-            # Prep for the GPT response
-            chat_history = self.message_handler.all_msg_history_gptdict[-10:] if self.message_handler.all_msg_history_gptdict else []
+            # Execute the function call on the thread and get the assistant's response
+            response_data, response = await self.gpt_function_call_manager.execute_function_call(thread_name, assistant_name='conversationdirector')
 
-            # # Make singleprompt_gpt_response
-            # conversation_director_prompt = self.config.randomfact_conversation_director
-            
-            # # TODO: Good place for FAIZZ (get off the teet of the all_msg_history)
-            # # TODO: Don't really need the chat history here (see: faizz 
-            # # implemenatation), I think we can let the GPT model handle the 
-            # # context of the conversation or pass the chat history via faizz
-
-            # replacements_dict={
-            #     'wordcount_short':self.config.wordcount_short,
-            #     'twitch_bot_display_name':self.config.twitch_bot_display_name,
-            #     'randomfact_topic':topic,
-            #     'randomfact_subtopic':subtopic,
-            #     'area':area,
-            #     'subarea':subarea,
-            #     'param_in_text':'variable_from_scope',
-            #     'chat_history':chat_history
-            #     }
-
-            response_data = await self.gpt_chatcompletion.make_singleprompt_gpt_response_json(
-                model=self.config.gpt_model_davinci,
-                chat_history=chat_history,
-                schema=self.config.randomfact_conversation_director_json
-            )
-
-            if response_data['response_type'] == 'respond':
-                response_type_result = 'respond'
-            elif response_data['response_type'] == 'fact':
-                response_type_result = 'fact'
-            else:
-                self.logger.warning(f"Error occurred in 'randomfact_task': response.response_type is not 'respond' or 'fact'")
+            try:
+                if response_data['response_type'] == 'respond':
+                    response_type_result = 'respond'
+                elif response_data['response_type'] == 'fact':
+                    response_type_result = 'fact'
+                else:
+                    self.logger.warning(f"Error occurred in 'randomfact_task': response.response_type is not 'respond' or 'fact'.  But the show must go on so response_type_result was set to 'fact'")
+                    response_type_result = 'fact'
+            except Exception as e:
+                self.logger.error(f"Error occurred in 'randomfact_task' but the show must go on so response_type_result was set to 'fact': {e}")
                 response_type_result = 'fact'
 
             if response_type_result == 'respond':

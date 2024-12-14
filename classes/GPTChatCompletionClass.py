@@ -7,6 +7,7 @@ import asyncio
 import json
 
 from classes.ConfigManagerClass import ConfigManager
+from classes.GPTResponseCleaner import GPTResponseCleaner
 
 from my_modules.my_logging import create_logger
 import modules.gpt_utils as gpt_utils
@@ -89,7 +90,6 @@ class GPTChatCompletion:
             self,
             messages: list[dict],
             max_characters: int = 300,
-            count_tokens: bool = False,
             max_attempts: int = 3,
             frequency_penalty: float = 1.0,
             presence_penalty: float = 1.0,
@@ -118,26 +118,15 @@ class GPTChatCompletion:
         - Exception: If the maximum number of retries is exceeded without generating a valid response.
         """
 
-        def _strip_prefix(text):
-            # Regular expression pattern to match the prefix <<<[some_name]>>>:
-            # Use re.sub() to replace the matched pattern with an empty string
-            pattern = r'<<<[^>]*>>>'
-            stripped_text = re.sub(pattern, '', text)
-
-            #finally, strip out any extra colons that typically tend to prefix the message.
-            #Sometimes it can be ":", ": :", " : ", etc. Only strip if it's the first characters (excluding spaces) 
-            stripped_text = stripped_text.lstrip(':').lstrip(' ').lstrip(':').lstrip(' ') 
-
-            return stripped_text
-
+        attempt = 0
         model = model or self.config.gpt_model
         self.logger.info(f"This is the messages submitted to GPT ChatCompletion with model {model}: {messages[-message_count:]}")
         
         # TODO: This loop is wonky.  Should probably divert to a 'while' statement
-        for attempt in range(max_attempts):
+        while attempt < max_attempts:
             self.logger.info(f"THIS IS ATTEMPT #{attempt + 1}")
             try:
-                generated_response = self.gpt_client.chat.completions.create(
+                response = self.gpt_client.chat.completions.create(
                     model=self.config.gpt_model,
                     messages=messages,
                     presence_penalty=presence_penalty,
@@ -149,10 +138,10 @@ class GPTChatCompletion:
                 continue
 
             self.logger.info(f"Completed generated response using self.gpt_client.chat.completions.create")          
-            gpt_response_text = generated_response.choices[0].message.content
+            gpt_response_text = response.choices[0].message.content
             gpt_response_text_len = len(gpt_response_text)
     
-            self.logger.info(f"generated_response type: {type(generated_response)}, length: {gpt_response_text_len}:")
+            self.logger.info(f"response type: {type(response)}, length: {gpt_response_text_len}:")
             if gpt_response_text_len < max_characters:
                 self.logger.info(f'OK: The generated message was <{max_characters} characters')
                 self.logger.info(f"gpt_response_text: {gpt_response_text}")
@@ -160,14 +149,14 @@ class GPTChatCompletion:
             else: # Did not get a msg < n chars, try again.
                 self.logger.warning(f'gpt_response_text_len: >{max_characters} characters, retrying call to _openai_gpt_chatcompletion')
                 messages_updated = [{'role':'user', 'content':f"{self.config.shorten_response_length_prompt}: '{gpt_response_text}'"}]
-                generated_response = self.gpt_client.chat.completions.create(
+                response = self.gpt_client.chat.completions.create(
                     model=self.config.gpt_model,
                     messages=messages_updated,
                     presence_penalty=presence_penalty,
                     frequency_penalty=frequency_penalty,
                     temperature=temperature
                     )
-                gpt_response_text = generated_response.choices[0].message.content
+                gpt_response_text = response.choices[0].message.content
                 gpt_response_text_len = len(gpt_response_text)
 
                 if gpt_response_text_len > max_characters:
@@ -181,7 +170,7 @@ class GPTChatCompletion:
             raise Exception(message)
 
         # Strip the prefix from the response
-        gpt_response_text = _strip_prefix(gpt_response_text)
+        gpt_response_text = GPTResponseCleaner.perform_all_gpt_response_cleanups(gpt_response_text)
         
         return gpt_response_text
 

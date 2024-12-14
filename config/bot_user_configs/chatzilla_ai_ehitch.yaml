@@ -60,7 +60,7 @@ openai-api:
   
   ########################################
   assistant_response_max_length: 300
-  tts_include_voice: False
+  tts_include_voice: True
   tts_model: "tts-1" #tts-2 has higher latency
   tts_voice: "nova"
   tts_volume: .4

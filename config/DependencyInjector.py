@@ -1,12 +1,13 @@
 # dependency_injector.py
 from google.cloud import bigquery
+import openai
 
 from classes.MessageHandlerClass import MessageHandler
 from classes.BQUploaderClass import BQUploader
 from services.GPTTextToSpeechService import GPTTextToSpeech
 from classes.GPTAssistantManagerClass import GPTBaseClass, GPTThreadManager, GPTResponseManager, GPTAssistantManager
 from classes.GPTAssistantManagerClass import GPTFunctionCallManager
-import openai
+from classes.TaskManagerClass import TaskManager
 
 class DependencyInjector:
     def __init__(self, config):
@@ -32,6 +33,10 @@ class DependencyInjector:
             )
         return tts_client
 
+    def create_task_manager(self):
+        task_manager = TaskManager()
+        return task_manager
+    
     def create_gpt_thread_mgr(self):
         gpt_thread_mgr = GPTThreadManager(
             gpt_client=self.gpt_client
@@ -62,9 +67,9 @@ class DependencyInjector:
         )
         return gpt_function_call_mgr
 
-    def create_message_handler(self, gpt_thread_mgr):
+    def create_message_handler(self, task_manager):
         message_handler = MessageHandler(
-            gpt_thread_mgr=gpt_thread_mgr,
+            task_manager=task_manager,
             msg_history_limit=self.config.msg_history_limit
         )
         return message_handler
@@ -74,10 +79,11 @@ class DependencyInjector:
         self.bq_client = self.create_bq_client()
         self.bq_uploader = self.create_bq_uploader(bq_client=self.bq_client)
         self.tts_client = self.create_tts_client()
+        self.task_manager = self.create_task_manager()
         self.gpt_thread_mgr = self.create_gpt_thread_mgr()
         self.gpt_assistant_mgr = self.create_gpt_assistant_mgr()
         self.gpt_response_mgr = self.create_gpt_response_mgr(gpt_thread_manager=self.gpt_thread_mgr, gpt_assistant_manager = self.gpt_assistant_mgr)
-        self.message_handler = self.create_message_handler(gpt_thread_mgr=self.gpt_thread_mgr)
+        self.message_handler = self.create_message_handler(task_manager=self.task_manager)
         self.gpt_function_call_mgr = self.create_gpt_function_call_mgr(gpt_thread_manager=self.gpt_thread_mgr, gpt_response_manager=self.gpt_response_mgr, gpt_assistant_manager=self.gpt_assistant_mgr)
 
 def main(yaml_filepath):

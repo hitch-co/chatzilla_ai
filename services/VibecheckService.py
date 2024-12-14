@@ -13,7 +13,7 @@ class VibeCheckService:
             self,
             message_handler,
             gpt_assistant_mgr,
-            gpt_thread_mgr,
+            task_manager,
             gpt_response_mgr,
             chatforme_service,
             vibechecker_players,
@@ -43,8 +43,10 @@ class VibeCheckService:
 
         #gpt manager
         self.gpt_assistant_mgr = gpt_assistant_mgr
-        self.gpt_thread_mgr = gpt_thread_mgr
         self.gpt_response_mgr = gpt_response_mgr
+
+        #task manager
+        self.task_manager = task_manager
 
         #ChatForMeService
         self.chatforme_service = chatforme_service
@@ -52,14 +54,15 @@ class VibeCheckService:
         #constants
         self.is_vibecheck_loop_active = False
         self.vibechecker_interactions_counter = 0
-        self.vibechecker_players = vibechecker_players
-        self.vibecheckee_username = vibechecker_players['vibecheckee_username']
-        self.vibechecker_username = vibechecker_players['vibechecker_username']
-        self.vibecheckbot_username = vibechecker_players['vibecheckbot_username']
         self.vibecheck_message_wordcount = self.config.vibechecker_message_wordcount
         self.vibechecker_max_interaction_count = self.config.vibechecker_max_interaction_count
         self.vibechecker_question_session_sleep_time = self.config.vibechecker_question_session_sleep_time
         self.vibechecker_listener_sleep_time = self.config.vibechecker_listener_sleep_time
+
+        self.vibechecker_players = vibechecker_players
+        self.vibecheckee_username = self.vibechecker_players['vibecheckee_username']
+        self.vibechecker_username = self.vibechecker_players['vibechecker_username']
+        self.vibecheckbot_username = self.vibechecker_players['vibecheckbot_username']
 
     async def start_vibecheck_session(self):
         # Start the vibe check logic (e.g., initiating a task or loop)
@@ -75,7 +78,7 @@ class VibeCheckService:
 
             # Add the message to the 'vibecheckmsgs' thread via queue
             task = AddMessageTask(self.vibecheck_thread_name, message_content)
-            await self.gpt_thread_mgr.add_task_to_queue(self.vibecheck_thread_name, task)
+            await self.task_manager.add_task_to_queue(self.vibecheck_thread_name, task)
 
             self.vibecheck_ready_event.set()
             pass
@@ -148,7 +151,7 @@ class VibeCheckService:
                     replacements_dict=replacements_dict,
                     tts_voice=tts_voice
                 )
-                await self.gpt_thread_mgr.add_task_to_queue(self.vibecheck_thread_name, task)
+                await self.task_manager.add_task_to_queue(self.vibecheck_thread_name, task)
 
                 # Wait for either the event to be set or the timer to run out
                 try:

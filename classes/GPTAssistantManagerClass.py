@@ -463,11 +463,9 @@ class GPTThreadManager(GPTBaseClass):
             logger_name='GPTThreadManager',
             stream_logs=True
         )
-        self.threads: Dict[str, dict] = {}  # Thread name to thread info mapping
-        self.task_queues: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue) # Thread name to task queue mapping
-        self.task_queue_lock = asyncio.Lock()
-        self.on_task_ready: Callable[[Dict], None] = None
-        self.loop = asyncio.get_event_loop()
+
+        # Initialize the 'threads' dictionary to store thread objects and their IDs
+        self.threads: Dict[str, dict] = {}
 
     def _create_thread(self, thread_name: str):
         """
@@ -498,63 +496,6 @@ class GPTThreadManager(GPTBaseClass):
 
         self.logger.info(f"...threads created: {self.threads}")        
         return self.threads
-
-    # TODO: Anything from here down can be moved directly to TaskManagerClass
-    async def add_task_to_queue(self, thread_name: str, task: object):
-        await self.task_queues[thread_name].put(task)
-        self.logger.debug(f"Added task to queue for thread '{thread_name}': {task.task_dict}")
-        self.logger.debug(f"Queue for thread '{thread_name}': {self.task_queues[thread_name]}")
-
-    async def task_scheduler(self):
-        """
-        Continuously checks task queues and processes tasks in a FIFO order.
-        Marks tasks as done after processing to keep the queue state consistent.
-        """
-        while True:
-            self.logger.info("Checking task queues...")
-
-            async with self.task_queue_lock:
-                task_queues_snapshot = list(self.task_queues.items())
-
-            self.logger.info("Task Queue Status:")
-            for thread_name, queue in task_queues_snapshot:
-                self.logger.info(f"Thread: {thread_name}, Queue Size: {queue.qsize()}, Pending Tasks: {queue._unfinished_tasks}")
-
-            for thread_name, queue in task_queues_snapshot:
-                if not queue.empty():
-                    task = await queue.get()
-                    self.logger.info(f"...task found in queue (type: {task.task_dict.get('type')})...")
-
-                    try:
-                        await self._process_task(task)
-                    except Exception as e:
-                        self.logger.error(f"Error processing task (type: {task.task_dict.get('type')}): {e}", exc_info=True)
-                    finally:
-                        queue.task_done()
-
-            # Sleep before checking the queue again
-            await asyncio.sleep(5)
-
-    async def _process_task(self, task: object):
-        """
-        Process the task before executing. This method includes logging, validation,
-        and any other pre-processing steps needed before the task is handled.
-        """
-        self.logger.info(f"...processing task type '{task.task_dict.get('type')}' with thread_name: '{task.task_dict.get('thread_name')}'")
-        self.logger.debug(f"Task details: {task.task_dict}")
-
-        # Basic validation to ensure necessary fields are present
-        if not task.task_dict.get('type') or not task.task_dict.get('thread_name'):
-            self.logger.error("...Task missing required fields. Task will be skipped.")
-            self.logger.error(f"...Invalid task: {task.task_dict}")
-            raise ValueError("Task missing required fields. Task will be skipped.")
-
-        # Check if the on_task_ready callback is set and invoke it to handle the task execution
-        if self.on_task_ready:
-            self.logger.debug(f"...Invoking task handler for task associated with thread name, execution: {task.task_dict.get('thread_name')}, {task.task_dict.get('type')}")
-            await self.on_task_ready(task)
-        else:
-            self.logger.warning("...No task handler has been set. Unable to execute task.")
 
 class GPTResponseManager(GPTBaseClass):
     """
@@ -862,70 +803,3 @@ async def main():
 # Run the async main function
 if __name__ == "__main__":
     asyncio.run(main())
-
-# async def main():
-#     root_logger = create_logger(
-#         dirname='log', 
-#         debug_level=gpt_response_mgr_debug_level,
-#         logger_name='GPTAssistantManagerClass',
-#         stream_logs=True
-#         ) 
-#     # Create an event loop
-#     loop = asyncio.get_event_loop()
-
-#     # Configuration and API key setup
-#     ConfigManager.initialize(yaml_filepath=r'C:\_repos\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml')
-#     config = ConfigManager.get_instance()
-#     assistants_config = config.gpt_assistants_config
-#     thread_names = config.gpt_thread_names
-
-#     # Set up your GPTThreadManager and other components
-#     gpt_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-
-#     gpt_thread_manager = GPTThreadManager(gpt_client=gpt_client)
-#     loop.create_task(gpt_thread_manager.task_scheduler())
-#     gpt_thread_manager.create_threads(thread_names)
-#     gpt_thread_manager.on_task_ready = handle_tasks
-    
-#     gpt_assistant_manager = GPTAssistantManager(gpt_client=gpt_client)
-#     gpt_assistant_manager.create_assistants(assistants_config)
-
-#     gpt_response_manager = GPTResponseManager(
-#         gpt_client=gpt_client, 
-#         gpt_thread_manager=gpt_thread_manager,
-#         gpt_assistant_manager=gpt_assistant_manager,
-# @        max_waittime_for_gpt_response=config.max_waittime_for_gpt_response
-#         )
-
-#     # Get the thread id for 'article_summarizer'
-#     # article_summarizer_thread_id = gpt_thread_manager.threads['article_summarizer']['id']
-#     random_article_content = "CNN — Wreaths, candles and calendars. These are sure signs of Advent for many Christian groups around the world. But what is Advent exactly? The word Advent derives from the Latin adventus, which means an arrival or visit. Advent is the beginning of the spiritual year for these churches, and it’s ob"
-
-#     replacements_dict = {
-#         "wordcount_short":config.wordcount_short,
-#         "wordcount_medium":config.wordcount_medium,
-#         "wordcount_long":config.wordcount_long
-#     }
-
-#     # get thread id
-#     article_summarizer_thread_id = gpt_thread_manager.threads['article_summarizer']['id']
-
-#     # article_summarizer - Add message to thread
-#     message_object = await gpt_response_manager.add_message_to_thread(
-#         thread_name='article_summarizer', 
-#         role='user', 
-#         message_content=random_article_content
-#     )
-#     print("Message object: ")
-#     print(message_object)
-
-# if __name__ == "__main__":
-
-#     import os
-#     import openai
-#     from models.task import AddMessageTask, CreateExecuteThreadTask
-
-#     # get loop
-#     loop = asyncio.get_event_loop()
-#     loop.run_until_complete(main())
-

@@ -9,9 +9,8 @@ from models.task import CreateExecuteThreadTask
 
 runtime_logger_level = 'INFO'
 class ExplanationService:
-    def __init__(self, config, gpt_thread_mgr, message_handler):
+    def __init__(self, config, task_manager, message_handler):
         self.config = config
-        self.gpt_thread_mgr = gpt_thread_mgr
         self.message_handler = message_handler
 
         self.logger = create_logger(
@@ -30,11 +29,9 @@ class ExplanationService:
         self.thread_name = 'explanationmsgs'
         self.assistant_name = 'explainer'
 
+        # NOTE: Why is this instantiated twice?
         #initialize the task manager
-        self.task_manager = TaskManager(
-            gpt_thread_mgr=self.gpt_thread_mgr, 
-            logger=self.logger
-            )
+        self.task_manager = task_manager
 
     async def explanation_start(self, message, *args):
         self.logger.info(f"Starting explanation, self.explanation_counter is at {self.explanation_counter} (of {self.explanation_max_counter})")
@@ -57,7 +54,7 @@ class ExplanationService:
                 self.logger.info(f"...setting newly requested explanation_max_counter to {self.explanation_max_counter}")
                 user_requested_explanation = ' '.join(args[1:])
             else:
-                self.logger.warning(f"...first argument is not numeric: {first_arg}")
+                self.logger.debug(f"...first argument is not numeric: {first_arg}")
 
                 #Check to make sure not empty string or empty inputs
                 if args == [''] or args == [' ']:
@@ -109,8 +106,6 @@ class ExplanationService:
                 tts_voice=self.current_story_voice
                 )
             self.logger.debug(f"...task to add to queue: {task.task_dict}")
-
-            # Add the bullet list to the thread via queue
             await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'explanation_start'")
             self.is_explanation_loop_active = True
 

@@ -86,16 +86,13 @@ class Bot(twitch_commands.Bot):
         # Initialize the GPTAssistantManager Classes
         self.gpt_assistant_manager = gpt_assistant_mgr
         
-        # Create thread manager, Assigning handle_tasks as the callback for when a task is ready
-        self.gpt_thread_mgr = gpt_thread_mgr
-        self.gpt_thread_mgr.on_task_ready = self.handle_tasks
-        self.loop.create_task(self.gpt_thread_mgr.task_scheduler())
-
         # Initialize the TaskManager
-        self.task_manager = TaskManager(
-            gpt_thread_mgr=self.gpt_thread_mgr,
-            logger=self.logger
-            )
+        self.task_manager = TaskManager()
+        self.task_manager.on_task_ready = self.handle_tasks
+        self.loop.create_task(self.task_manager.task_scheduler())
+
+        # Create thread manager, Assigning handle_tasks to the on_task_ready event
+        self.gpt_thread_mgr = gpt_thread_mgr
 
         # Create response manager
         self.gpt_response_manager = gpt_response_mgr
@@ -131,7 +128,7 @@ class Bot(twitch_commands.Bot):
         # Instantiate the explanation service
         self.explanation_service = ExplanationService(
             config=self.config,
-            gpt_thread_mgr=self.gpt_thread_mgr,
+            task_manager=self.task_manager,
             message_handler=self.message_handler
             )
 
@@ -359,12 +356,12 @@ class Bot(twitch_commands.Bot):
             thread_names=self.config.gpt_thread_names
             )
         
-        # # start newusers loop
-        # self.logger.debug(f"Starting newusers service")
-        # self.loop.create_task(self._send_message_to_new_users_task())
+        # start newusers loop
+        self.logger.debug(f"Starting newusers service")
+        self.loop.create_task(self._send_message_to_new_users_task())
 
-        # # send hello world message
-        # await self._send_hello_world_message()
+        # send hello world message
+        await self._send_hello_world_message()
         
     async def event_message(self, message):
 

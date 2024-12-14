@@ -11,12 +11,14 @@ class TaskManager:
         if description:
             self.logger.info(f"...{description} task completed.")
 
-    async def _add_task_to_queue(self, thread_name, task):
+    async def add_task_to_queue(self, thread_name, task):
         """Adds a task to the queue with logging."""
         self.logger.debug(f"Task to add to queue: {task.task_dict}")
-        await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+        async with self.task_queue_lock:
+            await self.task_queues[thread_name].put(task)
+            self.logger.debug(f"Queue size for thread '{thread_name}': {self.task_queues[thread_name].qsize()}")
 
     async def add_task_to_queue_and_execute(self, thread_name, task, description=""):
         """Adds a task to the queue and waits for its completion."""
-        await self._add_task_to_queue(thread_name, task)
+        await self.add_task_to_queue(thread_name, task)
         await self._wait_for_task_completion(task, description)

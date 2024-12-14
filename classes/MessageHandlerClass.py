@@ -6,7 +6,7 @@ import hashlib
 runtime_logger_level = 'INFO'
 
 class MessageHandler:
-    def __init__(self, gpt_thread_mgr, msg_history_limit):
+    def __init__(self, task_manager, msg_history_limit):
         self.logger = my_logging.create_logger(
             dirname='log', 
             logger_name='MessageHandlerClass',
@@ -19,7 +19,7 @@ class MessageHandler:
         self.config = ConfigManager.get_instance()
 
         # GPT Thread Manager
-        self.gpt_thread_mgr = gpt_thread_mgr
+        self.task_manager = task_manager
 
         # Message History Limit
         self.msg_history_limit = msg_history_limit
@@ -166,7 +166,7 @@ class MessageHandler:
          # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY FOR BOT RESPONSES, so we don't add bot messages to the message history)
         if message_metadata['message_author'] is not None and message_username != self.config.twitch_bot_username and message_metadata['name'] != "_unknown":
             task = AddMessageTask(thread_name, message_content_w_username, message_role)
-            await self.gpt_thread_mgr.add_task_to_queue(thread_name, task)
+            await self.task_manager.add_task_to_queue(thread_name, task)
             self.logger.info(f"Message author not the bot '{message_username}', message added to queue (thread: {thread_name})")
 
             # # Wait for the task to complete before continuing

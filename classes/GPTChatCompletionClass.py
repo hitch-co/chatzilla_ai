@@ -186,21 +186,17 @@ class GPTChatCompletion:
         prompt_listdict = [{'role': prompt_text_role, 'content': f'{prompt_text}'}]
         return prompt_listdict
     
-    def get_models(self):
-        """
-        Function to fetch the available models from the OpenAI API.
-
-        Args:
-            api_key (str): The API key for the OpenAI API.
-
-        Returns:
-            dict: The JSON response from the API containing the available models.
-        """
+    def get_models(self) -> dict:
         url = 'https://api.openai.com/v1/models'
         headers = {'Authorization': f'Bearer {self.config.openai_api_key}'}
-        response = requests.get(url, headers=headers)
 
-        return response.json()
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            self.logger.error(f"Failed to fetch models: {e}")
+            return {}
 
 if __name__ == '__main__':
     import time

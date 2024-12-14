@@ -5,7 +5,7 @@ from classes.MessageHandlerClass import MessageHandler
 from classes.BQUploaderClass import BQUploader
 from services.GPTTextToSpeechService import GPTTextToSpeech
 from classes.GPTAssistantManagerClass import GPTBaseClass, GPTThreadManager, GPTResponseManager, GPTAssistantManager
-
+from classes.GPTAssistantManagerClass import GPTFunctionCallManager
 import openai
 
 class DependencyInjector:
@@ -52,7 +52,16 @@ class DependencyInjector:
             max_waittime_for_gpt_response=self.config.magic_max_waittime_for_gpt_response
         )
         return gpt_response_mgr
-      
+    
+    def create_gpt_function_call_mgr(self, gpt_thread_manager, gpt_response_manager, gpt_assistant_manager):
+        gpt_function_call_mgr = GPTFunctionCallManager(
+            gpt_client=self.gpt_client,
+            gpt_thread_manager=gpt_thread_manager,
+            gpt_response_manager=gpt_response_manager,
+            gpt_assistant_manager=gpt_assistant_manager
+        )
+        return gpt_function_call_mgr
+
     def create_message_handler(self, gpt_thread_mgr):
         message_handler = MessageHandler(
             gpt_thread_mgr=gpt_thread_mgr,
@@ -69,6 +78,7 @@ class DependencyInjector:
         self.gpt_assistant_mgr = self.create_gpt_assistant_mgr()
         self.gpt_response_mgr = self.create_gpt_response_mgr(gpt_thread_manager=self.gpt_thread_mgr, gpt_assistant_manager = self.gpt_assistant_mgr)
         self.message_handler = self.create_message_handler(gpt_thread_mgr=self.gpt_thread_mgr)
+        self.gpt_function_call_mgr = self.create_gpt_function_call_mgr(gpt_thread_manager=self.gpt_thread_mgr, gpt_response_manager=self.gpt_response_mgr, gpt_assistant_manager=self.gpt_assistant_mgr)
 
 def main(yaml_filepath):
     from classes.ConfigManagerClass import ConfigManager

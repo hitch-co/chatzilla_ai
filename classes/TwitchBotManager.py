@@ -28,7 +28,7 @@ class TwitchBotManager:
         asyncio.set_event_loop(new_loop)
 
         # Instantiate and start the bot
-        bot = Bot(
+        Bot(
             config=self.config,
             gpt_client=self.dependencies.gpt_client,
             bq_uploader=self.dependencies.bq_uploader,
@@ -36,6 +36,7 @@ class TwitchBotManager:
             gpt_thread_mgr=self.dependencies.gpt_thread_mgr,
             gpt_assistant_mgr=self.dependencies.gpt_assistant_mgr,
             gpt_response_mgr=self.dependencies.gpt_response_mgr,
+            gpt_function_call_mgr=self.dependencies.gpt_function_call_mgr,
             message_handler=self.dependencies.message_handler,
             twitch_auth=twitch_auth
         ).run()

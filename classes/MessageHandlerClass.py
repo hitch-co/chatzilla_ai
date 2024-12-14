@@ -18,7 +18,7 @@ class MessageHandler:
         # Initialize config
         self.config = ConfigManager.get_instance()
 
-        # GPT Thread Manager
+        # GPT task Manager
         self.task_manager = task_manager
 
         # Message History Limit

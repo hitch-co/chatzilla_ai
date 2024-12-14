@@ -86,16 +86,13 @@ class Bot(twitch_commands.Bot):
         # Initialize the GPTAssistantManager Classes
         self.gpt_assistant_manager = gpt_assistant_mgr
         
+        # Initialize the TaskManager
+        self.task_manager = TaskManager()
+        self.task_manager.on_task_ready = self.handle_tasks
+        self.loop.create_task(self.task_manager.task_scheduler())
+
         # Create thread manager, Assigning handle_tasks to the on_task_ready event
         self.gpt_thread_mgr = gpt_thread_mgr
-        self.gpt_thread_mgr.on_task_ready = self.handle_tasks
-        self.loop.create_task(self.gpt_thread_mgr.task_scheduler())
-
-        # Initialize the TaskManager
-        self.task_manager = TaskManager(
-            gpt_thread_mgr=self.gpt_thread_mgr,
-            logger=self.logger
-            )
 
         # Create response manager
         self.gpt_response_manager = gpt_response_mgr
@@ -131,7 +128,7 @@ class Bot(twitch_commands.Bot):
         # Instantiate the explanation service
         self.explanation_service = ExplanationService(
             config=self.config,
-            gpt_thread_mgr=self.gpt_thread_mgr,
+            task_manager=self.task_manager,
             message_handler=self.message_handler
             )
 

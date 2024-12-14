@@ -173,9 +173,9 @@ class ConfigManager:
             raise
 
         try:
-            self.yaml_randomfact_conversation_director(yaml_config)
+            self.yaml_gpt_assistants_with_functions_config(yaml_config)
         except Exception as e:
-            self.logger.error(f"Error in yaml_randomfact_conversation_director(): {e}")
+            self.logger.error(f"Error in yaml_gpt_assistants_with_functions_config(): {e}")
             raise
 
         try:
@@ -271,6 +271,39 @@ class ConfigManager:
         self.gpt_assistants_config = yaml_config['gpt_assistants_config']
         self.assistant_response_max_length = yaml_config['openai-api']['assistant_response_max_length']
         self.gpt_assistants_suffix = yaml_config['gpt_assistants_suffix']
+
+    def yaml_gpt_assistants_with_functions_config(self, yaml_config):
+        """
+        Dynamically loads assistants with their instructions and JSON configurations from the YAML file.
+
+        Args:
+            yaml_config (dict): The parsed YAML configuration.
+
+        Returns:
+            list: A list of dictionaries containing the name, instructions, and JSON data for each assistant.
+        """
+        assistants_with_functions = []
+
+        for name, config in yaml_config.get('gpt_assistants_with_functions', {}).items():
+            instructions = config.get('instructions')
+            json_file_path = config.get('json_file_path')
+
+            try:
+                with open(json_file_path, 'r') as file:
+                    json_data = yaml.safe_load(file)
+
+                assistant_entry = {
+                    "name": name,
+                    "instructions": instructions,
+                    "json_schema": json_data
+                }
+
+                assistants_with_functions.append(assistant_entry)
+
+            except Exception as e:
+                self.logger.error(f"Error loading JSON for assistant '{name}' from '{json_file_path}': {e}")
+
+        self.gpt_assistants_with_functions_config = assistants_with_functions
 
     def yaml_gpt_thread_config(self, yaml_config):
         self.gpt_thread_names = yaml_config['gpt_thread_names']
@@ -408,16 +441,6 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Error in yaml_depinjector_config(): {e}")
 
-    def yaml_randomfact_conversation_director(self, yaml_config):
-        self.randomfact_conversation_director = yaml_config['gpt_thread_prompts']['conversation_director']
-        self.randomfact_conversation_director_json_path = yaml_config['gpt_thread_prompts']['conversation_director_json_filepath']
-
-        try:
-            with open(self.randomfact_conversation_director_json_path, 'r') as file:
-                self.randomfact_conversation_director_json = yaml.safe_load(file)
-        except Exception as e:
-            self.logger.error(f"Error in yaml_randomfact_conversation_director(): {e}")
-
     def yaml_randomfact_json(self, yaml_config):
         try:
             self.randomfact_sleeptime = yaml_config['chatforme_randomfacts']['randomfact_sleeptime']
@@ -517,6 +540,7 @@ if __name__ == "__main__":
     print(f"RANDOMFACT_TOPICS: {randomfact_topics}")
     print(f"RANDOMFACT_AREAS: {randomfact_areas}")
     
+    print(config.gpt_assistants_with_functions_config)
     print(config.randomfact_topics_json)
     print(config.randomfact_areas_json)
     print(config.randomfact_prompt)
@@ -526,6 +550,3 @@ if __name__ == "__main__":
     print(config.gpt_assistants_config)
     print(config.newusers_sleep_time)
     print(config.gpt_assistants_suffix)
-    print(config.randomfact_conversation_director)
-    print(config.randomfact_conversation_director_json_path)
-    print(config.randomfact_conversation_director_json)

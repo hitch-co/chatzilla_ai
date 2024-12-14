@@ -101,14 +101,6 @@ class TaskManager:
             raise ValueError("No task handler has been set. Unable to execute task.")
 
 if __name__ == '__main__':
-
-    #Logging
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-    logger = logging.getLogger(__name__)
-
-    #initialize TaskManager
     task_manager = TaskManager()
-
     print("loaded TaskManager.py")
 

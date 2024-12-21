@@ -115,7 +115,9 @@ class GPTFunctionCallManager(GPTBaseClass):
                                     "description": "Explain briefly why 'respond' or 'fact' was chosen, based on whether the bot was explicitly addressed, if the bot's input adds value, or if the context supports a neutral contribution."
                                 }
                             },
-                            "required": ["response_type", "reasoning"]
+                            "required": ["response_type", "reasoning"],
+                            "additionalProperties": False,
+                            "strict": True
                         }
                     }
                 }
@@ -524,16 +526,8 @@ class GPTResponseManager(GPTBaseClass):
     async def _get_response(self, thread_id, run_id, polling_seconds=3):
         """
         Asynchronously retrieves the response for a given thread and run ID.
-
-        Args:
-            thread_id (str): The ID of the thread.
-            run_id (str): The ID of the run.
-            polling_seconds (int): The interval in seconds between polling attempts. Default is 4 seconds.
-
-        Returns:
-            The response object once the status is 'completed'.
         """
-        counter=1
+        counter = 1
         while counter < self.max_waittime_for_gpt_response:
             response = self.gpt_client.beta.threads.runs.retrieve(
                 thread_id=thread_id,
@@ -544,10 +538,12 @@ class GPTResponseManager(GPTBaseClass):
                 self.logger.debug(response)
                 return response
             else:
-                self.logger.info(f"The 'response' object is not completed yet. Polling time: {counter*polling_seconds} seconds...")
-                counter+=polling_seconds
+                elapsed_time = counter * polling_seconds
+                self.logger.info(f"The 'response' object is not completed yet. Polling time: {elapsed_time} seconds...")
+                counter += 1
             await asyncio.sleep(polling_seconds)
-        raise ValueError(f"Response not completed after {counter*polling_seconds} seconds")
+
+        raise ValueError(f"Response not completed after {counter * polling_seconds} seconds")
 
     async def _run_and_get_assistant_response_thread_messages(
             self, 

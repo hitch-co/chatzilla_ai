@@ -558,7 +558,12 @@ class Bot(twitch_commands.Bot):
             self.logger.debug(f"...Selected user: {random_user_name} ({random_user_type})")
 
             # Get the user's chat history
-            if random_user_type == "returning":
+            #TODO:
+            # - Use FAISS for semantic similarity.
+            # - After you get the top-k messages, filter or rank them based on metadata stored in a separate Python dictionary or database.
+            # - Feed the filtered context (including user’s name, role, and timestamps) into your prompt.
+            # - Add instructions to your prompt telling the bot to "respond to a message you haven't addressed before," using the metadata you extracted to identify those messages.
+            if random_user_type == "returning" and self.config.flag_returning_users_service is True:
                 user_specific_chat_history = self.bq_uploader.fetch_user_chat_history_from_bq(
                     user_login=random_user_name,
                     interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
@@ -1348,7 +1353,7 @@ class Bot(twitch_commands.Bot):
                 response_data, response = await self.gpt_function_call_manager.execute_function_call(thread_name, assistant_name='conversationdirector')
                 response_type_result = response_data.get('response_type', 'fact')
             except Exception as e:
-                self.logger.error(f"Error occurred in 'randomfact_task'. Defaulting to 'fact': {e}")
+                self.logger.warning(f"Error occurred in 'randomfact_task'. Defaulting to 'fact': {e}")
                 response_type_result = 'fact'
 
             # Set the prompt based on the response type

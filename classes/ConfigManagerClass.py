@@ -330,6 +330,7 @@ class ConfigManager:
         self.tts_voice_newuser = yaml_config['openai-api']['tts_voice_newuser']
         self.tts_voice_default = yaml_config['openai-api']['tts_voice_default']
         self.tts_voice_vibecheck = yaml_config['openai-api']['tts_voice_vibecheck']
+        self.flag_returning_users_service = yaml_config['flag_returning_users_service']
 
     def yaml_vibecheck_config(self, yaml_config):
         try:

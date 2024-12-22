@@ -4,6 +4,7 @@ import json
 from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed
 from collections import defaultdict
 from typing import Dict, List, Callable
+import requests
 
 from my_modules.my_logging import create_logger
 
@@ -41,6 +42,18 @@ class GPTBaseClass:
             print("did a create")
         def delete():
             print("did a delete")
+
+    def get_models(self) -> dict:
+        url = 'https://api.openai.com/v1/models'
+        headers = {'Authorization': f'Bearer {self.yaml_data.openai_api_key}'}
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            self.logger.error(f"Failed to fetch models: {e}")
+            return {}
 
 class GPTFunctionCallManager(GPTBaseClass):
     """

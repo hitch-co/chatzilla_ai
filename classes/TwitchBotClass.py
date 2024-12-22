@@ -17,7 +17,6 @@ from classes.TwitchAPI import TwitchAPI
 
 # from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
-from classes.GPTChatCompletionClass import GPTChatCompletion
 from classes.TaskManagerClass import TaskManager
 
 from services.VibecheckService import VibeCheckService
@@ -77,12 +76,6 @@ class Bot(twitch_commands.Bot):
         # Initialize the FAISSService
         self.faiss_service = FAISSService()
 
-        # Initialize the GPTChatCompletion class
-        self.gpt_chatcompletion = GPTChatCompletion(
-            gpt_client=self.gpt_client,
-            yaml_data=self.config
-            )
-        
         # Initialize the GPTAssistantManager Classes
         self.gpt_assistant_manager = gpt_assistant_mgr
         

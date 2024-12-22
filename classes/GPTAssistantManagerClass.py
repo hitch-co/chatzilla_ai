@@ -76,7 +76,7 @@ class GPTFunctionCallManager(GPTBaseClass):
         # Initialize thread-specific locks
         self.thread_run_locks = defaultdict(asyncio.Lock)
 
-    async def execute_function_call(self, thread_name: str, assistant_name: str):
+    async def execute_function_call(self, thread_name: str, assistant_name: str, get_response=False):
         """
         Executes the function call workflow for the specified thread.
 
@@ -84,17 +84,24 @@ class GPTFunctionCallManager(GPTBaseClass):
             thread_name (str): The name of the thread containing the chat history.
 
         Returns:
-            str: The final response from the assistant.
+            str: The final response from the assistant and the output data.
         """
-        thread_id = self.gpt_thread_manager.threads[thread_name]['id']
 
-        # Retrieve the assistant ID by name
-        assistant_entry = self.gpt_assistant_manager.assistants.get(assistant_name)
+        # Retrieve the thread/assistant ID by name
+        try:
+            thread_id = self.gpt_thread_manager.threads[thread_name]['id']
+            assistant_entry = self.gpt_assistant_manager.assistants.get(assistant_name)
+            assistant_id = assistant_entry['id']
+        except KeyError:
+            self.logger.error("Thread or assistant not found.")
+            raise ValueError("Thread or assistant not found.")
+        
         if not assistant_entry:
             self.logger.error(f"Assistant '{assistant_name}' not found.")
             raise ValueError(f"Assistant '{assistant_name}' not found.")
-
-        assistant_id = assistant_entry['id']
+        if not thread_id:
+            self.logger.error(f"Thread '{thread_name}' not found.")
+            raise ValueError(f"Thread '{thread_name}' not found.")
 
         async with self.thread_run_locks[thread_name]:
             try:
@@ -142,27 +149,41 @@ class GPTFunctionCallManager(GPTBaseClass):
                     tools = [function_schema]
                 )
 
+            except Exception as e:
+                self.logger.error(f"Error starting run for thread '{thread_name}': {e}")
+
+            try:
                 # Poll the run status manually until it's complete
                 while run.status in ['queued', 'in_progress']:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(2)
                     run = self.gpt_client.beta.threads.runs.retrieve(
                         thread_id=thread_id,
                         run_id=run.id
                     )
+            except Exception as e:
+                self.logger.error(f"Error polling run status for thread '{thread_name}': {e}")
 
-                    self.logger.info('---------------------')
-                    self.logger.info('---------------------')
-                    self.logger.info('---------------------')
-                    self.logger.info(f"Run created with status: {run.status}")
-                    self.logger.info('---------------------')
-                    self.logger.info('---------------------')
-                    self.logger.info('---------------------')
 
+                # Chedck if status is not in one of the all run states and log the status
+                if run.status not in ['queued', 'in_progress', 'completed', 'failed', 'requires_action']:
+                    self.logger.warning(f"...Run status is not in one of the expected states: {run.status}")
+                else:
+                    self.logger.debug('---------------------')
+                    self.logger.debug('---------------------')
+                    self.logger.debug('---------------------')
+                    self.logger.debug(f"...Run created with status: {run.status}")
+                    self.logger.debug('---------------------')
+                    self.logger.debug('---------------------')
+                    self.logger.debug('---------------------')
+
+            try:
                 # Check if the run completed and then handle the response
                 if run.status == 'completed':
                     messages = self.gpt_client.beta.threads.messages.list(thread_id=thread_id)
                     final_response = self._extract_latest_response_from_thread_messages(messages)
-                    self.logger.info(f"Final response: {final_response}")
+                    self.logger.info(f"...Status is completed. Final response: {final_response}")
+                    self.logger.info(f"...Final response: {final_response}")
+                    self.logger.info(f"...Output data: {run.output_data}")
                     return None, final_response
 
                 # Check if the run failed
@@ -173,19 +194,29 @@ class GPTFunctionCallManager(GPTBaseClass):
 
                 # Handle function calls if the run requires action
                 if run.status == 'requires_action':
+
+                    # Handle the required action and get the final response
                     tool_outputs, output_data = await self._handle_required_action(run)
-                    run = await self._cancel_run(thread_id, run.id) 
+                    self.logger.info(f"Tool outputs: {tool_outputs}")
 
-                # Retrieve and return the final response
-                messages = self.gpt_client.beta.threads.messages.list(thread_id=thread_id)
-                final_response = self._extract_latest_response_from_thread_messages(messages)
-                
-                self.logger.debug(f"Final response (not used in app, just a normal part of the function): {final_response}")
+                    if get_response:
+                        # Submit the tool outputs and wait for the run to complete
+                        run = await self._submit_tool_outputs(thread_id, run.id, tool_outputs)
+
+                        messages = self.gpt_client.beta.threads.messages.list(thread_id=thread_id)
+                        final_response = self._extract_latest_response_from_thread_messages(messages)
+                        self.logger.info(f"Final response (get_response is {get_response}): {final_response}")
+
+                    else:
+                        run = await self._cancel_run(thread_id, run.id) 
+                        final_response = None
+                    
+                self.logger.info(f"Output data: {output_data}")
+                self.logger.info(f"Final response: {final_response}")
                 return output_data, final_response
-
+            
             except Exception as e:
-                self.logger.error(f"Error executing function call: {e}")
-                raise
+                self.logger.error(f"Error handling function call: {e}")
 
     async def _wait_for_run_completion(self, thread_id, run_id):
         """Waits for a specific run to complete."""
@@ -269,6 +300,7 @@ class GPTFunctionCallManager(GPTBaseClass):
 
             # Poll the status of the run
             while run.status in ['queued', 'in_progress', 'requires_action']:
+                self.logger.info(f"Run status not completed: {run.status}")
                 await asyncio.sleep(1)
                 run = self.gpt_client.beta.threads.runs.retrieve(
                     thread_id=thread_id,
@@ -391,6 +423,32 @@ class GPTAssistantManager(GPTBaseClass):
         self.logger.debug(assistant)
         return assistant
 
+    def create_assistants(self, assistants_config: dict) -> dict:
+        # Create Assistants
+        replacements_dict = {
+            "wordcount_short":self.yaml_data.wordcount_short,
+            "wordcount_medium":self.yaml_data.wordcount_medium,
+            "wordcount_long":self.yaml_data.wordcount_long,
+            "vibecheckee_username": 'chad',
+            "vibecheck_message_wordcount": self.yaml_data.vibechecker_message_wordcount,
+        }
+
+        self.logger.info('Creating GPT Assistants')
+
+        # Get suffix one from assistants_config
+        gpt_assistants_suffix = self.yaml_data.gpt_assistants_suffix
+
+        for assistant_name, prompt in assistants_config.items():
+            final_prompt = prompt + gpt_assistants_suffix
+            self._create_assistant(
+                assistant_name=assistant_name,
+                assistant_instructions=final_prompt,
+                replacements_dict=replacements_dict,
+                assistant_type='code_interpreter',
+                assistant_model=self.yaml_data.gpt_model
+            )        
+        return self.assistants
+
     def _create_assistant_with_function(self, assistant_name, instructions, parameters_schema):
         """
         Creates an assistant with the get_bot_response function schema.
@@ -441,32 +499,6 @@ class GPTAssistantManager(GPTBaseClass):
                 self.logger.error(f"Error creating assistant '{name}': {e}")
 
         self.logger.info(f"Current assistants: {list(self.assistants.keys())}")
-        return self.assistants
-
-    def create_assistants(self, assistants_config: dict) -> dict:
-        # Create Assistants
-        replacements_dict = {
-            "wordcount_short":self.yaml_data.wordcount_short,
-            "wordcount_medium":self.yaml_data.wordcount_medium,
-            "wordcount_long":self.yaml_data.wordcount_long,
-            "vibecheckee_username": 'chad',
-            "vibecheck_message_wordcount": self.yaml_data.vibechecker_message_wordcount,
-        }
-
-        self.logger.info('Creating GPT Assistants')
-
-        # Get suffix one from assistants_config
-        gpt_assistants_suffix = self.yaml_data.gpt_assistants_suffix
-
-        for assistant_name, prompt in assistants_config.items():
-            final_prompt = prompt + gpt_assistants_suffix
-            self._create_assistant(
-                assistant_name=assistant_name,
-                assistant_instructions=final_prompt,
-                replacements_dict=replacements_dict,
-                assistant_type='code_interpreter',
-                assistant_model=self.yaml_data.gpt_model
-            )        
         return self.assistants
 
 class GPTThreadManager(GPTBaseClass):
@@ -761,53 +793,67 @@ async def main():
 
     # Initialize the thread manager and assistant manager and response manager
     assistant_manager = GPTAssistantManager(gpt_client)
-    assistant_manager.create_assistants_with_functions(config.gpt_assistants_with_functions_config)
-
     thread_manager = GPTThreadManager(gpt_client)
     response_manager = GPTResponseManager(gpt_client, thread_manager, assistant_manager)
-
-    # Create a thread named 'chatformemsgs' if it doesn't already exist
-    thread_name = "chatformemsgs"
-    thread_manager.create_threads([thread_name])
-
-    # Initialize the function call manager
     function_call_manager = GPTFunctionCallManager(gpt_client, thread_manager, response_manager, assistant_manager)
 
-    # print
-    print("Initialized the thread manager and function call manager.")
+    # Create an assistant and thread if it doesn't already exist
+    thread_name = "conversationdirector"
+    assistant_manager.create_assistants_with_functions(config.gpt_assistants_with_functions_config)
+    thread_manager.create_threads([thread_name])
 
-    # Add some messages to the thread that imitate a Twitch stream conversation
-    messages = [
-        {"role": "user", "content": "Hey everyone, what's up?"},
-        {"role": "user", "content": "Did you guys see that epic fail earlier? 😂"},
-        {"role": "user", "content": "Can anyone explain how the scoring works in this game?"},
-        {"role": "user", "content": "yeah it's 1 and then 2 and then 3 and so on..."},
-        {"role": "user", "content": "This stream is awesome, love the community here!"},
-        {"role": "user", "content": "What do you think bot!"},
-    ]
+    # ######################################
+    # # TEST 1: Add messages to the thread
+    # # Add some messages to the thread that imitate a Twitch stream conversation
+    # messages = [
+    #     {"role": "user", "content": "Hey everyone, what's up?"},
+    #     {"role": "user", "content": "Did you guys see that epic fail earlier? 😂"},
+    #     {"role": "user", "content": "Can anyone explain how the scoring works in this game?"},
+    #     {"role": "user", "content": "yeah it's 1 and then 2 and then 3 and so on..."},
+    #     {"role": "user", "content": "This stream is awesome, love the community here!"},
+    #     {"role": "user", "content": "What do you think bot!"},
+    # ]
 
-    # Add messages to the thread
-    for msg in messages:
-        await response_manager.add_message_to_thread(
-            message_content=msg["content"],
-            thread_name=thread_name,
-            role=msg["role"]
+    # # Add messages to the thread
+    # for msg in messages:
+    #     await response_manager.add_message_to_thread(
+    #         message_content=msg["content"],
+    #         thread_name=thread_name,
+    #         role=msg["role"]
+    #     )
+    # print("Messages added to the thread.")
+
+    # ######################################
+    # # TEST 2: Execute the function call on the thread and get the assistant's response
+    # # Execute the function call on the thread and get the assistant's response
+    # output_data, response = await function_call_manager.execute_function_call(thread_name, assistant_name='conversationdirector')
+    
+    # # Print out the messages from the thread
+    # thread_id = thread_manager.threads[thread_name]['id']
+    # messages = gpt_client.beta.threads.messages.list(thread_id=thread_id)
+    # print("Messages in the thread:")
+    # for message in messages.data:     
+    #     print(f"Message: {message.content[0].text.value} ({message.role})")
+
+    # # Print the final response from the assistant
+    # print(f"output_data: {output_data}")
+    # print(f"Assistant's Response: {response}")
+
+    ######################################
+    # TEST 3: Now try to create_assistants
+    assistant_manager.create_assistants(config.gpt_assistants_config)
+
+    ######################################
+    # TEST 4 (requires TEST#3): Try to use function call manager to execute a function call
+    thread_name = "conversationdirector"
+    assistant_name = "conversationdirector"
+    output_data, response = await function_call_manager.execute_function_call(
+        thread_name, 
+        assistant_name, 
+        get_response=False
         )
-    print("Messages added to the thread.")
-
-    # Execute the function call on the thread and get the assistant's response
-    output_data, response = await function_call_manager.execute_function_call(thread_name, assistant_name='conversationdirector')
-
-    # Print the final response from the assistant
     print(f"output_data: {output_data}")
     print(f"Assistant's Response: {response}")
-    
-    # Print out the messages from the thread
-    thread_id = thread_manager.threads[thread_name]['id']
-    messages = gpt_client.beta.threads.messages.list(thread_id=thread_id)
-    print("Messages in the thread:")
-    for message in messages.data:     
-        print(f"Message: {message.content[0].text.value} ({message.role})")
 
 # Run the async main function
 if __name__ == "__main__":

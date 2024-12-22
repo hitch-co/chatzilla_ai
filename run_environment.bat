@@ -33,7 +33,7 @@ cd "!TWITCH_BOT_ROOT_DIRECTORY!" || (
 echo ...current directory: %cd%
 
 :: Activate Conda environment
-call "C:\Users\Admin\Miniconda3\condabin\conda.bat" activate faiss_test
+call "C:\Users\Admin\Miniconda3\condabin\conda.bat" activate openai_test_env
 
 :: Set configuration path
 set "BOT_USER_CONFIG_PATH=.\config\bot_user_configs\!APP_BOT_USER_YAML!"

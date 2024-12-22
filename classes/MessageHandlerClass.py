@@ -125,6 +125,7 @@ class MessageHandler:
             self.logger.debug(message_rawdata)
             return message_extracted_name
 
+    # Could be it's own "message" class as this represents a single message object
     def _create_gpt_message_dict_from_strings(
             self,
             content,

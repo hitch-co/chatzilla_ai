@@ -63,8 +63,6 @@ class ConfigManager:
         self.logger.debug(f".env filepath: {self.env_file_directory}/{self.env_file_name}")
         self.logger.debug(f".yaml filepath: {self.app_config_dirpath}")
         self.logger.debug(f"self.keys_dirpath: {self.keys_dirpath}")
-        self.logger.debug(f"self.google_application_credentials_file: {self.google_application_credentials_file}")
-        self.logger.debug(f"self.twitch_bot_redirect_path: {self.twitch_bot_redirect_path}")
         self.logger.debug(f"self.twitch_bot_gpt_hello_world: {self.twitch_bot_gpt_hello_world}")
 
     def load_yaml_config(self, yaml_full_path):
@@ -236,7 +234,7 @@ class ConfigManager:
     def yaml_gcp_config(self, yaml_config):
         try:
             self.keys_dirpath = yaml_config['keys_dirpath']
-            self.google_service_account_credentials_file = yaml_config['twitch-ouat']['google_service_account_credentials_file']
+            self.google_service_account_credentials_file = yaml_config['google_service_account_credentials_file']
 
             os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(
                 self.keys_dirpath, 
@@ -260,9 +258,9 @@ class ConfigManager:
 
     def yaml_gpt_config(self, yaml_config):
         try:
-            self.wordcount_short = str(yaml_config['wordcounts']['short']) #2024-06-09: shouldn't these be captured as ints and typecasted when used?
-            self.wordcount_medium = str(yaml_config['wordcounts']['medium'])
-            self.wordcount_long = str(yaml_config['wordcounts']['long'])
+            self.wordcount_short = str(yaml_config['chatbot_config']['wordcounts']['short']) #2024-06-09: shouldn't these be captured as ints and typecasted when used?
+            self.wordcount_medium = str(yaml_config['chatbot_config']['wordcounts']['medium'])
+            self.wordcount_long = str(yaml_config['chatbot_config']['wordcounts']['long'])
             self.magic_max_waittime_for_gpt_response = int(yaml_config['openai-api']['magic_max_waittime_for_gpt_response'])
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_config(): {e}")
@@ -355,9 +353,9 @@ class ConfigManager:
             self.twitch_bot_username = yaml_config['twitch-app']['twitch_bot_username']
             self.twitch_bot_display_name = yaml_config['twitch-app']['twitch_bot_display_name']
             self.twitch_bot_moderators = yaml_config['twitch-app']['twitch_bot_moderators']
-            self.num_bot_responses = yaml_config['num_bot_responses']
+            self.num_bot_responses = yaml_config['chatforme_randomfacts']['num_bot_responses']
             self.twitch_bot_operatorname = yaml_config['twitch-app']['twitch_bot_operatorname']
-            self.msg_history_limit = yaml_config['msg_history_limit']
+            self.msg_history_limit = yaml_config['chatbot_config']['msg_history_limit']
 
         except Exception as e:
             self.logger.error(f"Error in yaml_twitchbot_config(): {e}")
@@ -373,7 +371,6 @@ class ConfigManager:
             # GPT Hello World Vars:
             self.gpt_hello_world = self.gpt_hello_world = True if os.getenv('gpt_hello_world') == 'True' else False
             self.hello_assistant_prompt = yaml_config['formatted_gpt_helloworld_prompt']
-            self.helloworld_message_wordcount = yaml_config['helloworld_message_wordcount']
         except Exception as e:
             self.logger.error(f"Error in yaml_helloworld_config(): {e}")
 
@@ -405,7 +402,7 @@ class ConfigManager:
     
         try:
             # News Article Feed/Prompts
-            self.newsarticle_rss_feed = yaml_config['twitch-ouat']['newsarticle_rss_feed']
+            self.newsarticle_rss_feed = yaml_config['ouat_storyteller']['newsarticle_rss_feed']
             self.story_article_bullet_list_summary_prompt = yaml_config['gpt_thread_prompts']['story_article_bullet_list_summary_prompt'] 
             self.story_user_opening_scene_summary_prompt = yaml_config['gpt_thread_prompts']['story_user_opening_scene_summary_prompt']
 
@@ -420,8 +417,8 @@ class ConfigManager:
             self.aboutme_prompt = yaml_config['gpt_thread_prompts']['aboutme_prompt']
 
             # OUAT Progression flow / Config
-            self.ouat_message_recurrence_seconds = yaml_config['ouat_message_recurrence_seconds']
-            self.ouat_story_max_counter_default = yaml_config['ouat_story_max_counter_default']
+            self.ouat_message_recurrence_seconds = yaml_config['ouat_storyteller']['ouat_message_recurrence_seconds']
+            self.ouat_story_max_counter_default = yaml_config['ouat_storyteller']['ouat_story_max_counter_default']
             self.ouat_story_progression_number = set_story_progression_number(self.ouat_story_max_counter_default)
             self.ouat_story_climax_number = set_story_climax_number(self.ouat_story_max_counter_default, self.ouat_story_progression_number)
             self.ouat_story_finisher_number = set_story_finisher_number(self.ouat_story_max_counter_default, self.ouat_story_climax_number)
@@ -502,9 +499,9 @@ class ConfigManager:
 
             self.keys_dirpath = yaml_config['keys_dirpath']
 
-            self.google_application_credentials_file = yaml_config['twitch-ouat']['google_service_account_credentials_file']
-            self.talkzillaai_userdata_table_id = yaml_config['twitch-ouat']['talkzillaai_userdata_table_id']
-            self.talkzillaai_usertransactions_table_id = yaml_config['twitch-ouat']['talkzillaai_usertransactions_table_id']
+            self.google_application_credentials_file = yaml_config['google_service_account_credentials_file']
+            self.talkzillaai_userdata_table_id = yaml_config['talkzillaai_userdata_table_id']
+            self.talkzillaai_usertransactions_table_id = yaml_config['talkzillaai_usertransactions_table_id']
             
             self.twitch_bot_redirect_path = yaml_config['twitch-app']['twitch_bot_redirect_path']
             self.twitch_bot_scope = yaml_config['twitch-app']['twitch_bot_scope']

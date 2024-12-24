@@ -55,27 +55,27 @@ class TaskManager:
 
             task_processed = False
 
-            self.logger.info("Task Queue Status:")
+            self.logger.info("...Task Queue Status:")
             for thread_name, queue in task_queues_snapshot:
-                self.logger.info(f"Thread: {thread_name}, Queue Size: {queue.qsize()}, Pending Tasks: {queue._unfinished_tasks}")
+                self.logger.info(f"...Thread: {thread_name}, Queue Size: {queue.qsize()}, Pending Tasks: {queue._unfinished_tasks}")
 
             for thread_name, queue in task_queues_snapshot:
                 if not queue.empty():
                     try:
                         task = await queue.get()
-                        self.logger.info(f"...task found in queue '{thread_name}' (type: {task.task_dict.get('type')})...")
+                        self.logger.info(f"...Task found in queue '{thread_name}' (type: {task.task_dict.get('type')})...")
                         
                         await self._process_task(task)
                         task_processed = True
                     
                     except Exception as e:
-                        self.logger.error(f"Error processing task (type: {task.task_dict.get('type')}): {e}", exc_info=True)
+                        self.logger.error(f"...Error processing task (type: {task.task_dict.get('type')}): {e}", exc_info=True)
                     
                     finally:
                         queue.task_done()
 
             if not task_processed:
-                self.logger.info("No tasks found in queues. Waiting for new tasks...")
+                self.logger.info("...No tasks found in queues. Waiting for new tasks...")
                 await asyncio.sleep(sleep_time)
 
     async def _process_task(self, task: object):
@@ -84,13 +84,13 @@ class TaskManager:
         and any other pre-processing steps needed before the task is handled.
         """
         self.logger.info(f"...processing task type '{task.task_dict.get('type')}' with thread_name: '{task.task_dict.get('thread_name')}'")
-        self.logger.debug(f"Task details: {task.task_dict}")
+        self.logger.debug(f"...Task details: {task.task_dict}")
 
         # Basic validation to ensure necessary fields are present
         if not task.task_dict.get('type') or not task.task_dict.get('thread_name'):
             self.logger.error("...Task missing required fields. Task will be skipped.")
             self.logger.error(f"...Invalid task: {task.task_dict}")
-            raise ValueError("Task missing required fields. Task will be skipped.")
+            raise ValueError("...Task missing required fields. Task will be skipped.")
 
         # Check if the on_task_ready callback is set (probably handle_tasks()) and invoke it to handle the task execution
         if self.on_task_ready:

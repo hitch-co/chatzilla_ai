@@ -125,10 +125,11 @@ class GPTFunctionCallManager(GPTBaseClass):
                     await self._wait_for_run_completion(thread_id, active_run.id)
 
                 # Start the new run
+                wrapped_function_schema = [function_schema]
                 run = self.gpt_client.beta.threads.runs.create(
                     thread_id=thread_id,
                     assistant_id=assistant_id,
-                    tools = [function_schema]
+                    tools = wrapped_function_schema
                 )
 
             except Exception as e:
@@ -425,22 +426,15 @@ class GPTAssistantManager(GPTBaseClass):
             )        
         return self.assistants
 
-    def _create_assistant_with_function(self, assistant_name, instructions, parameters_schema):
+    def _create_assistant_with_function(self, assistant_name, instructions, function_schema):
         """
         Creates an assistant with the get_bot_response function schema.
         """
-
-        # Define the function schema using the parameters from YAML data
-        function_schema = {
-            "name": assistant_name,
-            "description": instructions,
-            "parameters": parameters_schema
-        }
-
+        tool = [function_schema]
         assistant = self.gpt_client.beta.assistants.create(
             name=assistant_name,
             instructions=instructions,
-            tools=[{"type": "function", "function": function_schema}],
+            tools=tool,
             model=self.yaml_data.gpt_model
         )
 
@@ -472,7 +466,7 @@ class GPTAssistantManager(GPTBaseClass):
                 self._create_assistant_with_function(
                     assistant_name=name,
                     instructions=instructions,
-                    parameters_schema=json_schema
+                    function_schema=json_schema
                 )
                 self.logger.info(f"Assistant '{name}' created successfully.")
             except Exception as e:

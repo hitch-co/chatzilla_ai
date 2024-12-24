@@ -1319,6 +1319,7 @@ class Bot(twitch_commands.Bot):
         return "\n".join(formatted_messages)
             
     async def randomfact_task(self):
+        function_schema = self.config.function_schemas['conversationdirector']
         while True:
             await adjustable_sleep_task.adjustable_sleep_task(self.config, 'randomfact_sleeptime')
 
@@ -1340,8 +1341,13 @@ class Bot(twitch_commands.Bot):
 
             # Execute the function call and handle exceptions gracefully
             try:
-                response_data, response = await self.gpt_function_call_manager.execute_function_call(thread_name, assistant_name='conversationdirector')
+                response_data, response = await self.gpt_function_call_manager.execute_function_call(
+                    thread_name=thread_name, 
+                    assistant_name='conversationdirector',
+                    function_schema=function_schema
+                    )
                 response_type_result = response_data.get('response_type', 'fact')
+
             except Exception as e:
                 self.logger.warning(f"Error occurred in 'randomfact_task'. Defaulting to 'fact': {e}")
                 response_type_result = 'fact'

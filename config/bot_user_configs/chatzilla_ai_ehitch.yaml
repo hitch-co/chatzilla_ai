@@ -307,11 +307,14 @@ gpt_assistants_config:
     comment."
   newuser_shoutout: "You are a bot designed to welcome new users to the chat."
 
+# NOTE: If you create an additional assistant, you will need to omit the function call or create a 
+#  new function/map the function for the new assistant
 gpt_assistants_with_functions:
-  conversationdirector: 
-    instructions: 
-      You are a control flow system. You must **always** use the provided function to determine if a chatbot should engage directly in a Twitch chat or provide a neutral fact. Do not generate any text responses; use the function call exclusively.
-    json_file_path: "./config/conversation_director_response_format.json"
+  function_call_schema_file_path: "./config/gpt_function_call_schemas.json"
+  assistants:
+    conversationdirector: 
+      instructions: 
+        You are a control flow system. You must **always** use the provided function to determine if a chatbot should engage directly in a Twitch chat or provide a neutral fact. Do not generate any text responses; use the function call exclusively.
 
 gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
   Unless stated otherwise, responses have a maximum length of 25 words. Don't 

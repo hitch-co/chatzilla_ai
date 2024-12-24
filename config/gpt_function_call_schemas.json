@@ -1,0 +1,37 @@
+{
+    "conversationdirector": {
+        "name": "conversationdirector",
+        "description": "You are a control flow system. You must **always** use the provided function to determine if a chatbot should engage directly in a Twitch chat or provide a neutral fact. Do not generate any text responses; use the function call exclusively.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "response_type": {
+                    "type": "string",
+                    "enum": ["respond", "fact"],
+                    "description": "Decide if the bot should engage in the conversation ('respond') or contribute a neutral fact ('fact'). Default to 'fact' unless: the bot is explicitly mentioned, the bot's input adds significant value, or the bot is clearly being addressed. If unsure, or if the bot was the last speaker and no one responded, default to 'fact'."
+                },
+                "reasoning": {
+                    "type": "string",
+                    "description": "Explain briefly why 'respond' or 'fact' was chosen, based on whether the bot was explicitly addressed, if the bot's input adds value, or if the context supports a neutral contribution."
+                }
+            },
+            "required": ["response_type", "reasoning"],
+            "additionalProperties": false
+        }
+    },
+    "anotherFunction": {
+        "name": "anotherFunction",
+        "description": "Another function schema description.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "example_parameter": {
+                    "type": "string",
+                    "description": "Example parameter for another function."
+                }
+            },
+            "required": ["example_parameter"],
+            "additionalProperties": false
+        }
+    }
+}

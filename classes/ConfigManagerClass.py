@@ -1,8 +1,10 @@
 import os
 import yaml
 import dotenv
+import json
 
 from my_modules.my_logging import create_logger
+from my_modules import utils
 
 runtime_logger_level = 'DEBUG'
 
@@ -280,28 +282,33 @@ class ConfigManager:
         Returns:
             list: A list of dictionaries containing the name, instructions, and JSON data for each assistant.
         """
-        assistants_with_functions = []
 
-        for name, config in yaml_config.get('gpt_assistants_with_functions', {}).items():
-            instructions = config.get('instructions')
-            json_file_path = config.get('json_file_path')
+        self.gpt_assistants_with_functions_config = []
 
+        # Load the function schemas from the JSON file
+        self.function_schemas_path = yaml_config['gpt_assistants_with_functions']['function_call_schema_file_path']
+        self.function_schemas = utils.load_json(path_or_dir=self.function_schemas_path)
+
+        gpt_assistants_config = yaml_config.get('gpt_assistants_with_functions', {})
+        assistants_dict = gpt_assistants_config.get('assistants', {})
+
+        for name, instructions in assistants_dict.items():
+            instructions = instructions.get('instructions')
+            function_schema = self.function_schemas[name]
+            self.logger.info(f'name: {name}')
+            self.logger.info(f'instructions: {instructions}')
+            self.logger.info(f'function_schema: {function_schema}')
+            
             try:
-                with open(json_file_path, 'r') as file:
-                    json_data = yaml.safe_load(file)
-
                 assistant_entry = {
                     "name": name,
                     "instructions": instructions,
-                    "json_schema": json_data
+                    "json_schema": function_schema
                 }
-
-                assistants_with_functions.append(assistant_entry)
+                self.gpt_assistants_with_functions_config.append(assistant_entry)
 
             except Exception as e:
-                self.logger.error(f"Error loading JSON for assistant '{name}' from '{json_file_path}': {e}")
-
-        self.gpt_assistants_with_functions_config = assistants_with_functions
+                self.logger.error(f"Error in yaml_gpt_assistants_with_functions_config(): {e}")
 
     def yaml_gpt_thread_config(self, yaml_config):
         self.gpt_thread_names = yaml_config['gpt_thread_names']

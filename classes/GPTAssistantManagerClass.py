@@ -77,7 +77,13 @@ class GPTFunctionCallManager(GPTBaseClass):
         # Initialize thread-specific locks
         self.thread_run_locks = defaultdict(asyncio.Lock)
 
-    async def execute_function_call(self, thread_name: str, assistant_name: str, get_response=False):
+    async def execute_function_call(
+            self,
+            thread_name: str, 
+            assistant_name: str, 
+            function_schema: json, 
+            get_response=False
+            ):
         """
         Executes the function call workflow for the specified thread.
 
@@ -483,6 +489,10 @@ class GPTAssistantManager(GPTBaseClass):
             name = assistant_entry["name"]
             instructions = assistant_entry["instructions"]
             json_schema = assistant_entry["json_schema"]
+            self.logger.debug(f'Creating assistant with function: {name}')
+            self.logger.debug(f'Instructions: {instructions}')
+            self.logger.debug(f"Json Schema Type: {type(json_schema)}")
+            self.logger.debug(f'JSON Schema: {json_schema}')
 
             try:
                 self._create_assistant_with_function(
@@ -792,11 +802,6 @@ async def main():
     thread_manager = GPTThreadManager(gpt_client)
     response_manager = GPTResponseManager(gpt_client, thread_manager, assistant_manager)
     function_call_manager = GPTFunctionCallManager(gpt_client, thread_manager, response_manager, assistant_manager)
-
-    # Create an assistant and thread if it doesn't already exist
-    thread_name = "conversationdirector"
-    assistant_manager.create_assistants_with_functions(config.gpt_assistants_with_functions_config)
-    thread_manager.create_threads([thread_name])
 
     # ######################################
     # # TEST 1: Add messages to the thread

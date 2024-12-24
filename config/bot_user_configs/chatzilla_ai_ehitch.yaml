@@ -1,6 +1,22 @@
 #########################
 #########################
 
+#CONFIG (cloud)
+env_filename: 'config.env'
+env_dirname: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config'
+keys_dirpath: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\keys'
+google_service_account_credentials_file: 'eh-talkzilla-ai-1bcb1963d5b4.json'
+
+#CONFIG (local)
+app_config_dirpath: '.\config'
+
+#CONFIG (bigquery)
+talkzillaai_userdata_table_id: 'eh-talkzilla-ai.TalkzillaAI_UserData.users'
+talkzillaai_usertransactions_table_id: 'eh-talkzilla-ai.TalkzillaAI_UserData.user_interactions'
+
+# File Paths
+spellcheck_commands_filename: '.\config\command_spellcheck_terms.json'
+
 #Flask App
 twitch-app:
   twitch_bot_gpt_hello_world: True
@@ -15,16 +31,6 @@ twitch-bots:
   chatforme: ['chatzilla_ai'] #['chatzilla_ai', 'cirenexus']
   onceuponatime: ['chatzilla_ai'] #['chatzilla_ai', 'cirenexus']
   vibecheck: ['chatzilla_ai'] #['chatzilla_ai', 'cirenexus']
-
-#CONFIG
-env_filename: 'config.env'
-env_dirname: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config'
-app_config_dirpath: '.\config'
-keys_dirpath: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\keys'
-
-
-
-spellcheck_commands_filename: 'config\command_spellcheck_terms.json'
 
 #########################
 #########################
@@ -87,19 +93,17 @@ openai-api:
 
 #########################
 #########################
-#ArticleGenerator/TwitchAPI/BiQuery details
-twitch-ouat:
+# OUAT Storytelling
+ouat_storyteller:
   newsarticle_rss_feed: 'http://rss.cnn.com/rss/cnn_latest.rss'
-  google_service_account_credentials_file: 'eh-talkzilla-ai-1bcb1963d5b4.json'
-  talkzillaai_userdata_table_id: 'eh-talkzilla-ai.TalkzillaAI_UserData.users'
-  talkzillaai_usertransactions_table_id: 'eh-talkzilla-ai.TalkzillaAI_UserData.user_interactions'
-  #twitch_get_chatters_endpoint: 'https://api.twitch.tv/helix/chat/chatters'
-
+  ouat_message_recurrence_seconds: 22
+  ouat_story_max_counter_default: 6
 
 #########################
 #########################
 #CHATFORME RANDOM FACTS & FACTCHECK
 chatforme_randomfacts:
+  num_bot_responses: 1
   randomfact_sleeptime: 300
   randomfact_types:
     game: # Game is set in run_envirionment.bat (i.e. input prompt after launching the bot)
@@ -114,8 +118,8 @@ chatforme_randomfacts:
         starting with, just do it.   Remember this is a stream so you may be ignored, if you are, 
         then you can continue to share facts about the topic."
       randomfact_response: "Looks like there's a conversation happening.  Maybe we can add a small bit of insight into what's beeing said or we can fact check the conversation or we can (sparingly) change the topic only slightly. Be sure to respond in less than {wordcount_short} words."
-      topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_topics_and_subtopics.json'
-      areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_categories_and_areas.json'
+      topics_injection_file_path: '.\config\data_injection\game_topics_and_subtopics.json'
+      areas_injection_file_path: '.\config\data_injection\game_categories_and_areas.json'
 
     standard:
       randomfact_prompt: "Share a random/wild/controversial/lesser known fact (using roughly 
@@ -133,8 +137,8 @@ chatforme_randomfacts:
         bit of insight into what's beeing said or we can fact check the 
         conversation or we can (sparingly) change the topic only slightly. Be 
         sure to respond in less than {wordcount_short} words."
-      topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_topics_and_subtopics.json'
-      areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_eras_and_timeperiods.json'
+      topics_injection_file_path: '.\config\data_injection\standard_topics_and_subtopics.json'
+      areas_injection_file_path: '.\config\data_injection\standard_eras_and_timeperiods.json'
 
     generic:
       randomfact_prompt: "your only job is to participate in the conversation.  
@@ -156,6 +160,9 @@ chatforme_randomfacts:
       # topics_injection_file_path: "Need to make this optional"
       # areas_injection_file_path: "Need to make this optional"
 
+#####################
+#####################
+#CHATFORME FACTCHECK
 chatforme_factcheck:
   chatforme_factcheck_prompts:
     factcheck_prompt_standard: >
@@ -168,15 +175,13 @@ chatforme_factcheck:
       using approximately {wordcount} words in my response, I will assess the accuracy of the claim based on my training data up until April 2023.
       "
 
-#################################################################
-#################################################################
-#CHATFORME PARAMS
-msg_history_limit: 150
-num_bot_responses: 1
-wordcounts:
-  short: 23
-  medium: 29
-  long: 43
+# CONFIG (chatbot)
+chatbot_config:
+  msg_history_limit: 150
+  wordcounts:
+    short: 23
+    medium: 29
+    long: 43
 
 chatforme_prompts:
   standard: >
@@ -253,24 +258,17 @@ botears_prompt: "Below is a question/comment from the user. You are to respond
 #########################
 #########################
 # HelloWorld BOT Prompts
-helloworld_message_wordcount: 30
 formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for 
   {twitch_bot_channel_name} and your name is {twitch_bot_display_name} 
   and you are of generation millenial. Your mission is to send a concise 'hello stream' 
   message that welcomes viewers and says something interesting to get us started.
   Suggest viewers checkout !commands for fun stuff the bot can do
     Key Points
-    - Your only message should be a {helloworld_message_wordcount} word long message
+    - Your only message should be a {wordcount_medium} word long message
     - Minimize repetition
     - Be sure to say, 'I'm {twitch_bot_display_name}'  in your message
     - be a rad dude/dudette
   "
-
-#########################
-#########################
-#OUAT Params
-ouat_message_recurrence_seconds: 22
-ouat_story_max_counter_default: 6
 
 
 #########################
@@ -313,7 +311,7 @@ gpt_assistants_with_functions:
   conversationdirector: 
     instructions: 
       You are a control flow system. You must **always** use the provided function to determine if a chatbot should engage directly in a Twitch chat or provide a neutral fact. Do not generate any text responses; use the function call exclusively.
-    json_file_path: "C:/_repos/chatzilla_ai/config/conversation_director_response_format.json"
+    json_file_path: "./config/conversation_director_response_format.json"
 
 gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
   Unless stated otherwise, responses have a maximum length of 25 words. Don't 

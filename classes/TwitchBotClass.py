@@ -637,7 +637,7 @@ class Bot(twitch_commands.Bot):
             tts_voice = self.config.tts_voice_default
 
             replacements_dict = {
-                "helloworld_message_wordcount":self.config.helloworld_message_wordcount,
+                "wordcount_medium":self.config.wordcount_medium,
                 'twitch_bot_display_name':self.config.twitch_bot_display_name,
                 'twitch_bot_channel_name':self.config.twitch_bot_channel_name,
                 'param_in_text':'variable_from_scope'

@@ -40,7 +40,7 @@ class BotEars():
         self.logger.debug("self.config.app_config_dirpath: " + self.config.app_config_dirpath)
         self.logger.debug("self.config.botears_devices_json_filepath: " + self.config.botears_devices_json_filepath)
         audio_devices = utils.load_json(
-            dir_path=self.config.app_config_dirpath,
+            path_or_dir=self.config.app_config_dirpath,
             file_name=self.config.botears_devices_json_filepath
         )
         audio_device = audio_devices['audioDevices']['mic'][device_name]
@@ -129,8 +129,8 @@ async def main():
     print("self.config.app_config_dirpath: " + config.app_config_dirpath)
     print("self.config.botears_devices_json_filepath: " + config.botears_devices_json_filepath)
     
-    audio_devices = load_json(
-        dir_path=config.app_config_dirpath,
+    audio_devices = utils.load_json(
+        path_or_dir=config.app_config_dirpath,
         file_name=config.botears_devices_json_filepath
     )
     device_name = "Microphone (Yeti Classic), MME"
@@ -162,23 +162,6 @@ async def main():
         filepath=filename,
         n=4
         )
-
-def load_json(
-        dir_path,
-        file_name
-        ):
-    file_path = os.path.join(dir_path, file_name)
-    
-    if not os.path.exists(file_path):
-        return None
-    
-    try:
-        with open(file_path, 'r') as f:
-            data = json.load(f)
-    except Exception as e:
-        return None
-
-    return data
 
 if __name__ == "__main__":
     asyncio.run(main())

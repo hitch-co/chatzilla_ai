@@ -11,6 +11,7 @@ from my_modules.my_logging import create_logger
 from classes.ConfigManagerClass import ConfigManager
 
 import modules.gpt_utils as gpt_utils
+from my_modules.utils import load_json
 
 gpt_base_debug_level = 'DEBUG'
 gpt_thread_mgr_debug_level = 'INFO'
@@ -76,7 +77,13 @@ class GPTFunctionCallManager(GPTBaseClass):
         # Initialize thread-specific locks
         self.thread_run_locks = defaultdict(asyncio.Lock)
 
-    async def execute_function_call(self, thread_name: str, assistant_name: str, get_response=False):
+    async def execute_function_call(
+            self,
+            thread_name: str, 
+            assistant_name: str, 
+            function_schema: json, 
+            get_response=False
+            ):
         """
         Executes the function call workflow for the specified thread.
 
@@ -117,37 +124,12 @@ class GPTFunctionCallManager(GPTBaseClass):
                     self.logger.warning(f"...Thread '{thread_name}' already has an active run: {active_run.id}. Waiting for it to complete.")
                     await self._wait_for_run_completion(thread_id, active_run.id)
 
-                # Define the function schema using the parameters from YAML data
-                function_schema = {
-                    "type": "function",
-                    "function": {
-                        "name": 'conversationdirector',
-                        "description": "You are a control flow system. You must **always** use the provided function to determine if a chatbot should engage directly in a Twitch chat or provide a neutral fact. Do not generate any text responses; use the function call exclusively.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "response_type": {
-                                    "type": "string",
-                                    "enum": ["respond", "fact"],
-                                    "description": "Decide if the bot should engage in the conversation ('respond') or contribute a neutral fact ('fact'). Default to 'fact' unless: the bot is explicitly mentioned, the bot's input adds significant value, or the bot is clearly being addressed. Assume questions are directed to the streamer or other users unless there's a direct reference to the bot. If unsure, or if the bot was the last speaker and no one responded, default to 'fact'."
-                                },
-                                "reasoning": {
-                                    "type": "string",
-                                    "description": "Explain briefly why 'respond' or 'fact' was chosen, based on whether the bot was explicitly addressed, if the bot's input adds value, or if the context supports a neutral contribution."
-                                }
-                            },
-                            "required": ["response_type", "reasoning"],
-                            "additionalProperties": False,
-                            "strict": True
-                        }
-                    }
-                }
-
                 # Start the new run
+                wrapped_function_schema = [function_schema]
                 run = self.gpt_client.beta.threads.runs.create(
                     thread_id=thread_id,
                     assistant_id=assistant_id,
-                    tools = [function_schema]
+                    tools = wrapped_function_schema
                 )
 
             except Exception as e:
@@ -444,22 +426,15 @@ class GPTAssistantManager(GPTBaseClass):
             )        
         return self.assistants
 
-    def _create_assistant_with_function(self, assistant_name, instructions, parameters_schema):
+    def _create_assistant_with_function(self, assistant_name, instructions, function_schema):
         """
         Creates an assistant with the get_bot_response function schema.
         """
-
-        # Define the function schema using the parameters from YAML data
-        function_schema = {
-            "name": assistant_name,
-            "description": instructions,
-            "parameters": parameters_schema
-        }
-
+        tool = [function_schema]
         assistant = self.gpt_client.beta.assistants.create(
             name=assistant_name,
             instructions=instructions,
-            tools=[{"type": "function", "function": function_schema}],
+            tools=tool,
             model=self.yaml_data.gpt_model
         )
 
@@ -482,12 +457,16 @@ class GPTAssistantManager(GPTBaseClass):
             name = assistant_entry["name"]
             instructions = assistant_entry["instructions"]
             json_schema = assistant_entry["json_schema"]
+            self.logger.debug(f'Creating assistant with function: {name}')
+            self.logger.debug(f'Instructions: {instructions}')
+            self.logger.debug(f"Json Schema Type: {type(json_schema)}")
+            self.logger.debug(f'JSON Schema: {json_schema}')
 
             try:
                 self._create_assistant_with_function(
                     assistant_name=name,
                     instructions=instructions,
-                    parameters_schema=json_schema
+                    function_schema=json_schema
                 )
                 self.logger.info(f"Assistant '{name}' created successfully.")
             except Exception as e:
@@ -791,11 +770,6 @@ async def main():
     thread_manager = GPTThreadManager(gpt_client)
     response_manager = GPTResponseManager(gpt_client, thread_manager, assistant_manager)
     function_call_manager = GPTFunctionCallManager(gpt_client, thread_manager, response_manager, assistant_manager)
-
-    # Create an assistant and thread if it doesn't already exist
-    thread_name = "conversationdirector"
-    assistant_manager.create_assistants_with_functions(config.gpt_assistants_with_functions_config)
-    thread_manager.create_threads([thread_name])
 
     # ######################################
     # # TEST 1: Add messages to the thread

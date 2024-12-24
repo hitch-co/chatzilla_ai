@@ -44,7 +44,7 @@ class ArticleGenerator:
     def fetch_random_article_content(self, article_char_trunc=1200):
         found_article = False
         list_of_disallowed_terms = utils.load_json(
-            dir_path='config',
+            path_or_dir='config',
             file_name='disallowed_terms.json'
             )
         list_of_disallowed_terms = list_of_disallowed_terms['disallowed_terms']
@@ -87,16 +87,6 @@ class ArticleGenerator:
 
         trimmed_article = random_article_content[:article_char_trunc]
         return trimmed_article
-
-    # def load_disallowed_terms(self,
-    #                           dir_path='config',
-    #                           file_name='disallowed_terms.json'):
-    #     file_path = os.path.join(dir_path, file_name)
-        
-    #     with open(file_path, 'r') as f:
-    #         data = json.load(f)
-        
-    #     return data['disallowed_terms']
 
     def check_for_disallowed_terms(
             self,

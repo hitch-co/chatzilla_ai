@@ -18,11 +18,13 @@ class NewUsersService:
         #create newusers event
         self.newusers_ready_event = asyncio.Event()
         self.users_sent_messages_list = []
-
+        
+        # grab the known bots from the json file
         self.known_bots = utils.load_json(
-            dir_path='config',
+            path_or_dir='config',
             file_name='known_bots.json'
-            )['known_bots']
+            )
+        self.known_bots = self.known_bots['known_bots']
 
     async def get_users_not_yet_sent_message(
             self,

@@ -1,8 +1,10 @@
 import os
 import yaml
 import dotenv
+import json
 
 from my_modules.my_logging import create_logger
+from my_modules import utils
 
 runtime_logger_level = 'DEBUG'
 
@@ -280,28 +282,33 @@ class ConfigManager:
         Returns:
             list: A list of dictionaries containing the name, instructions, and JSON data for each assistant.
         """
-        assistants_with_functions = []
 
-        for name, config in yaml_config.get('gpt_assistants_with_functions', {}).items():
-            instructions = config.get('instructions')
-            json_file_path = config.get('json_file_path')
+        self.gpt_assistants_with_functions_config = []
 
+        # Load the function schemas from the JSON file
+        self.function_schemas_path = yaml_config['gpt_assistants_with_functions']['function_call_schema_file_path']
+        self.function_schemas = utils.load_json(path_or_dir=self.function_schemas_path)
+
+        gpt_assistants_config = yaml_config.get('gpt_assistants_with_functions', {})
+        assistants_dict = gpt_assistants_config.get('assistants', {})
+
+        for name, instructions in assistants_dict.items():
+            instructions = instructions.get('instructions')
+            function_schema = self.function_schemas[name]
+            self.logger.info(f'name: {name}')
+            self.logger.info(f'instructions: {instructions}')
+            self.logger.info(f'function_schema: {function_schema}')
+            
             try:
-                with open(json_file_path, 'r') as file:
-                    json_data = yaml.safe_load(file)
-
                 assistant_entry = {
                     "name": name,
                     "instructions": instructions,
-                    "json_schema": json_data
+                    "json_schema": function_schema
                 }
-
-                assistants_with_functions.append(assistant_entry)
+                self.gpt_assistants_with_functions_config.append(assistant_entry)
 
             except Exception as e:
-                self.logger.error(f"Error loading JSON for assistant '{name}' from '{json_file_path}': {e}")
-
-        self.gpt_assistants_with_functions_config = assistants_with_functions
+                self.logger.error(f"Error in yaml_gpt_assistants_with_functions_config(): {e}")
 
     def yaml_gpt_thread_config(self, yaml_config):
         self.gpt_thread_names = yaml_config['gpt_thread_names']
@@ -461,13 +468,11 @@ class ConfigManager:
             self.randomfact_response = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_response']
 
             # Get random fact topics and areas json file paths
-            self.randomfact_topics_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['topics_injection_file_path']
-            with open(self.randomfact_topics_json, 'r') as file:
-                self.randomfact_topics = yaml.safe_load(file)
+            self.randomfact_topics_json_filepath = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['topics_injection_file_path']
+            self.randomfact_topics = utils.load_json(path_or_dir=self.randomfact_topics_json_filepath)
 
-            self.randomfact_areas_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['areas_injection_file_path']
-            with open(self.randomfact_areas_json, 'r') as file:
-                self.randomfact_areas = yaml.safe_load(file)
+            self.randomfact_areas_json_filepath = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['areas_injection_file_path']
+            self.randomfact_areas = utils.load_json(path_or_dir=self.randomfact_areas_json_filepath)
 
         except Exception as e:
             self.logger.error(f"Error in yaml_randomfact_json(): {e}")
@@ -479,14 +484,8 @@ class ConfigManager:
             self.logger.error(f"Error in yaml_factchecker_config(): {e}")
 
     def update_spellcheck_config(self, yaml_config):
-        self.command_spellcheck_terms_filename = yaml_config['spellcheck_commands_filename']
-        
-        #Load spellcheck terms
-        spellcheck_terms_path = os.path.join(
-            self.command_spellcheck_terms_filename
-            )
-        with open(spellcheck_terms_path, 'r') as file:
-            self.command_spellcheck_terms = yaml.safe_load(file)
+        self.command_spellcheck_terms_filepath = yaml_config['spellcheck_commands_filename']
+        self.command_spellcheck_terms = utils.load_json(path_or_dir=self.command_spellcheck_terms_filepath)
 
     def update_config_from_yaml(self, yaml_config):
         try:
@@ -531,16 +530,13 @@ if __name__ == "__main__":
 
     print(config.randomfact_sleeptime)
 
-    with open(config.randomfact_topics_json, 'r') as file:
-        randomfact_topics = yaml.safe_load(file)
-    with open(config.randomfact_areas_json, 'r') as file:
-        randomfact_areas = yaml.safe_load(file)    
+    randomfact_topics = utils.load_json(path_or_dir=config.randomfact_topics_json_filepath)
+    randomfact_areas = utils.load_json(path_or_dir=config.randomfact_areas_json_filepath)
     print(f"RANDOMFACT_TOPICS: {randomfact_topics}")
     print(f"RANDOMFACT_AREAS: {randomfact_areas}")
     
-    print(config.gpt_assistants_with_functions_config)
-    print(config.randomfact_topics_json)
-    print(config.randomfact_areas_json)
+    print(config.randomfact_topics_json_filepath)
+    print(config.randomfact_areas_json_filepath)
     print(config.randomfact_prompt)
     print(config.env_file_directory)
     print(config.tts_data_folder)

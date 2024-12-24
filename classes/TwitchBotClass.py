@@ -80,7 +80,7 @@ class Bot(twitch_commands.Bot):
         self.gpt_assistant_manager = gpt_assistant_mgr
         
         # Initialize the TaskManager
-        self.task_manager = TaskManager()
+        self.task_manager = self.message_handler.task_manager
         self.task_manager.on_task_ready = self.handle_tasks
         self.loop.create_task(self.task_manager.task_scheduler())
 
@@ -132,9 +132,6 @@ class Bot(twitch_commands.Bot):
         # Grab the TwitchAPI class and set the bot/broadcaster/moderator IDs
         self.twitch_api = TwitchAPI()
 
-        #Google Service Account Credentials & BQ Table IDs
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = self.config.google_application_credentials_file
-        
         #Get historic stream viewers
         # TODO: Should mb be refreshed more frequently)
         self.historic_users_at_start_of_session = self.bq_uploader.fetch_unique_usernames_from_bq_as_list()
@@ -495,14 +492,14 @@ class Bot(twitch_commands.Bot):
 
         while True:
             await adjustable_sleep_task.adjustable_sleep_task(self.config, 'newusers_sleep_time')
-            self.logger.info("Checking for new users...")
+            self.logger.debug("Checking for new users...")
 
             # Get the current users in the channel
             try:
                 current_users_list = await self.twitch_api.retrieve_active_usernames(
                     bearer_token = self.config.twitch_bot_access_token
                     )
-                self.logger.info(f"...Current users retrieved: {current_users_list}")  
+                self.logger.debug(f"...Current users retrieved: {current_users_list}")  
             except Exception as e:
                 self.logger.error(f"Failed to retrieve active users from Twitch API: {e}")
                 current_users_list = []
@@ -511,7 +508,7 @@ class Bot(twitch_commands.Bot):
             self.current_users_list = list(set(self.current_users_list + current_users_list))
 
             if not self.current_users_list:
-                self.logger.info("...No users in self.current_users_list, skipping this iteration.")
+                self.logger.debug("...No users in self.current_users_list, skipping this iteration.")
                 continue
                 
             # Identify list of users who are new to the channel and have not yet been sent a message
@@ -520,11 +517,12 @@ class Bot(twitch_commands.Bot):
                 current_users_list = self.current_users_list,
                 users_sent_messages_list = self.newusers_service.users_sent_messages_list
             )
-            self.logger.debug(f"...Users not yet sent message: {users_not_yet_sent_message_info}")
 
             if not users_not_yet_sent_message_info:
-                self.logger.info("...No users not yet sent a message.")
+                self.logger.debug("...No users not yet sent a message.")
                 continue
+            else:
+                self.logger.debug(f"...Users not yet sent a message: {users_not_yet_sent_message_info}")
 
             eligible_users = [
                 user for user in users_not_yet_sent_message_info
@@ -540,7 +538,7 @@ class Bot(twitch_commands.Bot):
             ]       
      
             if not eligible_users:
-                self.logger.info(f"...No eligible users found after filtering.")
+                self.logger.debug(f"...No eligible users found after filtering.")
                 continue
 
             random_user = random.choice(eligible_users)  
@@ -548,10 +546,9 @@ class Bot(twitch_commands.Bot):
             random_user_name = random_user['username'] 
 
             self.newusers_service.users_sent_messages_list.append(random_user_name)
-            self.logger.debug(f"...Selected user: {random_user_name} ({random_user_type})")
+            self.logger.info(f"...Selected user for new user message: {random_user_name} ({random_user_type}) for new user message.")
 
-            # Get the user's chat history
-            #TODO:
+            # Get the user's chat history and send a message based on the user's chat history
             # - Use FAISS for semantic similarity.
             # - After you get the top-k messages, filter or rank them based on metadata stored in a separate Python dictionary or database.
             # - Feed the filtered context (including user’s name, role, and timestamps) into your prompt.
@@ -565,18 +562,18 @@ class Bot(twitch_commands.Bot):
 
                 # Log the user-specific chat history sample
                 self.logger.debug(f"...User-specific chat history Type: {type(user_specific_chat_history)}")
-                self.logger.info(f"...User-specific chat history sample: {user_specific_chat_history[0:5]}")
+                self.logger.debug(f"...User-specific chat history sample: {user_specific_chat_history[0:5]}")
                 
                 # Use FAISS to retrieve the most relevant messages
                 query_final = self.config.newusers_faiss_default_query.replace("{random_user_name}", random_user_name)
-                self.logger.info(f"...FAISS Query message search for '{random_user_name}': {query_final}")
+                self.logger.debug(f"...FAISS Query message search for '{random_user_name}': {query_final}")
 
                 relevant_message_ids = self.faiss_service.build_and_retrieve_from_user_index(
                     messages=user_specific_chat_history, query=query_final
                 )
 
                 if not relevant_message_ids:
-                    self.logger.info("No relevant messages retrieved. Defaulting to no chat history message.")
+                    self.logger.debug("No relevant messages retrieved. Defaulting to no chat history message.")
                     relevant_message_history = ["No chat history available for new users."]
                     prompt = self.config.newusers_msg_prompt
                 else:
@@ -590,7 +587,7 @@ class Bot(twitch_commands.Bot):
                 relevant_message_history = ["No chat history available for new users."]
                 prompt = self.config.newusers_msg_prompt
 
-            self.logger.info(f"type(relevant_message_history): {type(relevant_message_history)}")
+            self.logger.debug(f"type(relevant_message_history): {type(relevant_message_history)}")
 
             # Create task to send a message to the selected user
             try:
@@ -684,7 +681,7 @@ class Bot(twitch_commands.Bot):
         
         # Translate the audio to text
         text = await self.s2t_service.convert_audio_to_text(filepath)
-        self.logger.info(f"Transcribed text: {text}")
+        self.logger.info(f"Transcribed speech to text: {text}")
 
         # Add to thread (This is done to send the voice message to the GPT thread)
         task = AddMessageTask(thread_name, text, message_role='user')
@@ -1356,9 +1353,9 @@ class Bot(twitch_commands.Bot):
                 selected_prompt = self.config.randomfact_prompt
                 task = AddMessageTask(
                     thread_name=thread_name,
-                    message_role='assistant',
-                    content='''(No conversation happening here. Your next set of instructions will 
-                    be to share a fact. Do so as instructed without acknowledging this message)'''
+                    message_role='user',
+                    content='''No conversation happening here. Your next set of instructions will 
+                    be to share a fact. Do so as instructed without acknowledging this message'''
                 )
                 await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask 'randomfact_task'")
 

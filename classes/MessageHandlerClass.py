@@ -145,10 +145,10 @@ class MessageHandler:
             msg_history_list_dict.pop(0)
 
     async def add_to_thread_history(
-            self, 
-            thread_name, 
-            message_metadata: dict
-            ):  
+        self, 
+        thread_name, 
+        message_metadata: dict
+        ):  
 
         # Grab and write metadata, add users to users list
         message_role = message_metadata['role']
@@ -168,14 +168,14 @@ class MessageHandler:
         if message_metadata['message_author'] is not None and message_username != self.config.twitch_bot_username and message_metadata['name'] != "_unknown":
             task = AddMessageTask(thread_name, message_content_w_username, message_role)
             await self.task_manager.add_task_to_queue(thread_name, task)
-            self.logger.info(f"Message author not the bot '{message_username}', message added to queue (thread: {thread_name})")
+            self.logger.info(f"Message author not the bot '{message_username}', message task added to queue (thread: {thread_name})")
 
             # # Wait for the task to complete before continuing
             # Doesn't work because of some async issue
             # await task.future 
 
         else:
-            self.logger.info(f"Message author is the bot '{message_username}', messager not added to queue.")
+            self.logger.info(f"Message author is the bot '{message_username}', messager not added to queue (already handled by GPT thread)")
 
     # TODO: This is almost ready for deprecation.  Need to decide if its possible
     # to use the GPT response manager to handle all message history or optionally

@@ -89,23 +89,24 @@ class GPTFunctionCallManager(GPTBaseClass):
 
         # Retrieve the thread/assistant ID by name
         try:
+            self.logger.info(f"Executing function call for thread '{thread_name}' with assistant '{assistant_name}'")
             thread_id = self.gpt_thread_manager.threads[thread_name]['id']
             assistant_entry = self.gpt_assistant_manager.assistants.get(assistant_name)
             assistant_id = assistant_entry['id']
         except KeyError:
-            self.logger.error("Thread or assistant not found.")
-            raise ValueError("Thread or assistant not found.")
+            self.logger.error("...Thread or assistant not found.")
+            raise ValueError("...Thread or assistant not found.")
         
         if not assistant_entry:
-            self.logger.error(f"Assistant '{assistant_name}' not found.")
-            raise ValueError(f"Assistant '{assistant_name}' not found.")
+            self.logger.error(f"...Assistant '{assistant_name}' not found.")
+            raise ValueError(f"...Assistant '{assistant_name}' not found.")
         if not thread_id:
-            self.logger.error(f"Thread '{thread_name}' not found.")
-            raise ValueError(f"Thread '{thread_name}' not found.")
+            self.logger.error(f"...Thread '{thread_name}' not found.")
+            raise ValueError(f"...Thread '{thread_name}' not found.")
 
         async with self.thread_run_locks[thread_name]:
             try:
-                self.logger.info(f"Starting run for thread '{thread_name}' with assistant '{assistant_id}'")
+                self.logger.info(f"...Starting run for thread '{thread_name}' with assistant '{assistant_id}'")
 
                 # Check if there's an active run for this thread
                 runs = self.gpt_client.beta.threads.runs.list(thread_id=thread_id)
@@ -113,7 +114,7 @@ class GPTFunctionCallManager(GPTBaseClass):
 
                 if active_runs:
                     active_run = active_runs[0]
-                    self.logger.warning(f"Thread '{thread_name}' already has an active run: {active_run.id}. Waiting for it to complete.")
+                    self.logger.warning(f"...Thread '{thread_name}' already has an active run: {active_run.id}. Waiting for it to complete.")
                     await self._wait_for_run_completion(thread_id, active_run.id)
 
                 # Define the function schema using the parameters from YAML data
@@ -150,7 +151,7 @@ class GPTFunctionCallManager(GPTBaseClass):
                 )
 
             except Exception as e:
-                self.logger.error(f"Error starting run for thread '{thread_name}': {e}")
+                self.logger.error(f"...Error starting run for thread '{thread_name}': {e}")
 
             try:
                 # Poll the run status manually until it's complete
@@ -161,20 +162,14 @@ class GPTFunctionCallManager(GPTBaseClass):
                         run_id=run.id
                     )
             except Exception as e:
-                self.logger.error(f"Error polling run status for thread '{thread_name}': {e}")
+                self.logger.error(f"...Error polling run status for thread '{thread_name}': {e}")
 
 
                 # Chedck if status is not in one of the all run states and log the status
                 if run.status not in ['queued', 'in_progress', 'completed', 'failed', 'requires_action']:
                     self.logger.warning(f"...Run status is not in one of the expected states: {run.status}")
                 else:
-                    self.logger.debug('---------------------')
-                    self.logger.debug('---------------------')
-                    self.logger.debug('---------------------')
                     self.logger.debug(f"...Run created with status: {run.status}")
-                    self.logger.debug('---------------------')
-                    self.logger.debug('---------------------')
-                    self.logger.debug('---------------------')
 
             try:
                 # Check if the run completed and then handle the response
@@ -189,15 +184,15 @@ class GPTFunctionCallManager(GPTBaseClass):
                 # Check if the run failed
                 if run.status == 'failed':
                     error_details = run.last_error
-                    self.logger.error(f"Run failed with error: {error_details}")
-                    raise RuntimeError(f"Run failed: {error_details}")
+                    self.logger.error(f"...Run failed with error: {error_details}")
+                    raise RuntimeError(f"...Run failed: {error_details}")
 
                 # Handle function calls if the run requires action
                 if run.status == 'requires_action':
 
                     # Handle the required action and get the final response
                     tool_outputs, output_data = await self._handle_required_action(run)
-                    self.logger.info(f"Tool outputs: {tool_outputs}")
+                    self.logger.info(f"...Tool outputs: {tool_outputs}")
 
                     if get_response:
                         # Submit the tool outputs and wait for the run to complete
@@ -205,14 +200,14 @@ class GPTFunctionCallManager(GPTBaseClass):
 
                         messages = self.gpt_client.beta.threads.messages.list(thread_id=thread_id)
                         final_response = self._extract_latest_response_from_thread_messages(messages)
-                        self.logger.info(f"Final response (get_response is {get_response}): {final_response}")
+                        self.logger.info(f"...Final response (get_response is {get_response}): {final_response}")
 
                     else:
                         run = await self._cancel_run(thread_id, run.id) 
                         final_response = None
                     
-                self.logger.info(f"Output data: {output_data}")
-                self.logger.info(f"Final response: {final_response}")
+                self.logger.info(f"...Output data: {output_data}")
+                self.logger.info(f"...Final response: {final_response}")
                 return output_data, final_response
             
             except Exception as e:

@@ -13,27 +13,37 @@ logger = create_logger(
     stream_logs=False
     )
 
-def load_json(
-        dir_path,
-        file_name
-        ):
-    file_path = os.path.join(dir_path, file_name)
-    
-    #Add Error Checkign
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))
+                            )
+def load_json(path_or_dir: str, file_name: str = None) -> dict:
+    """
+    Loads a JSON file either from a single full path or by joining a directory with a file name.
+    Interprets relative paths as being relative to REPO_ROOT.
+    """
+    if file_name:
+        file_path = os.path.join(path_or_dir, file_name)
+    else:
+        file_path = path_or_dir
+
+    # If it's a relative path, make it absolute relative to REPO_ROOT.
+    if not os.path.isabs(file_path):
+        file_path = os.path.join(REPO_ROOT, file_path)
+
     if not os.path.exists(file_path):
         logger.error(f"File {file_path} does not exist.")
         return None
-    else:
-        logger.debug(f"File {file_path} exists.")
-    
-    try:
-        with open(file_path, 'r') as f:
-            data = json.load(f)
-    except Exception as e:
-        logger.error(f"Error loading JSON file: {e}")
-        return None
 
-    return data
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        logger.debug(f"Successfully loaded JSON from {file_path}")
+        return data
+    except json.JSONDecodeError as e:
+        logger.error(f"Error decoding JSON in {file_path}: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error loading JSON from {file_path}: {e}")
+
+    return None
 
 def show_json(obj):
     # Assuming obj.model_dump_json() returns a JSON string

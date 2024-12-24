@@ -461,13 +461,11 @@ class ConfigManager:
             self.randomfact_response = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_response']
 
             # Get random fact topics and areas json file paths
-            self.randomfact_topics_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['topics_injection_file_path']
-            with open(self.randomfact_topics_json, 'r') as file:
-                self.randomfact_topics = yaml.safe_load(file)
+            self.randomfact_topics_json_filepath = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['topics_injection_file_path']
+            self.randomfact_topics = utils.load_json(path_or_dir=self.randomfact_topics_json_filepath)
 
-            self.randomfact_areas_json = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['areas_injection_file_path']
-            with open(self.randomfact_areas_json, 'r') as file:
-                self.randomfact_areas = yaml.safe_load(file)
+            self.randomfact_areas_json_filepath = yaml_config['chatforme_randomfacts']['randomfact_types'][selected_type]['areas_injection_file_path']
+            self.randomfact_areas = utils.load_json(path_or_dir=self.randomfact_areas_json_filepath)
 
         except Exception as e:
             self.logger.error(f"Error in yaml_randomfact_json(): {e}")
@@ -479,14 +477,8 @@ class ConfigManager:
             self.logger.error(f"Error in yaml_factchecker_config(): {e}")
 
     def update_spellcheck_config(self, yaml_config):
-        self.command_spellcheck_terms_filename = yaml_config['spellcheck_commands_filename']
-        
-        #Load spellcheck terms
-        spellcheck_terms_path = os.path.join(
-            self.command_spellcheck_terms_filename
-            )
-        with open(spellcheck_terms_path, 'r') as file:
-            self.command_spellcheck_terms = yaml.safe_load(file)
+        self.command_spellcheck_terms_filepath = yaml_config['spellcheck_commands_filename']
+        self.command_spellcheck_terms = utils.load_json(path_or_dir=self.command_spellcheck_terms_filepath)
 
     def update_config_from_yaml(self, yaml_config):
         try:
@@ -531,16 +523,13 @@ if __name__ == "__main__":
 
     print(config.randomfact_sleeptime)
 
-    with open(config.randomfact_topics_json, 'r') as file:
-        randomfact_topics = yaml.safe_load(file)
-    with open(config.randomfact_areas_json, 'r') as file:
-        randomfact_areas = yaml.safe_load(file)    
+    randomfact_topics = utils.load_json(path_or_dir=config.randomfact_topics_json_filepath)
+    randomfact_areas = utils.load_json(path_or_dir=config.randomfact_areas_json_filepath)
     print(f"RANDOMFACT_TOPICS: {randomfact_topics}")
     print(f"RANDOMFACT_AREAS: {randomfact_areas}")
     
-    print(config.gpt_assistants_with_functions_config)
-    print(config.randomfact_topics_json)
-    print(config.randomfact_areas_json)
+    print(config.randomfact_topics_json_filepath)
+    print(config.randomfact_areas_json_filepath)
     print(config.randomfact_prompt)
     print(config.env_file_directory)
     print(config.tts_data_folder)

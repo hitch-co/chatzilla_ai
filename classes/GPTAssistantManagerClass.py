@@ -124,32 +124,6 @@ class GPTFunctionCallManager(GPTBaseClass):
                     self.logger.warning(f"...Thread '{thread_name}' already has an active run: {active_run.id}. Waiting for it to complete.")
                     await self._wait_for_run_completion(thread_id, active_run.id)
 
-                # Define the function schema using the parameters from YAML data
-                function_schema = {
-                    "type": "function",
-                    "function": {
-                        "name": 'conversationdirector',
-                        "description": "You are a control flow system. You must **always** use the provided function to determine if a chatbot should engage directly in a Twitch chat or provide a neutral fact. Do not generate any text responses; use the function call exclusively.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "response_type": {
-                                    "type": "string",
-                                    "enum": ["respond", "fact"],
-                                    "description": "Decide if the bot should engage in the conversation ('respond') or contribute a neutral fact ('fact'). Default to 'fact' unless: the bot is explicitly mentioned, the bot's input adds significant value, or the bot is clearly being addressed. Assume questions are directed to the streamer or other users unless there's a direct reference to the bot. If unsure, or if the bot was the last speaker and no one responded, default to 'fact'."
-                                },
-                                "reasoning": {
-                                    "type": "string",
-                                    "description": "Explain briefly why 'respond' or 'fact' was chosen, based on whether the bot was explicitly addressed, if the bot's input adds value, or if the context supports a neutral contribution."
-                                }
-                            },
-                            "required": ["response_type", "reasoning"],
-                            "additionalProperties": False,
-                            "strict": True
-                        }
-                    }
-                }
-
                 # Start the new run
                 run = self.gpt_client.beta.threads.runs.create(
                     thread_id=thread_id,

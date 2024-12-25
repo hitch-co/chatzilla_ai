@@ -10,8 +10,7 @@ from my_modules.my_logging import create_logger
 
 from classes.ConfigManagerClass import ConfigManager
 
-import modules.gpt_utils as gpt_utils
-from my_modules.utils import load_json
+import my_modules.gpt_utils as gpt_utils
 
 gpt_base_debug_level = 'DEBUG'
 gpt_thread_mgr_debug_level = 'INFO'

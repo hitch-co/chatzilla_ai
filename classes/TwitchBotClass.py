@@ -11,7 +11,7 @@ import time
 from models.task import AddMessageTask, CreateExecuteThreadTask, CreateSendChannelMessageTask
 
 from my_modules.my_logging import create_logger
-import modules.adjustable_sleep_task as adjustable_sleep_task
+import my_modules.adjustable_sleep_task as adjustable_sleep_task
 
 from classes.TwitchAPI import TwitchAPI
 

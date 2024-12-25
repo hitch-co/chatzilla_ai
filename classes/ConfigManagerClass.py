@@ -49,11 +49,13 @@ class ConfigManager:
             raise Exception("You cannot create multiple instances of ConfigManager. Use 'get_instance'.")
 
     def initialize_config(self, yaml_filepath):
+        # Get YAML configurations
         try:
             self.load_yaml_config(yaml_full_path=yaml_filepath)
         except Exception as e:
             self.logger.error(f"Error, exception in load_yaml_config(): {e}", exc_info=True)
 
+        # Set environment variables from .env file
         try:
             self.set_env_file_variables()
         except Exception as e:
@@ -216,14 +218,14 @@ class ConfigManager:
 
     def update_config_from_env(self):
         try:
+            # OpenAI API
             self.openai_api_key = os.getenv('OPENAI_API_KEY')
             
-            # Maybe can automate this with the Twitch API
+            # Twitch API
             self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
-            
             self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
             self.twitch_bot_client_secret = os.getenv('TWITCH_BOT_CLIENT_SECRET')
-                    
+
         except Exception as e:
             self.logger.error(f"Error in update_config_from_env(): {e}")
 

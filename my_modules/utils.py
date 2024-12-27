@@ -13,8 +13,8 @@ logger = create_logger(
     stream_logs=False
     )
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))
-                            )
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 def load_json(path_or_dir: str, file_name: str = None) -> dict:
     """
     Loads a JSON file either from a single full path or by joining a directory with a file name.
@@ -108,3 +108,32 @@ def get_datetime_formats():
     filename_format = now.strftime('%Y-%m-%d_%H-%M-%S')
     dates_dict = {"sql_format":sql_format, "filename_format":filename_format}
     return dates_dict
+
+def populate_placeholders(logger, prompt_template, replacements=None):
+    """
+    Replaces placeholders in the prompt template with the corresponding values from the replacements dictionary.
+
+    Parameters:
+    logger (Logger): The logger object to use for debugging output.
+    prompt_template (str): The template text containing placeholders for replacement.
+    replacements (dict, optional): A dictionary containing the replacement values. Defaults to None.
+
+    Returns:
+    str: The prompt text with placeholders replaced by actual values.
+    """
+    try:
+        if replacements:
+            try:
+                replaced_text = prompt_template.format(**replacements)
+            except:
+                logger.warning("Error replacing prompt text with format method. Using original prompt_template.")
+                replaced_text = prompt_template
+        else:
+            replaced_text = prompt_template
+
+        logger.debug(f"replacements: {replacements}")
+        logger.debug(f"replaced_text: {replaced_text[:75]}")
+    except Exception as e:
+        logger.error(f"Error replacing prompt text: {e}")
+
+    return replaced_text

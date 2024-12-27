@@ -10,7 +10,7 @@ from my_modules.my_logging import create_logger
 
 from classes.ConfigManagerClass import ConfigManager
 
-import my_modules.gpt_utils as gpt_utils
+from my_modules import utils
 
 gpt_base_debug_level = 'DEBUG'
 gpt_thread_mgr_debug_level = 'INFO'
@@ -381,7 +381,7 @@ class GPTAssistantManager(GPTBaseClass):
         """
         assistant_type = assistant_type or self.yaml_data.gpt_assistant_type
         assistant_model = assistant_model or self.yaml_data.gpt_model
-        assistant_instructions = gpt_utils.replace_prompt_text(
+        assistant_instructions = utils.populate_placeholders(
             logger=self.logger,
             prompt_template=assistant_instructions,
             replacements=replacements_dict
@@ -582,7 +582,7 @@ class GPTResponseManager(GPTBaseClass):
             A list of response thread messages.
         """
         try:
-            final_thread_instructions = gpt_utils.replace_prompt_text(
+            final_thread_instructions = utils.populate_placeholders(
                 logger=self.logger,
                 prompt_template=thread_instructions,
                 replacements=replacements_dict

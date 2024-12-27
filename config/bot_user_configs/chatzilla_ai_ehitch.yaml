@@ -2,9 +2,10 @@
 #########################
 
 #CONFIG (cloud)
-env_filename: '.env.keys'
-env_dirname: '.\config\keys'
-keys_dirpath: '.\config\keys'
+keys_env_filename: '.env.keys'
+keys_env_dirpath: '.\config\keys'
+env_filename: '.env'
+env_dirpath: '.\config'
 google_service_account_credentials_file: 'eh-talkzilla-ai-1bcb1963d5b4.json'
 
 #CONFIG (local)

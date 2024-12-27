@@ -61,12 +61,36 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Error, exception in set_env_file_variables(): {e}", exc_info=True)
 
-    def print_config(self):
+        # Log the configuration
+        try:
+            self._log_config()
+        except Exception as e:
+            self.logger.error(f"Error, exception in log_config(): {e}", exc_info=True)
+                              
+    def _log_config(self):
+        # Primary Configurations
+        self.logger.debug(f'------------------------------')
+        self.logger.debug(f'--- Primary Configurations ---')
+        self.logger.debug(f"CHATZILLA_PORT_NUMBER: {self.CHATZILLA_PORT_NUMBER}")
         self.logger.debug(f"Bot: {self.twitch_bot_username}") 
         self.logger.debug(f"Channel: {self.twitch_bot_channel_name}")
         self.logger.debug(f".env filepath: {self.env_path}")
+        self.logger.debug(f".env.keys filepath: {self.keys_env_path}")
         self.logger.debug(f".yaml filepath: {self.app_config_dirpath}")
+        
+        # Secondary Configurations
+        self.logger.debug(f'------------------------------')
+        self.logger.debug(f'--- Secondary Configurations ---')
         self.logger.debug(f"self.twitch_bot_gpt_hello_world: {self.twitch_bot_gpt_hello_world}")
+        self.logger.debug(f"randomfact_topics_json_filepath: {self.randomfact_topics_json_filepath}")
+        self.logger.debug(f"randomfact_areas_json_filepath: {self.randomfact_areas_json_filepath}")
+        self.logger.debug(f"randomfact_prompt: {self.randomfact_prompt}")
+        self.logger.debug(f"keys_env_dirpath: {self.keys_env_dirpath}")
+        self.logger.debug(f"tts_data_folder: {self.tts_data_folder}")
+        self.logger.debug(f"tts_file_name: {self.tts_file_name}")
+        self.logger.debug(f"gpt_assistants_config: {self.gpt_assistants_config}")
+        self.logger.debug(f"newusers_sleep_time: {self.newusers_sleep_time}")
+        self.logger.debug(f"gpt_assistants_suffix: {self.gpt_assistants_suffix}")
 
     def load_yaml_config(self, yaml_full_path):
         try:
@@ -196,27 +220,38 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Error in yaml_randomfact_json(): {e}")
             raise
- 
-        self.print_config()
 
     def set_env_file_variables(self):
         '''Loads environment variables from a .env file.'''
-        if self.keys_dirpath and self.env_file_name:
-            self.env_path = os.path.join(self.keys_dirpath, self.env_file_name)
+        
+        # Load environment variables set at runtime
+        self._update_config_from_env_set_at_runtime()
+        
+        # Load environment variables from .env.keys file
+        if self.keys_env_dirpath and self.keys_env_filename:
+            self.keys_env_path = os.path.join(self.keys_env_dirpath, self.keys_env_filename)
+            if os.path.exists(self.keys_env_path):
+                dotenv.load_dotenv(self.keys_env_path)
+                self._update_config_from_env_keys()
+            else:
+                self.logger.error(f".env file not found at {self.keys_env_path}")
+
+        # Load environment variables from .env file
+        if self.env_dirpath and self.env_filename:
+            self.env_path = os.path.join(self.env_dirpath, self.env_filename)
             if os.path.exists(self.env_path):
                 dotenv.load_dotenv(self.env_path)
-                self.update_config_from_env()
-                self.update_config_from_env_set_at_runtime()
+                self._update_config_from_env()
             else:
                 self.logger.error(f".env file not found at {self.env_path}")
 
-    def update_config_from_env_set_at_runtime(self):
+    def _update_config_from_env_set_at_runtime(self):
         try:
-            self.CHATZILLA_PORT_NUMBER = str(os.getenv("CHATZILLA_PORT_NUMBER", 3000))
+            self.CHATZILLA_PORT_NUMBER = str(os.getenv("CHATZILLA_PORT_NUMBER"))
         except Exception as e:
             self.logger.error(f"Error in update_config_from_env_set_at_runtime(): {e}")
 
-    def update_config_from_env(self):
+    def _update_config_from_env_keys(self):
         try:
             # OpenAI API
             self.openai_api_key = os.getenv('OPENAI_API_KEY')
@@ -229,6 +264,20 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Error in update_config_from_env(): {e}")
 
+    def _update_config_from_env(self):
+        try:
+            # OpenAI API
+            self.openai_api_key = os.getenv('OPENAI_API_KEY')
+            
+            # Twitch API
+            self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
+            self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
+            self.twitch_bot_client_secret = os.getenv('TWITCH_BOT_CLIENT_SECRET')
+
+        except Exception as e:
+            self.logger.error(f"Error in update_config_from_env(): {e}")
+
+
     def yaml_tts_config(self, yaml_config):
         try:
             self.tts_include_voice = yaml_config['openai-api']['tts_include_voice']
@@ -237,11 +286,12 @@ class ConfigManager:
 
     def yaml_gcp_config(self, yaml_config):
         try:
-            self.keys_dirpath = yaml_config['keys_dirpath']
+            self.keys_env_dirpath = yaml_config['keys_env_dirpath']
+
             self.google_service_account_credentials_file = yaml_config['google_service_account_credentials_file']
 
             os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(
-                self.keys_dirpath, 
+                self.keys_env_dirpath, 
                 self.google_service_account_credentials_file
                 )
         except Exception as e:
@@ -492,12 +542,14 @@ class ConfigManager:
     def update_config_from_yaml(self, yaml_config):
         try:
             # Update instance variables with YAML configurations
-            self.env_file_name = yaml_config['env_filename']
+            self.keys_env_filename = yaml_config['keys_env_filename']
+            self.env_filename = yaml_config['env_filename']
+            self.keys_env_dirpath = yaml_config['keys_env_dirpath']
+            self.env_dirpath = yaml_config['env_dirpath']
+
             self.app_config_dirpath = yaml_config['app_config_dirpath']
             
             self.shorten_response_length_prompt = yaml_config['gpt_thread_prompts']['shorten_response_length']
-
-            self.keys_dirpath = yaml_config['keys_dirpath']
 
             self.google_application_credentials_file = yaml_config['google_service_account_credentials_file']
             self.talkzillaai_userdata_table_id = yaml_config['talkzillaai_userdata_table_id']
@@ -528,20 +580,6 @@ if __name__ == "__main__":
 
     ConfigManager.initialize(yaml_filepath=yaml_filepath)
     config = ConfigManager.get_instance()
-
-    print(config.randomfact_sleeptime)
-
-    randomfact_topics = utils.load_json(path_or_dir=config.randomfact_topics_json_filepath)
-    randomfact_areas = utils.load_json(path_or_dir=config.randomfact_areas_json_filepath)
-    print(f"RANDOMFACT_TOPICS: {randomfact_topics}")
-    print(f"RANDOMFACT_AREAS: {randomfact_areas}")
     
-    print(config.randomfact_topics_json_filepath)
-    print(config.randomfact_areas_json_filepath)
-    print(config.randomfact_prompt)
-    print(config.keys_dirpath)
-    print(config.tts_data_folder)
-    print(config.tts_file_name)
-    print(config.gpt_assistants_config)
-    print(config.newusers_sleep_time)
-    print(config.gpt_assistants_suffix)
+    # Log the configuration
+    config._log_config()

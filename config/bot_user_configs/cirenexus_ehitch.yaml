@@ -18,10 +18,9 @@ twitch-bots:
   vibecheck: ['chatzilla_ai', 'cirenexus']
 
 #CONFIG
-env_filename: 'config.env'
-env_dirname: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config'
+keys_env_filename: 'config.env'
 app_config_dirpath: '.\config'
-keys_dirpath: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\keys'
+keys_env_dirpath: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\keys'
 is_gpt_testing: True
 spellcheck_commands_filename: 'config\command_spellcheck_terms.json'
 

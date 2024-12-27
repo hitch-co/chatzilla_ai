@@ -25,8 +25,7 @@ _notes/*
 ffprobe.exe
 ffmpeg.exe
 ffplay.exe
-log/
-/log
+log/*.log
 config/keys/
 readme/README_games-countdown.md
 readme/helper_prompts/directory tree.md

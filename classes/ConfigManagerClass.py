@@ -64,9 +64,8 @@ class ConfigManager:
     def print_config(self):
         self.logger.debug(f"Bot: {self.twitch_bot_username}") 
         self.logger.debug(f"Channel: {self.twitch_bot_channel_name}")
-        self.logger.debug(f".env filepath: {self.env_file_directory}/{self.env_file_name}")
+        self.logger.debug(f".env filepath: {self.env_path}")
         self.logger.debug(f".yaml filepath: {self.app_config_dirpath}")
-        self.logger.debug(f"self.keys_dirpath: {self.keys_dirpath}")
         self.logger.debug(f"self.twitch_bot_gpt_hello_world: {self.twitch_bot_gpt_hello_world}")
 
     def load_yaml_config(self, yaml_full_path):
@@ -201,18 +200,19 @@ class ConfigManager:
         self.print_config()
 
     def set_env_file_variables(self):
-        if self.env_file_directory and self.env_file_name:
-            env_path = os.path.join(self.env_file_directory, self.env_file_name)
-            if os.path.exists(env_path):
-                dotenv.load_dotenv(env_path)
+        '''Loads environment variables from a .env file.'''
+        if self.keys_dirpath and self.env_file_name:
+            self.env_path = os.path.join(self.keys_dirpath, self.env_file_name)
+            if os.path.exists(self.env_path):
+                dotenv.load_dotenv(self.env_path)
                 self.update_config_from_env()
                 self.update_config_from_env_set_at_runtime()
             else:
-                self.logger.error(f".env file not found at {env_path}")
+                self.logger.error(f".env file not found at {self.env_path}")
 
     def update_config_from_env_set_at_runtime(self):
         try:
-            self.input_port_number = str(os.getenv("input_port_number", 3000))
+            self.CHATZILLA_PORT_NUMBER = str(os.getenv("CHATZILLA_PORT_NUMBER", 3000))
         except Exception as e:
             self.logger.error(f"Error in update_config_from_env_set_at_runtime(): {e}")
 
@@ -492,7 +492,6 @@ class ConfigManager:
     def update_config_from_yaml(self, yaml_config):
         try:
             # Update instance variables with YAML configurations
-            self.env_file_directory = yaml_config['env_dirname']
             self.env_file_name = yaml_config['env_filename']
             self.app_config_dirpath = yaml_config['app_config_dirpath']
             
@@ -540,7 +539,7 @@ if __name__ == "__main__":
     print(config.randomfact_topics_json_filepath)
     print(config.randomfact_areas_json_filepath)
     print(config.randomfact_prompt)
-    print(config.env_file_directory)
+    print(config.keys_dirpath)
     print(config.tts_data_folder)
     print(config.tts_file_name)
     print(config.gpt_assistants_config)

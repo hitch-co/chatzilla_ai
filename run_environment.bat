@@ -22,18 +22,18 @@ if "%MINICONDA_HOME%"=="" (
 )
 
 :: Environment and Port
-set "APP_BOT_USER_YAML=%~1"
-set "input_port_number=%~2"
-set "TWITCH_BOT_ROOT_DIRECTORY=%~3"
+set "CHATZILLA_YAML_FILE=%~1"
+set "CHATZILLA_PORT_NUMBER=%~2"
+set "CHATZILLA_ROOT_DIRECTORY=%~3"
 
 :: Debugging - Print the variables
-echo APP_BOT_USER_YAML=!APP_BOT_USER_YAML!
-echo input_port_number=!input_port_number!
-echo TWITCH_BOT_ROOT_DIRECTORY=!TWITCH_BOT_ROOT_DIRECTORY!
+echo CHATZILLA_YAML_FILE=!CHATZILLA_YAML_FILE!
+echo CHATZILLA_PORT_NUMBER=!CHATZILLA_PORT_NUMBER!
+echo CHATZILLA_ROOT_DIRECTORY=!CHATZILLA_ROOT_DIRECTORY!
 
 :: Switch directory 
-cd "!TWITCH_BOT_ROOT_DIRECTORY!" || (
-    echo Directory not found: !TWITCH_BOT_ROOT_DIRECTORY!
+cd "!CHATZILLA_ROOT_DIRECTORY!" || (
+    echo Directory not found: !CHATZILLA_ROOT_DIRECTORY!
     exit /b
 )
 echo ...current directory: %cd%
@@ -45,7 +45,7 @@ call "%MINICONDA_HOME%\condabin\conda.bat" activate openai_chatzilla_ai_env || (
 )
 
 :: Set configuration path
-set "BOT_USER_CONFIG_PATH=.\config\bot_user_configs\!APP_BOT_USER_YAML!"
+set "CHATZILLA_YAML_PATH=.\config\bot_user_configs\!CHATZILLA_YAML_FILE!"
 
 :: Set the game to be played
 set /p selected_game=What game are you playing today? (default:'no_game_selected'):

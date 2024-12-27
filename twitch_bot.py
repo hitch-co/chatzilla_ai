@@ -14,7 +14,7 @@ runtime_logger_level = 'INFO'
 app = Flask(__name__)
 
 # Load configuration
-yaml_filepath= os.getenv('BOT_USER_CONFIG_PATH')
+yaml_filepath = os.getenv('CHATZILLA_YAML_PATH')
 ConfigManager.initialize(yaml_filepath=yaml_filepath)
 config = ConfigManager.get_instance()
 
@@ -60,4 +60,4 @@ def callback():
     return message
 
 if __name__ == "__main__":
-    app.run(port=config.input_port_number, debug=True, use_reloader=use_reloader_bool)
+    app.run(port=config.CHATZILLA_PORT_NUMBER, debug=True, use_reloader=use_reloader_bool)

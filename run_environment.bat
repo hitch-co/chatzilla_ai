@@ -15,6 +15,12 @@ if "%~3"=="" (
     exit /b
 )
 
+:: Validate MINICONDA_HOME
+if "%MINICONDA_HOME%"=="" (
+    echo MINICONDA_HOME is not set. Please configure your system environment variables.
+    exit /b
+)
+
 :: Environment and Port
 set "APP_BOT_USER_YAML=%~1"
 set "input_port_number=%~2"
@@ -33,15 +39,16 @@ cd "!TWITCH_BOT_ROOT_DIRECTORY!" || (
 echo ...current directory: %cd%
 
 :: Activate Conda environment
-call "C:\Users\Admin\Miniconda3\condabin\conda.bat" activate openai_test_env
+call "%MINICONDA_HOME%\condabin\conda.bat" activate openai_chatzilla_ai_env || (
+    echo Failed to activate Conda environment.
+    exit /b
+)
 
 :: Set configuration path
 set "BOT_USER_CONFIG_PATH=.\config\bot_user_configs\!APP_BOT_USER_YAML!"
 
 :: Set the game to be played
 set /p selected_game=What game are you playing today? (default:'no_game_selected'):
-:: if selected game is empty or bad value, set to no_game_selected
 echo ...starting twitch_bot.py
 python twitch_bot.py
-
 pause

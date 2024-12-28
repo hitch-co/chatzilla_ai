@@ -119,10 +119,17 @@ class BotEars():
 
         self.logger.debug(f"Saved {saved_seconds} seconds of audio to: {filepath}")
 
+    # Query and print available audio devices
+    def list_audio_devices():
+        devices = sd.query_devices()
+        print("Available audio devices:")
+        for idx, device in enumerate(devices):
+            print(f"{idx}: {device['name']} ({device['hostapi']})")
+
 async def main():
 
     from classes.ConfigManagerClass import ConfigManager
-    ConfigManager.initialize(yaml_filepath=r'C:\_repos\chatzilla_ai\config\config.yaml')
+    ConfigManager.initialize(yaml_filepath=r'C:\_repos\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml')
     config = ConfigManager.get_instance()
 
     # Get the audio device details from the JSON file
@@ -133,7 +140,7 @@ async def main():
         path_or_dir=config.app_config_dirpath,
         file_name=config.botears_devices_json_filepath
     )
-    device_name = "Microphone (Yeti Classic), MME"
+    device_name = "default" #"Microphone (Yeti Classic), MME" (device name not needed as only channels/samplerate are used)
     audio_device = audio_devices['audioDevices']['mic'][device_name]
     print(f"These are the json audio device details for {device_name}:")
     print(json.dumps(audio_device, indent=4))
@@ -148,6 +155,8 @@ async def main():
     except Exception as e:
         print(f"Error creating BotEars instance: {e}")
     
+    BotEars.list_audio_devices()
+
     # run asyncio loop
     await ears.start_botears_audio_stream()
 

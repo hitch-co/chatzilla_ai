@@ -301,7 +301,7 @@ class ConfigManager:
         try:
             self.botears_devices_json_filepath = yaml_config['botears_devices_json_filepath']
             self.botears_prompt = yaml_config['botears_prompt']
-            self.botears_device_mic = yaml_config['botears_device_mic']
+            self.botears_mic_config = yaml_config['botears_mic_config']
             self.botears_audio_path = yaml_config['botears_audio_path']
             self.botears_audio_filename = yaml_config['botears_audio_filename']
             self.botears_save_length_seconds = yaml_config['botears_save_length_seconds']

@@ -243,7 +243,6 @@ botears_save_length_seconds: 22
 botears_audio_path: "./data/ears"
 botears_audio_filename: "latest_ears"
 botears_devices_json_filepath: "audio_devices.json"
-botears_mic_config: "Microphone (Yeti Classic), MME" # Used for sd.InputStream, otherwise it grabs the channels/sample rate from the json file
 botears_prompt: "Below is a question/comment from the user. You are to respond 
   to themwith a short ({wordcount_medium} words max) response or comment based on 
   their question/comment.  Be sure to keep your response to less than 

@@ -1,7 +1,7 @@
 {
     "audioDevices": {
         "mic": {
-            "default": {
+            "Microphone (Yeti Classic), MME": {
                 "samplerate": 48000,
                 "channels": 2
             }

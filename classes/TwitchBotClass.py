@@ -107,7 +107,7 @@ class Bot(twitch_commands.Bot):
         # TODO: Could be a good idea to inject these dependencies into the services
         # instantiate the AudioService and BotEars
         self.audio_service = AudioService(volume=self.config.tts_volume)
-        device_name = self.config.botears_mic_config
+        device_name = self.config.chatzilla_mic_device_name
         self.bot_ears = BotEars(
             config=self.config,
             device_name=device_name,

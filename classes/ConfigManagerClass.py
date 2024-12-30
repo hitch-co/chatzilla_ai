@@ -91,6 +91,7 @@ class ConfigManager:
         self.logger.debug(f"gpt_assistants_config: {self.gpt_assistants_config}")
         self.logger.debug(f"newusers_sleep_time: {self.newusers_sleep_time}")
         self.logger.debug(f"gpt_assistants_suffix: {self.gpt_assistants_suffix}")
+        self.logger.debug(f"chatzilla_mic_device_name: {self.chatzilla_mic_device_name}")
 
     def load_yaml_config(self, yaml_full_path):
         try:
@@ -266,17 +267,9 @@ class ConfigManager:
 
     def _update_config_from_env(self):
         try:
-            # OpenAI API
-            self.openai_api_key = os.getenv('OPENAI_API_KEY')
-            
-            # Twitch API
-            self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
-            self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
-            self.twitch_bot_client_secret = os.getenv('TWITCH_BOT_CLIENT_SECRET')
-
+            self.chatzilla_mic_device_name = os.getenv('CHATZILLA_MIC_DEVICE_NAME')
         except Exception as e:
             self.logger.error(f"Error in update_config_from_env(): {e}")
-
 
     def yaml_tts_config(self, yaml_config):
         try:
@@ -301,7 +294,6 @@ class ConfigManager:
         try:
             self.botears_devices_json_filepath = yaml_config['botears_devices_json_filepath']
             self.botears_prompt = yaml_config['botears_prompt']
-            self.botears_mic_config = yaml_config['botears_mic_config']
             self.botears_audio_path = yaml_config['botears_audio_path']
             self.botears_audio_filename = yaml_config['botears_audio_filename']
             self.botears_save_length_seconds = yaml_config['botears_save_length_seconds']
@@ -574,8 +566,10 @@ class ConfigManager:
             )
 
 if __name__ == "__main__":
+
     #yaml_filepath = r'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml'
-    yaml_filepath = r'C:\_repos\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml'
+    yaml_filepath = r'C:\_repos\chatzilla_ai_dev\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml'    
+    #yaml_filepath = r'C:\_repos\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml'
     print(f"yaml_filepath_type: {type(yaml_filepath)}")
 
     ConfigManager.initialize(yaml_filepath=yaml_filepath)

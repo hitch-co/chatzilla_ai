@@ -361,7 +361,7 @@ class GPTAssistantManager(GPTBaseClass):
 
     def _create_assistant(
             self, 
-            assistant_name='default', 
+            assistant_name, 
             assistant_instructions="you're a question answering machine", 
             replacements_dict: dict=None,
             assistant_type=None, 

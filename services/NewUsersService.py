@@ -20,11 +20,8 @@ class NewUsersService:
         self.users_sent_messages_list = []
         
         # grab the known bots from the json file
-        self.known_bots = utils.load_json(
-            path_or_dir='config',
-            file_name='known_bots.json'
-            )
-        self.known_bots = self.known_bots['known_bots']
+        self.known_bots = utils.load_json(path_or_dir='.\data\ruless\known_bots.json')
+        self.known_bots_list = self.known_bots['known_bots']
 
     async def get_users_not_yet_sent_message(
             self,
@@ -51,7 +48,7 @@ class NewUsersService:
         self.logger.debug(f"users_sent_messages_list: {users_sent_messages_list}")
 
         # Exclude known bots
-        current_users_list_excluding_bots = [user for user in current_users_list if user not in self.known_bots]
+        current_users_list_excluding_bots = [user for user in current_users_list if user not in self.known_bots_list]
         self.logger.debug(f"current_users_list_excluding_bots: {current_users_list_excluding_bots}")
 
         # Find users not yet sent a message
@@ -80,7 +77,7 @@ if __name__ == "__main__":
     users_sent_messages_list=['user1', 'user2', 'user3', 'user4']
     new_users_service = NewUsersService()
     
-    print(f"known_bots: {new_users_service.known_bots}")
+    print(f"known_bots_list: {new_users_service.known_bots_list}")
 
     result = asyncio.run(new_users_service.get_users_not_yet_sent_message(
         historic_users_list, 

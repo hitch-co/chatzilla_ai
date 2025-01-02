@@ -2,21 +2,20 @@
 #########################
 
 #CONFIG (cloud)
-keys_env_filename: '.env.keys'
-keys_env_dirpath: '.\config\keys'
+app_config_dirpath: '.\config'
 env_filename: '.env'
-env_dirpath: '.\config'
+keys_env_dirpath: '.\keys'
+keys_env_filename: '.env.keys'
+
 google_service_account_credentials_file: 'eh-talkzilla-ai-1bcb1963d5b4.json'
 
-#CONFIG (local)
-app_config_dirpath: '.\config'
 
 #CONFIG (bigquery)
 talkzillaai_userdata_table_id: 'eh-talkzilla-ai.TalkzillaAI_UserData.users'
 talkzillaai_usertransactions_table_id: 'eh-talkzilla-ai.TalkzillaAI_UserData.user_interactions'
 
 # File Paths
-spellcheck_commands_filename: '.\config\command_spellcheck_terms.json'
+spellcheck_commands_filename: '.\data\rules\command_spellcheck_terms.json'
 
 #Flask App
 twitch-app:
@@ -28,6 +27,7 @@ twitch-app:
   twitch_bot_redirect_path: 'callback'
   twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read' #user:read:email moderation:read channel:moderate'
   twitch_bot_moderators: ['crubeyawne', 'nanovision']
+#TODO: This is old and can be removed
 twitch-bots:
   chatforme: ['chatzilla_ai'] #['chatzilla_ai', 'cirenexus']
   onceuponatime: ['chatzilla_ai'] #['chatzilla_ai', 'cirenexus']
@@ -71,7 +71,7 @@ openai-api:
   tts_model: "tts-1" #tts-2 has higher latency
   tts_voice: "nova"
   tts_volume: .4
-  tts_data_folder: "data\\tts"
+  tts_data_folder: "assets\\tts"
   tts_file_name: "speech.mp3"
   tts_voice_randomfact: "nova"
   tts_voice_chatforme: "echo"
@@ -119,8 +119,8 @@ chatforme_randomfacts:
         starting with, just do it.   Remember this is a stream so you may be ignored, if you are, 
         then you can continue to share facts about the topic."
       randomfact_response: "Looks like there's a conversation happening.  Maybe we can add a small bit of insight into what's beeing said or we can fact check the conversation or we can (sparingly) change the topic only slightly. Be sure to respond in less than {wordcount_short} words."
-      topics_injection_file_path: '.\config\data_injection\game_topics_and_subtopics.json'
-      areas_injection_file_path: '.\config\data_injection\game_categories_and_areas.json'
+      topics_injection_file_path: '.\data\randomfact\game_topics_and_subtopics.json'
+      areas_injection_file_path: '.\data\randomfact\game_categories_and_areas.json'
 
     standard:
       randomfact_prompt: "Share a random/wild/controversial/lesser known fact (using roughly 
@@ -138,8 +138,8 @@ chatforme_randomfacts:
         bit of insight into what's beeing said or we can fact check the 
         conversation or we can (sparingly) change the topic only slightly. Be 
         sure to respond in less than {wordcount_short} words."
-      topics_injection_file_path: '.\config\data_injection\standard_topics_and_subtopics.json'
-      areas_injection_file_path: '.\config\data_injection\standard_eras_and_timeperiods.json'
+      topics_injection_file_path: '.\data\randomfact\standard_topics_and_subtopics.json'
+      areas_injection_file_path: '.\data\randomfact\standard_eras_and_timeperiods.json'
 
     generic:
       randomfact_prompt: "your only job is to participate in the conversation.  
@@ -240,9 +240,8 @@ chatforme_prompts:
 #Bot Ears
 botears_buffer_length_seconds: 15
 botears_save_length_seconds: 22
-botears_audio_path: "./data/ears"
+botears_audio_path: "./assets/ears"
 botears_audio_filename: "latest_ears"
-botears_devices_json_filepath: "audio_devices.json"
 botears_prompt: "Below is a question/comment from the user. You are to respond 
   to themwith a short ({wordcount_medium} words max) response or comment based on 
   their question/comment.  Be sure to keep your response to less than 

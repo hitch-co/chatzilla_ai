@@ -79,11 +79,10 @@ def main():
     """
     Main function to create an instance of AudioPlayer and play a specific audio file.
     """
-    audio_player = AudioService()
+    audio_player = AudioService(volume=0.5)
     audio_player.play_local_mp3(
         filename='surprise-sound-effect-99300.mp3',
-        dirpath='data/media',
-        volume=0.5
+        dirpath='assets/media'
         )
 
 if __name__ == "__main__":

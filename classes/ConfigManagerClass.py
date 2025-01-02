@@ -55,7 +55,7 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Error, exception in load_yaml_config(): {e}", exc_info=True)
 
-        # Set environment variables from .env file
+        # Set environment variables from .env and .env.keys files
         try:
             self.set_env_file_variables()
         except Exception as e:
@@ -71,7 +71,7 @@ class ConfigManager:
         # Primary Configurations
         self.logger.debug(f'------------------------------')
         self.logger.debug(f'--- Primary Configurations ---')
-        self.logger.debug(f"CHATZILLA_PORT_NUMBER: {self.CHATZILLA_PORT_NUMBER}")
+        self.logger.debug(f"chatzilla_port_number: {self.chatzilla_port_number}")
         self.logger.debug(f"Bot: {self.twitch_bot_username}") 
         self.logger.debug(f"Channel: {self.twitch_bot_channel_name}")
         self.logger.debug(f".env filepath: {self.env_path}")
@@ -230,7 +230,11 @@ class ConfigManager:
         
         # Load environment variables from .env.keys file
         if self.keys_env_dirpath and self.keys_env_filename:
-            self.keys_env_path = os.path.join(self.keys_env_dirpath, self.keys_env_filename)
+            self.keys_env_path = os.path.join(
+                self.app_config_dirpath, 
+                self.keys_env_dirpath, 
+                self.keys_env_filename
+                )
             if os.path.exists(self.keys_env_path):
                 dotenv.load_dotenv(self.keys_env_path)
                 self._update_config_from_env_keys()
@@ -238,8 +242,8 @@ class ConfigManager:
                 self.logger.error(f".env file not found at {self.keys_env_path}")
 
         # Load environment variables from .env file
-        if self.env_dirpath and self.env_filename:
-            self.env_path = os.path.join(self.env_dirpath, self.env_filename)
+        if self.app_config_dirpath and self.env_filename:
+            self.env_path = os.path.join(self.app_config_dirpath, self.env_filename)
             if os.path.exists(self.env_path):
                 dotenv.load_dotenv(self.env_path)
                 self._update_config_from_env()
@@ -248,7 +252,7 @@ class ConfigManager:
 
     def _update_config_from_env_set_at_runtime(self):
         try:
-            self.CHATZILLA_PORT_NUMBER = str(os.getenv("CHATZILLA_PORT_NUMBER"))
+            self.chatzilla_port_number = str(os.getenv("CHATZILLA_PORT_NUMBER"))
         except Exception as e:
             self.logger.error(f"Error in update_config_from_env_set_at_runtime(): {e}")
 
@@ -279,11 +283,9 @@ class ConfigManager:
 
     def yaml_gcp_config(self, yaml_config):
         try:
-            self.keys_env_dirpath = yaml_config['keys_env_dirpath']
-
             self.google_service_account_credentials_file = yaml_config['google_service_account_credentials_file']
-
             os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(
+                self.app_config_dirpath,
                 self.keys_env_dirpath, 
                 self.google_service_account_credentials_file
                 )
@@ -292,7 +294,6 @@ class ConfigManager:
 
     def yaml_botears_config(self, yaml_config):
         try:
-            self.botears_devices_json_filepath = yaml_config['botears_devices_json_filepath']
             self.botears_prompt = yaml_config['botears_prompt']
             self.botears_audio_path = yaml_config['botears_audio_path']
             self.botears_audio_filename = yaml_config['botears_audio_filename']
@@ -493,7 +494,7 @@ class ConfigManager:
     def yaml_randomfact_json(self, yaml_config):
         try:
             self.randomfact_sleeptime = yaml_config['chatforme_randomfacts']['randomfact_sleeptime']
-            self.randomfact_selected_game = os.getenv('selected_game')
+            self.randomfact_selected_game = os.getenv('CHATZILLA_SELECTED_GAME')
                             
             # Set random fact prompt and response based on selected game
             self.logger.info(f"randomfact_selected_game: {self.randomfact_selected_game}")
@@ -537,7 +538,7 @@ class ConfigManager:
             self.keys_env_filename = yaml_config['keys_env_filename']
             self.env_filename = yaml_config['env_filename']
             self.keys_env_dirpath = yaml_config['keys_env_dirpath']
-            self.env_dirpath = yaml_config['env_dirpath']
+            self.app_config_dirpath = yaml_config['app_config_dirpath']
 
             self.app_config_dirpath = yaml_config['app_config_dirpath']
             

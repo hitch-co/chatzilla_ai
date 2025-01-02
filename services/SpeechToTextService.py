@@ -1,4 +1,6 @@
 import speech_recognition as sr
+import asyncio
+
 from my_modules.my_logging import create_logger
 
 class SpeechToTextService:
@@ -36,9 +38,12 @@ def main():
     # Create an instance of the SpeechToTextConverter class
     stt = SpeechToTextService()
 
-    filepath = r'C:\_repos\chatzilla_ai\data\ears\latest_ears.wav'
     # Convert the audio file to text
-    print(stt.convert_audio_to_text(filepath))
-
+    filepath = r'C:\_repos\chatzilla_ai_dev\chatzilla_ai\assets\ears\latest_ears.wav'
+    
+    # Run async
+    text = asyncio.run(stt.convert_audio_to_text(filepath))
+    print(text)
+    
 if __name__ == "__main__":
     main()

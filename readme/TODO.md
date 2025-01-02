@@ -1,3 +1,26 @@
+# TODO: Instructions for cloning:
+- **Steps from clone**:
+  0. Clone from repo 
+  0. Update run_chatzilla-ai_dev.bat with...
+    1. The yaml filename you created inside config/bot_user_configs/chatzilla_ai_example.yaml
+    2. Desired port (leave as 3001 if you can)
+    3. the folder location that you cloned the repo to
+  0. update the .env file
+    - After copying the template...
+    - etc.
+  0. Create miniconda environment named "openai_chatzilla_ai_env"
+    1. lotum 
+    2. ipdum
+    3. delorum
+
+- **Steps from launch**
+  0. Select the game you are playing (leave null for random facts rather than game facts)
+  0. Select the microphone you are using (for the !what and related commands.)  This will only prompt the first time you set it up, otherwise you'll have to update the value manually (.env `CHATZILLA_MIC_DEVICE_NAME`)
+  0. 
+
+# TODO: Adjust config manager to load env > yaml
+- **Reason**: Allows the mmoving of all config values to .env (reduces user touchpoints on mirroring/dockerizing)
+
 # TODO: Migrate `os.path.join` calls to `pathlib.Path`
 - **Reason**: `pathlib.Path` offers more intuitive, cross-platform file handling.
 - **Steps**:

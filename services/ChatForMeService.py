@@ -66,7 +66,6 @@ class ChatForMeService:
                 filename=output_filename
                 )
             
-
 if __name__ == "__main__":
     yaml_filepath = r'C:\_repos\chatzilla_ai\config\config.yaml'
     # gpt_response = asyncio.run(main(yaml_filepath))

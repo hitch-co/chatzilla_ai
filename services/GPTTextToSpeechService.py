@@ -112,7 +112,7 @@ if __name__ == "__main__":
     # from classes import GPTTextToSpeech
 
     # output_filename = 'speech.mp3'
-    # output_dirpath = 'data/tts'
+    # output_dirpath = 'assets/tts'
     # #speech_file_path = Path(__file__).parent.parent / output_dirname / output_filename
     # text_input="hello how are you?  My name is nova and I'm watching ehitch's stream"
 

@@ -60,4 +60,4 @@ def callback():
     return message
 
 if __name__ == "__main__":
-    app.run(port=config.CHATZILLA_PORT_NUMBER, debug=True, use_reloader=use_reloader_bool)
+    app.run(port=config.chatzilla_port_number, debug=True, use_reloader=use_reloader_bool)

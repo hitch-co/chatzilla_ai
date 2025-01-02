@@ -526,7 +526,7 @@ class Bot(twitch_commands.Bot):
 
             eligible_users = [
                 user for user in users_not_yet_sent_message_info
-                if (user['username'] not in self.newusers_service.known_bots
+                if (user['username'] not in self.newusers_service.known_bots_list
                     and user['username'] not in self.config.twitch_bot_operatorname
                     and user['username'] not in self.config.twitch_bot_channel_name
                     and user['username'] not in self.config.twitch_bot_username
@@ -619,7 +619,7 @@ class Bot(twitch_commands.Bot):
         is_sender_mod = False
         command_name = inspect.currentframe().f_back.f_code.co_name
         if not ctx.message.author.is_mod:
-            await ctx.send(f"Oops, the {command_name} is for mods...")
+            await self._send_channel_message_wrapper(f"Oops, the {command_name} is for mods...")
         elif ctx.message.author.is_mod:
             is_sender_mod = True
         self.logger.debug(f"...is sender a mod? '{is_sender_mod}'")
@@ -669,18 +669,17 @@ class Bot(twitch_commands.Bot):
         thread_name = 'chatformemsgs'
         tts_voice = self.config.tts_voice_default
 
-        #add format for concat with filename in trext format       
-        path = os.path.join(self.config.botears_audio_path)
-        filename = self.config.botears_audio_filename + ".wav"
-        filepath = os.path.join(path, filename)
-  
+        # audio_path for audio save location
+        audio_path = os.path.join(self.config.botears_audio_path, self.config.botears_audio_filename + ".wav")
+        self.logger.debug(f"audio_path for audio save location: {audio_path}")
+
         await self.bot_ears.save_last_n_seconds(
-            filepath=filepath, 
+            filepath=audio_path, 
             saved_seconds=self.config.botears_save_length_seconds
             )
         
         # Translate the audio to text
-        text = await self.s2t_service.convert_audio_to_text(filepath)
+        text = await self.s2t_service.convert_audio_to_text(audio_path)
         self.logger.info(f"Transcribed speech to text: {text}")
 
         # Add to thread (This is done to send the voice message to the GPT thread)
@@ -848,9 +847,6 @@ class Bot(twitch_commands.Bot):
             self.logger.info(
                 f"Sender is not a moderator or incorrect number of arguments ({len(args)})."
             )
-            await self._send_channel_message_wrapper(
-                "You do not have permission to use this command."
-            )
             
     @twitch_commands.command(name='vc', aliases=("m_vc"))
     async def vc(self, ctx, *args):
@@ -975,9 +971,9 @@ class Bot(twitch_commands.Bot):
         if self.vibecheck_service is not None:
             await self.vibecheck_service.stop_vibecheck_session()
             self.vibecheck_service = None  # Reset the reference
-            await ctx.send("The vibe check has been stopped.")
+            await self._send_channel_message_wrapper("The vibe check has been stopped.")
         else:
-            await ctx.send("There is no active vibe check to stop.")
+            await self._send_channel_message_wrapper("There is no active vibe check to stop.")
 
     @twitch_commands.command(name='startstory', aliases=("p_startstory"))
     async def startstory(self, message, *args):

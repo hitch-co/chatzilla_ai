@@ -22,7 +22,7 @@ keys_env_filename: 'config.env'
 app_config_dirpath: '.\config'
 keys_env_dirpath: 'C:\Users\Admin\OneDrive\Desktop\_work\__repos (unpublished)\_____CONFIG\chatzilla_ai\config\keys'
 is_gpt_testing: True
-spellcheck_commands_filename: 'config\command_spellcheck_terms.json'
+spellcheck_commands_filename: '.\data\rules\command_spellcheck_terms.json'
 
 #########################
 #########################
@@ -85,8 +85,8 @@ chatforme_randomfacts:
         then you can continue to share facts about the topic."
       randomfact_response: "Looks like there's a conversation happening.  Maybe we can add a small bit of insight into what's beeing said or we can fact check the conversation or we can (sparingly) change the topic only slightly. Be sure to respond in less than {wordcount_short} words."
  
-      topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_topics_and_subtopics.json'
-      areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\game_categories_and_areas.json'
+      topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\data\randomfact\game_topics_and_subtopics.json'
+      areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\data\randomfact\game_categories_and_areas.json'
     standard:
       randomfact_prompt: "share a wild/controversial/lesser known fact (using roughly 
         {wordcount_short} words) or insight about {randomfact_topic} that begins 
@@ -102,8 +102,8 @@ chatforme_randomfacts:
         Finally, remember this is a a stream so you may be ignored.  if you are ignored, then you can continue to share facts about the topic instead."
       randomfact_response: "Looks like there's a conversation happening.  Maybe we can add a small bit of insight into what's beeing said or we can fact check the conversation or we can (sparingly) change the topic only slightly. Be sure to respond in less than {wordcount_short} words."
  
-      topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_topics_and_subtopics.json'
-      areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\data_injection\standard_eras_and_timeperiods.json'
+      topics_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\data\randomfact\standard_topics_and_subtopics.json'
+      areas_injection_file_path: 'C:\_repos\chatzilla_ai_prod\chatzilla_ai\data\randomfact\standard_eras_and_timeperiods.json'
     generic:
       randomfact_prompt: "your only job is to participate in the conversation.  Remember this is a stream so conversations are short, and only last for a few messages.  Remember, you can't hear the streamer, so if part of a convo doesn't make sense just go back to sharing facts.  If there is no apparent active conversation, or you've already made a response, at random just share a random fact about a game or game genre, or a book, or a song, or a place, or a space, etc.  If you recently shared a fact about a subject/topic/person/place/thing, then maybe hsare a deeper fact about that person/place/thing/topic/subvject. Make sure you cover a wide variety of topics if not particiapting in the conversation.  Keep it to {wordcount_short} words max.  If you can, make the topic start with the letter '{random_character_a_to_z}'.  Ensure a wide expanse of knowledge is covered.  Start your message with 'fact:' if it's a fact, otherwise jsut participate in the conversation"
       # topics_injection_file_path: "Need to make this optional"
@@ -187,7 +187,6 @@ botears_buffer_length_seconds: 10
 botears_save_length_seconds: 18
 botears_audio_path: "./data/ears"
 botears_audio_filename: "latest_ears"
-botears_devices_json_filepath: "audio_devices.json"
 botears_device_audio: "SteelSeries Sonar - Media"
 botears_prompt: "Below is a question/comment from the user. You are to respond 
   to themwith a short ({wordcount_medium} words max) response or comment based on 

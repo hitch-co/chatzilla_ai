@@ -43,11 +43,9 @@ class ArticleGenerator:
 
     def fetch_random_article_content(self, article_char_trunc=1200):
         found_article = False
-        list_of_disallowed_terms = utils.load_json(
-            path_or_dir='config',
-            file_name='disallowed_terms.json'
-            )
-        list_of_disallowed_terms = list_of_disallowed_terms['disallowed_terms']
+        disallowed_terms_filepath = '.\data\rules\disallowed_terms.json'
+        disallowed_terms = utils.load_json(path_or_dir=disallowed_terms_filepath)
+        list_of_disallowed_terms = disallowed_terms['disallowed_terms']
         
         if not self.articles:
             self.logger.info("Missing URL or article data")
@@ -76,8 +74,11 @@ class ArticleGenerator:
             if content_html_soup:
                 content_text = content_html_soup.get_text()
                 random_article_content = self.clean_html_text(content_text)
-                found_article = False if self.check_for_disallowed_terms(article_content=random_article_content,
-                                                                         list_of_disallowed_terms=list_of_disallowed_terms) else True
+                found_article = False if self.check_for_disallowed_terms(
+                    article_content=random_article_content,
+                    list_of_disallowed_terms=list_of_disallowed_terms
+                    ) else True
+                
                 if found_article:
                     self.logger.info(f"Successfully fetched article with content  (source:{random_article_link}, preview: {random_article_content[:300]}...)")
                 else:

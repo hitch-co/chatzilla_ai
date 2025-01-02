@@ -25,7 +25,7 @@ class TwitchAuth:
         params = {
             'response_type': 'code',
             'client_id': self.config.twitch_bot_client_id,
-            'redirect_uri': f'http://localhost:{self.config.CHATZILLA_PORT_NUMBER}/{self.config.twitch_bot_redirect_path}',
+            'redirect_uri': f'http://localhost:{self.config.chatzilla_port_number}/{self.config.twitch_bot_redirect_path}',
             'scope': self.config.twitch_bot_scope,
             'state': uuid.uuid4().hex
         }
@@ -40,7 +40,7 @@ class TwitchAuth:
             'client_secret': self.config.twitch_bot_client_secret,
             'code': code,
             'grant_type': 'authorization_code',
-            'redirect_uri': f'http://localhost:{self.config.CHATZILLA_PORT_NUMBER}/{self.config.twitch_bot_redirect_path}'
+            'redirect_uri': f'http://localhost:{self.config.chatzilla_port_number}/{self.config.twitch_bot_redirect_path}'
         }
         self.logger.debug(f"Data for POST request to Twitch: {data}")
         try:

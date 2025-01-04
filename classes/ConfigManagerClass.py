@@ -16,7 +16,12 @@ class ConfigManager:
     def initialize(cls, yaml_filepath):
 
         #full path to the yaml file
-        abs_yaml_filepath = os.path.abspath(yaml_filepath)
+        cls.abs_yaml_filepath = os.path.abspath(yaml_filepath)
+
+        # Set environment variables
+        cls.app_config_dirpath = os.getenv('CHATZILLA_CONFIG_DIRPATH')
+        cls.env_filename = os.getenv('CHATZILLA_ENV_FILENAME')
+        cls.abs_env_filepath = os.getenv('CHATZILLA_CONFIG_DIRPATH') + '\\' + os.getenv('CHATZILLA_ENV_FILENAME')
 
         if cls._instance is None:
             try:
@@ -30,7 +35,7 @@ class ConfigManager:
                 print(f"Exception in create_logger(): {e}")
 
             try:
-                cls._instance.initialize_config(yaml_filepath=abs_yaml_filepath)
+                cls._instance.initialize_config(yaml_filepath=cls.abs_yaml_filepath)
             except Exception as e:
                 print(f"Exception in initialize_config(): {e}")
 
@@ -50,17 +55,17 @@ class ConfigManager:
             raise Exception("You cannot create multiple instances of ConfigManager. Use 'get_instance'.")
 
     def initialize_config(self, yaml_filepath):
-        # Get YAML configurations
-        try:
-            self.load_yaml_config(yaml_full_path=yaml_filepath)
-        except Exception as e:
-            self.logger.error(f"Error, exception in load_yaml_config(): {e}", exc_info=True)
-
         # Set environment variables from .env and .env.keys files
         try:
             self.set_env_file_variables()
         except Exception as e:
             self.logger.error(f"Error, exception in set_env_file_variables(): {e}", exc_info=True)
+
+        # Get YAML configurations
+        try:
+            self.load_yaml_config(yaml_full_path=yaml_filepath)
+        except Exception as e:
+            self.logger.error(f"Error, exception in load_yaml_config(): {e}", exc_info=True)
 
         # Log the configuration
         try:
@@ -72,160 +77,170 @@ class ConfigManager:
         try:
             with open(yaml_full_path, 'r') as file:
                 self.logger.debug("loading individual configs...")
-                yaml_data = yaml.safe_load(file)
+                self.yaml_data = yaml.safe_load(file)
         except FileNotFoundError as e:
-            self.logger.error(f"Error in load_yaml_config(): {e}")
+            self.logger.error(f"FileNotFoundError in load_yaml_config(): {e}")
             raise
         except yaml.YAMLError as e:
-            self.logger.error(f"Error in load_yaml_config(): {e}")
+            self.logger.error(f"yaml.YAMLError in load_yaml_config(): {e}")
             raise
         except Exception as e:
-            self.logger.error(f"Error in load_yaml_config(): {e}")
+            self.logger.error(f"Exception in load_yaml_config(): {e}")
             raise
 
         # This happens first because we need to update the config from the YAML file before proceeding
         try:
-            self.update_config_from_yaml(yaml_data)
+            self.update_config_from_yaml(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in update_config_from_yaml(): {e}")
             raise
         
         # The rest can happen mostly in any order
         try:
-            self.yaml_twitchbot_config(yaml_data) 
+            self.yaml_twitchbot_config(self.yaml_data) 
         except Exception as e:
             self.logger.error(f"Error in yaml_twitchbot_config(): {e}")
             raise
 
         try:
-            self.yaml_depinjector_config(yaml_data)
+            self.yaml_depinjector_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_depinjector_config(): {e}")
             raise
 
         try:
-            self.update_spellcheck_config(yaml_data)
+            self.update_spellcheck_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in update_spellcheck_config(): {e}")
             raise
 
         try:
-            self.yaml_gcp_config(yaml_data)
+            self.yaml_gcp_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_gcp_config(): {e}")
             raise
 
         try:       
-            self.yaml_botears_config(yaml_data)
+            self.yaml_botears_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_botears_config(): {e}")
             raise
 
         try:
-            self.yaml_gpt_config(yaml_data)
+            self.yaml_gpt_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_config(): {e}")
             raise
 
         try:
-            self.yaml_gpt_voice_config(yaml_data)
+            self.yaml_gpt_voice_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_voice_config(): {e}")
             raise
 
         try:
-            self.yaml_gpt_explain_config(yaml_data)
+            self.yaml_gpt_explain_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_explain_config(): {e}")      
             raise
 
         try:
-            self.yaml_gpt_thread_config(yaml_data)
+            self.yaml_gpt_thread_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_thread_config(): {e}")
             raise
 
         try:
-            self.yaml_gpt_assistant_config(yaml_data)
+            self.yaml_gpt_assistant_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_assistant_config(): {e}")
             raise
 
         try:
-            self.yaml_chatforme_config(yaml_data)
+            self.yaml_chatforme_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_chatforme_config(): {e}")
             raise
 
         try:
-            self.yaml_ouat_config(yaml_data)
+            self.yaml_ouat_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_ouat_config(): {e}")
             raise
 
         try:
-            self.yaml_vibecheck_config(yaml_data)
+            self.yaml_vibecheck_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_vibecheck_config(): {e}")
             raise
         
         try:
-            self.yaml_helloworld_config(yaml_data)
+            self.yaml_helloworld_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_helloworld_config(): {e}")
             raise
 
         try:
-            self.yaml_gpt_assistants_with_functions_config(yaml_data)
+            self.yaml_gpt_assistants_with_functions_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_assistants_with_functions_config(): {e}")
             raise
 
         try:
-            self.yaml_factchecker_config(yaml_data)
+            self.yaml_factchecker_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_factchecker_config(): {e}")
             raise
 
         try:
-            self.yaml_tts_config(yaml_data)
+            self.yaml_tts_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_tts_config(): {e}")
             raise
 
         try:
-            self.yaml_randomfact_json(yaml_data)
+            self.yaml_randomfact_json(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_randomfact_json(): {e}")
             raise
 
     def set_env_file_variables(self):
         '''Loads environment variables from a .env file.'''
-        
+
         # Load environment variables set at runtime
         self._update_config_from_env_set_at_runtime()
-        
-        # Load environment variables from .env.keys file
-        if self.keys_env_dirpath and self.keys_env_filename:
-            self.keys_env_path = os.path.join(
-                self.app_config_dirpath, 
-                self.keys_env_dirpath, 
-                self.keys_env_filename
-                )
-            if os.path.exists(self.keys_env_path):
-                dotenv.load_dotenv(self.keys_env_path)
-                self._update_config_from_env_keys()
-            else:
-                self.logger.error(f".env file not found at {self.keys_env_path}")
+                
+
 
         # Load environment variables from .env file
         if self.app_config_dirpath and self.env_filename:
             self.env_path = os.path.join(self.app_config_dirpath, self.env_filename)
             if os.path.exists(self.env_path):
-                dotenv.load_dotenv(self.env_path)
-                self._update_config_from_env()
+                try:
+                    dotenv.load_dotenv(self.env_path)
+                except Exception as e:
+                    self.logger.error(f"Error in set_env_file_variables() -> load_dotenv(self.env_path): {e}")
+                try:
+                    self._update_config_from_env()
+                except Exception as e:
+                    self.logger.error(f"Error in set_env_file_variables() -> _update_config_from_env(): {e}")
             else:
                 self.logger.error(f".env file not found at {self.env_path}")
+                
+        # Load environment variables from .env.keys file
+        if self.app_config_dirpath and self.abs_env_filepath and self.keys_env_filename and self.keys_env_dirpath:
+            self.keys_env_path = os.path.join(self.app_config_dirpath, self.keys_env_dirpath, self.keys_env_filename)
+            if os.path.exists(self.keys_env_path):
+                try:
+                    dotenv.load_dotenv(self.keys_env_path)
+                except Exception as e:
+                    self.logger.error(f"Error in set_env_file_variables() -> load_dotenv(self.keys_env_path): {e}")
+                try:
+                    self._update_config_from_env_keys()
+                except Exception as e:
+                    self.logger.error(f"Error in set_env_file_variables(): -> _update_config_from_env_keys(): {e}")
+            else:
+                self.logger.error(f".env file not found at {self.keys_env_path}")
 
     def _update_config_from_env_set_at_runtime(self):
         try:
@@ -248,7 +263,19 @@ class ConfigManager:
 
     def _update_config_from_env(self):
         try:
+            # Environment & Keys
+
+            self.keys_env_dirpath = os.getenv('CHATZILLA_KEYS_ENV_DIRPATH')
+            self.keys_env_filename = os.getenv('CHATZILLA_KEYS_ENV_FILENAME')
+
+            # Chatzilla related
             self.chatzilla_mic_device_name = os.getenv('CHATZILLA_MIC_DEVICE_NAME')
+
+            # GCP Related
+            self.google_service_account_credentials_file = os.getenv('GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_FILE')
+            self.talkzillaai_userdata_table_id = os.getenv('TALKZILLAAI_USERDATA_TABLE_ID')
+            self.talkzillaai_usertransactions_table_id = os.getenv('TALKZILLAAI_USERTRANSACTIONS_TABLE_ID') 
+        
         except Exception as e:
             self.logger.error(f"Error in update_config_from_env(): {e}")
 
@@ -260,7 +287,6 @@ class ConfigManager:
 
     def yaml_gcp_config(self, yaml_data):
         try:
-            self.google_service_account_credentials_file = yaml_data['google_service_account_credentials_file']
             os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(
                 self.app_config_dirpath,
                 self.keys_env_dirpath, 
@@ -317,9 +343,6 @@ class ConfigManager:
         for name, instructions in assistants_dict.items():
             instructions = instructions.get('instructions')
             function_schema = self.function_schemas[name]
-            self.logger.info(f'name: {name}')
-            self.logger.info(f'instructions: {instructions}')
-            self.logger.info(f'function_schema: {function_schema}')
             
             try:
                 assistant_entry = {
@@ -474,7 +497,6 @@ class ConfigManager:
             self.randomfact_selected_game = os.getenv('CHATZILLA_SELECTED_GAME')
                             
             # Set random fact prompt and response based on selected game
-            self.logger.info(f"randomfact_selected_game: {self.randomfact_selected_game}")
             if self.randomfact_selected_game == 'no_game_selected':
                 selected_type = 'standard'
             elif self.randomfact_selected_game != 'no_game_selected' and self.randomfact_selected_game is not None:
@@ -485,7 +507,6 @@ class ConfigManager:
                 self.logger.error("randomfact_selected_game is None and was set to 'standard'")
                 selected_type = 'standard'
 
-            self.logger.info(f"Selected_type is {selected_type} and randomfact_selected_game is {self.randomfact_selected_game}")
             self.randomfact_prompt = yaml_data['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_prompt']
             self.randomfact_response = yaml_data['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_response']
 
@@ -510,16 +531,6 @@ class ConfigManager:
 
     def update_config_from_yaml(self, yaml_data):
         try:
-            # Grab environment details for loading
-            self.app_config_dirpath = yaml_data['app_config_dirpath']
-            self.env_filename = yaml_data['env_filename']
-            self.keys_env_dirpath = yaml_data['keys_env_dirpath']
-            self.keys_env_filename = yaml_data['keys_env_filename']
-            
-            # 
-            self.google_application_credentials_file = yaml_data['google_service_account_credentials_file']
-            self.talkzillaai_userdata_table_id = yaml_data['talkzillaai_userdata_table_id']
-            self.talkzillaai_usertransactions_table_id = yaml_data['talkzillaai_usertransactions_table_id']
             
             self.twitch_bot_redirect_path = yaml_data['twitch-app']['twitch_bot_redirect_path']
             self.twitch_bot_scope = yaml_data['twitch-app']['twitch_bot_scope']
@@ -533,30 +544,222 @@ class ConfigManager:
             self.logger.error(f"Error in update_config_from_yaml(): {e}")
 
     def _log_config(self):
-        # Primary Configurations
-        self.logger.debug(f'------------------------------')
-        self.logger.debug(f'--- Primary Configurations ---')
-        self.logger.debug(f"chatzilla_port_number: {self.chatzilla_port_number}")
-        self.logger.debug(f"Bot: {self.twitch_bot_username}") 
-        self.logger.debug(f"Channel: {self.twitch_bot_channel_name}")
-        self.logger.debug(f".env filepath: {self.env_path}")
-        self.logger.debug(f".env.keys filepath: {self.keys_env_path}")
-        self.logger.debug(f".yaml filepath: {self.app_config_dirpath}")
-        
-        # Secondary Configurations
-        self.logger.debug(f'------------------------------')
-        self.logger.debug(f'--- Secondary Configurations ---')
-        self.logger.debug(f"self.twitch_bot_gpt_hello_world: {self.twitch_bot_gpt_hello_world}")
-        self.logger.debug(f"randomfact_topics_json_filepath: {self.randomfact_topics_json_filepath}")
-        self.logger.debug(f"randomfact_areas_json_filepath: {self.randomfact_areas_json_filepath}")
-        self.logger.debug(f"randomfact_prompt: {self.randomfact_prompt}")
-        self.logger.debug(f"keys_env_dirpath: {self.keys_env_dirpath}")
+        """
+        Reorganized logging of ALL known config variables into distinct sections,
+        based on their usage throughout the ConfigManager code.
+        """
+
+        # 1) STARTUP / EARLY CONFIG
+        self.logger.info("")
+        self.logger.info("==================================================")
+        self.logger.info("=             1) STARTUP / EARLY CONFIG          =")
+        self.logger.info("==================================================")
+        self.logger.info(f"chatzilla_port_number: {self.chatzilla_port_number}")
+        self.logger.info(f"abs_yaml_filepath: {self.abs_yaml_filepath}")
+        self.logger.info(f"env_path: {self.env_path}")
+        self.logger.info(f"keys_env_path: {self.keys_env_path}")
+
+        # 2) KEYS & CREDENTIALS
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=           2) KEYS & CREDENTIALS                =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"google_service_account_credentials_file: {self.google_service_account_credentials_file}")
+        self.logger.debug(f"talkzillaai_userdata_table_id: {self.talkzillaai_userdata_table_id}")
+        self.logger.debug(f"talkzillaai_usertransactions_table_id: {self.talkzillaai_usertransactions_table_id}")
+
+        # 3) TWITCH CONFIG
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=               3) TWITCH CONFIG                 =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"twitch_bot_username: {self.twitch_bot_username}")
+        self.logger.debug(f"twitch_bot_channel_name: {self.twitch_bot_channel_name}")
+        self.logger.debug(f"twitch_bot_display_name: {self.twitch_bot_display_name}")
+        self.logger.debug(f"twitch_bot_operatorname: {self.twitch_bot_operatorname}")
+        self.logger.debug(f"twitch_bot_moderators: {self.twitch_bot_moderators}")
+        self.logger.debug(f"twitch_bot_redirect_path: {self.twitch_bot_redirect_path}")
+        self.logger.debug(f"twitch_bot_scope: {self.twitch_bot_scope}")
+
+        # 4) GPT MODEL & WORDCOUNTS
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=            4) GPT MODEL & WORDCOUNTS           =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"gpt_model: {self.gpt_model}")
+        self.logger.debug(f"gpt_model_davinci: {self.gpt_model_davinci}")
+        self.logger.debug(f"tts_model: {self.tts_model}")  
+        self.logger.debug(f"wordcount_short: {self.wordcount_short}")
+        self.logger.debug(f"wordcount_medium: {self.wordcount_medium}")
+        self.logger.debug(f"wordcount_long: {self.wordcount_long}")
+        self.logger.debug(f"assistant_response_max_length: {self.assistant_response_max_length}")
+        self.logger.debug(f"magic_max_waittime_for_gpt_response: {self.magic_max_waittime_for_gpt_response}")
+
+        # 5) TTS VOICES / AUDIO CONFIG
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=             5) TTS VOICES / AUDIO              =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"tts_include_voice: {self.tts_include_voice}")
         self.logger.debug(f"tts_data_folder: {self.tts_data_folder}")
         self.logger.debug(f"tts_file_name: {self.tts_file_name}")
-        self.logger.debug(f"gpt_assistants_config: {self.gpt_assistants_config}")
-        self.logger.debug(f"newusers_sleep_time: {self.newusers_sleep_time}")
-        self.logger.debug(f"gpt_assistants_suffix: {self.gpt_assistants_suffix}")
+        self.logger.debug(f"tts_voice_randomfact: {self.tts_voice_randomfact}")
+        self.logger.debug(f"tts_voice_chatforme: {self.tts_voice_chatforme}")
+        self.logger.debug(f"tts_voice_story: {self.tts_voice_story}")
+        self.logger.debug(f"tts_voice_factcheck: {self.factcheck_voice}")
+        self.logger.debug(f"tts_voice_newuser: {self.tts_voice_newuser}")
+        self.logger.debug(f"tts_voice_default: {self.tts_voice_default}")
+        self.logger.debug(f"tts_voice_vibecheck: {self.tts_voice_vibecheck}")
         self.logger.debug(f"chatzilla_mic_device_name: {self.chatzilla_mic_device_name}")
+        # From yaml_depinjector_config
+        self.logger.debug(f"tts_voices: {self.tts_voices}")
+        self.logger.debug(f"tts_volume: {self.tts_volume}")
+
+        # 6) BOTEARS CONFIG
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=                 6) BOTEARS CONFIG              =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"botears_prompt: {self.botears_prompt}")
+        self.logger.debug(f"botears_audio_path: {self.botears_audio_path}")
+        self.logger.debug(f"botears_audio_filename: {self.botears_audio_filename}")
+        self.logger.debug(f"botears_save_length_seconds: {self.botears_save_length_seconds}")
+        self.logger.debug(f"botears_buffer_length_seconds: {self.botears_buffer_length_seconds}")
+
+        # 7) FACTCHECK CONFIG
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=              7) FACTCHECK CONFIG               =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"factchecker_prompts: {self.factchecker_prompts}")
+
+        # 8) RANDOM FACT CONFIG
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=             8) RANDOM FACT CONFIG              =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"randomfact_sleeptime: {self.randomfact_sleeptime}")
+        self.logger.debug(f"randomfact_selected_game: {self.randomfact_selected_game}")
+        self.logger.debug(f"randomfact_prompt: {self.randomfact_prompt}")
+        self.logger.debug(f"randomfact_response: {self.randomfact_response}")
+        self.logger.debug(f"randomfact_topics_json_filepath: {self.randomfact_topics_json_filepath}")
+        self.logger.debug(f"randomfact_areas_json_filepath: {self.randomfact_areas_json_filepath}")
+
+        # 9) VIBE CHECK & NEW USERS
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=           9) VIBE CHECK & NEW USERS            =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"vibechecker_max_interaction_count: {self.vibechecker_max_interaction_count}")
+        self.logger.debug(f"formatted_gpt_vibecheck_prompt: {self.formatted_gpt_vibecheck_prompt}")
+        self.logger.debug(f"formatted_gpt_viberesult_prompt: {self.formatted_gpt_viberesult_prompt}")
+        self.logger.debug(f"newusers_sleep_time: {self.newusers_sleep_time}")
+        self.logger.debug(f"newusers_msg_prompt: {self.newusers_msg_prompt}")
+        self.logger.debug(f"newusers_faiss_default_query: {self.newusers_faiss_default_query}")
+        self.logger.debug(f"returningusers_msg_prompt: {self.returningusers_msg_prompt}")
+        self.logger.debug(f"vibechecker_message_wordcount: {self.vibechecker_message_wordcount}")
+        self.logger.debug(f"vibechecker_question_session_sleep_time: {self.vibechecker_question_session_sleep_time}")
+        self.logger.debug(f"vibechecker_listener_sleep_time: {self.vibechecker_listener_sleep_time}")
+        self.logger.debug(f"formatted_gpt_vibecheck_alert: {self.formatted_gpt_vibecheck_alert}")
+        self.logger.debug(f"flag_returning_users_service: {self.flag_returning_users_service}")
+
+        # 10) CHATFORME
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=                  10) CHATFORME                 =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"chatforme_prompt: {self.chatforme_prompt}")
+
+        # 11) GPT HELLO WORLD
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=            11) GPT HELLO WORLD                 =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"twitch_bot_gpt_hello_world: {self.twitch_bot_gpt_hello_world}")
+        self.logger.debug(f"gpt_hello_world: {self.gpt_hello_world}")
+        self.logger.debug(f"hello_assistant_prompt: {self.hello_assistant_prompt}")
+
+        # 12) GPT EXPLAIN
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=              12) GPT EXPLAIN CONFIG            =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"gpt_explain_prompts: {self.gpt_explain_prompts}")
+        self.logger.debug(f"explanation_suffix: {self.explanation_suffix}")
+        self.logger.debug(f"explanation_starter: {self.explanation_starter}")
+        self.logger.debug(f"explanation_progressor: {self.explanation_progressor}")
+        self.logger.debug(f"explanation_additional_detail_addition: {self.explanation_additional_detail_addition}")
+        self.logger.debug(f"explanation_user_opening_summary_prompt: {self.explanation_user_opening_summary_prompt}")
+        self.logger.debug(f"explanation_ender: {self.explanation_ender}")
+        self.logger.debug(f"explanation_progression_number: {self.explanation_progression_number}")
+        self.logger.debug(f"explanation_max_counter_default: {self.explanation_max_counter_default}")
+        self.logger.debug(f"explanation_message_recurrence_seconds: {self.explanation_message_recurrence_seconds}")
+
+        # 13) GPT THREADS
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=               13) GPT THREADS                  =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"gpt_thread_names: {self.gpt_thread_names}")
+
+        # 14) GPT ASSISTANTS & FUNCTION SCHEMAS
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=      14) GPT ASSISTANTS & FUNCTION SCHEMAS     =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"gpt_assistants_config: {self.gpt_assistants_config}")
+        self.logger.debug(f"gpt_assistants_suffix: {self.gpt_assistants_suffix}")
+        self.logger.debug(f"function_schemas_path: {self.function_schemas_path}")
+        self.logger.debug(f"function_schemas: {self.function_schemas}")
+        self.logger.debug(f"gpt_assistants_with_functions_config: {self.gpt_assistants_with_functions_config}")
+
+        # 15) OUAT (ONCE UPON A TIME) CONFIG
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=             15) OUAT (STORY) CONFIG            =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"ouat_message_recurrence_seconds: {self.ouat_message_recurrence_seconds}")
+        self.logger.debug(f"ouat_story_max_counter_default: {self.ouat_story_max_counter_default}")
+        self.logger.debug(f"ouat_story_progression_number: {self.ouat_story_progression_number}")
+        self.logger.debug(f"ouat_story_climax_number: {self.ouat_story_climax_number}")
+        self.logger.debug(f"ouat_story_finisher_number: {self.ouat_story_finisher_number}")
+        self.logger.debug(f"writing_tone: {self.writing_tone}")
+        self.logger.debug(f"writing_style: {self.writing_style}")
+        self.logger.debug(f"writing_theme: {self.writing_theme}")
+        self.logger.debug(f"newsarticle_rss_feed: {self.newsarticle_rss_feed}")
+        self.logger.debug(f"story_article_bullet_list_summary_prompt: {self.story_article_bullet_list_summary_prompt}")
+        self.logger.debug(f"story_user_opening_scene_summary_prompt: {self.story_user_opening_scene_summary_prompt}")
+        self.logger.debug(f"shorten_response_length_prompt: {self.shorten_response_length_prompt}")
+        self.logger.debug(f"storyteller_storysuffix_prompt: {self.storyteller_storysuffix_prompt}")
+        self.logger.debug(f"storyteller_storystarter_prompt: {self.storyteller_storystarter_prompt}")
+        self.logger.debug(f"storyteller_storyprogressor_prompt: {self.storyteller_storyprogressor_prompt}")
+        self.logger.debug(f"storyteller_storyfinisher_prompt: {self.storyteller_storyfinisher_prompt}")
+        self.logger.debug(f"storyteller_storyclimax_prompt: {self.storyteller_storyclimax_prompt}")
+        self.logger.debug(f"storyteller_storyender_prompt: {self.storyteller_storyender_prompt}")
+        self.logger.debug(f"ouat_prompt_addtostory_prefix: {self.ouat_prompt_addtostory_prefix}")
+        self.logger.debug(f"aboutme_prompt: {self.aboutme_prompt}")
+
+        # 16) SPELLCHECK
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=              16) SPELLCHECK CONFIG             =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"command_spellcheck_terms_filepath: {self.command_spellcheck_terms_filepath}")
+        self.logger.debug(f"command_spellcheck_terms: {self.command_spellcheck_terms}")
+
+        # 17) MISC APP SETTINGS
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=            17) MISC APP SETTINGS               =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"num_bot_responses: {self.num_bot_responses}")
+        self.logger.debug(f"msg_history_limit: {self.msg_history_limit}")
+
+        # 18) LOG COMPLETE
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=                LOG COMPLETE                    =")
+        self.logger.debug("==================================================")
 
     def create_logger(self):
         self.logger = my_logging.create_logger(
@@ -567,14 +770,16 @@ class ConfigManager:
             )
 
 if __name__ == "__main__":
-
-    #yaml_filepath = r'C:\_repos\chatzilla_ai_prod\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml'
-    yaml_filepath = r'C:\_repos\chatzilla_ai_dev\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml'    
-    #yaml_filepath = r'C:\_repos\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml'
-    print(f"yaml_filepath_type: {type(yaml_filepath)}")
-
-    ConfigManager.initialize(yaml_filepath=yaml_filepath)
-    config = ConfigManager.get_instance()
+    import os
+    os.environ['CHATZILLA_CONFIG_DIRPATH'] = r'C:\_repos\chatzilla_ai_dev\chatzilla_ai\config'
+    os.environ['CHATZILLA_YAML_FILE'] = 'chatzilla_ai_ehitch.yaml'
+    os.environ['CHATZILLA_ENV_FILENAME'] = '.env'
+    os.environ['CHATZILLA_KEYS_ENV_DIRPATH'] = 'keys'
+    os.environ['CHATZILLA_KEYS_ENV_FILENAME'] = '.env.keys'
+    os.environ['CHATZILLA_YAML_PATH'] = r'.\config\bot_user_configs' '\\' + os.getenv('CHATZILLA_YAML_FILE')
     
-    # Log the configuration
-    config._log_config()
+    #yaml_filepath = r'C:\_repos\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml'
+    print(f"yaml_filepath_type: {type(os.environ['CHATZILLA_YAML_PATH'])}")
+
+    ConfigManager.initialize(yaml_filepath=os.environ['CHATZILLA_YAML_PATH'])
+    config = ConfigManager.get_instance()

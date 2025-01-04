@@ -1,1 +1,1 @@
-call run_environment.bat chatzilla_ai_ehitch.yaml 3001 "C:\_repos\chatzilla_ai\" > ./log/__terminal_log.txt 2>&1
+call run_environment.bat 3001 "C:\_repos\chatzilla_ai_dev\chatzilla_ai\" chatzilla_ai_ehitch.yaml ".\config" ".env" ".\keys" ".env.keys"  > ./log/__terminal_log.txt 2>&1

@@ -224,10 +224,18 @@ if __name__ == "__main__":
     async def run_test():
         # You might need to change this import depending on your directory structure
         from classes.ConfigManagerClass import ConfigManager
-        yaml_filepath = r'C:\_repos\chatzilla_ai_dev\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml'
+
+        os.environ['CHATZILLA_CONFIG_DIRPATH'] = r'C:\_repos\chatzilla_ai_dev\chatzilla_ai\config'
+        os.environ['CHATZILLA_YAML_FILE'] = 'chatzilla_ai_ehitch.yaml'
+        os.environ['CHATZILLA_ENV_FILENAME'] = '.env'
+        os.environ['CHATZILLA_KEYS_ENV_DIRPATH'] = 'keys'
+        os.environ['CHATZILLA_KEYS_ENV_FILENAME'] = '.env.keys'
+        os.environ['CHATZILLA_YAML_PATH'] = r'.\config\bot_user_configs' '\\' + os.getenv('CHATZILLA_YAML_FILE')
         
-        # Initialize your config
-        ConfigManager.initialize(yaml_filepath=yaml_filepath)
+        #yaml_filepath = r'C:\_repos\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml'
+        print(f"yaml_filepath_type: {type(os.environ['CHATZILLA_YAML_PATH'])}")
+
+        ConfigManager.initialize(yaml_filepath=os.environ['CHATZILLA_YAML_PATH'])
         config = ConfigManager.get_instance()
 
         # Choose your microphone (same as before)

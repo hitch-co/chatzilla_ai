@@ -218,17 +218,12 @@ if __name__ == "__main__":
     import asyncio
 
     async def run_test():
+        import dotenv
         from classes.ConfigManagerClass import ConfigManager
 
-        os.environ['CHATZILLA_CONFIG_DIRPATH'] = r'C:\_repos\chatzilla_ai\config'
-        os.environ['CHATZILLA_YAML_FILE'] = 'chatzilla_ai_ehitch.yaml'
-        os.environ['CHATZILLA_ENV_FILENAME'] = '.env'
-        os.environ['CHATZILLA_KEYS_ENV_DIRPATH'] = 'keys'
-        os.environ['CHATZILLA_KEYS_ENV_FILENAME'] = '.env.keys'
-        os.environ['CHATZILLA_YAML_PATH'] = r'.\config\bot_user_configs' '\\' + os.getenv('CHATZILLA_YAML_FILE')        
-        print(f"yaml_filepath_type: {type(os.environ['CHATZILLA_YAML_PATH'])}")
-
-        ConfigManager.initialize(yaml_filepath=os.environ['CHATZILLA_YAML_PATH'])
+        dotenv_load_result = dotenv.load_dotenv(dotenv_path='./config/.env')
+        print(f"yaml_filepath: {os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH')} (type: {type(os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH'))})")
+        ConfigManager.initialize(yaml_filepath=os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH'))
         config = ConfigManager.get_instance()
 
         device_name = "Microphone (Yeti Classic)"

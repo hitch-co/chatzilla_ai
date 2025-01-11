@@ -14,7 +14,7 @@ runtime_logger_level = 'INFO'
 app = Flask(__name__)
 
 # Load configuration
-yaml_filepath = os.getenv('CHATZILLA_YAML_PATH')
+yaml_filepath = os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH')
 ConfigManager.initialize(yaml_filepath=yaml_filepath)
 config = ConfigManager.get_instance()
 

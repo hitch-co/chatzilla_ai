@@ -12,8 +12,7 @@ Make sure to install ffmpeg for anything related to voice activity.  Once you've
 
 The main configuration parameters for the bot are stored in the `config.yaml` file, which is located in the `config` directory. The parameters are as follows:
 
-- `env_filename`: The name of the file that contains the environment variables.
-- `env_dirname`: The directory where the `env_filename` is located.
+- `keys_env_filename`: The name of the file that contains the environment variables.
 - `msg_history_limit`: The maximum number of previous messages that the bot should consider when generating a response.
 - `num_bot_responses`: The number of bot responses to generate for each input.
 - `automated_message_seconds`: The delay (in seconds) between automated messages.

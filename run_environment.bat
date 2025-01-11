@@ -3,45 +3,90 @@ setlocal enabledelayedexpansion
 
 :: Check if parameters are provided
 if "%~1"=="" (
-    echo No environment provided.
-    exit /b
-)
-if "%~2"=="" (
     echo No port provided.
     exit /b
 )
+if "%~2"=="" (
+    echo No root directory provided.
+    exit /b
+)
 if "%~3"=="" (
-    echo No directory provided.
+    echo No yaml file name provided.
+    exit /b
+)
+if "%~4"=="" (
+    echo No config dirpath provided.
+    exit /b
+)
+if "%~5"=="" (
+    echo No env filename provided.
+    exit /b
+)
+if "%~6"=="" (
+    echo No keys dirpath provided.
+    exit /b
+)
+if "%~7"=="" (
+    echo No keys filename provided.
     exit /b
 )
 
+:: Validate MINICONDA_HOME
+if "%MINICONDA_HOME%"=="" (
+    echo MINICONDA_HOME is not set. Please configure your system environment variables.
+    exit /b
+) else (
+    if not exist "%MINICONDA_HOME%" (
+        echo MINICONDA_HOME directory does not exist. Please check the path.
+        exit /b
+    )
+)
+
 :: Environment and Port
-set "APP_BOT_USER_YAML=%~1"
-set "input_port_number=%~2"
-set "TWITCH_BOT_ROOT_DIRECTORY=%~3"
+set "CHATZILLA_PORT_NUMBER=%~1"
+set "CHATZILLA_ROOT_DIRECTORY=%~2"
+set "CHATZILLA_YAML_FILE=%~3"
+set "CHATZILLA_CONFIG_DIRPATH=%~4"
+set "CHATZILLA_ENV_FILENAME=%~5"
+set "CHATZILLA_KEYS_ENV_DIRPATH=%~6"
+set "CHATZILLA_KEYS_ENV_FILENAME=%~7"
+
 
 :: Debugging - Print the variables
-echo APP_BOT_USER_YAML=!APP_BOT_USER_YAML!
-echo input_port_number=!input_port_number!
-echo TWITCH_BOT_ROOT_DIRECTORY=!TWITCH_BOT_ROOT_DIRECTORY!
+echo MINICONDA_HOME=!MINICONDA_HOME!
+echo CHATZILLA_YAML_FILE=!CHATZILLA_YAML_FILE!
+echo CHATZILLA_PORT_NUMBER=!CHATZILLA_PORT_NUMBER!
+echo CHATZILLA_ROOT_DIRECTORY=!CHATZILLA_ROOT_DIRECTORY!
+echo CHATZILLA_CONFIG_DIRPATH=!CHATZILLA_CONFIG_DIRPATH!
+echo CHATZILLA_ENV_FILENAME=!CHATZILLA_ENV_FILENAME!
+echo CHATZILLA_KEYS_ENV_DIRPATH=!CHATZILLA_KEYS_ENV_DIRPATH!
+echo CHATZILLA_KEYS_ENV_FILENAME=!CHATZILLA_KEYS_ENV_FILENAME!
 
 :: Switch directory 
-cd "!TWITCH_BOT_ROOT_DIRECTORY!" || (
-    echo Directory not found: !TWITCH_BOT_ROOT_DIRECTORY!
+cd "!CHATZILLA_ROOT_DIRECTORY!" || (
+    echo Directory not found: !CHATZILLA_ROOT_DIRECTORY!
     exit /b
 )
 echo ...current directory: %cd%
 
+:: Set the game to be played
+set /p CHATZILLA_SELECTED_GAME=What game are you playing today? (default:'no_game_selected'):
+
 :: Activate Conda environment
-call "C:\Users\Admin\Miniconda3\condabin\conda.bat" activate openai_test_env
+call "%MINICONDA_HOME%\condabin\conda.bat" activate openai_chatzilla_ai_env || (
+    echo Failed to activate Conda environment.
+    exit /b
+)
+
+:: Run preflight audio setup
+python config/startup_audio_devices.py || (
+    echo Audio setup failed. Exiting.
+    exit /b
+)
 
 :: Set configuration path
-set "BOT_USER_CONFIG_PATH=.\config\bot_user_configs\!APP_BOT_USER_YAML!"
+set "CHATZILLA_YAML_PATH=.\config\bot_user_configs\!CHATZILLA_YAML_FILE!"
 
-:: Set the game to be played
-set /p selected_game=What game are you playing today? (default:'no_game_selected'):
-:: if selected game is empty or bad value, set to no_game_selected
 echo ...starting twitch_bot.py
 python twitch_bot.py
-
 pause

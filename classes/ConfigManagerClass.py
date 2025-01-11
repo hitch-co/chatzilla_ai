@@ -7,7 +7,7 @@ import json
 from my_modules import my_logging
 from my_modules import utils
 
-runtime_logger_level = 'DEBUG'
+runtime_logger_level = 'INFO'
 
 class ConfigManager:
     _instance = None
@@ -334,16 +334,21 @@ class ConfigManager:
         self.gpt_assistants_with_functions_config = []
 
         # Load the function schemas from the JSON file
-        self.function_schemas_path = yaml_data['gpt_assistants_with_functions']['function_call_schema_file_path']
+        gpt_assistants_with_functions_config = yaml_data.get('gpt_assistants_with_functions', {})
+        self.function_schemas_path = gpt_assistants_with_functions_config['function_call_schema_file_path']
+        
         self.function_schemas = utils.load_json(path_or_dir=self.function_schemas_path)
+        assistants_dict = gpt_assistants_with_functions_config.get('assistants', {})
 
-        gpt_assistants_config = yaml_data.get('gpt_assistants_with_functions', {})
-        assistants_dict = gpt_assistants_config.get('assistants', {})
-
+        self.logger.debug('The following assistants are being loaded with their instructions and JSON configurations:')
+        self.logger.debug(f'function_schemas_path: {self.function_schemas_path}')
+        self.logger.debug(f'function_schemas: {self.function_schemas}')
+        self.logger.debug(f'assistants_dict: {assistants_dict}')
+        
         for name, instructions in assistants_dict.items():
             instructions = instructions.get('instructions')
             function_schema = self.function_schemas[name]
-            
+
             try:
                 assistant_entry = {
                     "name": name,
@@ -380,7 +385,6 @@ class ConfigManager:
         self.tts_voice_newuser = yaml_data['openai-api']['tts_voice_newuser']
         self.tts_voice_default = yaml_data['openai-api']['tts_voice_default']
         self.tts_voice_vibecheck = yaml_data['openai-api']['tts_voice_vibecheck']
-        self.flag_returning_users_service = yaml_data['flag_returning_users_service']
 
     def yaml_vibecheck_config(self, yaml_data):
         try:
@@ -401,6 +405,9 @@ class ConfigManager:
     def yaml_twitchbot_config(self, yaml_data):
         try:
             self.twitch_bot_gpt_hello_world = yaml_data['twitch-app']['twitch_bot_gpt_hello_world']
+            self.twitch_bot_gpt_new_users_service = yaml_data['twitch-app']['twitch_bot_gpt_new_users_service']
+            self.flag_returning_users_service = yaml_data['twitch-app']['twitch_bot_gpt_returning_users_faiss_service']
+
             self.twitch_bot_channel_name = yaml_data['twitch-app']['twitch_bot_channel_name']
             self.twitch_bot_username = yaml_data['twitch-app']['twitch_bot_username']
             self.twitch_bot_display_name = yaml_data['twitch-app']['twitch_bot_display_name']
@@ -771,7 +778,7 @@ class ConfigManager:
 
 if __name__ == "__main__":
     import os
-    os.environ['CHATZILLA_CONFIG_DIRPATH'] = r'C:\_repos\chatzilla_ai_dev\chatzilla_ai\config'
+    os.environ['CHATZILLA_CONFIG_DIRPATH'] = r'C:\_repos\chatzilla_ai\config'
     os.environ['CHATZILLA_YAML_FILE'] = 'chatzilla_ai_ehitch.yaml'
     os.environ['CHATZILLA_ENV_FILENAME'] = '.env'
     os.environ['CHATZILLA_KEYS_ENV_DIRPATH'] = 'keys'

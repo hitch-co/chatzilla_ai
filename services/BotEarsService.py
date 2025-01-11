@@ -1,9 +1,9 @@
 import soundfile as sf
 import sounddevice as sd
 import numpy as np
-import asyncio
 import json
 import os
+import time
 from collections import deque
 
 from my_modules import my_logging
@@ -39,8 +39,6 @@ class BotEars:
         )
 
         botears_audio_dirpath = os.path.dirname(audio_filepath)
-        botears_audio_filename = os.path.basename(audio_filepath)
-
         if not os.path.exists(botears_audio_dirpath):
             os.makedirs(botears_audio_dirpath)
 
@@ -176,10 +174,14 @@ class BotEars:
         num_samples = saved_seconds * self.samplerate
         audio_data = np.array(self.buffer)
 
+        # Add the timestamp to the filename (note path includes an extension)
+        filepath_adj = filepath.replace(".wav", f"_{time.strftime('%Y%m%d-%H%M%S')}.wav")
+
         # If we haven't captured enough audio yet, this might be shorter
         if len(audio_data) > num_samples:
             audio_data = audio_data[-num_samples:]
 
+        sf.write(filepath_adj, audio_data, self.samplerate, format="WAV")
         sf.write(filepath, audio_data, self.samplerate, format="WAV")
         self.logger.info(f"Saved {len(audio_data)/self.samplerate:.2f} sec of mono audio to {filepath}")
 

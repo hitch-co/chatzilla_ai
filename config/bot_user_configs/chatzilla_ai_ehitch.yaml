@@ -227,8 +227,8 @@ chatforme_prompts:
 #########################
 #########################
 #Bot Ears
-botears_buffer_length_seconds: 15
-botears_save_length_seconds: 22
+botears_buffer_length_seconds: 22
+botears_save_length_seconds: 7
 botears_audio_path: "./assets/ears"
 botears_audio_filename: "latest_ears"
 botears_prompt: "Below is a question/comment from the user. You are to respond 

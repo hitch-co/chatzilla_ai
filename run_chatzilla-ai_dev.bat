@@ -1,2 +1,8 @@
-cd C:\_repos\chatzilla_ai_dev\chatzilla_ai\
-run_environment.bat 3001 "C:\_repos\chatzilla_ai_dev\chatzilla_ai\" chatzilla_ai_ehitch.yaml ".\config" ".env" ".\keys" ".env.keys"
+REM 1) Load variables from .env
+if exist .\config\.env (
+  for /f "usebackq tokens=1,* delims== " %%i in (`type .\config\.env`) do (
+    set "%%i=%%j"
+  )
+)
+
+run_environment.bat

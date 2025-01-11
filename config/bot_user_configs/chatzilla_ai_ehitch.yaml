@@ -7,7 +7,7 @@ spellcheck_commands_filename: '.\data\rules\command_spellcheck_terms.json'
 #Flask App
 twitch-app:
   twitch_bot_gpt_hello_world: True
-  twitch_bot_gpt_new_users_service: False
+  twitch_bot_gpt_new_users_service: True
   twitch_bot_gpt_returning_users_faiss_service: True
   twitch_bot_username: 'chatzilla_ai'
   twitch_bot_display_name: 'chatzilla_ai'

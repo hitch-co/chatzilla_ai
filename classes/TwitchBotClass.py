@@ -11,6 +11,7 @@ import time
 from models.task import AddMessageTask, CreateExecuteThreadTask, CreateSendChannelMessageTask
 
 from my_modules.my_logging import create_logger
+from my_modules import utils
 import my_modules.adjustable_sleep_task as adjustable_sleep_task
 
 from classes.TwitchAPI import TwitchAPI
@@ -93,18 +94,18 @@ class Bot(twitch_commands.Bot):
         # Create function call manager
         self.gpt_function_call_manager = gpt_function_call_mgr
 
-        # TODO: Could be a good idea to inject these dependencies into the services
+        # TODO1: Could be a good idea to inject these dependencies into the services
         # instantiate the ChatForMeService
         self.chatforme_service = ChatForMeService(
             tts_client=self.tts_client, #NOTE: Might also be able to use the self.gpt_client here
             send_channel_message=self._send_channel_message_wrapper
             )
 
-        # TODO: Could be a good idea to inject these dependencies into the services
+        # TODO1: Could be a good idea to inject these dependencies into the services
         # instantiate the NewUsersService
         self.newusers_service = NewUsersService()
 
-        # TODO: Could be a good idea to inject these dependencies into the services
+        # TODO1: Could be a good idea to inject these dependencies into the services
         # instantiate the AudioService and BotEars
         self.audio_service = AudioService(volume=self.config.tts_volume)
         device_name = self.config.chatzilla_mic_device_name
@@ -115,7 +116,7 @@ class Bot(twitch_commands.Bot):
             buffer_length_seconds=self.config.botears_buffer_length_seconds
             )
 
-        # TODO: Could be a good idea to inject these dependencies into the services
+        # TODO1: Could be a good idea to inject these dependencies into the services
         # Instantiate the speech to text service
         self.s2t_service = SpeechToTextService()
 
@@ -127,14 +128,13 @@ class Bot(twitch_commands.Bot):
             )
 
         #Taken from app authentication class() 
-        # TODO: Reudndant with twitchAPI?
+        # TODO9: Reudndant with twitchAPI? Maybe used for refreshing access token?
         self.twitch_auth = twitch_auth
 
         # Grab the TwitchAPI class and set the bot/broadcaster/moderator IDs
         self.twitch_api = TwitchAPI()
 
         #Get historic stream viewers
-        # TODO: Should mb be refreshed more frequently)
         self.historic_users_at_start_of_session = self.bq_uploader.fetch_unique_usernames_from_bq_as_list()
 
         #Set default loop state
@@ -382,19 +382,20 @@ class Bot(twitch_commands.Bot):
         self.logger.info("---------------------------------------")
         self.logger.info("MESSAGE RECEIVED: Processing message...")
 
-        # Get message metadata
+        # 1a. Get message metadata
         message_metadata = self.message_handler._get_message_metadata(message)
         message_metadata['content'] = _clean_message_content(
             message.content,
             self.config.command_spellcheck_terms
             )
 
+        # 1b. Add the message to the appropriate message history (not to be confused with the thread history)
         self.logger.info(f"Message from: {message_metadata['message_author']}")
         self.logger.info(f"Message content: '{message_metadata['content']}'")
         self.logger.debug(f"This is the message object {message_metadata}")
-
-        # 1b. Add the message to the appropriate message history (not to be confused with the thread history)
         await self.message_handler.add_to_appropriate_message_history(message_metadata)
+        
+        # 1c. Add the message to the appropriate thread history
         if message_metadata['message_author'] is not None:
             await self.message_handler.add_to_thread_history(
                 thread_name=thread_name,
@@ -406,7 +407,7 @@ class Bot(twitch_commands.Bot):
             self.logger.info(f"message_metadata sent to add_message_to_index: {message_metadata}")
             await self.faiss_service.add_message_to_index(message_metadata)
 
-        # 1c. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
+        # 1d. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
         if self.config.twitch_bot_username in message_metadata['content'] and "!chat" not in message_metadata['content'] and message.author is not None:
             await self._chatforme_main(message_metadata['content'])
 
@@ -482,16 +483,14 @@ class Bot(twitch_commands.Bot):
                     tokens = response.json()
                     
                     # Calculate the new expiry time for the access token
-                    new_expiry_time = current_time + int(tokens['expires_in']) - 3600
-                    
-                    self.twitch_auth.access_token_expiry = new_expiry_time
+                    self.twitch_auth.access_token_expiry = current_time + int(tokens['expires_in']) - 3600
                     self.twitch_auth.handle_auth_callback(response)
                 else:
                     self.logger.debug("Access token not nearing expiry. No need to refresh.")
             except Exception as e:
                 self.logger.error(f"Failed to refresh Twitch access token: {e}")
             
-            # Wait for 30 minutes before checking again
+            # Wait before checking again
             await asyncio.sleep(1800)
 
     async def _send_message_to_new_users_task(self, thread_name='chatformemsgs', assistant_name='newuser_shoutout'):
@@ -573,11 +572,17 @@ class Bot(twitch_commands.Bot):
                 self.logger.debug(f"...User-specific chat history sample: {user_specific_chat_history[0:5]}")
                 
                 # Use FAISS to retrieve the most relevant messages
-                query_final = self.config.newusers_faiss_default_query.replace("{random_user_name}", random_user_name)
+                replacements_dict = {"random_user_name":random_user_name}
+                query_final = utils.populate_placeholders(
+                    logger=self.logger,
+                    prompt_template=self.config.newusers_faiss_default_query,
+                    replacements=replacements_dict
+                )
                 self.logger.debug(f"...FAISS Query message search for '{random_user_name}': {query_final}")
 
                 relevant_message_ids = self.faiss_service.build_and_retrieve_from_user_index(
-                    messages=user_specific_chat_history, query=query_final
+                    messages=user_specific_chat_history, 
+                    query=query_final
                 )
 
                 if not relevant_message_ids:
@@ -784,10 +789,10 @@ class Bot(twitch_commands.Bot):
         )
         self.logger.debug(f"Task to add to queue: {task.task_dict}")
 
-        await self.task_manager.add_task_to_queue_and_execute(thread_name, task)
+        await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask '!chat'")
         
-    # TODO: it seems like creating a task is a good idea as each individual task
-    # is effectrively goign to be executed asyncronously... rather than getting blocked 
+    # TODO: it seems like creating a task is a good idea here as each individual task
+    # is effectrively goign to be executed asyncronously rather than getting blocked 
     #   Other option is potentially the process task method instead
     @twitch_commands.command(name='chat', aliases=("p_chat"))
     async def chatforme(self, ctx=None, *args):

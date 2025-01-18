@@ -16,7 +16,7 @@ class FAISSService:
         self.general_id_map = {}
 
         # Temporary user-specific index objects for on-demand use
-        self.user_index = None
+        self.user_faiss_index = None
         self.user_id_map = {}
 
         self.logger = create_logger(
@@ -66,15 +66,15 @@ class FAISSService:
         distances, indices = index.search(query_embedding_np, self.top_k)
         return [id_map[idx] for idx in indices[0] if idx != -1]
 
-    def build_and_retrieve_from_user_index(self, messages: list[dict], query: str):
+    def build_and_retrieve_from_user_faiss_index(self, messages: list[dict], query: str):
         """
         Builds a temporary user-specific FAISS index and retrieves relevant messages.
         """
         # Reset the user index and id map for fresh use
-        if not self.user_index:
-            self.user_index = faiss.IndexFlatL2(self.embedding_dim)
+        if not self.user_faiss_index:
+            self.user_faiss_index = faiss.IndexFlatL2(self.embedding_dim)
         else:
-            self.user_index.reset()
+            self.user_faiss_index.reset()
         
         self.user_id_map.clear()
 
@@ -98,13 +98,13 @@ class FAISSService:
             self.logger.warning("Generated embeddings are empty or malformed. Skipping FAISS operations.")
             return []
 
-        self.user_index.add(embeddings_np)
+        self.user_faiss_index.add(embeddings_np)
         for i, message_id in enumerate(ids):
             self.user_id_map[i] = message_id
 
         # Use the unified retrieval function with the temporary user index
         return self.retrieve_similar_messages(
             query, 
-            index=self.user_index, 
+            index=self.user_faiss_index, 
             id_map=self.user_id_map
         )

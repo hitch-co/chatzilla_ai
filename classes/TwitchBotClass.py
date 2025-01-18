@@ -513,7 +513,6 @@ class Bot(twitch_commands.Bot):
                 
             # Add self.current_users_list to self.current_users_list as set to remove duplicates
             self.current_users_list = list(set(self.current_users_list + current_users_list))
-
             if not self.current_users_list:
                 self.logger.debug("...No users in self.current_users_list, skipping this iteration.")
                 continue
@@ -588,7 +587,7 @@ class Bot(twitch_commands.Bot):
                 if not relevant_message_ids:
                     self.logger.debug("No relevant messages retrieved. Defaulting to no chat history message.")
                     relevant_message_history = ["No chat history available for new users."]
-                    prompt = self.config.newusers_msg_prompt
+                    prompt = "Just say: 'good to see you @{random_new_user}...(include their username)'" #self.config.newusers_msg_prompt
                 else:
                     # Retrieve only the relevant messages (no need to re-query BigQuery)
                     relevant_message_history = [
@@ -619,7 +618,7 @@ class Bot(twitch_commands.Bot):
                     tts_voice=tts_voice_selected
                 )
 
-                await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'newusers'")
+                await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'new/returning users service'")
 
             except Exception as e:
                 self.logger.exception(f"Error occurred in sending {random_user_type} user message: {e}")

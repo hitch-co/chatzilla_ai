@@ -28,8 +28,10 @@ twitch-bots:
 openai-api:
   
   #######################################
-  assistant_model: "gpt-4-0613"
+  assistant_model: "gpt-4o" 
     #notes: works fine (no json, and is expensive)
+  # assistant_model: "gpt-4-0613"
+    #notes: THis worked great and only using gpt-4o because it's free right now (until end of 2025-02)
   # assistant_model: "gpt-4o-mini"
     #notes: Can't be used with v1
   #assistant_model: "chatgpt-4o-latest"
@@ -59,7 +61,7 @@ openai-api:
   tts_include_voice: True
   tts_model: "tts-1" #tts-2 has higher latency
   tts_voice: "nova"
-  tts_volume: .4
+  tts_volume: .3
   tts_data_folder: "assets\\tts"
   tts_file_name: "speech.mp3"
   tts_voice_randomfact: "nova"
@@ -94,7 +96,7 @@ ouat_storyteller:
 #CHATFORME RANDOM FACTS & FACTCHECK
 chatforme_randomfacts:
   num_bot_responses: 1
-  randomfact_sleeptime: 300
+  randomfact_sleeptime: 400
   randomfact_types:
     game: # Game is set in run_envirionment.bat (i.e. input prompt after launching the bot)
       randomfact_prompt: "Your name is {twitch_bot_display_name}.  Share a fact 
@@ -524,9 +526,10 @@ ouat-writing-parameters:
 #########################
 #########################
 # NewUsersService vars
-newusers_sleep_time: 5
+newusers_sleep_time: 40
 #returningusers_sleep_time: 15
-newusers_faiss_default_query: "{random_user_name} discussed some recent projects/topics/concepts or asked for a reminder. They might ahve also had some hot takes on some things."
+newusers_faiss_default_query: "{random_user_name} discussed some recent projects/topics/concepts 
+  or asked for a reminder. They might ahve also had some hot takes on some things."
 newusers_msg_prompt: "Say hi and tag @{random_new_user}, welcoming them to the chat on behalf 
   of ehitch. Keep the message to {wordcount_medium} words max. Since it's their first time 
   here (or first in a long time), greet them warmly and make them feel welcome.

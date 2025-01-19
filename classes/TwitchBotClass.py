@@ -519,7 +519,7 @@ class Bot(twitch_commands.Bot):
                 self.logger.debug(f"...Users not yet sent a message: {users_not_yet_sent_message_info}")
 
             if self.config.twitch_bot_faiss_testing_active is True:
-                users_not_yet_sent_message_info = [{"username": 'ehitch', "usertype": 'returning'}]
+                users_not_yet_sent_message_info = [{"username": f'{self.config.twitch_bot_operatorname}', "usertype": 'returning'}]
 
                 #Create test list of eligible users that is onlyh the bot operator name
                 eligible_users = [

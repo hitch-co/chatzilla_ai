@@ -251,7 +251,6 @@ class ConfigManager:
             self.openai_api_key = os.getenv('OPENAI_API_KEY')
             
             # Twitch API
-            self.twitch_broadcaster_author_id = os.getenv('TWITCH_BROADCASTER_AUTHOR_ID')
             self.twitch_bot_client_id = os.getenv('TWITCH_BOT_CLIENT_ID')
             self.twitch_bot_client_secret = os.getenv('TWITCH_BOT_CLIENT_SECRET')
 
@@ -272,7 +271,15 @@ class ConfigManager:
             self.google_service_account_credentials_file = os.getenv('GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_FILE')
             self.talkzillaai_userdata_table_id = os.getenv('TALKZILLAAI_USERDATA_TABLE_ID')
             self.talkzillaai_usertransactions_table_id = os.getenv('TALKZILLAAI_USERTRANSACTIONS_TABLE_ID') 
-        
+
+            # Twitch Bot
+            self.twitch_bot_username = os.getenv('CHATZILLA_USERNAME')
+            self.twitch_bot_display_name = os.getenv('CHATZILLA_DISPLAY_NAME')
+            self.twitch_bot_operatorname = os.getenv('CHATZILLA_OPERATORNAME')
+            self.twitch_bot_channel_name = os.getenv('CHATZILLA_CHANNEL_NAME')
+            self.twitch_bot_moderators = os.getenv('CHATZILLA_MODERATORS')
+
+
         except Exception as e:
             self.logger.error(f"Error in update_config_from_env(): {e}")
 
@@ -407,12 +414,7 @@ class ConfigManager:
             self.twitch_bot_faiss_general_index_service = yaml_data['twitch-app']['twitch_bot_faiss_general_index_service']
             self.twitch_bot_faiss_testing_active = yaml_data['twitch-app']['twitch_bot_faiss_testing_active']
 
-            self.twitch_bot_channel_name = yaml_data['twitch-app']['twitch_bot_channel_name']
-            self.twitch_bot_username = yaml_data['twitch-app']['twitch_bot_username']
-            self.twitch_bot_display_name = yaml_data['twitch-app']['twitch_bot_display_name']
-            self.twitch_bot_moderators = yaml_data['twitch-app']['twitch_bot_moderators']
             self.num_bot_responses = yaml_data['chatforme_randomfacts']['num_bot_responses']
-            self.twitch_bot_operatorname = yaml_data['twitch-app']['twitch_bot_operatorname']
             self.msg_history_limit = yaml_data['chatbot_config']['msg_history_limit']
 
         except Exception as e:
@@ -537,8 +539,7 @@ class ConfigManager:
 
     def update_config_from_yaml(self, yaml_data):
         try:
-            
-            self.twitch_bot_redirect_path = yaml_data['twitch-app']['twitch_bot_redirect_path']
+
             self.twitch_bot_scope = yaml_data['twitch-app']['twitch_bot_scope']
 
             self.gpt_model = yaml_data.get('openai-api',{}).get('assistant_model', 'gpt-3.5-turbo') 
@@ -584,7 +585,6 @@ class ConfigManager:
         self.logger.debug(f"twitch_bot_display_name: {self.twitch_bot_display_name}")
         self.logger.debug(f"twitch_bot_operatorname: {self.twitch_bot_operatorname}")
         self.logger.debug(f"twitch_bot_moderators: {self.twitch_bot_moderators}")
-        self.logger.debug(f"twitch_bot_redirect_path: {self.twitch_bot_redirect_path}")
         self.logger.debug(f"twitch_bot_scope: {self.twitch_bot_scope}")
 
         # 4) GPT MODEL & WORDCOUNTS

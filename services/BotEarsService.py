@@ -221,6 +221,7 @@ if __name__ == "__main__":
 
     async def run_test():
         import dotenv
+        import os
         from classes.ConfigManagerClass import ConfigManager
 
         dotenv_load_result = dotenv.load_dotenv(dotenv_path='./config/.env')

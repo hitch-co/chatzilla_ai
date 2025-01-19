@@ -114,7 +114,7 @@ if __name__ == "__main__":
     # output_filename = 'speech.mp3'
     # output_dirpath = 'assets/tts'
     # #speech_file_path = Path(__file__).parent.parent / output_dirname / output_filename
-    # text_input="hello how are you?  My name is nova and I'm watching ehitch's stream"
+    # text_input="hello how are you?  My name is nova and I'm watching bot operator's stream"
 
     # #Create client
     # tts_client = GPTTextToSpeechClass.GPTTextToSpeech(

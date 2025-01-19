@@ -199,8 +199,13 @@ class BQUploader:
 if __name__ == '__main__':
 
     from google.cloud import bigquery
+    import dotenv
+    import os
+    from classes.ConfigManagerClass import ConfigManager
 
-    ConfigManager.initialize(yaml_filepath=r'C:\_repos\chatzilla_ai\config\bot_user_configs\chatzilla_ai_ehitch.yaml')
+    dotenv_load_result = dotenv.load_dotenv(dotenv_path='./config/.env')
+    print(f"yaml_filepath: {os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH')} (type: {type(os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH'))})")
+    ConfigManager.initialize(yaml_filepath=os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH'))
     config = ConfigManager.get_instance()
     
     bq_client = bigquery.Client()

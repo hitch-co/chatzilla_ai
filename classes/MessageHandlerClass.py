@@ -2,6 +2,7 @@ from classes.ConfigManagerClass import ConfigManager
 from models.task import AddMessageTask
 from my_modules import my_logging
 import hashlib
+import re
 
 runtime_logger_level = 'INFO'
 
@@ -46,7 +47,11 @@ class MessageHandler:
         tags = message.tags if hasattr(message, 'tags') else {}
         content = f'{getattr(message, "content", "")}'
         raw_data = getattr(message, 'raw_data', '_unknown')
+        
+        # Clean up message content
+        content = self._clean_message_content(content, self.config.command_spellcheck_terms)
 
+        # Generate message_id
         message_id = self._generate_message_id(
             channel=channel,
             user_id=user_id,
@@ -86,6 +91,20 @@ class MessageHandler:
             message_metadata['content'] = content
 
         return message_metadata
+
+    def _clean_message_content(self, content, command_spellings: dict) -> str:
+        content_temp = content
+        if content.startswith('!'):
+            words = content.split(' ')
+            words[0] = words[0].lower()
+            content_temp = ' '.join(words)
+
+        for correct_command, misspellings in command_spellings.items():
+            for misspelled in misspellings:
+                # Using a regular expression to match whole commands only
+                pattern = r'(^|\s)' + re.escape(misspelled) + r'(\s|$)'
+                content_temp = re.sub(pattern, r'\1' + correct_command + r'\2', content_temp)
+        return content_temp
 
     def _cleanup_message_history(self):
         # Cleanup message histories for GPT

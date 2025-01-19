@@ -132,7 +132,7 @@ def populate_placeholders(logger, prompt_template, replacements=None):
             replaced_text = prompt_template
 
         logger.debug(f"replacements: {replacements}")
-        logger.debug(f"replaced_text: {replaced_text[:75]}")
+        logger.debug(f"replaced_text: {replaced_text[:75]}{'...' if len(replaced_text) > 75 else ''}")
     except Exception as e:
         logger.error(f"Error replacing prompt text: {e}")
 

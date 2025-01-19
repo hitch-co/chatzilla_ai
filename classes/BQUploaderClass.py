@@ -9,7 +9,6 @@ runtime_debug_level = 'INFO'
 
 class BQUploader:
     def __init__(self, bq_client):
-        #logger
         self.logger = my_logging.create_logger(
             dirname='log', 
             logger_name='BQUploader',
@@ -18,8 +17,6 @@ class BQUploader:
             stream_logs=True
             )
         self.config = ConfigManager.get_instance()
-
-        #Build the client
         self.bq_client = bq_client
 
     def fetch_interaction_stats_as_text(self, table_id):
@@ -82,13 +79,25 @@ class BQUploader:
         return results
 
     def fetch_user_chat_history_from_bq(
-            self, 
-            user_login: str, 
-            interactions_table_id: str, 
-            users_table_id: str, 
-            limit: int = 750
-            ) -> list[dict]:
-        
+        self, 
+        interactions_table_id: str, 
+        users_table_id: str, 
+        limit: int = 750,
+        user_login: str = None, 
+        content_filter: str = None
+        ) -> list[dict]:
+    
+        if not content_filter:
+            content_filter = '1=1'
+        else :
+            content_filter = f"lower(ui.content) LIKE '%{content_filter.lower()}%'"
+
+        if not user_login:
+            user_filter = '1=1'
+        else:
+            user_filter = f"lower(u.user_login) = lower('{user_login}')"
+            
+        str_results = []
         query = f"""
             SELECT
                 CAST(ui.timestamp as string) as timestamp,
@@ -97,35 +106,22 @@ class BQUploader:
                 ui.message_id
             FROM `{interactions_table_id}` ui
             JOIN `{users_table_id}` u ON ui.user_id = u.user_id
-            WHERE lower(u.user_login) = lower('{user_login}')
+            WHERE 1=1
+                AND {user_filter}
+                AND {content_filter}
             ORDER BY ui.timestamp DESC
             LIMIT {limit}
-            """
+            """ 
         query_job = self.bq_client.query(query)
-
         str_results = [{
             "timestamp": row.timestamp, 
             "user_login": row.user_login, 
             "content": row.content,
             "message_id": row.message_id
             } for row in query_job]
-        self.logger.info(f"type of str_results: {type(str_results)}")
-        return str_results
 
-    def fetch_message_by_id(self, message_ids: list[str], interactions_table_id: str) -> list[dict]:
-        # Query to fetch messages by ID
-        query = f"""
-            SELECT message_id, content, timestamp, user_id
-            FROM `{interactions_table_id}`
-            WHERE message_id IN UNNEST({message_ids})
-        """
-        query_job = self.bq_client.query(query)
-        results = [{"message_id": row.message_id, "content": row.content, "timestamp": row.timestamp} for row in query_job]
-        return results
-    
-    # def generate_message_id(self, channel: str, user_id: str, timestamp: str, content: str) -> str:
-    #     unique_string = f"{channel}_{user_id}_{timestamp}_{content}"
-    #     return hashlib.md5(unique_string.encode()).hexdigest()
+        self.logger.debug(f"type of str_results: {type(str_results)}")
+        return str_results
 
     def generate_twitch_user_interactions_records_for_bq(self, records: list[dict]) -> list[dict]:
         rows_to_insert = []

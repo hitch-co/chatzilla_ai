@@ -2,8 +2,6 @@ import asyncio
 from twitchio.ext import commands as twitch_commands
 
 import random
-import re
-import json
 import os
 import inspect
 import time
@@ -18,7 +16,6 @@ from classes.TwitchAPI import TwitchAPI
 
 # from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
-from classes.TaskManagerClass import TaskManager
 
 from services.VibecheckService import VibeCheckService
 from services.NewUsersService import NewUsersService
@@ -364,50 +361,32 @@ class Bot(twitch_commands.Bot):
     async def event_message(self, message):
 
         thread_name = 'chatformemsgs'
-
-        def _clean_message_content(content, command_spellings) -> str:
-            content_temp = content
-            if content.startswith('!'):
-                words = content.split(' ')
-                words[0] = words[0].lower()
-                content_temp = ' '.join(words)
-
-            for correct_command, misspellings in command_spellings.items():
-                for misspelled in misspellings:
-                    # Using a regular expression to match whole commands only
-                    pattern = r'(^|\s)' + re.escape(misspelled) + r'(\s|$)'
-                    content_temp = re.sub(pattern, r'\1' + correct_command + r'\2', content_temp)
-            return content_temp
-
         self.logger.info("---------------------------------------")
         self.logger.info("MESSAGE RECEIVED: Processing message...")
 
         # 1a. Get message metadata
         message_metadata = self.message_handler._get_message_metadata(message)
-        message_metadata['content'] = _clean_message_content(
-            message.content,
-            self.config.command_spellcheck_terms
-            )
 
         # 1b. Add the message to the appropriate message history (not to be confused with the thread history)
         self.logger.info(f"Message from: {message_metadata['message_author']}")
         self.logger.info(f"Message content: '{message_metadata['content']}'")
         self.logger.debug(f"This is the message object {message_metadata}")
         await self.message_handler.add_to_appropriate_message_history(message_metadata)
-        
-        # 1c. Add the message to the appropriate thread history
+
+        # 1c. Add the message to the FAISS index
+        # TODO / NOTE: Could move this directly inside the 'add_to_apprioriate...' method 
+        self.logger.debug(f"type(message_metadata) sent to add_message_to_index: {type(message_metadata)}")
+        self.logger.debug(f"message_metadata sent to add_message_to_index: {message_metadata}")
+        await self.faiss_service.add_message_to_index(message_metadata)
+
+        # 1d. Add the message to the thread history
         if message_metadata['message_author'] is not None:
             await self.message_handler.add_to_thread_history(
                 thread_name=thread_name,
                 message_metadata=message_metadata
                 )
             
-            # TODO / NOTE: Could move this directly inside the 'add_to_apprioriate...' method 
-            self.logger.info(f"type(message_metadata) sent to add_message_to_index: {type(message_metadata)}")
-            self.logger.info(f"message_metadata sent to add_message_to_index: {message_metadata}")
-            await self.faiss_service.add_message_to_index(message_metadata)
-
-        # 1d. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
+        # 1e. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
         if self.config.twitch_bot_username in message_metadata['content'] and "!chat" not in message_metadata['content'] and message.author is not None:
             await self._chatforme_main(message_metadata['content'])
 
@@ -450,8 +429,8 @@ class Bot(twitch_commands.Bot):
             self.message_handler.message_history_raw.clear()
             self.twitch_api.channel_viewers_queue.clear()
 
-        # 5. self.handle_commands runs through bot commands
-        if message_metadata['message_author'] is not None:
+        # 5. self.handle_commands runs through bot commands (message content doesn't start with !forget)
+        if message_metadata['message_author'] is not None and "!forget" not in message_metadata['content']:
             await self.handle_commands(message)
 
         self.logger.info("MESSAGE PROCESSED: Done processing message")     
@@ -560,28 +539,43 @@ class Bot(twitch_commands.Bot):
             # - Feed the filtered context (including user’s name, role, and timestamps) into your prompt.
             # - Add instructions to your prompt telling the bot to "respond to a message you haven't addressed before," using the metadata you extracted to identify those messages.
             if random_user_type == "returning" and self.config.flag_returning_users_service is True:
+                
+                ####################
+                ### GET CHAT HISTORY
                 user_specific_chat_history = self.bq_uploader.fetch_user_chat_history_from_bq(
                     user_login=random_user_name,
                     interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
                     users_table_id=self.config.talkzillaai_userdata_table_id
                 )
 
-                # Log the user-specific chat history sample
-                self.logger.debug(f"...User-specific chat history Type: {type(user_specific_chat_history)}")
-                self.logger.debug(f"...User-specific chat history sample: {user_specific_chat_history[0:5]}")
+                #####################
+                ### GET FORGET HISTORY                
+                user_specific_chat_history_to_forget = self.bq_uploader.fetch_user_chat_history_from_bq(
+                    user_login=random_user_name,
+                    interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
+                    users_table_id=self.config.talkzillaai_userdata_table_id,
+                    content_filter='!forget'
+                )
+                self.logger.info(f"User-specific chat history retrieved for {random_user_name}.")
+                self.logger.info(f"Number of messages in chat history: {len(user_specific_chat_history_to_forget)}")
+                self.logger.info(f"Last message in chat history (chat history was ordered DESC): {user_specific_chat_history_to_forget[0]}")
+
                 
-                # Use FAISS to retrieve the most relevant messages
+                ####################
+                ### GET RELEVANT MESSAGES QUERY
                 replacements_dict = {"random_user_name":random_user_name}
-                query_final = utils.populate_placeholders(
+                relevant_messages_query = utils.populate_placeholders(
                     logger=self.logger,
                     prompt_template=self.config.newusers_faiss_default_query,
                     replacements=replacements_dict
                 )
-                self.logger.debug(f"...FAISS Query message search for '{random_user_name}': {query_final}")
-
-                relevant_message_ids = self.faiss_service.build_and_retrieve_from_user_index(
-                    messages=user_specific_chat_history, 
-                    query=query_final
+                
+                ####################
+                ### USE FAISS TO RETRIEVE RELEVANT MESSAGES
+                relevant_message_ids = self.faiss_service.build_and_retrieve_from_faiss_index(
+                    query=relevant_messages_query,
+                    messages=user_specific_chat_history,
+                    messages_to_forget=user_specific_chat_history_to_forget
                 )
 
                 if not relevant_message_ids:
@@ -601,7 +595,8 @@ class Bot(twitch_commands.Bot):
 
             self.logger.debug(f"type(relevant_message_history): {type(relevant_message_history)}")
 
-            # Create task to send a message to the selected user
+            ####################
+            ### Create task to send a message to the selected user
             try:
                 replacements_dict = {
                     "random_new_user": random_user_name,

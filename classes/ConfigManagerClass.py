@@ -404,6 +404,8 @@ class ConfigManager:
             self.twitch_bot_gpt_hello_world = yaml_data['twitch-app']['twitch_bot_gpt_hello_world']
             self.twitch_bot_gpt_new_users_service = yaml_data['twitch-app']['twitch_bot_gpt_new_users_service']
             self.flag_returning_users_service = yaml_data['twitch-app']['twitch_bot_gpt_returning_users_faiss_service']
+            self.twitch_bot_faiss_general_index_service = yaml_data['twitch-app']['twitch_bot_faiss_general_index_service']
+            self.twitch_bot_faiss_testing_active = yaml_data['twitch-app']['twitch_bot_faiss_testing_active']
 
             self.twitch_bot_channel_name = yaml_data['twitch-app']['twitch_bot_channel_name']
             self.twitch_bot_username = yaml_data['twitch-app']['twitch_bot_username']

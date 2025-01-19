@@ -9,6 +9,8 @@ twitch-app:
   twitch_bot_gpt_hello_world: True
   twitch_bot_gpt_new_users_service: True
   twitch_bot_gpt_returning_users_faiss_service: True
+  twitch_bot_faiss_general_index_service: True
+  twitch_bot_faiss_testing_active: False
   twitch_bot_username: 'chatzilla_ai'
   twitch_bot_display_name: 'chatzilla_ai'
   twitch_bot_operatorname: 'ehitch'

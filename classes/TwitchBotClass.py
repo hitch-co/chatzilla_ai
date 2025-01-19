@@ -344,7 +344,23 @@ class Bot(twitch_commands.Bot):
             thread_names=self.config.gpt_thread_names
             )
         
-        # start newusers loop
+
+        if self.config.twitch_bot_faiss_general_index_service is True:
+            # start newusers service, get general index and load initial messages
+            #Time the runtime of the following code for both the general index and the session index
+            start_time_bq_query = time.time() 
+            historic_bq_msgs = self.bq_uploader.fetch_user_chat_history_from_bq(
+                user_login=None,
+                interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
+                users_table_id=self.config.talkzillaai_userdata_table_id,
+                limit=30000
+            ) or []
+            end_time_bq_query = time.time()
+            self.faiss_service.load_initial_msgs_to_session_index(messages=historic_bq_msgs)        
+            end_time_inital_msg_load = time.time()
+            self.logger.info(f"Session index preloaded in {end_time_inital_msg_load-end_time_bq_query} seconds (BigQuery msg query took {end_time_bq_query-start_time_bq_query} seconds) with {len(historic_bq_msgs)} messages.")
+            self.logger.info(f"FAISS index size: {self.faiss_service.session_index.ntotal}")
+    
         if self.config.twitch_bot_gpt_new_users_service is True:
             self.logger.debug(f"Starting newusers service")
             self.loop.create_task(self._send_message_to_new_users_task())
@@ -495,13 +511,6 @@ class Bot(twitch_commands.Bot):
             if not self.current_users_list:
                 self.logger.debug("...No users in self.current_users_list, skipping this iteration.")
                 continue
-                
-            # Identify list of users who are new to the channel and have not yet been sent a message
-            users_not_yet_sent_message_info = await self.newusers_service.get_users_not_yet_sent_message(
-                historic_users_list = self.historic_users_at_start_of_session,
-                current_users_list = self.current_users_list,
-                users_sent_messages_list = self.newusers_service.users_sent_messages_list
-            )
 
             if not users_not_yet_sent_message_info:
                 self.logger.debug("...No users not yet sent a message.")
@@ -509,19 +518,35 @@ class Bot(twitch_commands.Bot):
             else:
                 self.logger.debug(f"...Users not yet sent a message: {users_not_yet_sent_message_info}")
 
-            eligible_users = [
-                user for user in users_not_yet_sent_message_info
-                if (user['username'] not in self.newusers_service.known_bots_list
-                    and user['username'] not in self.config.twitch_bot_operatorname
-                    and user['username'] not in self.config.twitch_bot_channel_name
-                    and user['username'] not in self.config.twitch_bot_username
-                    and user['username'] not in self.config.twitch_bot_display_name
-                    #and user['username'] not in "crubeyawne"
-                    #and user['username'] not in "nanovision"
-                    #and user['username'] not in mods_list
-                    )
-            ]       
-     
+            if self.config.twitch_bot_faiss_testing_active is True:
+                users_not_yet_sent_message_info = [{"username": 'ehitch', "usertype": 'returning'}]
+
+                #Create test list of eligible users that is onlyh the bot operator name
+                eligible_users = [
+                    user for user in users_not_yet_sent_message_info
+                    if (user['username'] in self.config.twitch_bot_operatorname)
+                    ]
+            else: 
+                # Identify list of users who are new to the channel and have not yet been sent a message
+                users_not_yet_sent_message_info = await self.newusers_service.get_users_not_yet_sent_message(
+                    historic_users_list = self.historic_users_at_start_of_session,
+                    current_users_list = self.current_users_list,
+                    users_sent_messages_list = self.newusers_service.users_sent_messages_list
+                )
+
+                eligible_users = [
+                    user for user in users_not_yet_sent_message_info
+                    if (user['username'] not in self.newusers_service.known_bots_list
+                        and user['username'] not in self.config.twitch_bot_operatorname
+                        and user['username'] not in self.config.twitch_bot_channel_name
+                        and user['username'] not in self.config.twitch_bot_username
+                        and user['username'] not in self.config.twitch_bot_display_name
+                        #and user['username'] not in "crubeyawne"
+                        #and user['username'] not in "nanovision"
+                        #and user['username'] not in mods_list
+                        )
+                ]   
+
             if not eligible_users:
                 self.logger.debug(f"...No eligible users found after filtering.")
                 continue

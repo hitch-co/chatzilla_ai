@@ -525,12 +525,6 @@ class Bot(twitch_commands.Bot):
                 self.logger.debug("...No users in self.current_users_list, skipping this iteration.")
                 continue
 
-            if not users_not_yet_sent_message_info:
-                self.logger.debug("...No users not yet sent a message.")
-                continue
-            else:
-                self.logger.debug(f"...Users not yet sent a message: {users_not_yet_sent_message_info}")
-
             if self.config.twitch_bot_faiss_testing_active is True:
                 users_not_yet_sent_message_info = [{"username": f'{self.config.twitch_bot_operatorname}', "usertype": 'returning'}]
 
@@ -560,13 +554,18 @@ class Bot(twitch_commands.Bot):
                         )
                 ]   
 
-            if not eligible_users:
+            if not users_not_yet_sent_message_info:
+                self.logger.debug("...No users not yet sent a message.")
+                continue
+            elif not eligible_users:
                 self.logger.debug(f"...No eligible users found after filtering.")
                 continue
+            else:
+                self.logger.debug(f"...Users not yet sent a message: {users_not_yet_sent_message_info}")
 
             random_user = random.choice(eligible_users)  
             random_user_type = random_user['usertype']
-            random_user_name = random_user['username'] 
+            random_user_name = random_user['username']
 
             self.newusers_service.users_sent_messages_list.append(random_user_name)
             self.logger.info(f"...Selected user for new user message: {random_user_name} ({random_user_type}) for new user message.")

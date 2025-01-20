@@ -14,7 +14,7 @@ from my_modules import utils
 
 gpt_base_debug_level = 'INFO'
 gpt_thread_mgr_debug_level = 'INFO'
-gpt_assistant_mgr_debug_level = 'DEBUG'
+gpt_assistant_mgr_debug_level = 'INFO'
 gpt_response_mgr_debug_level = 'INFO'
 
 class GPTBaseClass:

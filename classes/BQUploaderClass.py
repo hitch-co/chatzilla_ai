@@ -235,8 +235,8 @@ if __name__ == '__main__':
     from classes.ConfigManagerClass import ConfigManager
 
     dotenv_load_result = dotenv.load_dotenv(dotenv_path='./config/.env')
-    print(f"yaml_filepath: {os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH')} (type: {type(os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH'))})")
-    ConfigManager.initialize(yaml_filepath=os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH'))
+    yaml_filepath=os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH')
+    ConfigManager.initialize(yaml_filepath)
     config = ConfigManager.get_instance()
     
     bq_client = bigquery.Client()

@@ -780,9 +780,23 @@ class Bot(twitch_commands.Bot):
         
         await self._send_channel_message_wrapper(f"Commands include: {results_string}")
 
-    @twitch_commands.command(name='specs', aliases=("p_specs"))
+    @twitch_commands.command(name='specs', aliases=("p_specs", "rig", "battlestation", "mypc"))
     async def specs(self, ctx):
         await self._send_channel_message_wrapper("i7-13700K || RTX 4070 Ti OC || 64GB DDR5 6400MHz || ASUS ROG Strix Z790-F")
+
+    @twitch_commands.command(name='fullspecs', aliases=("p_fullspecs", "fullrig", "fullbattlestation", "fullmypc"))
+    async def fullspecs(self, ctx):
+        message = """
+            Intel Core i7-13700K || 
+            ASUS TUF Gaming GeForce RTX 4070 Ti OC || 
+            Corsair Vengeance RGB 2x32GB DDR5 6400MHz || 
+            ASUS ROG Strix Z790-F Gaming WiFi 6E || 
+            WD Black SN770 2TB PCIe Gen4 NVMe M.2 2280 || 
+            MSI MPG A1000G PCIE 5.0, 80+ GOLD Full Modular Gaming PSU || 
+            Corsair 5000D Airflow Tempered Glass Mid-Tower ATX PC Case
+            """
+
+        await self._send_channel_message_wrapper(message)
 
     @twitch_commands.command(name='discord', aliases=("p_discord"))
     async def discord(self, ctx):

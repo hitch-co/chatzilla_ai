@@ -499,13 +499,15 @@ class Bot(twitch_commands.Bot):
             # Get the current users in the channel
             try:
                 current_users_list = await self.twitch_api.retrieve_active_usernames(
-                    bearer_token = self.config.twitch_bot_access_token
-                    )
-                self.logger.debug(f"...Current users retrieved: {current_users_list}")  
+                    bearer_token=self.config.twitch_bot_access_token
+                )
+                if current_users_list is None or len(current_users_list) == 0:
+                    self.logger.debug("No active usernames retrieved; skipping processing.")
+                    continue
             except Exception as e:
-                self.logger.error(f"Failed to retrieve active users from Twitch API: {e}")
-                current_users_list = []
-                
+                self.logger.error(f"Unexpected error: {e}")
+                continue
+                            
             # Add self.current_users_list to self.current_users_list as set to remove duplicates
             self.current_users_list = list(set(self.current_users_list + current_users_list))
             if not self.current_users_list:
@@ -926,9 +928,17 @@ class Bot(twitch_commands.Bot):
 
         # Check if the vibecheckee is specified in the command
         if len(args) == 1:
-            current_users_list = await self.twitch_api.retrieve_active_usernames(
-                    bearer_token = self.config.twitch_bot_access_token
-                    )
+            try:
+                current_users_list = await self.twitch_api.retrieve_active_usernames(
+                    bearer_token=self.config.twitch_bot_access_token
+                )
+                if current_users_list is None:
+                    self.logger.debug("No active usernames retrieved; skipping processing.")
+                    return 
+            except Exception as e:
+                self.logger.error(f"Unexpected error: {e}")
+                current_users_list = []
+
             vibecheckee_username_search = args[0]
             self.vibecheckee_username = _soft_username_match(vibecheckee_username_search, current_users_list)
             self.logger.info(f"...Vibecheckee username: {self.vibecheckee_username}")

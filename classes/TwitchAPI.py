@@ -151,25 +151,27 @@ class TwitchAPI:
                 self.logger.debug(f'Successfully retrieved channel viewers: {response.json()}')
                 return response.json()
             else:
-                self.logger.error(f'Failed to retrieve channel viewers: {response.status_code}, {response.text}')
-                response.raise_for_status()
+                self.logger.warning(f'Failed to retrieve channel viewers: {response.status_code}, {response.text}')
+                return None
         except Exception as e:
             self.logger.exception(f'Error fetching channel viewers: {e}')
             return None
 
-    
-
     async def retrieve_active_usernames(self, bearer_token) -> list[str]:
-        viewer_data = await self._fetch_channel_viewers_data(bearer_token)
-
-        if viewer_data:
-            current_users_in_session = viewer_data.get('data', [])
-            current_user_names = [user['user_login'] for user in current_users_in_session]
-            self.logger.debug(f"current_user_names: {current_user_names}")
-            return current_user_names
-        else:
-            self.logger.warning("Failed to retrieve viewer data or data is empty.")
+        try:
+            viewer_data = await self._fetch_channel_viewers_data(bearer_token)
+        except Exception as e:
+            self.logger.warning(f"Failed to fetch channel viewer data: {e}")
             return None
+
+        if not viewer_data:
+            self.logger.warning("Viewer data is None or empty.")
+            return None
+
+        current_users_in_session = viewer_data.get('data', [])
+        current_user_names = [user['user_login'] for user in current_users_in_session]
+        self.logger.debug(f"current_user_names: {current_user_names}")
+        return current_user_names
 
     def _transform_viewer_data(self, viewer_data_json) -> list[dict]:
         self.logger.debug('Processing channel viewers data')
@@ -202,7 +204,6 @@ class TwitchAPI:
         # Extend the existing queue with new records
         self.channel_viewers_queue.extend(records)
 
-        # Convert to DataFrame for sorting and deduplication
         df = pd.DataFrame(self.channel_viewers_queue)
         df = df.sort_values(['user_id', 'timestamp']).drop_duplicates(subset='user_id', keep='last')
 
@@ -251,7 +252,7 @@ class TwitchAPI:
             channel_viewers_query = self._build_bigquery_merge_query(table_id, self.channel_viewers_queue)
             return channel_viewers_query
         else:
-            self.logger.error("Failed to process viewers for BigQuery due to data retrieval failure.")
+            self.logger.warning("Failed to process viewers for BigQuery due to data retrieval failure.")
             return None
     
 if __name__ == "__main__":

@@ -503,16 +503,19 @@ class ConfigManager:
         try:
             self.randomfact_sleeptime = yaml_data['chatforme_randomfacts']['randomfact_sleeptime']
             self.randomfact_selected_game = os.getenv('CHATZILLA_SELECTED_GAME')
+            self.randomfact_selected_stream = os.getenv('CHATZILLA_SELECTED_STREAM')
                             
             # Set random fact prompt and response based on selected game
-            if self.randomfact_selected_game == 'no_game_selected':
+            if self.randomfact_selected_game == 'no_game_selected' or self.randomfact_selected_game == None:
                 selected_type = 'standard'
             elif self.randomfact_selected_game != 'no_game_selected' and self.randomfact_selected_game is not None:
                 selected_type = 'game'
-            elif self.randomfact_selected_game == None:
+            elif self.randomfact_selected_stream == None:
                 selected_type = 'standard'
+            elif self.randomfact_selected_stream != 'no_game_selected':
+                selected_type = 'generic'
             else:
-                self.logger.error("randomfact_selected_game is None and was set to 'standard'")
+                self.logger.warning(f"No logic detetected for randomfact_selected_game = {self.randomfact_selected_game} and was set to 'standard'")
                 selected_type = 'standard'
 
             self.randomfact_prompt = yaml_data['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_prompt']

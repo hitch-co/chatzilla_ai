@@ -628,6 +628,7 @@ class Bot(twitch_commands.Bot):
                 replacements_dict = {
                     "random_new_user": random_user_name,
                     "wordcount_medium": self.config.wordcount_medium,
+                    "wordcount_short": self.config.wordcount_short,
                     "user_specific_chat_history": relevant_message_history
                 }
 
@@ -669,6 +670,7 @@ class Bot(twitch_commands.Bot):
 
             replacements_dict = {
                 "wordcount_medium":self.config.wordcount_medium,
+                "wordcount_short":self.config.wordcount_short,
                 'twitch_bot_display_name':self.config.twitch_bot_display_name,
                 'twitch_bot_channel_name':self.config.twitch_bot_channel_name,
                 'param_in_text':'variable_from_scope'
@@ -722,6 +724,7 @@ class Bot(twitch_commands.Bot):
 
         replacements_dict = {
             "wordcount_medium": self.config.wordcount_medium,
+            "wordcount_short": self.config.wordcount_short,
             "botears_questioncomment": text
         }
 
@@ -795,6 +798,7 @@ class Bot(twitch_commands.Bot):
             "num_bot_responses":self.config.num_bot_responses,
             "users_in_messages_list_text":self.message_handler.users_in_messages_list_text,
             "wordcount_medium":self.config.wordcount_medium,
+            "wordcount_short":self.config.wordcount_short,
             "bot_operatorname":self.config.twitch_bot_operatorname,
             "twitch_bot_channel_name":self.config.twitch_bot_channel_name,
             "text_input_from_user":text_input_from_user,
@@ -1413,6 +1417,7 @@ class Bot(twitch_commands.Bot):
                 'subarea':subarea,
                 'random_character_a_to_z':random_character_a_to_z,
                 'selected_game':self.config.randomfact_selected_game,
+                'selected_stream':self.config.randomfact_selected_stream,
                 'param_in_text':'variable_from_scope'
                 }
             self.logger.debug(f"Replacements dict: {replacements_dict}")

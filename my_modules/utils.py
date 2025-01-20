@@ -125,8 +125,9 @@ def populate_placeholders(logger, prompt_template, replacements=None):
         if replacements:
             try:
                 replaced_text = prompt_template.format(**replacements)
-            except:
-                logger.warning("Error replacing prompt text with format method. Using original prompt_template.")
+            except Exception as e:
+                logger.warning(f"Error replacing prompt text with format method. Using original prompt_template: {e}")
+                logger.warning(f"replacements: {replacements}")
                 replaced_text = prompt_template
         else:
             replaced_text = prompt_template

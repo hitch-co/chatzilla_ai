@@ -90,9 +90,9 @@ class GPTFunctionCallManager(GPTBaseClass):
             str: The final response from the assistant and the output data.
         """
 
-        self.logger.info('Threads and Assistants:')
-        self.logger.info(f"...Threads: {self.gpt_thread_manager.threads}")
-        self.logger.info(f"...Assistants: {self.gpt_assistant_manager.assistants}")
+        self.logger.debug('Threads and Assistants:')
+        self.logger.debug(f"...Threads: {self.gpt_thread_manager.threads}")
+        self.logger.debug(f"...Assistants: {self.gpt_assistant_manager.assistants}")
 
         # Retrieve the thread/assistant ID by name
         try:
@@ -404,7 +404,6 @@ class GPTAssistantManager(GPTBaseClass):
         return assistant
 
     def create_assistants(self, assistants_config: dict) -> dict:
-        # Create Assistants
         replacements_dict = {
             "wordcount_short":self.yaml_data.wordcount_short,
             "wordcount_medium":self.yaml_data.wordcount_medium,

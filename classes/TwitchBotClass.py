@@ -420,13 +420,24 @@ class Bot(twitch_commands.Bot):
         # 3. Get chatter data, store in queue, generate query for sending to BQ
         # 4. Send the data to BQ when queue is full.  Clear queue when done
         if len(self.message_handler.message_history_raw)>=2:
+            
+            # 4.1 Get VIEWER data (who is on the channel) from twitch API, store in queue, generate query 
+            #  for sending to BQ
+            if self.config.twitch_bot_user_capture_service is True:
+                viewer_data = await self.twitch_api._fetch_channel_viewers_data(bearer_token = self.config.twitch_bot_access_token)
 
-            channel_viewers_queue_query = await self.twitch_api.generate_viewers_merge_query(
-                table_id=self.userdata_table_id,
-                bearer_token=self.config.twitch_bot_access_token
-                )
+                if viewer_data:
+                    channel_viewers_records = self.twitch_api._transform_viewer_data(viewer_data)
+                    await self.twitch_api._enqueue_and_deduplicate_viewer_records(records=channel_viewers_records)
 
-            self.bq_uploader.execute_query_on_bigquery(query=channel_viewers_queue_query)            
+                    channel_viewers_query = self.bq_uploader._construct_user_merge_query(
+                        table_id=self.userdata_table_id, 
+                        records = self.twitch_api.channel_viewers_queue
+                        )
+
+                self.bq_uploader.execute_query_on_bigquery(query=channel_viewers_query)            
+            
+            # 4.2 Get MESSAGE data, store in queue, generate query for sending to BQ
             viewer_interaction_records = self.bq_uploader.generate_twitch_user_interactions_records_for_bq(
                 records=self.message_handler.message_history_raw
                 )
@@ -669,8 +680,7 @@ class Bot(twitch_commands.Bot):
             tts_voice = self.config.tts_voice_default
 
             replacements_dict = {
-                "wordcount_medium":self.config.wordcount_medium,
-                "wordcount_short":self.config.wordcount_short,
+                "wordcount":self.config.wordcount_veryshort,
                 'twitch_bot_display_name':self.config.twitch_bot_display_name,
                 'twitch_bot_channel_name':self.config.twitch_bot_channel_name,
                 'param_in_text':'variable_from_scope'
@@ -723,8 +733,7 @@ class Bot(twitch_commands.Bot):
         await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask 'what'")
 
         replacements_dict = {
-            "wordcount_medium": self.config.wordcount_medium,
-            "wordcount_short": self.config.wordcount_short,
+            "wordcount": self.config.wordcount_medium,
             "botears_questioncomment": text
         }
 
@@ -1083,6 +1092,7 @@ class Bot(twitch_commands.Bot):
             self.logger.info(f"...OUAT gpt_prompt_text (before replacements): '{gpt_prompt_text}'")
             replacements_dict = {
                 "user_requested_plotline":submitted_plotline,
+                "wordcount_veryshort":self.config.wordcount_veryshort,
                 "wordcount_short":self.config.wordcount_short,
                 "wordcount_medium":self.config.wordcount_medium,
                 "wordcount_long":self.config.wordcount_long,
@@ -1151,6 +1161,7 @@ class Bot(twitch_commands.Bot):
                 self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
 
                 replacements_dict = {
+                    "wordcount_veryshort":self.config.wordcount_veryshort,
                     "wordcount_short":self.config.wordcount_short,
                     "wordcount_long":self.config.wordcount_long,
                     'twitch_bot_display_name':self.config.twitch_bot_display_name,
@@ -1409,7 +1420,7 @@ class Bot(twitch_commands.Bot):
 
             self.logger.debug(f"selected_prompt: {selected_prompt[0:50]}")
             replacements_dict = {
-                "wordcount_short":self.config.wordcount_short,
+                "wordcount":self.config.wordcount_veryshort,
                 'twitch_bot_display_name':self.config.twitch_bot_display_name,
                 'randomfact_topic':topic,
                 'randomfact_subtopic':subtopic,

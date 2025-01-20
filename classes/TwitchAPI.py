@@ -21,10 +21,14 @@ class TwitchAPI:
             )
         self.config = ConfigManager.get_instance()
 
+        # Twitch API Endpoints
         self.TWITCH_API_BASE_URL = "https://api.twitch.tv/helix"
         self.USERS_ENDPOINT = "/users"
         self.MODERATORS_ENDPOINT = "/moderation/moderators"
         self.CHATTERS_ENDPOINT = "/chat/chatters"
+
+        # Channel Viewers Queue
+        self.channel_viewers_queue = []
 
         try:
             self.config.twitch_bot_user_id = self._get_and_set_user_id(
@@ -210,51 +214,7 @@ class TwitchAPI:
         # Update the queue and log
         self.channel_viewers_queue = df.to_dict('records')
         self.logger.debug(f'channel_viewers_queue updated with {len(self.channel_viewers_queue)} rows')
-        
-    def _build_bigquery_merge_query(self, table_id, records: list[dict]) -> str:
 
-        # Build the UNION ALL part of the query
-        union_all_query = " UNION ALL ".join([
-            f"SELECT '{viewer['user_id']}' as user_id, '{viewer['user_login']}' as user_login, "
-            f"'{viewer['user_name']}' as user_name, PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{viewer['timestamp']}') as last_seen"
-            for viewer in records
-        ])
-        
-        # Add the union all query to our final query to be sent to BQ jobs
-        merge_query = f"""
-            MERGE {table_id} AS target
-            USING (
-                {union_all_query}
-            ) AS source
-            ON target.user_id = source.user_id
-            WHEN MATCHED THEN
-                UPDATE SET
-                    target.user_login = source.user_login,
-                    target.user_name = source.user_name,
-                    target.last_seen = source.last_seen
-            WHEN NOT MATCHED THEN
-                INSERT (user_id, user_login, user_name, last_seen)
-                VALUES(source.user_id, source.user_login, source.user_name, source.last_seen);
-        """
-
-        self.logger.debug("The users table query was generated")
-        self.logger.debug("This is the users table merge query:")
-        self.logger.debug(merge_query)
-        return merge_query
-
-    # LAST STEP: RUNNNER
-    async def generate_viewers_merge_query(self, bearer_token, table_id) -> str:
-        viewer_data = await self._fetch_channel_viewers_data(bearer_token)
-
-        if viewer_data:
-            channel_viewers_records = self._transform_viewer_data(viewer_data)
-            await self._enqueue_and_deduplicate_viewer_records(records=channel_viewers_records)
-            channel_viewers_query = self._build_bigquery_merge_query(table_id, self.channel_viewers_queue)
-            return channel_viewers_query
-        else:
-            self.logger.warning("Failed to process viewers for BigQuery due to data retrieval failure.")
-            return None
-    
 if __name__ == "__main__":
     twitch_api = TwitchAPI()
     twitch_api.logger.info('TwitchAPI initialized.')

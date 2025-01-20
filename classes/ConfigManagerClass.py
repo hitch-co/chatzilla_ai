@@ -312,6 +312,7 @@ class ConfigManager:
 
     def yaml_gpt_config(self, yaml_data):
         try:
+            self.wordcount_veryshort = str(yaml_data['chatbot_config']['wordcounts']['veryshort'])
             self.wordcount_short = str(yaml_data['chatbot_config']['wordcounts']['short']) #2024-06-09: shouldn't these be captured as ints and typecasted when used?
             self.wordcount_medium = str(yaml_data['chatbot_config']['wordcounts']['medium'])
             self.wordcount_long = str(yaml_data['chatbot_config']['wordcounts']['long'])
@@ -408,6 +409,7 @@ class ConfigManager:
 
     def yaml_twitchbot_config(self, yaml_data):
         try:
+            self.twitch_bot_user_capture_service = yaml_data['twitch-vasion']['twitch_bot_user_capture_service']
             self.twitch_bot_gpt_hello_world = yaml_data['twitch-app']['twitch_bot_gpt_hello_world']
             self.twitch_bot_gpt_new_users_service = yaml_data['twitch-app']['twitch_bot_gpt_new_users_service']
             self.flag_returning_users_service = yaml_data['twitch-app']['twitch_bot_gpt_returning_users_faiss_service']
@@ -594,6 +596,7 @@ class ConfigManager:
         self.logger.debug(f"gpt_model: {self.gpt_model}")
         self.logger.debug(f"gpt_model_davinci: {self.gpt_model_davinci}")
         self.logger.debug(f"tts_model: {self.tts_model}")  
+        self.logger.debug(f"wordcount_veryshort: {self.wordcount_veryshort}")
         self.logger.debug(f"wordcount_short: {self.wordcount_short}")
         self.logger.debug(f"wordcount_medium: {self.wordcount_medium}")
         self.logger.debug(f"wordcount_long: {self.wordcount_long}")

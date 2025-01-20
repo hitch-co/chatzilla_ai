@@ -158,6 +158,37 @@ class BQUploader:
         self.logger.debug(rows_to_insert[0:2])
         return rows_to_insert
 
+    def _construct_user_merge_query(self, table_id, records: list[dict]) -> str:
+
+        # Build the UNION ALL part of the query
+        union_all_query = " UNION ALL ".join([
+            f"SELECT '{viewer['user_id']}' as user_id, '{viewer['user_login']}' as user_login, "
+            f"'{viewer['user_name']}' as user_name, PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', '{viewer['timestamp']}') as last_seen"
+            for viewer in records
+        ])
+        
+        # Add the union all query to our final query to be sent to BQ jobs
+        merge_query = f"""
+            MERGE {table_id} AS target
+            USING (
+                {union_all_query}
+            ) AS source
+            ON target.user_id = source.user_id
+            WHEN MATCHED THEN
+                UPDATE SET
+                    target.user_login = source.user_login,
+                    target.user_name = source.user_name,
+                    target.last_seen = source.last_seen
+            WHEN NOT MATCHED THEN
+                INSERT (user_id, user_login, user_name, last_seen)
+                VALUES(source.user_id, source.user_login, source.user_name, source.last_seen);
+        """
+
+        self.logger.debug("The users table query was generated")
+        self.logger.debug("This is the users table merge query:")
+        self.logger.debug(merge_query)
+        return merge_query
+
     def send_recordsjob_to_bq(self, table_id, records:list[dict]) -> None:
         table = self.bq_client.get_table(table_id)
         try:

@@ -12,6 +12,8 @@ twitch-app:
   twitch_bot_faiss_general_index_service: False
   twitch_bot_faiss_testing_active: False
   twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read' #user:read:email moderation:read channel:moderate'
+twitch-vasion:
+  twitch_bot_user_capture_service: False
 
 #########################
 #########################
@@ -49,7 +51,7 @@ openai-api:
   
   ########################################
   assistant_response_max_length: 300
-  tts_include_voice: True
+  tts_include_voice: False
   tts_model: "tts-1" #tts-2 has higher latency
   tts_voice: "nova"
   tts_volume: .3
@@ -94,7 +96,7 @@ chatforme_randomfacts:
         or perspective about {randomfact_topic}, 
         especially focusing on {randomfact_subtopic} within the world of the 
         the video game: '{selected_game}'. Kick off your response with the letter 
-        '{random_character_a_to_z}' and keep it within {wordcount_short} words. 
+        '{random_character_a_to_z}' and keep it within {wordcount} words. 
         While we cherish unconventional views, make sure it's thought-provoking. 
         Remember, we love to spark lively debates and unexpected connections in 
         gaming!  Don't respond including any reference to the letter you're 
@@ -106,9 +108,9 @@ chatforme_randomfacts:
 
     standard:
       randomfact_prompt: "Share a random/wild/controversial/lesser known fact (using roughly 
-        {wordcount_short} words) or insight about {randomfact_topic} that begins with the 
+        {wordcount} words) or insight about {randomfact_topic} that begins with the 
         letter '{random_character_a_to_z}' and relates to {randomfact_subtopic} from the 
-        {area} era, particularly {subarea}. Aim for around {wordcount_short} words, blending 
+        {area} era, particularly {subarea}. Aim for around {wordcount} words, blending 
         edgy and thoughtful perspectives. We often stray from the mainstream views. Remember, 
         we appreciate a bit of good fun in the debate! 
 
@@ -119,7 +121,7 @@ chatforme_randomfacts:
         "Looks like there's a conversation happening.  Maybe we can add a small 
         bit of insight into what's beeing said or we can fact check the 
         conversation or we can (sparingly) change the topic only slightly. Be 
-        sure to respond in less than {wordcount_short} words."
+        sure to respond in less than {wordcount} words."
       topics_injection_file_path: '.\data\randomfact\standard_topics_and_subtopics.json'
       areas_injection_file_path: '.\data\randomfact\standard_eras_and_timeperiods.json'
 
@@ -129,16 +131,23 @@ chatforme_randomfacts:
         Now, share a concise fact or perspective about {randomfact_topic}, highlighting 
         '{randomfact_subtopic}' from the lens of {area}, specifically '{subarea}'. If you're 
         introducing a new fact, start it with the letter '{random_character_a_to_z}'. Keep 
-        it around {wordcount_short} words, and if you've covered something similar before, 
+        it around {wordcount} words, and if you've covered something similar before, 
         offer a fresh twist or deeper insight. Maintain a lively tone for a fast-paced 
-        Twitch environment."
+        Twitch environment.
+        
+        KEY POINTS:
+        - You're trying to be like a chill, lazy-typing stream/live chat user.  Use short forms where possible, be super casual/brief, and be implicit in your responses."
 
       randomfact_response: >
         "Give a quick reply to any ongoing conversation or questions about {selected_stream}. 
         If nobody follows up, pivot to an interesting fact or tidbit about {randomfact_topic}, 
         focusing on '{randomfact_subtopic}' from {area}, specifically '{subarea}'. Keep it 
-        under {wordcount_short} words to fit the quick-chat setting, and remember to keep 
-        your tone casual and engaging."
+        under {wordcount} words to fit the quick-chat setting, and remember to keep 
+        your tone casual and engaging.
+        
+        KEY POINTS:
+        - You're trying to be like a chill, lazy-typing stream/live chat user.  Use short forms where possible, be super casual/brief, and be implicit in your responses."
+        "
 
       areas_injection_file_path: '.\data\randomfact\generic_categories_and_areas.json'
       topics_injection_file_path: '.\data\randomfact\generic_topics_and_subtopics.json'
@@ -162,6 +171,7 @@ chatforme_factcheck:
 chatbot_config:
   msg_history_limit: 150
   wordcounts:
+    veryshort: 15
     short: 23
     medium: 29
     long: 43
@@ -225,9 +235,9 @@ botears_save_length_seconds: 7
 botears_audio_path: "./assets/ears"
 botears_audio_filename: "latest_ears"
 botears_prompt: "Below is a question/comment from the user. You are to respond 
-  to themwith a short ({wordcount_medium} words max) response or comment based on 
+  to themwith a short ({wordcount} words max) response or comment based on 
   their question/comment.  Be sure to keep your response to less than 
-  {wordcount_medium} words and be sure to respond to the user's message whether
+  {wordcount} words and be sure to respond to the user's message whether
   you're sure or not.
 
   This is the question/comment:
@@ -243,7 +253,7 @@ formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for
   and you are a rad dude. Your mission is to send a concise 'hello {twitch_bot_channel_name}' 
   message that says hello to them and everyone watching.
     Key Points
-    - Your one and only message should be a {wordcount_short} word long message
+    - Your one and only message should be a {wordcount} word long message
     - Minimize repetition
     - be a rad dude/dudette with surfer vibes
   "

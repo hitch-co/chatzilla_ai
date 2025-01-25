@@ -309,6 +309,11 @@ class Bot(twitch_commands.Bot):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
         self.logger.info(f'TwitchBot ready on channel {self.channel} | {self.config.twitch_bot_username} (nick:{self.nick})')
 
+        # #NOTE: This won't work because the bot is not the broadcaster
+        # self.logger.debug("Attempting to fetch list of moderators at startup.")
+        # self.twitch_channel_moderators_list = self.twitch_api._get_moderators(self.config.twitch_bot_access_token)
+        # self.twitch_channel_moderators_logins = [moderator['user_login'] for moderator in self.twitch_channel_moderators_list]
+
         # initialize the event loop
         self.logger.debug(f"Initializing event loop")
         self.loop = asyncio.get_event_loop()
@@ -361,7 +366,7 @@ class Bot(twitch_commands.Bot):
             self.logger.info(f"Session index preloaded in {end_time_inital_msg_load-end_time_bq_query} seconds (BigQuery msg query took {end_time_bq_query-start_time_bq_query} seconds) with {len(historic_bq_msgs)} messages.")
             self.logger.info(f"FAISS index size: {self.faiss_service.session_index.ntotal}")
     
-        if self.config.twitch_bot_gpt_new_users_service is True:
+        if self.config.twitch_bot_gpt_new_users_service is True and self.config.twitch_operator_is_channel_owner:
             self.logger.debug(f"Starting newusers service")
             self.loop.create_task(self._send_message_to_new_users_task())
         else:
@@ -423,19 +428,19 @@ class Bot(twitch_commands.Bot):
             
             # 4.1 Get VIEWER data (who is on the channel) from twitch API, store in queue, generate query 
             #  for sending to BQ
-            if self.config.twitch_bot_user_capture_service is True:
-                viewer_data = await self.twitch_api._fetch_channel_viewers_data(bearer_token = self.config.twitch_bot_access_token)
+            if self.config.twitch_bot_user_capture_service is True and self.config.twitch_operator_is_channel_owner:
+                updated_viewers = await self.twitch_api.update_channel_viewers(bearer_token=self.config.twitch_bot_access_token)
 
-                if viewer_data:
-                    channel_viewers_records = self.twitch_api._transform_viewer_data(viewer_data)
-                    await self.twitch_api._enqueue_and_deduplicate_viewer_records(records=channel_viewers_records)
-
-                    channel_viewers_query = self.bq_uploader._construct_user_merge_query(
+                if updated_viewers:
+                    channel_viewers_upsert_query = self.bq_uploader._construct_user_upsert_query(
                         table_id=self.userdata_table_id, 
-                        records = self.twitch_api.channel_viewers_queue
-                        )
-
-                self.bq_uploader.execute_query_on_bigquery(query=channel_viewers_query)            
+                        records=updated_viewers
+                    )
+                    self.bq_uploader.execute_query_on_bigquery(query=channel_viewers_upsert_query)
+                else:
+                    self.logger.debug(f"No updated viewers to process.")
+            else:
+                self.logger.debug(f"User capture service is disabled.")
             
             # 4.2 Get MESSAGE data, store in queue, generate query for sending to BQ
             viewer_interaction_records = self.bq_uploader.generate_twitch_user_interactions_records_for_bq(
@@ -548,9 +553,7 @@ class Bot(twitch_commands.Bot):
                         and user['username'] not in self.config.twitch_bot_channel_name
                         and user['username'] not in self.config.twitch_bot_username
                         and user['username'] not in self.config.twitch_bot_display_name
-                        #and user['username'] not in "crubeyawne"
-                        #and user['username'] not in "nanovision"
-                        #and user['username'] not in mods_list
+                        # and user['username'] not in self.config.twitch_channel_moderators_logins
                         )
                 ]   
 

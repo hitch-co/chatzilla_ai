@@ -84,55 +84,82 @@ class TwitchAPI:
         except Exception as e:
             self.logger.error(f"Issue with user_data['data']: {e}")
             return None
-                
-    # def _get_moderators(self, bearer_token):
 
-    #     # Twitch API authentication headers
+    # # NOTE: that this won't work as the bot is not the broadcaster         
+    # def _get_moderators(self, bearer_token) -> list[dict]:
+    #     """
+    #     Returns a list of dicts, each containing user_id, user_login, and user_name 
+    #     for moderators of the broadcaster's channel.
+    #     Requires that your token has the 'moderation:read' scope.
+    #     """
     #     HEADERS = {
     #         "Client-ID": self.config.twitch_bot_client_id,
     #         "Authorization": f'Bearer {bearer_token}'
     #     }
 
+    #     # Make sure we have a broadcaster ID to query
+    #     if not self.config.twitch_broadcaster_user_id:
+    #         self.logger.warning("No broadcaster user ID found; can't retrieve moderators.")
+    #         return []
+
     #     params = {
     #         'broadcaster_id': self.config.twitch_broadcaster_user_id
     #     }
-    #     # Get the list of moderators for the channel
-    #     url = f"{self.TWITCH_API_BASE_URL}{self.MODERATORS_ENDPOINT}"
-    #     response = requests.get(url, params=params, headers=HEADERS)
-    #     moderators_data = response.json()
-    #     self.logger.debug('--------------------------------------------------------------------')
-    #     self.logger.debug('--------------------------------------------------------------------')
-    #     self.logger.debug('--------------------------------------------------------------------')
-    #     self.logger.debug('--------------------------------------------------------------------')
-    #     self.logger.debug(f"Moderators Endpoint: {url}")
-    #     self.logger.debug(f"Params: {params}")
-    #     self.logger.debug(f"Headers: {HEADERS}")
-    #     self.logger.debug(f"Moderators Data response.json()logger.debug(): {moderators_data}")
 
-    #     if moderators_data["data"]:
-    #         moderators_list = [moderator["user_id"] for moderator in moderators_data["data"]]
+    #     url = f"{self.TWITCH_API_BASE_URL}{self.MODERATORS_ENDPOINT}"
+    #     self.logger.debug(f"Fetching moderators from: {url}, params: {params}")
+
+    #     try:
+    #         response = requests.get(url, params=params, headers=HEADERS)
+    #         if response.status_code != 200:
+    #             self.logger.error(f"Failed to retrieve moderators. Status code: {response.status_code} | {response.text}")
+    #             return []
+
+    #         moderators_data = response.json()  # {'data': [...], 'pagination': ...}
+    #         self.logger.debug(f"Moderators data response: {moderators_data}")
+
+    #         if not moderators_data or "data" not in moderators_data:
+    #             return []
+
+    #         # Create a list of (user_id, user_login, user_name)
+    #         moderators_list = [{
+    #             "user_id": m["user_id"],
+    #             "user_login": m["user_login"],
+    #             "user_name": m["user_name"]
+    #         } for m in moderators_data["data"]]
+
+    #         if moderators_list:
+    #             self.logger.info(f"Successfully retrieved {len(moderators_list)} moderators for this channel.")
+    #         else:
+    #             self.logger.warning("No moderators returned or retrieval failed. Check your token scopes or broadcaster ID.")
+
     #         return moderators_list
-    #     else:
+
+    #     except Exception as e:
+    #         self.logger.error(f"Exception when retrieving moderators: {str(e)}", exc_info=True)
     #         return []
 
-    # def set_moderator_id_to_env(self, bearer_token):
-    #     # Set bot's user ID
-    #     self._get_and_set_user_id(bearer_token)
-        
-    #     if self.config.twitch_broadcaster_user_id:
+    async def update_channel_viewers(self, bearer_token: str) -> list[dict]:
+        """
+        Fetch current viewers via the Twitch API, format them, 
+        and upsert them into the in-memory queue, returning the deduplicated results.
+        """
+        # Step 1: Fetch data
+        raw_data = await self._fetch_viewers_from_twitch(bearer_token=bearer_token)
+        if not raw_data:
+            self.logger.warning("No raw viewer data returned from Twitch.")
+            return []
 
-    #         # Get list of moderators including the bot
-    #         moderators = self._get_moderators(bearer_token)
-    #         if bot_user_id in moderators:
-    #             self.logger.debug(f"Bot is a moderator of the channel. Their ID is: {moderators[0]}")
-    #             self.config.twitch_bot_moderator_id = moderators[0]
-    #         else:
-    #             self.logger.warning("Bot is not a moderator of the channel.")
-    #     else:
-    #         print("Failed to retrieve bot's user ID.")
+        # Step 2: Transform/Format data
+        formatted_records = self._format_viewers_for_storage(raw_data)
 
+        # Step 3: Deduplicate & enqueue
+        final_queue_records = self._upsert_viewers_in_queue(formatted_records)
+
+        return final_queue_records
+    
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
-    async def _fetch_channel_viewers_data(self, bearer_token) -> dict:
+    async def _fetch_viewers_from_twitch(self, bearer_token) -> dict:
 
         try:
             chatters_endpoint_url = f"{self.TWITCH_API_BASE_URL}{self.CHATTERS_ENDPOINT}"
@@ -163,7 +190,7 @@ class TwitchAPI:
 
     async def retrieve_active_usernames(self, bearer_token) -> list[str]:
         try:
-            viewer_data = await self._fetch_channel_viewers_data(bearer_token)
+            viewer_data = await self._fetch_viewers_from_twitch(bearer_token)
         except Exception as e:
             self.logger.warning(f"Failed to fetch channel viewer data: {e}")
             return None
@@ -177,7 +204,7 @@ class TwitchAPI:
         self.logger.debug(f"current_user_names: {current_user_names}")
         return current_user_names
 
-    def _transform_viewer_data(self, viewer_data_json) -> list[dict]:
+    def _format_viewers_for_storage(self, viewer_data_json) -> list[dict]:
         self.logger.debug('Processing channel viewers data')
         timestamp = utils.get_datetime_formats()['sql_format']
         
@@ -188,12 +215,12 @@ class TwitchAPI:
             self.logger.debug(f"channel_viewers_list_dict:")
             self.logger.debug(channel_viewers_list_dict)
         else:
-            self.logger.error("Invalid viewer data provided to _transform_viewer_data")
-            raise ValueError("Invalid viewer data provided to _transform_viewer_data")
+            self.logger.error("Invalid viewer data provided to _format_viewers_for_storage")
+            raise ValueError("Invalid viewer data provided to _format_viewers_for_storage")
         
         return channel_viewers_list_dict
 
-    async def _enqueue_and_deduplicate_viewer_records(self, records: list[dict]) -> None:
+    async def _upsert_viewers_in_queue(self, records: list[dict]) -> None:
 
         self.logger.debug(f'Enqueuing {len(records)} records to channel_viewers_queue')
 

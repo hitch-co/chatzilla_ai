@@ -278,8 +278,7 @@ class ConfigManager:
             self.twitch_bot_operatorname = os.getenv('CHATZILLA_OPERATORNAME')
             self.twitch_bot_channel_name = os.getenv('CHATZILLA_CHANNEL_NAME')
             self.twitch_bot_moderators = os.getenv('CHATZILLA_MODERATORS')
-
-
+            self.twitch_operator_is_channel_owner = self.twitch_bot_operatorname == self.twitch_bot_channel_name 
         except Exception as e:
             self.logger.error(f"Error in update_config_from_env(): {e}")
 

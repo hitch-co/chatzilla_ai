@@ -134,14 +134,7 @@ class BQUploader:
             user_badges = record.get('badges')
             color = record.get('tags').get('color', '') if record.get('tags') else ''
             interaction_type = record.get('interaction_type')
-            
-            # message_id = self.generate_message_id(
-            #     channel=channel, 
-            #     user_id=user_id, 
-            #     timestamp=timestamp, 
-            #     content=content
-            # )
-            
+
             row = {
                 "user_id": user_id,
                 "channel": channel,
@@ -158,7 +151,7 @@ class BQUploader:
         self.logger.debug(rows_to_insert[0:2])
         return rows_to_insert
 
-    def _construct_user_merge_query(self, table_id, records: list[dict]) -> str:
+    def _construct_user_upsert_query(self, table_id, records: list[dict]) -> str:
 
         # Build the UNION ALL part of the query
         union_all_query = " UNION ALL ".join([

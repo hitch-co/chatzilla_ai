@@ -642,7 +642,8 @@ class Bot(twitch_commands.Bot):
                     "random_new_user": random_user_name,
                     "wordcount_medium": self.config.wordcount_medium,
                     "wordcount_short": self.config.wordcount_short,
-                    "user_specific_chat_history": relevant_message_history
+                    "user_specific_chat_history": relevant_message_history,
+                    "twitch_bot_channel_name": self.config.twitch_bot_channel_name,
                 }
 
                 # Add an executeTask to the queue

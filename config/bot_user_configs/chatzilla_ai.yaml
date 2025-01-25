@@ -8,6 +8,7 @@ spellcheck_commands_filename: '.\data\rules\command_spellcheck_terms.json'
 twitch-app:
   twitch_bot_gpt_hello_world: True
   twitch_bot_gpt_new_users_service: False
+  twitch_bot_gpt_returning_users_faiss_service: False
   twitch_bot_faiss_general_index_service: False
   twitch_bot_faiss_testing_active: False
   twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read' #user:read:email moderation:read channel:moderate'
@@ -529,7 +530,7 @@ newusers_sleep_time: 40
 newusers_faiss_default_query: "{random_user_name} discussed some recent projects/topics/concepts 
   or asked for a reminder. They might ahve also had some hot takes on some things."
 newusers_msg_prompt: "Say hi and tag @{random_new_user}, welcoming them to the chat on behalf 
-  of {bot_operatorname}. Keep the message to {wordcount_medium} words max. Since it's their first time 
+  of {twitch_bot_channel_name}. Keep the message to {wordcount_medium} words max. Since it's their first time 
   here (or first in a long time), greet them warmly and make them feel welcome.
 
   If there’s no chat history available (which is likely for new users), focus on creating 
@@ -543,7 +544,7 @@ newusers_msg_prompt: "Say hi and tag @{random_new_user}, welcoming them to the c
   "
 
 returningusers_msg_prompt: "Say hi and tag @{random_new_user} in this twitch chat, specifically welcoming them back 
-  to the chat on behalf of {bot_operatorname}. Keep the message to {wordcount_medium} words max. Since 
+  to the chat on behalf of {twitch_bot_channel_name}. Keep the message to {wordcount_medium} words max. Since 
   they're a returning user, try to make the message more personal by referencing something 
   from their previous chat history if it's available.
 

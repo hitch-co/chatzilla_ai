@@ -349,10 +349,8 @@ class Bot(twitch_commands.Bot):
             thread_names=self.config.gpt_thread_names
             )
         
-
         if self.config.twitch_bot_faiss_general_index_service is True:
             # start newusers service, get general index and load initial messages
-            #Time the runtime of the following code for both the general index and the session index
             start_time_bq_query = time.time() 
             historic_bq_msgs = self.bq_uploader.fetch_user_chat_history_from_bq(
                 user_login=None,
@@ -365,12 +363,21 @@ class Bot(twitch_commands.Bot):
             end_time_inital_msg_load = time.time()
             self.logger.info(f"Session index preloaded in {end_time_inital_msg_load-end_time_bq_query} seconds (BigQuery msg query took {end_time_bq_query-start_time_bq_query} seconds) with {len(historic_bq_msgs)} messages.")
             self.logger.info(f"FAISS index size: {self.faiss_service.session_index.ntotal}")
-    
+        else:
+            self.logger.debug(f"General index service is disabled.")
+
         if self.config.twitch_bot_gpt_new_users_service is True and self.config.twitch_operator_is_channel_owner:
             self.logger.debug(f"Starting newusers service")
             self.loop.create_task(self._send_message_to_new_users_task())
         else:
             self.logger.debug(f"New Users service is disabled")
+
+        # Create an async task that sleeps, then calls follow
+        if not self.config.twitch_operator_is_channel_owner:
+            self.loop.create_task(self._delayed_follow_task())
+
+        # Set the bots chat colour
+        self.twitch_api.set_bot_chat_color(bearer_token=self.config.twitch_bot_access_token)
 
         # send hello world message
         if self.config.twitch_bot_gpt_hello_world == True:
@@ -503,6 +510,14 @@ class Bot(twitch_commands.Bot):
             
             # Wait before checking again
             await asyncio.sleep(1800)
+
+    async def _delayed_follow_task(self):
+        """Sleep for 10 minutes asynchronously, then perform the follow."""
+        await asyncio.sleep(300)  # 10 minutes
+        self.twitch_api.follow_twitch_user(
+            target_login=self.config.twitch_bot_channel_name,
+            bearer_token=self.config.twitch_bot_access_token
+        )
 
     async def _send_message_to_new_users_task(self, thread_name='chatformemsgs', assistant_name='newuser_shoutout'):
         self.current_users_list = []
@@ -1416,7 +1431,12 @@ class Bot(twitch_commands.Bot):
                     assistant_name='conversationdirector',
                     function_schema=conversation_director_function_schema
                     )
-                response_type_result = response_data.get('response_type', 'fact')
+                self.logger.info(f"Conversation Director function response data: {response_data}")               
+                if 'response_type' in response_data:
+                    response_type_result = response_data['response_type']
+                else:
+                    self.logger.warning("No 'response_type' attribute found in response_data. Defaulting to 'fact'")
+                    response_type_result = 'fact'
 
             except Exception as e:
                 self.logger.warning(f"Error occurred in 'randomfact_task'. Defaulting to 'fact': {e}")

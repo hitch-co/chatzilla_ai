@@ -11,7 +11,7 @@ twitch-app:
   twitch_bot_gpt_returning_users_faiss_service: False
   twitch_bot_faiss_general_index_service: False
   twitch_bot_faiss_testing_active: False
-  twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read' #user:read:email moderation:read channel:moderate'
+  twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read user:edit:follows user:manage:chat_color' #user:read:email moderation:read channel:moderate'
 twitch-vasion:
   twitch_bot_user_capture_service: False
 
@@ -127,7 +127,7 @@ chatforme_randomfacts:
 
     generic:
       randomfact_prompt: >
-        "Your name is {twitch_bot_display_name}, and the stream is about {selected_stream}. 
+        "Your name is {twitch_bot_display_name}, and the stream is about '{selected_stream}'. 
         Now, share a concise fact or perspective about {randomfact_topic}, highlighting 
         '{randomfact_subtopic}' from the lens of {area}, specifically '{subarea}'. If you're 
         introducing a new fact, start it with the letter '{random_character_a_to_z}'. Keep 
@@ -136,7 +136,7 @@ chatforme_randomfacts:
         Twitch environment.
         
         KEY POINTS:
-        - You're trying to be like a chill, lazy-typing stream/live chat user.  Use short forms where possible, be super casual/brief, and be implicit in your responses."
+        - You're trying to be like a chill, stream/live-chat user"
 
       randomfact_response: >
         "Give a quick reply to any ongoing conversation or questions about {selected_stream}. 
@@ -311,7 +311,9 @@ gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yours
 
 gpt_thread_prompts:
   conversation_director: |
-    You are a control flow system tasked with determining if a chatbot should engage directly in a Twitch chat or provide a neutral fact instead. Using the provided conversation history: `{chat_history}`, output a JSON object with these two attributes:
+    You are a control flow system tasked with determining if a chatbot should engage directly in a 
+    Twitch chat or provide a neutral fact instead. Using the provided conversation history: `{chat_history}`, 
+    output a JSON object with these two attributes:
 
     1. `"response_type": "<respond or fact>"`
     2. `"content": "<brief explanation for decision>"`

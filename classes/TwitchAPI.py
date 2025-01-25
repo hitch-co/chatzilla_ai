@@ -139,6 +139,107 @@ class TwitchAPI:
     #         self.logger.error(f"Exception when retrieving moderators: {str(e)}", exc_info=True)
     #         return []
 
+    def follow_twitch_user(self, target_login: str, bearer_token: str) -> bool:
+        """
+        Follows the target_login user from the bot account.
+        Requires 'user:edit:follows' scope on the bot's bearer_token.
+        Returns True if follow is successful, False otherwise.
+        """
+        # -- 1) Get the target user's ID from login
+        headers = {
+            "Client-ID": self.config.twitch_bot_client_id,
+            "Authorization": f"Bearer {bearer_token}",
+        }
+        url_get_user = f"{self.TWITCH_API_BASE_URL}{self.USERS_ENDPOINT}?login={target_login}"
+        try:
+            resp = requests.get(url_get_user, headers=headers)
+            if resp.status_code != 200:
+                self.logger.error(f"Failed to retrieve user ID for {target_login} "
+                                f"(status code: {resp.status_code}, text: {resp.text})")
+                return False
+
+            resp_json = resp.json()
+            users_data = resp_json.get("data", [])
+            if not users_data:
+                self.logger.error(f"No user found for login: {target_login}")
+                return False
+
+            target_user_id = users_data[0]["id"]
+            self.logger.debug(f"Target login '{target_login}' has user ID = {target_user_id}")
+
+        except Exception as e:
+            self.logger.error(f"Exception occurred while getting target user ID: {e}", exc_info=True)
+            return False
+
+        # -- 2) POST /users/follows to follow target user
+        url_follow = f"{self.TWITCH_API_BASE_URL}/users/follows"
+        data = {
+            "from_id": self.config.twitch_bot_user_id,  # Bot's user ID
+            "to_id": target_user_id                     # The user we want to follow
+        }
+        try:
+            follow_resp = requests.post(url_follow, headers=headers, json=data)
+
+            # Twitch responds with 204 (No Content) on success
+            if follow_resp.status_code == 204:
+                self.logger.info(f"Bot successfully followed user '{target_login}' ({target_user_id}).")
+                return True
+            else:
+                self.logger.error(
+                    f"Failed to follow user '{target_login}' ({target_user_id}). "
+                    f"Status code: {follow_resp.status_code}, Response: {follow_resp.text}"
+                )
+                return False
+        except Exception as e:
+            self.logger.error(f"Exception occurred while following user '{target_login}': {e}", exc_info=True)
+            return False
+
+    def set_bot_chat_color(self, bearer_token: str, color: str = "spring_green") -> bool:
+        """
+        Updates the bot's username color in Twitch chat. 
+        Requires 'user:manage:chat_color' scope on the bot's OAuth token.
+        :param bearer_token: OAuth token for the bot account
+        :param color: An allowed color name (e.g. 'green', 'spring_green') 
+                    or a hex string if the bot has Turbo/Prime. 
+        :return: True if the color is updated successfully, False otherwise.
+        """
+        # Validate color is one of Twitch's allowed constants or #hex
+        allowed_colors = {
+            "blue", "blue_violet", "cadet_blue", "chocolate", "coral", "dodger_blue",
+            "firebrick", "golden_rod", "green", "hot_pink", "orange_red", "red",
+            "sea_green", "spring_green", "yellow_green"
+        }
+
+        # If it's not a hex and not in the allowed list, fallback or log an error
+        # (You might want to handle that more gracefully)
+        if not (color.startswith("#") or color in allowed_colors):
+            self.logger.warning(f"Color '{color}' is not an allowed color or valid hex; defaulting to 'green'.")
+            color = "green"
+
+        headers = {
+            "Client-ID": self.config.twitch_bot_client_id,
+            "Authorization": f"Bearer {bearer_token}"
+        }
+
+        # Build the PUT URL
+        url = f"{self.TWITCH_API_BASE_URL}/chat/color?user_id={self.config.twitch_bot_user_id}&color={color}"
+
+        self.logger.debug(f"Attempting to update bot's chat color to '{color}' using URL: {url}")
+        try:
+            resp = requests.put(url, headers=headers)
+            if resp.status_code == 204:
+                self.logger.info(f"Successfully updated bot username color to '{color}'.")
+                return True
+            else:
+                self.logger.error(
+                    f"Failed to set chat color to '{color}'. "
+                    f"Status: {resp.status_code}, Response: {resp.text}"
+                )
+                return False
+        except Exception as e:
+            self.logger.error(f"Exception while updating chat color to '{color}': {e}", exc_info=True)
+            return False
+
     async def update_channel_viewers(self, bearer_token: str) -> list[dict]:
         """
         Fetch current viewers via the Twitch API, format them, 

@@ -14,7 +14,7 @@ from my_modules import utils
 
 gpt_base_debug_level = 'INFO'
 gpt_thread_mgr_debug_level = 'INFO'
-gpt_assistant_mgr_debug_level = 'DEBUG'
+gpt_assistant_mgr_debug_level = 'INFO'
 gpt_response_mgr_debug_level = 'INFO'
 
 class GPTBaseClass:
@@ -90,9 +90,9 @@ class GPTFunctionCallManager(GPTBaseClass):
             str: The final response from the assistant and the output data.
         """
 
-        self.logger.info('Threads and Assistants:')
-        self.logger.info(f"...Threads: {self.gpt_thread_manager.threads}")
-        self.logger.info(f"...Assistants: {self.gpt_assistant_manager.assistants}")
+        self.logger.debug('Threads and Assistants:')
+        self.logger.debug(f"...Threads: {self.gpt_thread_manager.threads}")
+        self.logger.debug(f"...Assistants: {self.gpt_assistant_manager.assistants}")
 
         # Retrieve the thread/assistant ID by name
         try:
@@ -404,7 +404,6 @@ class GPTAssistantManager(GPTBaseClass):
         return assistant
 
     def create_assistants(self, assistants_config: dict) -> dict:
-        # Create Assistants
         replacements_dict = {
             "wordcount_short":self.yaml_data.wordcount_short,
             "wordcount_medium":self.yaml_data.wordcount_medium,
@@ -764,8 +763,8 @@ async def main():
     import openai
 
     dotenv_load_result = dotenv.load_dotenv(dotenv_path='./config/.env')
-    print(f"yaml_filepath: {os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH')} (type: {type(os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH'))})")
-    ConfigManager.initialize(yaml_filepath=os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH'))
+    yaml_filepath=os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH')
+    ConfigManager.initialize(yaml_filepath)
     config = ConfigManager.get_instance()
 
     # openai client

@@ -91,15 +91,20 @@ def main(yaml_filepath):
     
     ConfigManager.initialize(yaml_filepath)
     config = ConfigManager.get_instance()
-
+    config.aboutme_prompt
     dependencies = DependencyInjector(config=config)
     dependencies.create_dependencies()
 
     return dependencies
 
 if __name__ == '__main__':
-    yaml_filepath = r'C:\_repos\chatzilla_ai\config\config.yaml'
+    import os
+    import dotenv
+
+    dotenv_load_result = dotenv.load_dotenv(dotenv_path='./config/.env')
+    yaml_filepath=os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH')
     dependencies = main(yaml_filepath)
+
     print(dependencies.gpt_client)
     print(dependencies.message_handler)
     print(dependencies.bq_uploader)

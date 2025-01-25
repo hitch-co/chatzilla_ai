@@ -7,11 +7,13 @@ spellcheck_commands_filename: '.\data\rules\command_spellcheck_terms.json'
 #Flask App
 twitch-app:
   twitch_bot_gpt_hello_world: True
-  twitch_bot_gpt_new_users_service: True
-  twitch_bot_gpt_returning_users_faiss_service: True
-  twitch_bot_faiss_general_index_service: True
+  twitch_bot_gpt_new_users_service: False
+  twitch_bot_gpt_returning_users_faiss_service: False
+  twitch_bot_faiss_general_index_service: False
   twitch_bot_faiss_testing_active: False
-  twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read' #user:read:email moderation:read channel:moderate'
+  twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read user:edit:follows user:manage:chat_color' #user:read:email moderation:read channel:moderate'
+twitch-vasion:
+  twitch_bot_user_capture_service: False
 
 #########################
 #########################
@@ -49,7 +51,7 @@ openai-api:
   
   ########################################
   assistant_response_max_length: 300
-  tts_include_voice: True
+  tts_include_voice: False
   tts_model: "tts-1" #tts-2 has higher latency
   tts_voice: "nova"
   tts_volume: .3
@@ -92,9 +94,9 @@ chatforme_randomfacts:
     game: # Game is set in run_envirionment.bat (i.e. input prompt after launching the bot)
       randomfact_prompt: "Your name is {twitch_bot_display_name}.  Share a fact 
         or perspective about {randomfact_topic}, 
-        especially focusing on {randomfact_subtopic} within the world of 
+        especially focusing on {randomfact_subtopic} within the world of the 
         the video game: '{selected_game}'. Kick off your response with the letter 
-        '{random_character_a_to_z}' and keep it within {wordcount_short} words. 
+        '{random_character_a_to_z}' and keep it within {wordcount} words. 
         While we cherish unconventional views, make sure it's thought-provoking. 
         Remember, we love to spark lively debates and unexpected connections in 
         gaming!  Don't respond including any reference to the letter you're 
@@ -106,9 +108,9 @@ chatforme_randomfacts:
 
     standard:
       randomfact_prompt: "Share a random/wild/controversial/lesser known fact (using roughly 
-        {wordcount_short} words) or insight about {randomfact_topic} that begins with the 
+        {wordcount} words) or insight about {randomfact_topic} that begins with the 
         letter '{random_character_a_to_z}' and relates to {randomfact_subtopic} from the 
-        {area} era, particularly {subarea}. Aim for around {wordcount_short} words, blending 
+        {area} era, particularly {subarea}. Aim for around {wordcount} words, blending 
         edgy and thoughtful perspectives. We often stray from the mainstream views. Remember, 
         we appreciate a bit of good fun in the debate! 
 
@@ -119,29 +121,36 @@ chatforme_randomfacts:
         "Looks like there's a conversation happening.  Maybe we can add a small 
         bit of insight into what's beeing said or we can fact check the 
         conversation or we can (sparingly) change the topic only slightly. Be 
-        sure to respond in less than {wordcount_short} words."
+        sure to respond in less than {wordcount} words."
       topics_injection_file_path: '.\data\randomfact\standard_topics_and_subtopics.json'
       areas_injection_file_path: '.\data\randomfact\standard_eras_and_timeperiods.json'
 
     generic:
-      randomfact_prompt: "your only job is to participate in the conversation.  
-        Remember this is a stream so conversations are short, and only last for 
-        a few messages.  Remember, you can't hear the streamer, so if part of a 
-        convo doesn't make sense just go back to sharing facts.  If there is no 
-        apparent active conversation, or you've already made a response, at 
-        random just share a random fact about a game or game genre, or a book, 
-        or a song, or a place, or a space, etc.  If you recently shared a fact 
-        about a subject/topic/person/place/thing, then maybe hsare a deeper fact 
-        about that person/place/thing/topic/subvject. Make sure you cover a wide 
-        variety of topics if not particiapting in the conversation.  Keep it to 
-        {wordcount_short} words max.  If you can, make the topic start with the 
-        letter '{random_character_a_to_z}'.  Ensure a wide expanse of knowledge 
-        is covered.  Start your message with 'fact:' if it's a fact, otherwise 
-        just participate in the conversation.  If someone asks you a question, 
-        you respond and they don't follow up or acknowledge your response, 
-        assume that they read and understood your answer"
-      # topics_injection_file_path: "Need to make this optional"
-      # areas_injection_file_path: "Need to make this optional"
+      randomfact_prompt: >
+        "Your name is {twitch_bot_display_name}, and the stream is about '{selected_stream}'. 
+        Now, share a concise fact or perspective about {randomfact_topic}, highlighting 
+        '{randomfact_subtopic}' from the lens of {area}, specifically '{subarea}'. If you're 
+        introducing a new fact, start it with the letter '{random_character_a_to_z}'. Keep 
+        it around {wordcount} words, and if you've covered something similar before, 
+        offer a fresh twist or deeper insight. Maintain a lively tone for a fast-paced 
+        Twitch environment.
+        
+        KEY POINTS:
+        - You're trying to be like a chill, stream/live-chat user"
+
+      randomfact_response: >
+        "Give a quick reply to any ongoing conversation or questions about {selected_stream}. 
+        If nobody follows up, pivot to an interesting fact or tidbit about {randomfact_topic}, 
+        focusing on '{randomfact_subtopic}' from {area}, specifically '{subarea}'. Keep it 
+        under {wordcount} words to fit the quick-chat setting, and remember to keep 
+        your tone casual and engaging.
+        
+        KEY POINTS:
+        - You're trying to be like a chill, lazy-typing stream/live chat user.  Use short forms where possible, be super casual/brief, and be implicit in your responses."
+        "
+
+      areas_injection_file_path: '.\data\randomfact\generic_categories_and_areas.json'
+      topics_injection_file_path: '.\data\randomfact\generic_topics_and_subtopics.json'
 
 #####################
 #####################
@@ -162,6 +171,7 @@ chatforme_factcheck:
 chatbot_config:
   msg_history_limit: 150
   wordcounts:
+    veryshort: 15
     short: 23
     medium: 29
     long: 43
@@ -225,9 +235,9 @@ botears_save_length_seconds: 7
 botears_audio_path: "./assets/ears"
 botears_audio_filename: "latest_ears"
 botears_prompt: "Below is a question/comment from the user. You are to respond 
-  to themwith a short ({wordcount_medium} words max) response or comment based on 
+  to themwith a short ({wordcount} words max) response or comment based on 
   their question/comment.  Be sure to keep your response to less than 
-  {wordcount_medium} words and be sure to respond to the user's message whether
+  {wordcount} words and be sure to respond to the user's message whether
   you're sure or not.
 
   This is the question/comment:
@@ -240,14 +250,12 @@ botears_prompt: "Below is a question/comment from the user. You are to respond
 # HelloWorld BOT Prompts
 formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for 
   {twitch_bot_channel_name} and your name is {twitch_bot_display_name} 
-  and you are of generation millenial. Your mission is to send a concise 'hello stream' 
-  message that welcomes viewers and says something interesting to get us started.
-  Suggest viewers checkout !commands for fun stuff the bot can do
+  and you are a rad dude. Your mission is to send a concise 'hello {twitch_bot_channel_name}' 
+  message that says hello to them and everyone watching.
     Key Points
-    - Your only message should be a {wordcount_medium} word long message
+    - Your one and only message should be a {wordcount} word long message
     - Minimize repetition
-    - Be sure to say, 'I'm {twitch_bot_display_name}'  in your message
-    - be a rad dude/dudette
+    - be a rad dude/dudette with surfer vibes
   "
 
 
@@ -297,13 +305,15 @@ gpt_assistants_with_functions:
         You are a control flow system. You must **always** use the provided function to determine if a chatbot should engage directly in a Twitch chat or provide a neutral fact. Do not generate any text responses; use the function call exclusively.
 
 gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
-  Unless stated otherwise, responses have a maximum length of 25 words. Don't 
+  Unless stated otherwise, responses have a maximum length of 20 words. Don't 
   or call out too explicitly when you've made an error, the show must go on!
   Don't prefix your response with anything, just respond directly."
 
 gpt_thread_prompts:
   conversation_director: |
-    You are a control flow system tasked with determining if a chatbot should engage directly in a Twitch chat or provide a neutral fact instead. Using the provided conversation history: `{chat_history}`, output a JSON object with these two attributes:
+    You are a control flow system tasked with determining if a chatbot should engage directly in a 
+    Twitch chat or provide a neutral fact instead. Using the provided conversation history: `{chat_history}`, 
+    output a JSON object with these two attributes:
 
     1. `"response_type": "<respond or fact>"`
     2. `"content": "<brief explanation for decision>"`
@@ -522,7 +532,7 @@ newusers_sleep_time: 40
 newusers_faiss_default_query: "{random_user_name} discussed some recent projects/topics/concepts 
   or asked for a reminder. They might ahve also had some hot takes on some things."
 newusers_msg_prompt: "Say hi and tag @{random_new_user}, welcoming them to the chat on behalf 
-  of {bot_operatorname}. Keep the message to {wordcount_medium} words max. Since it's their first time 
+  of {twitch_bot_channel_name}. Keep the message to {wordcount_medium} words max. Since it's their first time 
   here (or first in a long time), greet them warmly and make them feel welcome.
 
   If there’s no chat history available (which is likely for new users), focus on creating 
@@ -536,7 +546,7 @@ newusers_msg_prompt: "Say hi and tag @{random_new_user}, welcoming them to the c
   "
 
 returningusers_msg_prompt: "Say hi and tag @{random_new_user} in this twitch chat, specifically welcoming them back 
-  to the chat on behalf of {bot_operatorname}. Keep the message to {wordcount_medium} words max. Since 
+  to the chat on behalf of {twitch_bot_channel_name}. Keep the message to {wordcount_medium} words max. Since 
   they're a returning user, try to make the message more personal by referencing something 
   from their previous chat history if it's available.
 

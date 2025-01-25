@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../Users/Admin/OneDrive/Desktop/_work/__repos (unpublished)/_____CONFIG/chatzilla_ai/config"
+		}
+	],
+	"settings": {
+		"python.defaultInterpreterPath": "C:/Users/Admin/Miniconda3/envs/openai_chatzilla_ai_env/python.exe",
+		"python.terminal.activateEnvironment": true
+	}
+}

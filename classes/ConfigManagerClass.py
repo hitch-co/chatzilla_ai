@@ -278,8 +278,7 @@ class ConfigManager:
             self.twitch_bot_operatorname = os.getenv('CHATZILLA_OPERATORNAME')
             self.twitch_bot_channel_name = os.getenv('CHATZILLA_CHANNEL_NAME')
             self.twitch_bot_moderators = os.getenv('CHATZILLA_MODERATORS')
-
-
+            self.twitch_operator_is_channel_owner = self.twitch_bot_operatorname == self.twitch_bot_channel_name 
         except Exception as e:
             self.logger.error(f"Error in update_config_from_env(): {e}")
 
@@ -312,6 +311,7 @@ class ConfigManager:
 
     def yaml_gpt_config(self, yaml_data):
         try:
+            self.wordcount_veryshort = str(yaml_data['chatbot_config']['wordcounts']['veryshort'])
             self.wordcount_short = str(yaml_data['chatbot_config']['wordcounts']['short']) #2024-06-09: shouldn't these be captured as ints and typecasted when used?
             self.wordcount_medium = str(yaml_data['chatbot_config']['wordcounts']['medium'])
             self.wordcount_long = str(yaml_data['chatbot_config']['wordcounts']['long'])
@@ -408,6 +408,7 @@ class ConfigManager:
 
     def yaml_twitchbot_config(self, yaml_data):
         try:
+            self.twitch_bot_user_capture_service = yaml_data['twitch-vasion']['twitch_bot_user_capture_service']
             self.twitch_bot_gpt_hello_world = yaml_data['twitch-app']['twitch_bot_gpt_hello_world']
             self.twitch_bot_gpt_new_users_service = yaml_data['twitch-app']['twitch_bot_gpt_new_users_service']
             self.flag_returning_users_service = yaml_data['twitch-app']['twitch_bot_gpt_returning_users_faiss_service']
@@ -503,16 +504,15 @@ class ConfigManager:
         try:
             self.randomfact_sleeptime = yaml_data['chatforme_randomfacts']['randomfact_sleeptime']
             self.randomfact_selected_game = os.getenv('CHATZILLA_SELECTED_GAME')
+            self.randomfact_selected_stream = os.getenv('CHATZILLA_SELECTED_STREAM')
                             
             # Set random fact prompt and response based on selected game
-            if self.randomfact_selected_game == 'no_game_selected':
-                selected_type = 'standard'
-            elif self.randomfact_selected_game != 'no_game_selected' and self.randomfact_selected_game is not None:
+            if self.randomfact_selected_game != 'no_game_selected' and self.randomfact_selected_game is not None:
                 selected_type = 'game'
-            elif self.randomfact_selected_game == None:
-                selected_type = 'standard'
+            elif self.randomfact_selected_stream != 'no_stream_selected' and self.randomfact_selected_stream is not None:
+                selected_type = 'generic'
             else:
-                self.logger.error("randomfact_selected_game is None and was set to 'standard'")
+                self.logger.warning(f"No logic detetected for randomfact_selected_game = {self.randomfact_selected_game} and was set to 'standard'")
                 selected_type = 'standard'
 
             self.randomfact_prompt = yaml_data['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_prompt']
@@ -595,6 +595,7 @@ class ConfigManager:
         self.logger.debug(f"gpt_model: {self.gpt_model}")
         self.logger.debug(f"gpt_model_davinci: {self.gpt_model_davinci}")
         self.logger.debug(f"tts_model: {self.tts_model}")  
+        self.logger.debug(f"wordcount_veryshort: {self.wordcount_veryshort}")
         self.logger.debug(f"wordcount_short: {self.wordcount_short}")
         self.logger.debug(f"wordcount_medium: {self.wordcount_medium}")
         self.logger.debug(f"wordcount_long: {self.wordcount_long}")
@@ -777,6 +778,6 @@ class ConfigManager:
 
 if __name__ == "__main__":
     dotenv_load_result = dotenv.load_dotenv(dotenv_path='./config/.env')
-    print(f"yaml_filepath: {os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH')} (type: {type(os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH'))})")
-    ConfigManager.initialize(yaml_filepath=os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH'))
+    yaml_filepath=os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH')
+    ConfigManager.initialize(yaml_filepath)
     config = ConfigManager.get_instance()

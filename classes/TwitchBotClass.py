@@ -309,6 +309,11 @@ class Bot(twitch_commands.Bot):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
         self.logger.info(f'TwitchBot ready on channel {self.channel} | {self.config.twitch_bot_username} (nick:{self.nick})')
 
+        # #NOTE: This won't work because the bot is not the broadcaster
+        # self.logger.debug("Attempting to fetch list of moderators at startup.")
+        # self.twitch_channel_moderators_list = self.twitch_api._get_moderators(self.config.twitch_bot_access_token)
+        # self.twitch_channel_moderators_logins = [moderator['user_login'] for moderator in self.twitch_channel_moderators_list]
+
         # initialize the event loop
         self.logger.debug(f"Initializing event loop")
         self.loop = asyncio.get_event_loop()
@@ -344,10 +349,8 @@ class Bot(twitch_commands.Bot):
             thread_names=self.config.gpt_thread_names
             )
         
-
         if self.config.twitch_bot_faiss_general_index_service is True:
             # start newusers service, get general index and load initial messages
-            #Time the runtime of the following code for both the general index and the session index
             start_time_bq_query = time.time() 
             historic_bq_msgs = self.bq_uploader.fetch_user_chat_history_from_bq(
                 user_login=None,
@@ -360,12 +363,21 @@ class Bot(twitch_commands.Bot):
             end_time_inital_msg_load = time.time()
             self.logger.info(f"Session index preloaded in {end_time_inital_msg_load-end_time_bq_query} seconds (BigQuery msg query took {end_time_bq_query-start_time_bq_query} seconds) with {len(historic_bq_msgs)} messages.")
             self.logger.info(f"FAISS index size: {self.faiss_service.session_index.ntotal}")
-    
-        if self.config.twitch_bot_gpt_new_users_service is True:
+        else:
+            self.logger.debug(f"General index service is disabled.")
+
+        if self.config.twitch_bot_gpt_new_users_service is True and self.config.twitch_operator_is_channel_owner:
             self.logger.debug(f"Starting newusers service")
             self.loop.create_task(self._send_message_to_new_users_task())
         else:
             self.logger.debug(f"New Users service is disabled")
+
+        # Create an async task that sleeps, then calls follow
+        if not self.config.twitch_operator_is_channel_owner:
+            self.loop.create_task(self._delayed_follow_task())
+
+        # Set the bots chat colour
+        self.twitch_api.set_bot_chat_color(bearer_token=self.config.twitch_bot_access_token)
 
         # send hello world message
         if self.config.twitch_bot_gpt_hello_world == True:
@@ -420,13 +432,24 @@ class Bot(twitch_commands.Bot):
         # 3. Get chatter data, store in queue, generate query for sending to BQ
         # 4. Send the data to BQ when queue is full.  Clear queue when done
         if len(self.message_handler.message_history_raw)>=2:
+            
+            # 4.1 Get VIEWER data (who is on the channel) from twitch API, store in queue, generate query 
+            #  for sending to BQ
+            if self.config.twitch_bot_user_capture_service is True and self.config.twitch_operator_is_channel_owner:
+                updated_viewers = await self.twitch_api.update_channel_viewers(bearer_token=self.config.twitch_bot_access_token)
 
-            channel_viewers_queue_query = await self.twitch_api.generate_viewers_merge_query(
-                table_id=self.userdata_table_id,
-                bearer_token=self.config.twitch_bot_access_token
-                )
-
-            self.bq_uploader.execute_query_on_bigquery(query=channel_viewers_queue_query)            
+                if updated_viewers:
+                    channel_viewers_upsert_query = self.bq_uploader._construct_user_upsert_query(
+                        table_id=self.userdata_table_id, 
+                        records=updated_viewers
+                    )
+                    self.bq_uploader.execute_query_on_bigquery(query=channel_viewers_upsert_query)
+                else:
+                    self.logger.debug(f"No updated viewers to process.")
+            else:
+                self.logger.debug(f"User capture service is disabled.")
+            
+            # 4.2 Get MESSAGE data, store in queue, generate query for sending to BQ
             viewer_interaction_records = self.bq_uploader.generate_twitch_user_interactions_records_for_bq(
                 records=self.message_handler.message_history_raw
                 )
@@ -488,6 +511,14 @@ class Bot(twitch_commands.Bot):
             # Wait before checking again
             await asyncio.sleep(1800)
 
+    async def _delayed_follow_task(self):
+        """Sleep for 10 minutes asynchronously, then perform the follow."""
+        await asyncio.sleep(300)  # 10 minutes
+        self.twitch_api.follow_twitch_user(
+            target_login=self.config.twitch_bot_channel_name,
+            bearer_token=self.config.twitch_bot_access_token
+        )
+
     async def _send_message_to_new_users_task(self, thread_name='chatformemsgs', assistant_name='newuser_shoutout'):
         self.current_users_list = []
         tts_voice_selected = self.config.tts_voice_newuser
@@ -499,24 +530,20 @@ class Bot(twitch_commands.Bot):
             # Get the current users in the channel
             try:
                 current_users_list = await self.twitch_api.retrieve_active_usernames(
-                    bearer_token = self.config.twitch_bot_access_token
-                    )
-                self.logger.debug(f"...Current users retrieved: {current_users_list}")  
+                    bearer_token=self.config.twitch_bot_access_token
+                )
+                if current_users_list is None or len(current_users_list) == 0:
+                    self.logger.debug("No active usernames retrieved; skipping processing.")
+                    continue
             except Exception as e:
-                self.logger.error(f"Failed to retrieve active users from Twitch API: {e}")
-                current_users_list = []
-                
+                self.logger.error(f"Unexpected error: {e}")
+                continue
+                            
             # Add self.current_users_list to self.current_users_list as set to remove duplicates
             self.current_users_list = list(set(self.current_users_list + current_users_list))
             if not self.current_users_list:
                 self.logger.debug("...No users in self.current_users_list, skipping this iteration.")
                 continue
-
-            if not users_not_yet_sent_message_info:
-                self.logger.debug("...No users not yet sent a message.")
-                continue
-            else:
-                self.logger.debug(f"...Users not yet sent a message: {users_not_yet_sent_message_info}")
 
             if self.config.twitch_bot_faiss_testing_active is True:
                 users_not_yet_sent_message_info = [{"username": f'{self.config.twitch_bot_operatorname}', "usertype": 'returning'}]
@@ -541,19 +568,22 @@ class Bot(twitch_commands.Bot):
                         and user['username'] not in self.config.twitch_bot_channel_name
                         and user['username'] not in self.config.twitch_bot_username
                         and user['username'] not in self.config.twitch_bot_display_name
-                        #and user['username'] not in "crubeyawne"
-                        #and user['username'] not in "nanovision"
-                        #and user['username'] not in mods_list
+                        # and user['username'] not in self.config.twitch_channel_moderators_logins
                         )
                 ]   
 
-            if not eligible_users:
+            if not users_not_yet_sent_message_info:
+                self.logger.debug("...No users not yet sent a message.")
+                continue
+            elif not eligible_users:
                 self.logger.debug(f"...No eligible users found after filtering.")
                 continue
+            else:
+                self.logger.debug(f"...Users not yet sent a message: {users_not_yet_sent_message_info}")
 
             random_user = random.choice(eligible_users)  
             random_user_type = random_user['usertype']
-            random_user_name = random_user['username'] 
+            random_user_name = random_user['username']
 
             self.newusers_service.users_sent_messages_list.append(random_user_name)
             self.logger.info(f"...Selected user for new user message: {random_user_name} ({random_user_type}) for new user message.")
@@ -626,7 +656,9 @@ class Bot(twitch_commands.Bot):
                 replacements_dict = {
                     "random_new_user": random_user_name,
                     "wordcount_medium": self.config.wordcount_medium,
-                    "user_specific_chat_history": relevant_message_history
+                    "wordcount_short": self.config.wordcount_short,
+                    "user_specific_chat_history": relevant_message_history,
+                    "twitch_bot_channel_name": self.config.twitch_bot_channel_name,
                 }
 
                 # Add an executeTask to the queue
@@ -666,7 +698,7 @@ class Bot(twitch_commands.Bot):
             tts_voice = self.config.tts_voice_default
 
             replacements_dict = {
-                "wordcount_medium":self.config.wordcount_medium,
+                "wordcount":self.config.wordcount_veryshort,
                 'twitch_bot_display_name':self.config.twitch_bot_display_name,
                 'twitch_bot_channel_name':self.config.twitch_bot_channel_name,
                 'param_in_text':'variable_from_scope'
@@ -719,7 +751,7 @@ class Bot(twitch_commands.Bot):
         await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask 'what'")
 
         replacements_dict = {
-            "wordcount_medium": self.config.wordcount_medium,
+            "wordcount": self.config.wordcount_medium,
             "botears_questioncomment": text
         }
 
@@ -767,9 +799,23 @@ class Bot(twitch_commands.Bot):
         
         await self._send_channel_message_wrapper(f"Commands include: {results_string}")
 
-    @twitch_commands.command(name='specs', aliases=("p_specs"))
+    @twitch_commands.command(name='specs', aliases=("p_specs", "rig", "battlestation", "mypc"))
     async def specs(self, ctx):
         await self._send_channel_message_wrapper("i7-13700K || RTX 4070 Ti OC || 64GB DDR5 6400MHz || ASUS ROG Strix Z790-F")
+
+    @twitch_commands.command(name='fullspecs', aliases=("p_fullspecs", "fullrig", "fullbattlestation", "fullmypc"))
+    async def fullspecs(self, ctx):
+        message = """
+            Intel Core i7-13700K || 
+            ASUS TUF Gaming GeForce RTX 4070 Ti OC || 
+            Corsair Vengeance RGB 2x32GB DDR5 6400MHz || 
+            ASUS ROG Strix Z790-F Gaming WiFi 6E || 
+            WD Black SN770 2TB PCIe Gen4 NVMe M.2 2280 || 
+            MSI MPG A1000G PCIE 5.0, 80+ GOLD Full Modular Gaming PSU || 
+            Corsair 5000D Airflow Tempered Glass Mid-Tower ATX PC Case
+            """
+
+        await self._send_channel_message_wrapper(message)
 
     @twitch_commands.command(name='discord', aliases=("p_discord"))
     async def discord(self, ctx):
@@ -793,6 +839,7 @@ class Bot(twitch_commands.Bot):
             "num_bot_responses":self.config.num_bot_responses,
             "users_in_messages_list_text":self.message_handler.users_in_messages_list_text,
             "wordcount_medium":self.config.wordcount_medium,
+            "wordcount_short":self.config.wordcount_short,
             "bot_operatorname":self.config.twitch_bot_operatorname,
             "twitch_bot_channel_name":self.config.twitch_bot_channel_name,
             "text_input_from_user":text_input_from_user,
@@ -926,9 +973,17 @@ class Bot(twitch_commands.Bot):
 
         # Check if the vibecheckee is specified in the command
         if len(args) == 1:
-            current_users_list = await self.twitch_api.retrieve_active_usernames(
-                    bearer_token = self.config.twitch_bot_access_token
-                    )
+            try:
+                current_users_list = await self.twitch_api.retrieve_active_usernames(
+                    bearer_token=self.config.twitch_bot_access_token
+                )
+                if current_users_list is None:
+                    self.logger.debug("No active usernames retrieved; skipping processing.")
+                    return 
+            except Exception as e:
+                self.logger.error(f"Unexpected error: {e}")
+                current_users_list = []
+
             vibecheckee_username_search = args[0]
             self.vibecheckee_username = _soft_username_match(vibecheckee_username_search, current_users_list)
             self.logger.info(f"...Vibecheckee username: {self.vibecheckee_username}")
@@ -1069,6 +1124,7 @@ class Bot(twitch_commands.Bot):
             self.logger.info(f"...OUAT gpt_prompt_text (before replacements): '{gpt_prompt_text}'")
             replacements_dict = {
                 "user_requested_plotline":submitted_plotline,
+                "wordcount_veryshort":self.config.wordcount_veryshort,
                 "wordcount_short":self.config.wordcount_short,
                 "wordcount_medium":self.config.wordcount_medium,
                 "wordcount_long":self.config.wordcount_long,
@@ -1137,6 +1193,7 @@ class Bot(twitch_commands.Bot):
                 self.logger.info(f"OUAT gpt_prompt_final: '{gpt_prompt_final}'")
 
                 replacements_dict = {
+                    "wordcount_veryshort":self.config.wordcount_veryshort,
                     "wordcount_short":self.config.wordcount_short,
                     "wordcount_long":self.config.wordcount_long,
                     'twitch_bot_display_name':self.config.twitch_bot_display_name,
@@ -1374,7 +1431,12 @@ class Bot(twitch_commands.Bot):
                     assistant_name='conversationdirector',
                     function_schema=conversation_director_function_schema
                     )
-                response_type_result = response_data.get('response_type', 'fact')
+                self.logger.info(f"Conversation Director function response data: {response_data}")               
+                if 'response_type' in response_data:
+                    response_type_result = response_data['response_type']
+                else:
+                    self.logger.warning("No 'response_type' attribute found in response_data. Defaulting to 'fact'")
+                    response_type_result = 'fact'
 
             except Exception as e:
                 self.logger.warning(f"Error occurred in 'randomfact_task'. Defaulting to 'fact': {e}")
@@ -1395,7 +1457,7 @@ class Bot(twitch_commands.Bot):
 
             self.logger.debug(f"selected_prompt: {selected_prompt[0:50]}")
             replacements_dict = {
-                "wordcount_short":self.config.wordcount_short,
+                "wordcount":self.config.wordcount_veryshort,
                 'twitch_bot_display_name':self.config.twitch_bot_display_name,
                 'randomfact_topic':topic,
                 'randomfact_subtopic':subtopic,
@@ -1403,6 +1465,7 @@ class Bot(twitch_commands.Bot):
                 'subarea':subarea,
                 'random_character_a_to_z':random_character_a_to_z,
                 'selected_game':self.config.randomfact_selected_game,
+                'selected_stream':self.config.randomfact_selected_stream,
                 'param_in_text':'variable_from_scope'
                 }
             self.logger.debug(f"Replacements dict: {replacements_dict}")

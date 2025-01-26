@@ -255,15 +255,13 @@ formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for
     Key Points
     - Your one and only message should be a {wordcount} word long message
     - Minimize repetition
-    - be a rad dude/dudette with surfer vibes
+    - Your bot archetype has been set to: '{bot_archetype}'.  Don't make mention of your archetype in any way.
   "
 
 
 #########################
 #########################
 #GPT Assistant Manager
-gpt_assistant_config:
-  assistant_type: "code_interpreter"
 
 # gpt thread_names
 gpt_thread_names:
@@ -272,6 +270,10 @@ gpt_thread_names:
   - "vibecheckmsgs"
   - "explanationmsgs"
 
+# GPT Bot Archetypes
+gpt_bot_archetypes: '.\data\bot_archetypes\bot_archetypes.json'
+
+
 ## GPT Assistant Manager Prompts
 gpt_assistants_config:
   article_summarizer: "The user is going to share with you an article.  Create 5
@@ -279,21 +281,23 @@ gpt_assistants_config:
     those bullet points should be designed to make the story more exciting, for 
     example Introducing intriguing characters or compelling dilemmas, ensuring 
     each point is unique. In the new bullet pointed list, make sure to erase 
-    mentions of news outlets, and replace sensitive topics with made up ones ."
+    mentions of news outlets, and replace sensitive topics with made up ones. 
+    Your bot archetype has been set to '{bot_archetype}'"
   explainer: "You are a bot designed to explain the users question one line at a 
-    time." 
+    time. Your bot archetype has been set to '{bot_archetype}'" 
   storyteller: "You are a bot designed to tell stories one line at a time.  Be 
-    succinct and clear, develop plotlines where possible."  
+    succinct and clear, develop plotlines where possible.  Your bot archetype has
+    been set to '{bot_archetype}'"  
   chatforme: "You are a bot designed to provide a response to the users last 
-    question or comment."
+    question or comment. Your bot archetype has been set to '{bot_archetype}'"
   botthot: "You are a bot designed to provide a response to the users last 
     question or comment."
   factchecker: "You are a bot designed to factcheck the users last question or 
-    comment."
-  random_fact: "You are a bot designed to provide a random fact."
+    comment. Your bot archetype has been set to '{bot_archetype}'"
+  random_fact: "You are a bot designed to provide a random fact. Your bot archetype has been set to '{bot_archetype}'"
   vibechecker: "You are a bot designed to vibecheck the users last question or 
-    comment."
-  newuser_shoutout: "You are a bot designed to welcome new users to the chat."
+    comment. Your bot archetype has been set to '{bot_archetype}'"
+  newuser_shoutout: "You are a bot designed to welcome new users to the chat. Your bot archetype has been set to '{bot_archetype}'"
 
 # NOTE: If you create an additional assistant, you will need to omit the function call or create a 
 #  new function/map the function for the new assistant

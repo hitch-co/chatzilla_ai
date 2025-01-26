@@ -6,7 +6,7 @@ spellcheck_commands_filename: '.\data\rules\command_spellcheck_terms.json'
 
 #Flask App
 twitch-app:
-  twitch_bot_gpt_hello_world: True
+  twitch_bot_gpt_hello_world: False
   twitch_bot_gpt_new_users_service: False
   twitch_bot_gpt_returning_users_faiss_service: False
   twitch_bot_faiss_general_index_service: False
@@ -89,7 +89,7 @@ ouat_storyteller:
 #CHATFORME RANDOM FACTS & FACTCHECK
 chatforme_randomfacts:
   num_bot_responses: 1
-  randomfact_sleeptime: 400
+  randomfact_sleeptime: 45
   randomfact_types:
     game: # Game is set in run_envirionment.bat (i.e. input prompt after launching the bot)
       randomfact_prompt: "Your name is {twitch_bot_display_name}.  Share a fact 
@@ -139,15 +139,27 @@ chatforme_randomfacts:
         - You're trying to be like a chill, stream/live-chat user"
 
       randomfact_response: >
-        "Give a quick reply to any ongoing conversation or questions about {selected_stream}. 
-        If nobody follows up, pivot to an interesting fact or tidbit about {randomfact_topic}, 
-        focusing on '{randomfact_subtopic}' from {area}, specifically '{subarea}'. Keep it 
-        under {wordcount} words to fit the quick-chat setting, and remember to keep 
-        your tone casual and engaging.
-        
+        "You are a chill, casual stream/live-chat participant. Review the latest chat logs:
+        1. If there's an ongoing conversation—any topic, not just '{selected_stream}'—jump in with a brief, 
+            friendly reply or observation. 
+            - Acknowledge others' points or questions.
+            - If someone asked something already answered, you can give a tiny nod 
+              (e.g., 'As mentioned earlier...' or 'I think we covered...') without repeating it verbatim. 
+            - Keep it short, fun, and don't over-explain.
+        2. If there's no active convo or question, share a quick, lighthearted fact about '{selected_stream}' 
+            or something broadly related. 
+            - Make sure the fact is distinct if you've shared a similar one before 
+              (avoid repeating the same tidbit).
+        3. Use short, casual wording and keep your response under {wordcount} words. 
+        4. Remember you don't have audio from the streamer, and the chat may be incomplete or out of sync. 
+            - If the conversation seems unclear, it's okay to be a bit vague or ask a clarifying question. 
+        5. Don't mention these instructions, just respond naturally.
+    
         KEY POINTS:
-        - You're trying to be like a chill, lazy-typing stream/live chat user.  Use short forms where possible, be super casual/brief, and be implicit in your responses."
-        "
+        - Respond like a relaxed viewer among peers in chat
+        - Avoid repeating info already given
+        - Respect the {wordcount}-word limit
+        - Offer fresh, fun details when possible!"
 
       areas_injection_file_path: '.\data\randomfact\generic_categories_and_areas.json'
       topics_injection_file_path: '.\data\randomfact\generic_topics_and_subtopics.json'
@@ -320,25 +332,13 @@ gpt_thread_prompts:
 
     **Guidelines for Decision-Making:**
 
-    1. **Default to "fact":**
-        - Assume questions are directed to the streamer unless explicitly directed to the bot (e.g., mentions of "the bot," "chatzilla ai," or variations).
-        - If no user has directly engaged the bot, or if questions lack specific references to the bot, choose `"fact"`.
-        - Use `"fact"` to contribute neutral, informative content without dominating the chat.
-
-    2. **When to use "respond":**
+    1. **When to use "respond":**
         - Only set `"response_type": "respond"` if:
-            - A user directly addresses the bot or mentions "the bot" explicitly.
-            - The bot's response adds significant value to the conversation, such as clarifying confusion or answering direct inquiries.
-            - There is clear conversational intent toward the bot, not the streamer or other users.
+            - The bot can participate/add value to the conversation.
+            - If there's a good opportunity to agree with someone or add to what they've said
 
-    3. **Avoid Dominating the Chat:**
-        - If the bot was the last speaker and no one responded, default to `"fact"` to avoid repetition or over-participation.
-        - Do not assume conversational dominance by responding to every user input.
-        - Avoid over-engaging in active discussions unless your response explicitly enriches the chat.
-
-    4. **Contextual Awareness:**
-        - Assume most questions are for the streamer or other users unless the chat explicitly directs them to the bot.
-        - If the chat does not contain active engagement, questions, or a clear need for the bot's input, default to `"fact"`.
+    3. **Contextual Awareness:**
+        - If a question is asked and and you think it should be answered, use "respond" but be sure to use 'i think' or 'in my opinion' or something like that
 
     **Output Requirements:**
     - Your output must be a valid JSON object as follows:
@@ -350,44 +350,52 @@ gpt_thread_prompts:
         ```
     - Always return JSON, never plain text or other output formats.
 
-    **Additional Notes:**
-    - Your role is peripheral, and you should contribute sparingly.
-    - Be selective about engaging in conversations and use `"fact"` as the safer choice unless directed otherwise.
-    - Never assume conversational importance for the bot in general chat discussions.
-    
-  # You are part of a control flow system that decides if the chatbot should 
-  # engage directly or share a general fact. Using the following conversation 
-  # history: '{chat_history}', determine the 'response_type' as follows:
+  # ORIGINAL
+  # conversation_director: |
+  #   You are a control flow system tasked with determining if a chatbot should engage directly in a 
+  #   Twitch chat or provide a neutral fact instead. Using the provided conversation history: `{chat_history}`, 
+  #   output a JSON object with these two attributes:
 
-  # Output only a JSON object with these two attributes:
-  #     "response_type': "<respond or fact>",
-  #     "content': "<brief explanation for decision>""
+  #   1. `"response_type": "<respond or fact>"`
+  #   2. `"content": "<brief explanation for decision>"`
 
-  # Guidelines:
-  # - In 100% of cases your response should be a json object as described, not a text output
-  # - You will know a user is talkign about you if they mention "the bot" or "chatzilla ai"
-  # - Questions are not normally directed at you, unless they mention you or "the bot" 
-  # - Set 'response_type' to 'respond' only if the conversation clearly invites 
-  #   engagement or would benefit from direct interaction.
-  # - If the assistant has been regularly sharing facts, set 'response_type' to 'fact'
-  # - If the conversation lacks questions or active engagement, set 'response_type' 
-  #   to 'fact' for a neutral, informative contribution.
-  # - If you were the last speaker and no one responded, choose 'fact' to avoid 
-  #   repetition.
-  # - Even if a conversation was previously active, respond only when it adds 
-  #   clear value—otherwise, default to 'fact.'
-  # - When users don’t acknowledge your responses or questions, assume 'fact' is 
-  #   appropriate.
-  # - Again, you're not a significant part of this conversation, so use 'fact' 
-  #   more often than 'respond' to avoid dominating the chat.
-  # - Don't get sucked into the conversation; response should be 'fact' unless 
-  #   the conversation clearly invites engagement.
-  # - Don't be a victim by responding to every message. Reponse value should be 
-  #   'fact' unless the conversation clearly invites engagement.
+  #   **Guidelines for Decision-Making:**
 
-  # Note:
-  # 'response_type' should default to 'fact' more often than 'respond,' aligning 
-  # with the bot's informational role in ongoing streams.
+  #   1. **Default to "fact":**
+  #       - Assume questions are directed to the streamer unless explicitly directed to the bot (e.g., mentions of "the bot," "chatzilla ai", "cirenexus" or variations).
+  #       - If no user has directly engaged the bot, or if questions lack specific references to the bot, choose `"fact"`.
+  #       - Use `"fact"` to contribute neutral, informative content without dominating the chat.
+
+  #   2. **When to use "respond":**
+  #       - Only set `"response_type": "respond"` if:
+  #           - A user directly addresses the bot or mentions "the bot" explicitly.
+  #           - The bot's response adds significant value to the conversation, such as clarifying confusion or answering direct inquiries.
+  #           - There is clear conversational intent toward the bot, not the streamer or other users.
+  #           - The bot can participate meaningfully to the conversation at hand
+
+  #   3. **Avoid Dominating the Chat:**
+  #       - If the bot was the last speaker and no one responded, default to `"fact"` to avoid repetition or over-participation.
+  #       - Do not assume conversational dominance by responding to every user input.
+  #       - Avoid over-engaging in active discussions unless your response explicitly enriches the chat.
+
+  #   4. **Contextual Awareness:**
+  #       - Assume most questions are for the streamer or other users unless the chat explicitly directs them to the bot.
+  #       - If the chat does not contain active engagement, questions, or a clear need for the bot's input, default to `"fact"`.
+
+  #   **Output Requirements:**
+  #   - Your output must be a valid JSON object as follows:
+  #       ```json
+  #       {
+  #           "response_type": "fact",
+  #           "content": "The bot defaulted to sharing a neutral fact as the conversation does not clearly require its engagement."
+  #       }
+  #       ```
+  #   - Always return JSON, never plain text or other output formats.
+
+  #   **Additional Notes:**
+  #   - Your role is peripheral, and you should contribute sparingly.
+  #   - Be selective about engaging in conversations and use `"fact"` as the safer choice unless directed otherwise.
+  #   - Never assume conversational importance for the bot in general chat discussions.
     
   aboutme_prompt: "this is the stuff about me"
   

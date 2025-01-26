@@ -5,6 +5,7 @@ import random
 import os
 import inspect
 import time
+import numpy as np
 
 from models.task import AddMessageTask, CreateExecuteThreadTask, CreateSendChannelMessageTask
 
@@ -447,7 +448,7 @@ class Bot(twitch_commands.Bot):
                 else:
                     self.logger.debug(f"No updated viewers to process.")
             else:
-                self.logger.debug(f"User capture service is disabled.")
+                self.logger.debug(f"User capture service is disabled.  Should create a way to do this without the service (using event_message's captured details)")
             
             # 4.2 Get MESSAGE data, store in queue, generate query for sending to BQ
             viewer_interaction_records = self.bq_uploader.generate_twitch_user_interactions_records_for_bq(
@@ -568,6 +569,7 @@ class Bot(twitch_commands.Bot):
                         and user['username'] not in self.config.twitch_bot_channel_name
                         and user['username'] not in self.config.twitch_bot_username
                         and user['username'] not in self.config.twitch_bot_display_name
+                        and user['username'] not in 'cirenexus'
                         # and user['username'] not in self.config.twitch_channel_moderators_logins
                         )
                 ]   
@@ -613,7 +615,7 @@ class Bot(twitch_commands.Bot):
                 )
                 self.logger.info(f"User-specific chat history retrieved for {random_user_name}.")
                 self.logger.info(f"Number of messages in chat history: {len(user_specific_chat_history_to_forget)}")
-                self.logger.info(f"Last message in chat history (chat history was ordered DESC): {user_specific_chat_history_to_forget[0]}")
+                self.logger.info(f"Last message in forget history (chat history was ordered DESC): {user_specific_chat_history_to_forget[0] if user_specific_chat_history_to_forget else 'No messages to forget!'}")
 
                 
                 ####################
@@ -658,7 +660,8 @@ class Bot(twitch_commands.Bot):
                     "wordcount_medium": self.config.wordcount_medium,
                     "wordcount_short": self.config.wordcount_short,
                     "user_specific_chat_history": relevant_message_history,
-                    "twitch_bot_channel_name": self.config.twitch_bot_channel_name,
+                    "bot_operatorname": self.config.twitch_bot_operatorname,
+                    "twitch_bot_channel_name": self.config.twitch_bot_channel_name
                 }
 
                 # Add an executeTask to the queue
@@ -698,10 +701,12 @@ class Bot(twitch_commands.Bot):
             tts_voice = self.config.tts_voice_default
 
             replacements_dict = {
-                "wordcount":self.config.wordcount_veryshort,
-                'twitch_bot_display_name':self.config.twitch_bot_display_name,
-                'twitch_bot_channel_name':self.config.twitch_bot_channel_name,
-                'param_in_text':'variable_from_scope'
+                'wordcount': self.config.wordcount_veryshort,
+                'twitch_bot_display_name': self.config.twitch_bot_display_name,
+                'twitch_bot_channel_name': self.config.twitch_bot_channel_name,
+                'param_in_text': 'variable_from_scope',
+                'bot_archetype': self.config.gpt_bot_archetype_prompt
+
                 }
 
             # Add a executeTask to the queue
@@ -1307,8 +1312,6 @@ class Bot(twitch_commands.Bot):
         }
 
         try:
-            
-            # Add a executeTask to the queue
             task = CreateExecuteThreadTask(
                 thread_name=thread_name,
                 assistant_name=assistant_name,
@@ -1328,6 +1331,14 @@ class Bot(twitch_commands.Bot):
         else:
             text_input_from_user = 'none'
         self.loop.create_task(self._factcheck_main(text_input_from_user))
+
+    @twitch_commands.command(name='update_arch', aliases=("p_update_arch",))
+    async def update_arch(self, ctx, *args):
+        self.config.gpt_bot_archetype_prompt = self.config.gpt_bot_archetypes[np.random.choice(list(self.config.gpt_bot_archetypes.keys()))]
+
+        self.assistants = self.gpt_assistant_manager.create_assistants(
+            assistants_config=self.config.gpt_assistants_config
+            )
 
     @twitch_commands.command(name='update_config', aliases=("m_update_config",))
     async def update_config(self, ctx, *args):

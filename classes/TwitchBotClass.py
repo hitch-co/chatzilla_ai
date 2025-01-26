@@ -848,6 +848,7 @@ class Bot(twitch_commands.Bot):
             "bot_operatorname":self.config.twitch_bot_operatorname,
             "twitch_bot_channel_name":self.config.twitch_bot_channel_name,
             "text_input_from_user":text_input_from_user,
+            "bot_archetype":self.config.gpt_bot_archetype_prompt
         }
 
         # Add a executeTask to the queue

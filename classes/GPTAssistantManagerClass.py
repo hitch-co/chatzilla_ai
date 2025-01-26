@@ -399,7 +399,7 @@ class GPTAssistantManager(GPTBaseClass):
         )
         self.assistants[assistant_name] = {'object':assistant, 'id':assistant.id}
 
-        self.logger.info(f"Assistant object created successfully for '{assistant_name}' with instructions: {assistant_instructions[0:75]}...")
+        self.logger.info(f"Assistant object created successfully for '{assistant_name}' with instructions: {assistant_instructions[0:100]}...")
         if replacements_dict:
             self.logger.debug(f"Replacements Dict: {replacements_dict}")
         self.logger.debug(assistant)

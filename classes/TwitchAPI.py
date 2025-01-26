@@ -255,7 +255,7 @@ class TwitchAPI:
         formatted_records = self._format_viewers_for_storage(raw_data)
 
         # Step 3: Deduplicate & enqueue
-        final_queue_records = self._upsert_viewers_in_queue(formatted_records)
+        final_queue_records = await self._upsert_viewers_in_queue(formatted_records)
 
         return final_queue_records
     

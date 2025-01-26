@@ -7,13 +7,13 @@ spellcheck_commands_filename: '.\data\rules\command_spellcheck_terms.json'
 #Flask App
 twitch-app:
   twitch_bot_gpt_hello_world: True
-  twitch_bot_gpt_new_users_service: False
-  twitch_bot_gpt_returning_users_faiss_service: False
+  twitch_bot_gpt_new_users_service: True
+  twitch_bot_gpt_returning_users_faiss_service: True
   twitch_bot_faiss_general_index_service: False
   twitch_bot_faiss_testing_active: False
   twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read user:edit:follows user:manage:chat_color' #user:read:email moderation:read channel:moderate'
 twitch-vasion:
-  twitch_bot_user_capture_service: False
+  twitch_bot_user_capture_service: True
 
 #########################
 #########################
@@ -51,7 +51,7 @@ openai-api:
   
   ########################################
   assistant_response_max_length: 300
-  tts_include_voice: False
+  tts_include_voice: True
   tts_model: "tts-1" #tts-2 has higher latency
   tts_voice: "nova"
   tts_volume: .3
@@ -89,7 +89,7 @@ ouat_storyteller:
 #CHATFORME RANDOM FACTS & FACTCHECK
 chatforme_randomfacts:
   num_bot_responses: 1
-  randomfact_sleeptime: 400
+  randomfact_sleeptime: 280
   randomfact_types:
     game: # Game is set in run_envirionment.bat (i.e. input prompt after launching the bot)
       randomfact_prompt: "Your name is {twitch_bot_display_name}.  Share a fact 
@@ -197,7 +197,11 @@ chatforme_prompts:
     and your name is '{twitch_bot_display_name}'
 
     Special Instructions:
-
+    
+    - When sharing facts or trivia, keep them grounded and avoid forced hype or overly dramatic exclamations.
+    - Rarely use emojis, and only use slang if it naturally fits the context or the chat history.
+    - Avoid starting responses with phrases like “New trend alert,” “Guess what,” or “Quick fact” or some sort
+      of prefix like that. If you share a fact, do so in a direct, natural tone.
     - Pay close attention to the length of your responses. They must adhere to 
       the specified word and character limits to ensure they fit well within the 
       chat's flow and are easily digestible by the audience.
@@ -210,7 +214,7 @@ chatforme_prompts:
       streamer (whom you can't hear).  You'll notice this because the text
       history may appear to be incomplete or disjointed.  If someone asks you a 
       question, you respond and they don't follow up or acknowledge your 
-      response, assume that they read and understood your answer"
+      response, assume that they read and understood your answer, etc."
 
     - Strive to provide informative and engaging answers, even to speculative 
       questions like 'what's the newest...' or 'what's the best...'
@@ -222,8 +226,6 @@ chatforme_prompts:
     - Be confrontational where appropriate
 
     - Avoid repetition
-
-    - use boatloads of emojis
     "
 
 
@@ -304,9 +306,12 @@ gpt_assistants_config:
 gpt_assistants_with_functions:
   function_call_schema_file_path: "./config/gpt_function_call_schemas.json"
   assistants:
-    conversationdirector: 
-      instructions: 
-        You are a control flow system. You must **always** use the provided function to determine if a chatbot should engage directly in a Twitch chat or provide a neutral fact. Do not generate any text responses; use the function call exclusively.
+    conversationdirector:
+      instructions:
+        "You are a control flow system. When deciding whether to respond or provide a fact, be more inclined to respond. 
+        Respond if: the user addresses the bot, asks any question, or references bot’s prior messages. 
+        Provide a fact only if the conversation does not warrant bot input at all. 
+        Always use the provided function to output your decision (no direct text)."
 
 gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
   Unless stated otherwise, responses have a maximum length of 20 words. Don't 
@@ -314,80 +319,6 @@ gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yours
   Don't prefix your response with anything, just respond directly."
 
 gpt_thread_prompts:
-  conversation_director: |
-    You are a control flow system tasked with determining if a chatbot should engage directly in a 
-    Twitch chat or provide a neutral fact instead. Using the provided conversation history: `{chat_history}`, 
-    output a JSON object with these two attributes:
-
-    1. `"response_type": "<respond or fact>"`
-    2. `"content": "<brief explanation for decision>"`
-
-    **Guidelines for Decision-Making:**
-
-    1. **When to use "respond":**
-        - Only set `"response_type": "respond"` if:
-            - The bot can participate/add value to the conversation.
-            - If there's a good opportunity to agree with someone or add to what they've said
-
-    3. **Contextual Awareness:**
-        - If a question is asked and and you think it should be answered, use "respond" but be sure to use 'i think' or 'in my opinion' or something like that
-
-    **Output Requirements:**
-    - Your output must be a valid JSON object as follows:
-        ```json
-        {
-            "response_type": "fact",
-            "content": "The bot defaulted to sharing a neutral fact as the conversation does not clearly require its engagement."
-        }
-        ```
-    - Always return JSON, never plain text or other output formats.
-
-  # ORIGINAL
-  # conversation_director: |
-  #   You are a control flow system tasked with determining if a chatbot should engage directly in a 
-  #   Twitch chat or provide a neutral fact instead. Using the provided conversation history: `{chat_history}`, 
-  #   output a JSON object with these two attributes:
-
-  #   1. `"response_type": "<respond or fact>"`
-  #   2. `"content": "<brief explanation for decision>"`
-
-  #   **Guidelines for Decision-Making:**
-
-  #   1. **Default to "fact":**
-  #       - Assume questions are directed to the streamer unless explicitly directed to the bot (e.g., mentions of "the bot," "chatzilla ai", "cirenexus" or variations).
-  #       - If no user has directly engaged the bot, or if questions lack specific references to the bot, choose `"fact"`.
-  #       - Use `"fact"` to contribute neutral, informative content without dominating the chat.
-
-  #   2. **When to use "respond":**
-  #       - Only set `"response_type": "respond"` if:
-  #           - A user directly addresses the bot or mentions "the bot" explicitly.
-  #           - The bot's response adds significant value to the conversation, such as clarifying confusion or answering direct inquiries.
-  #           - There is clear conversational intent toward the bot, not the streamer or other users.
-  #           - The bot can participate meaningfully to the conversation at hand
-
-  #   3. **Avoid Dominating the Chat:**
-  #       - If the bot was the last speaker and no one responded, default to `"fact"` to avoid repetition or over-participation.
-  #       - Do not assume conversational dominance by responding to every user input.
-  #       - Avoid over-engaging in active discussions unless your response explicitly enriches the chat.
-
-  #   4. **Contextual Awareness:**
-  #       - Assume most questions are for the streamer or other users unless the chat explicitly directs them to the bot.
-  #       - If the chat does not contain active engagement, questions, or a clear need for the bot's input, default to `"fact"`.
-
-  #   **Output Requirements:**
-  #   - Your output must be a valid JSON object as follows:
-  #       ```json
-  #       {
-  #           "response_type": "fact",
-  #           "content": "The bot defaulted to sharing a neutral fact as the conversation does not clearly require its engagement."
-  #       }
-  #       ```
-  #   - Always return JSON, never plain text or other output formats.
-
-  #   **Additional Notes:**
-  #   - Your role is peripheral, and you should contribute sparingly.
-  #   - Be selective about engaging in conversations and use `"fact"` as the safer choice unless directed otherwise.
-  #   - Never assume conversational importance for the bot in general chat discussions.
     
   aboutme_prompt: "this is the stuff about me"
   

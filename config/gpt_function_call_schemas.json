@@ -3,19 +3,19 @@
         "type": "function",
         "function": {
             "name": "conversationdirector",
-            "description": "You are a control flow system. You must **always** use the provided function to determine if a chatbot should engage directly in a Twitch chat or provide a neutral fact. Do not generate any text responses; use the function call exclusively.",
+            "description": "You are a control flow system. Use this function to decide if a chatbot should engage or provide a neutral fact. Usually prefer 'respond' if there's any direct mention or question for the bot.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "response_type": {
-                        "type": "string",
-                        "enum": ["respond", "fact"],
-                        "description": "Decide if the bot should engage in the conversation ('respond') or contribute a neutral fact ('fact'). Default to 'fact' unless: the bot is explicitly mentioned, the bot's input adds significant value, or the bot is clearly being addressed. If unsure, or if the bot was the last speaker and no one responded, default to 'fact'."
-                    },
-                    "reasoning": {
-                        "type": "string",
-                        "description": "Explain briefly why 'respond' or 'fact' was chosen, based on whether the bot was explicitly addressed, if the bot's input adds value, or if the context supports a neutral contribution."
-                    }
+                "response_type": {
+                    "type": "string",
+                    "enum": ["respond", "fact"],
+                    "description": "Pick 'respond' if the conversation addresses or would benefit from the bot. Otherwise 'fact'."
+                },
+                "reasoning": {
+                    "type": "string",
+                    "description": "Explain why 'respond' or 'fact' was chosen."
+                }
                 },
                 "required": ["response_type", "reasoning"],
                 "additionalProperties": false

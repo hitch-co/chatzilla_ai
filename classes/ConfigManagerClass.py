@@ -1,6 +1,7 @@
 import os
 import yaml
 import dotenv
+import numpy as np
 
 # from my_modules.my_logging import create_logger
 from my_modules import my_logging
@@ -320,6 +321,13 @@ class ConfigManager:
             self.logger.error(f"Error in yaml_gpt_config(): {e}")
 
     def yaml_gpt_assistant_config(self, yaml_data):
+        #archetypes
+        self.gpt_bot_archetypes_json_filepath = yaml_data['gpt_bot_archetypes']
+        self.gpt_bot_archetypes = utils.load_json(path_or_dir=self.gpt_bot_archetypes_json_filepath)
+        self.gpt_bot_archetype_prompt = self.gpt_bot_archetypes[np.random.choice(list(self.gpt_bot_archetypes.keys()))]
+        self.logger.info(f"Set gpt_bot_archetype_prompt to: {self.gpt_bot_archetype_prompt}")
+        
+        #assistants
         self.gpt_assistants_config = yaml_data['gpt_assistants_config']
         self.assistant_response_max_length = yaml_data['openai-api']['assistant_response_max_length']
         self.gpt_assistants_suffix = yaml_data['gpt_assistants_suffix']

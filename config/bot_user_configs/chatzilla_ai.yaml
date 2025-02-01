@@ -324,7 +324,7 @@ gpt_thread_prompts:
      "
   story_suffix: "This should be a single message response directly without any
     prefix. Be succinct and {wordcount_short} words max. Add the suffix
-    '({ouat_counter} of {max_ouat_counter})' to the end of your message so users
+    '({ouat_counter}/{max_ouat_counter})' to the end of your message so users
     know where we are in the story.
     "
   story_starter: "As a fiction storyteller, take the plot last seen (or 

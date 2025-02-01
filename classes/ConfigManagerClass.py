@@ -270,7 +270,7 @@ class ConfigManager:
 
             # GCP Related
             self.google_service_account_credentials_file = os.getenv('GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_FILE')
-            self.talkzillaai_userdata_table_id = os.getenv('TALKZILLAAI_USERDATA_TABLE_ID')
+            self.bq_fullqual_table_id = os.getenv('TALKZILLAAI_USERDATA_TABLE_ID')
             self.talkzillaai_usertransactions_table_id = os.getenv('TALKZILLAAI_USERTRANSACTIONS_TABLE_ID') 
 
             # Twitch Bot
@@ -580,7 +580,7 @@ class ConfigManager:
         self.logger.debug("=           2) KEYS & CREDENTIALS                =")
         self.logger.debug("==================================================")
         self.logger.debug(f"google_service_account_credentials_file: {self.google_service_account_credentials_file}")
-        self.logger.debug(f"talkzillaai_userdata_table_id: {self.talkzillaai_userdata_table_id}")
+        self.logger.debug(f"bq_fullqual_table_id: {self.bq_fullqual_table_id}")
         self.logger.debug(f"talkzillaai_usertransactions_table_id: {self.talkzillaai_usertransactions_table_id}")
 
         # 3) TWITCH CONFIG

@@ -5,6 +5,7 @@ import random
 import os
 import inspect
 import time
+import numpy as np
 
 from models.task import AddMessageTask, CreateExecuteThreadTask, CreateSendChannelMessageTask
 
@@ -144,7 +145,7 @@ class Bot(twitch_commands.Bot):
 
         #NOTE: ARGUABLY DO NOT NEED TO INITIALIZE THESE HERE
         # BQ Table IDs
-        self.userdata_table_id=self.config.talkzillaai_userdata_table_id
+        self.userdata_table_id=self.config.bq_fullqual_table_id
         self.usertransactions_table_id=self.config.talkzillaai_usertransactions_table_id
 
         # Initialize the twitch bot's channel and user IDs
@@ -355,7 +356,7 @@ class Bot(twitch_commands.Bot):
             historic_bq_msgs = self.bq_uploader.fetch_user_chat_history_from_bq(
                 user_login=None,
                 interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
-                users_table_id=self.config.talkzillaai_userdata_table_id,
+                users_table_id=self.config.bq_fullqual_table_id,
                 limit=30000
             ) or []
             end_time_bq_query = time.time()
@@ -419,9 +420,8 @@ class Bot(twitch_commands.Bot):
             await self._chatforme_main(message_metadata['content'])
 
         # 2. Process the message through the vibecheck service.
-            #NOTE: Should this be a separate task?    
+        #NOTE: Should this be a separate task?    
         self.logger.debug("Processing message through the vibecheck service...")
-
         if self.vibecheck_service is not None and self.vibecheck_service.is_vibecheck_loop_active:
             await self.vibecheck_service.process_vibecheck_message(
                 message_username=message_metadata['name'],
@@ -433,21 +433,29 @@ class Bot(twitch_commands.Bot):
         # 4. Send the data to BQ when queue is full.  Clear queue when done
         if len(self.message_handler.message_history_raw)>=2:
             
-            # 4.1 Get VIEWER data (who is on the channel) from twitch API, store in queue, generate query 
-            #  for sending to BQ
+            # 4.1 Get VIEWER data (who is on the channel) from twitch API, store in queue, generate query for BQ.  
+            #  This only happens if the service is enabled and the operator is the channel owner
             if self.config.twitch_bot_user_capture_service is True and self.config.twitch_operator_is_channel_owner:
-                updated_viewers = await self.twitch_api.update_channel_viewers(bearer_token=self.config.twitch_bot_access_token)
+                await self.twitch_api.update_channel_viewers(bearer_token=self.config.twitch_bot_access_token)
 
-                if updated_viewers:
-                    channel_viewers_upsert_query = self.bq_uploader._construct_user_upsert_query(
-                        table_id=self.userdata_table_id, 
-                        records=updated_viewers
-                    )
-                    self.bq_uploader.execute_query_on_bigquery(query=channel_viewers_upsert_query)
+                if self.twitch_api.channel_viewers_queue:
+                    viewers_records_for_user_table = [
+                        {
+                            "user_id": record['user_id'],
+                            "user_login": record['user_login'],
+                            "last_seen": record['timestamp']
+                        }
+                        for record in self.twitch_api.channel_viewers_queue
+                    ]
+                    self.bq_uploader.send_recordsjob_to_bq(
+                        table_id=self.config.bq_fullqual_table_id,
+                        records=viewers_records_for_user_table
+                        )
                 else:
                     self.logger.debug(f"No updated viewers to process.")
             else:
-                self.logger.debug(f"User capture service is disabled.")
+                # TODO: This function doesn't work well if bot is running in a different channel than the operator
+                self.logger.debug(f"User capture service is disabled.  Should create a way to do this without the service (using event_message's captured details)")
             
             # 4.2 Get MESSAGE data, store in queue, generate query for sending to BQ
             viewer_interaction_records = self.bq_uploader.generate_twitch_user_interactions_records_for_bq(
@@ -568,6 +576,7 @@ class Bot(twitch_commands.Bot):
                         and user['username'] not in self.config.twitch_bot_channel_name
                         and user['username'] not in self.config.twitch_bot_username
                         and user['username'] not in self.config.twitch_bot_display_name
+                        and user['username'] not in 'cirenexus'
                         # and user['username'] not in self.config.twitch_channel_moderators_logins
                         )
                 ]   
@@ -600,7 +609,7 @@ class Bot(twitch_commands.Bot):
                 user_specific_chat_history = self.bq_uploader.fetch_user_chat_history_from_bq(
                     user_login=random_user_name,
                     interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
-                    users_table_id=self.config.talkzillaai_userdata_table_id
+                    users_table_id=self.config.bq_fullqual_table_id
                 )
 
                 #####################
@@ -608,12 +617,12 @@ class Bot(twitch_commands.Bot):
                 user_specific_chat_history_to_forget = self.bq_uploader.fetch_user_chat_history_from_bq(
                     user_login=random_user_name,
                     interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
-                    users_table_id=self.config.talkzillaai_userdata_table_id,
+                    users_table_id=self.config.bq_fullqual_table_id,
                     content_filter='!forget'
                 )
                 self.logger.info(f"User-specific chat history retrieved for {random_user_name}.")
                 self.logger.info(f"Number of messages in chat history: {len(user_specific_chat_history_to_forget)}")
-                self.logger.info(f"Last message in chat history (chat history was ordered DESC): {user_specific_chat_history_to_forget[0]}")
+                self.logger.info(f"Last message in forget history (chat history was ordered DESC): {user_specific_chat_history_to_forget[0] if user_specific_chat_history_to_forget else 'No messages to forget!'}")
 
                 
                 ####################
@@ -658,7 +667,8 @@ class Bot(twitch_commands.Bot):
                     "wordcount_medium": self.config.wordcount_medium,
                     "wordcount_short": self.config.wordcount_short,
                     "user_specific_chat_history": relevant_message_history,
-                    "twitch_bot_channel_name": self.config.twitch_bot_channel_name,
+                    "bot_operatorname": self.config.twitch_bot_operatorname,
+                    "twitch_bot_channel_name": self.config.twitch_bot_channel_name
                 }
 
                 # Add an executeTask to the queue
@@ -698,10 +708,12 @@ class Bot(twitch_commands.Bot):
             tts_voice = self.config.tts_voice_default
 
             replacements_dict = {
-                "wordcount":self.config.wordcount_veryshort,
-                'twitch_bot_display_name':self.config.twitch_bot_display_name,
-                'twitch_bot_channel_name':self.config.twitch_bot_channel_name,
-                'param_in_text':'variable_from_scope'
+                'wordcount': self.config.wordcount_veryshort,
+                'twitch_bot_display_name': self.config.twitch_bot_display_name,
+                'twitch_bot_channel_name': self.config.twitch_bot_channel_name,
+                'param_in_text': 'variable_from_scope',
+                'bot_archetype': self.config.gpt_bot_archetype_prompt
+
                 }
 
             # Add a executeTask to the queue
@@ -843,6 +855,7 @@ class Bot(twitch_commands.Bot):
             "bot_operatorname":self.config.twitch_bot_operatorname,
             "twitch_bot_channel_name":self.config.twitch_bot_channel_name,
             "text_input_from_user":text_input_from_user,
+            "bot_archetype":self.config.gpt_bot_archetype_prompt
         }
 
         # Add a executeTask to the queue
@@ -894,7 +907,7 @@ class Bot(twitch_commands.Bot):
                     last_message_json = self.bq_uploader.fetch_user_chat_history_from_bq(
                         user_login=user_name,
                         interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
-                        users_table_id=self.config.talkzillaai_userdata_table_id,
+                        users_table_id=self.config.bq_fullqual_table_id,
                         limit=1
                     )
 
@@ -1307,8 +1320,6 @@ class Bot(twitch_commands.Bot):
         }
 
         try:
-            
-            # Add a executeTask to the queue
             task = CreateExecuteThreadTask(
                 thread_name=thread_name,
                 assistant_name=assistant_name,
@@ -1328,6 +1339,14 @@ class Bot(twitch_commands.Bot):
         else:
             text_input_from_user = 'none'
         self.loop.create_task(self._factcheck_main(text_input_from_user))
+
+    @twitch_commands.command(name='update_arch', aliases=("p_update_arch",))
+    async def update_arch(self, ctx, *args):
+        self.config.gpt_bot_archetype_prompt = self.config.gpt_bot_archetypes[np.random.choice(list(self.config.gpt_bot_archetypes.keys()))]
+
+        self.assistants = self.gpt_assistant_manager.create_assistants(
+            assistants_config=self.config.gpt_assistants_config
+            )
 
     @twitch_commands.command(name='update_config', aliases=("m_update_config",))
     async def update_config(self, ctx, *args):

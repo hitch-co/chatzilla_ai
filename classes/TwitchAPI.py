@@ -246,18 +246,17 @@ class TwitchAPI:
         and upsert them into the in-memory queue, returning the deduplicated results.
         """
         # Step 1: Fetch data
-        raw_data = await self._fetch_viewers_from_twitch(bearer_token=bearer_token)
-        if not raw_data:
+        fetch_viewers_response = await self._fetch_viewers_from_twitch(bearer_token=bearer_token)
+        if not fetch_viewers_response:
             self.logger.warning("No raw viewer data returned from Twitch.")
             return []
 
-        # Step 2: Transform/Format data
-        formatted_records = self._format_viewers_for_storage(raw_data)
+        # Step 2: Transform/Format data, deduplicate & enqueue
+        formatted_records = self._format_viewers_for_storage(fetch_viewers_response)
+        await self._upsert_viewers_in_queue(formatted_records)
 
-        # Step 3: Deduplicate & enqueue
-        final_queue_records = self._upsert_viewers_in_queue(formatted_records)
-
-        return final_queue_records
+        self.logger.info(f"Updated channel viewers queue with {len(self.channel_viewers_queue)} records.")
+        return self.channel_viewers_queue
     
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
     async def _fetch_viewers_from_twitch(self, bearer_token) -> dict:
@@ -280,7 +279,7 @@ class TwitchAPI:
             response = requests.get(chatters_endpoint_url, params=params, headers=headers)
 
             if response.status_code == 200:
-                self.logger.debug(f'Successfully retrieved channel viewers: {response.json()}')
+                self.logger.info(f'Successfully retrieved channel viewers: {response.json()}')
                 return response.json()
             else:
                 self.logger.warning(f'Failed to retrieve channel viewers: {response.status_code}, {response.text}')
@@ -306,15 +305,15 @@ class TwitchAPI:
         return current_user_names
 
     def _format_viewers_for_storage(self, viewer_data_json) -> list[dict]:
-        self.logger.debug('Processing channel viewers data')
+        self.logger.info('Processing channel viewers data')
         timestamp = utils.get_datetime_formats()['sql_format']
         
         if viewer_data_json:
             channel_viewers_list_dict = viewer_data_json.get('data', [])
             for item in channel_viewers_list_dict:
                 item['timestamp'] = timestamp
-            self.logger.debug(f"channel_viewers_list_dict:")
-            self.logger.debug(channel_viewers_list_dict)
+            self.logger.info(f"channel_viewers_list_dict:")
+            self.logger.info(channel_viewers_list_dict)
         else:
             self.logger.error("Invalid viewer data provided to _format_viewers_for_storage")
             raise ValueError("Invalid viewer data provided to _format_viewers_for_storage")
@@ -322,26 +321,22 @@ class TwitchAPI:
         return channel_viewers_list_dict
 
     async def _upsert_viewers_in_queue(self, records: list[dict]) -> None:
-
         self.logger.debug(f'Enqueuing {len(records)} records to channel_viewers_queue')
 
-        # Initialize the queue if it doesn't exist
+        # Ensure queue exists
         if not hasattr(self, 'channel_viewers_queue') or self.channel_viewers_queue is None:
             self.channel_viewers_queue = []
-            self.logger.debug(f'channel_viewers_queue initialized: {self.channel_viewers_queue}')
-            
-        if hasattr(self, 'channel_viewers_queue') and self.channel_viewers_queue is not None:
-            self.logger.debug(f'channel_viewers_queue has {len(self.channel_viewers_queue)} rows')
 
-        # Extend the existing queue with new records
-        self.channel_viewers_queue.extend(records)
+        # Create a dictionary to track the latest record per user_id
+        latest_records = {record['user_id']: record for record in (self.channel_viewers_queue + records)}
 
-        df = pd.DataFrame(self.channel_viewers_queue)
-        df = df.sort_values(['user_id', 'timestamp']).drop_duplicates(subset='user_id', keep='last')
+        # Sort by timestamp and keep only the latest entry per user_id
+        self.channel_viewers_queue = sorted(latest_records.values(), key=lambda x: x['timestamp'])
 
-        # Update the queue and log
-        self.channel_viewers_queue = df.to_dict('records')
-        self.logger.debug(f'channel_viewers_queue updated with {len(self.channel_viewers_queue)} rows')
+        if len(self.channel_viewers_queue) <1:
+            self.logger.warning(f"Channel viewers queue is empty.  This should not happen as the queue should always have at least one user (the operator).")
+        else:
+            self.logger.debug(f"Channel viewers queue updated with {len(self.channel_viewers_queue)} records.")
 
 if __name__ == "__main__":
     twitch_api = TwitchAPI()

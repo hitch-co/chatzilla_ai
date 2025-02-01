@@ -1,6 +1,7 @@
 import os
 import yaml
 import dotenv
+import numpy as np
 
 # from my_modules.my_logging import create_logger
 from my_modules import my_logging
@@ -74,7 +75,7 @@ class ConfigManager:
                               
     def load_yaml_config(self, yaml_full_path):
         try:
-            with open(yaml_full_path, 'r') as file:
+            with open(yaml_full_path, 'r', encoding="utf-8") as file:
                 self.logger.debug("loading individual configs...")
                 self.yaml_data = yaml.safe_load(file)
         except FileNotFoundError as e:
@@ -269,7 +270,7 @@ class ConfigManager:
 
             # GCP Related
             self.google_service_account_credentials_file = os.getenv('GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_FILE')
-            self.talkzillaai_userdata_table_id = os.getenv('TALKZILLAAI_USERDATA_TABLE_ID')
+            self.bq_fullqual_table_id = os.getenv('TALKZILLAAI_USERDATA_TABLE_ID')
             self.talkzillaai_usertransactions_table_id = os.getenv('TALKZILLAAI_USERTRANSACTIONS_TABLE_ID') 
 
             # Twitch Bot
@@ -320,6 +321,13 @@ class ConfigManager:
             self.logger.error(f"Error in yaml_gpt_config(): {e}")
 
     def yaml_gpt_assistant_config(self, yaml_data):
+        #archetypes
+        self.gpt_bot_archetypes_json_filepath = yaml_data['gpt_bot_archetypes']
+        self.gpt_bot_archetypes = utils.load_json(path_or_dir=self.gpt_bot_archetypes_json_filepath)
+        self.gpt_bot_archetype_prompt = self.gpt_bot_archetypes[np.random.choice(list(self.gpt_bot_archetypes.keys()))]
+        self.logger.info(f"Set gpt_bot_archetype_prompt to: {self.gpt_bot_archetype_prompt}")
+        
+        #assistants
         self.gpt_assistants_config = yaml_data['gpt_assistants_config']
         self.assistant_response_max_length = yaml_data['openai-api']['assistant_response_max_length']
         self.gpt_assistants_suffix = yaml_data['gpt_assistants_suffix']
@@ -572,7 +580,7 @@ class ConfigManager:
         self.logger.debug("=           2) KEYS & CREDENTIALS                =")
         self.logger.debug("==================================================")
         self.logger.debug(f"google_service_account_credentials_file: {self.google_service_account_credentials_file}")
-        self.logger.debug(f"talkzillaai_userdata_table_id: {self.talkzillaai_userdata_table_id}")
+        self.logger.debug(f"bq_fullqual_table_id: {self.bq_fullqual_table_id}")
         self.logger.debug(f"talkzillaai_usertransactions_table_id: {self.talkzillaai_usertransactions_table_id}")
 
         # 3) TWITCH CONFIG

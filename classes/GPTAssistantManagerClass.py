@@ -377,7 +377,7 @@ class GPTAssistantManager(GPTBaseClass):
         Args:
             assistant_name (str): The name of the assistant to create. Default is 'default'.
             assistant_instructions (str): Instructions for the assistant. Default is a generic instruction.
-            assistant_type: The type of the assistant. Defaults to the type specified in the configuration.
+            assistant_type: The type of the assistant. This is usually 'code_interpreter'
             assistant_model: The model of the assistant. Defaults to the model specified in the configuration.
 
         Returns:
@@ -399,20 +399,26 @@ class GPTAssistantManager(GPTBaseClass):
         )
         self.assistants[assistant_name] = {'object':assistant, 'id':assistant.id}
 
-        self.logger.info(f"Assistant object created successfully for '{assistant_name}' with instructions: {assistant_instructions[0:75]}...")
+        self.logger.info(f"Assistant object created successfully for '{assistant_name}' with instructions: {assistant_instructions[0:100]}...")
+        if replacements_dict:
+            self.logger.debug(f"Replacements Dict: {replacements_dict}")
         self.logger.debug(assistant)
         return assistant
 
     def create_assistants(self, assistants_config: dict) -> dict:
+        """
+            assistants_config: A dictionary of assistant names and their prompts.
+        """
+        self.logger.info('Creating GPT Assistants')
+        self.assistants = {}
         replacements_dict = {
             "wordcount_short":self.yaml_data.wordcount_short,
             "wordcount_medium":self.yaml_data.wordcount_medium,
             "wordcount_long":self.yaml_data.wordcount_long,
             "vibecheckee_username": 'chad',
             "vibecheck_message_wordcount": self.yaml_data.vibechecker_message_wordcount,
+            "bot_archetype": self.yaml_data.gpt_bot_archetype_prompt
         }
-
-        self.logger.info('Creating GPT Assistants')
 
         # Get suffix one from assistants_config
         gpt_assistants_suffix = self.yaml_data.gpt_assistants_suffix

@@ -47,37 +47,61 @@ class TaskManager:
         Continuously checks task queues and processes tasks in a FIFO order.
         Marks tasks as done after processing to keep the queue state consistent.
         """
-        while True:
-            self.logger.info("Checking task queues...")
+        iteration_count = 0
 
-            async with self.task_queue_lock:
-                task_queues_snapshot = list(self.task_queues.items())
+        while True:
+            iteration_count += 1
+
+            # Only log the queue status every 3rd iteration
+            if iteration_count % 3 == 0:
+                self.logger.info("Checking task queues...")
+
+                async with self.task_queue_lock:
+                    task_queues_snapshot = list(self.task_queues.items())
+
+                self.logger.info("...Task Queue Status:")
+                for thread_name, queue in task_queues_snapshot:
+                    self.logger.info(
+                        f"...Thread: {thread_name}, "
+                        f"Queue Size: {queue.qsize()}, "
+                        f"Pending Tasks: {queue._unfinished_tasks}"
+                    )
+            else:
+                # Still grab a snapshot so we can process tasks, just no logs
+                async with self.task_queue_lock:
+                    task_queues_snapshot = list(self.task_queues.items())
 
             task_processed = False
 
-            self.logger.info("...Task Queue Status:")
-            for thread_name, queue in task_queues_snapshot:
-                self.logger.info(f"...Thread: {thread_name}, Queue Size: {queue.qsize()}, Pending Tasks: {queue._unfinished_tasks}")
-
+            # Process any tasks
             for thread_name, queue in task_queues_snapshot:
                 if not queue.empty():
                     try:
                         task = await queue.get()
-                        self.logger.info(f"...Task found in queue '{thread_name}' (type: {task.task_dict.get('type')})...")
-                        
+                        # You could also log discovery of tasks every time
+                        self.logger.info(
+                            f"...Task found in queue '{thread_name}' "
+                            f"(type: {task.task_dict.get('type')})..."
+                        )
+
                         await self._process_task(task)
                         task_processed = True
-                    
+
                     except Exception as e:
-                        self.logger.error(f"...Error processing task (type: {task.task_dict.get('type')}): {e}", exc_info=True)
-                    
+                        self.logger.error(
+                            f"...Error processing task (type: {task.task_dict.get('type')}): {e}",
+                            exc_info=True
+                        )
                     finally:
                         queue.task_done()
 
             if not task_processed:
-                self.logger.info("...No tasks found in queues. Waiting for new tasks...")
-                await asyncio.sleep(sleep_time)
+                # Optional: log something only every 3rd iteration, or always
+                if iteration_count % 3 == 0:
+                    self.logger.info("...No tasks found in queues. Waiting for new tasks...")
 
+            await asyncio.sleep(sleep_time)
+            
     async def _process_task(self, task: object):
         """
         Process the task before executing. This method includes logging, validation,

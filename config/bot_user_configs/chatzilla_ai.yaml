@@ -300,6 +300,11 @@ gpt_assistants_config:
     comment. Your bot archetype has been set to '{bot_archetype}'"
   newuser_shoutout: "You are a bot designed to welcome new users to the chat. Your bot archetype has been set to '{bot_archetype}'"
 
+gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
+  Unless stated otherwise, responses have a maximum length of {wordcount_short} words. Don't 
+  or call out too explicitly when you've made an error, the show must go on!
+  Don't prefix your response with anything, just respond directly."
+
 # NOTE: If you create an additional assistant, you will need to omit the function call or create a 
 #  new function/map the function for the new assistant
 gpt_assistants_with_functions:
@@ -311,13 +316,7 @@ gpt_assistants_with_functions:
         Provide a fact only if the conversation does not warrant bot input at all. 
         Always use the provided function to output your decision (no direct text)."
 
-gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
-  Unless stated otherwise, responses have a maximum length of 20 words. Don't 
-  or call out too explicitly when you've made an error, the show must go on!
-  Don't prefix your response with anything, just respond directly."
-
 gpt_thread_prompts:
-    
   aboutme_prompt: "this is the stuff about me"
   
   shorten_response_length: "shorten this message to 25 words.  Make no 

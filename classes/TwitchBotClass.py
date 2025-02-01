@@ -420,9 +420,8 @@ class Bot(twitch_commands.Bot):
             await self._chatforme_main(message_metadata['content'])
 
         # 2. Process the message through the vibecheck service.
-            #NOTE: Should this be a separate task?    
+        #NOTE: Should this be a separate task?    
         self.logger.debug("Processing message through the vibecheck service...")
-
         if self.vibecheck_service is not None and self.vibecheck_service.is_vibecheck_loop_active:
             await self.vibecheck_service.process_vibecheck_message(
                 message_username=message_metadata['name'],
@@ -434,8 +433,8 @@ class Bot(twitch_commands.Bot):
         # 4. Send the data to BQ when queue is full.  Clear queue when done
         if len(self.message_handler.message_history_raw)>=2:
             
-            # 4.1 Get VIEWER data (who is on the channel) from twitch API, store in queue, generate query 
-            #  for sending to BQ
+            # 4.1 Get VIEWER data (who is on the channel) from twitch API, store in queue, generate query for BQ.  
+            #  This only happens if the service is enabled and the operator is the channel owner
             if self.config.twitch_bot_user_capture_service is True and self.config.twitch_operator_is_channel_owner:
                 updated_viewers = await self.twitch_api.update_channel_viewers(bearer_token=self.config.twitch_bot_access_token)
 

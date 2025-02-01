@@ -11,7 +11,7 @@ twitch-app:
   twitch_bot_gpt_returning_users_faiss_service: True
   twitch_bot_faiss_general_index_service: False
   twitch_bot_faiss_testing_active: False
-  twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read user:edit:follows user:manage:chat_color' #user:read:email moderation:read channel:moderate'
+  twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read user:edit:follows user:manage:chat_color' #user:read:email moderation:read channel:moderate
 twitch-vasion:
   twitch_bot_user_capture_service: True
 
@@ -147,7 +147,6 @@ chatforme_randomfacts:
         
         KEY POINTS:
         - You're trying to be like a chill, lazy-typing stream/live chat user.  Use short forms where possible, be super casual/brief, and be implicit in your responses."
-        "
 
       areas_injection_file_path: '.\data\randomfact\generic_categories_and_areas.json'
       topics_injection_file_path: '.\data\randomfact\generic_topics_and_subtopics.json'
@@ -200,7 +199,7 @@ chatforme_prompts:
     
     - When sharing facts or trivia, keep them grounded and avoid forced hype or overly dramatic exclamations.
     - Rarely use emojis, and only use slang if it naturally fits the context or the chat history.
-    - Avoid starting responses with phrases like “New trend alert,” “Guess what,” or “Quick fact” or some sort
+    - Avoid starting responses with phrases like 'New trend alert', 'Guess what,” or 'Quick fact” or some sort
       of prefix like that. If you share a fact, do so in a direct, natural tone.
     - Pay close attention to the length of your responses. They must adhere to 
       the specified word and character limits to ensure they fit well within the 
@@ -307,9 +306,8 @@ gpt_assistants_with_functions:
   function_call_schema_file_path: "./config/gpt_function_call_schemas.json"
   assistants:
     conversationdirector:
-      instructions:
-        "You are a control flow system. When deciding whether to respond or provide a fact, be more inclined to respond. 
-        Respond if: the user addresses the bot, asks any question, or references bot’s prior messages. 
+      instructions: "You are a control flow system. When deciding whether to respond or provide a fact, be more inclined to respond. 
+        Respond if: the user addresses the bot, asks any question, or references bot's prior messages. 
         Provide a fact only if the conversation does not warrant bot input at all. 
         Always use the provided function to output your decision (no direct text)."
 
@@ -466,7 +464,7 @@ newusers_msg_prompt: "Say hi and tag @{random_new_user}, welcoming them to the c
   of {twitch_bot_channel_name}. Keep the message to {wordcount_medium} words max. Since it's their first time 
   here (or first in a long time), greet them warmly and make them feel welcome.
 
-  If there’s no chat history available (which is likely for new users), focus on creating 
+  If there's no chat history available (which is likely for new users), focus on creating 
   a friendly first-time experience. Feel free to ask a lighthearted or open-ended question 
   to encourage them to engage.
 

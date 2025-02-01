@@ -75,7 +75,7 @@ class ConfigManager:
                               
     def load_yaml_config(self, yaml_full_path):
         try:
-            with open(yaml_full_path, 'r') as file:
+            with open(yaml_full_path, 'r', encoding="utf-8") as file:
                 self.logger.debug("loading individual configs...")
                 self.yaml_data = yaml.safe_load(file)
         except FileNotFoundError as e:

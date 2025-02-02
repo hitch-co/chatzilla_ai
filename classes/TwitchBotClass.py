@@ -416,7 +416,7 @@ class Bot(twitch_commands.Bot):
                 )
             
         # 1e. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
-        if self.config.twitch_bot_username in message_metadata['content'] and "!chat" not in message_metadata['content'] and message.author is not None:
+        if (self.config.twitch_bot_username in message_metadata['content'] or 'chatzilla' in message_metadata['content'])  and "!chat" not in message_metadata['content'] and message.author is not None:
             await self._chatforme_main(message_metadata['content'])
 
         # 2. Process the message through the vibecheck service.

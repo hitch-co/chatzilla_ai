@@ -1,4 +1,4 @@
-# eh-bot-chatforme
+# eh-bot-chatforme (or whatever you called your bot)
  
 # Discord-Twitch Chatbot
 

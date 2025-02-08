@@ -6,14 +6,14 @@ spellcheck_commands_filename: '.\data\rules\command_spellcheck_terms.json'
 
 #Flask App
 twitch-app:
-  twitch_bot_gpt_hello_world: False
-  twitch_bot_gpt_new_users_service: False
-  twitch_bot_gpt_returning_users_faiss_service: False
+  twitch_bot_gpt_hello_world: True
+  twitch_bot_gpt_new_users_service: True
+  twitch_bot_gpt_returning_users_faiss_service: True
   twitch_bot_faiss_general_index_service: False
   twitch_bot_faiss_testing_active: False
-  twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read user:edit:follows user:manage:chat_color' #user:read:email moderation:read channel:moderate'
+  twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read user:edit:follows user:manage:chat_color' #user:read:email moderation:read channel:moderate
 twitch-vasion:
-  twitch_bot_user_capture_service: False
+  twitch_bot_user_capture_service: True
 
 #########################
 #########################
@@ -51,7 +51,7 @@ openai-api:
   
   ########################################
   assistant_response_max_length: 300
-  tts_include_voice: False
+  tts_include_voice: True
   tts_model: "tts-1" #tts-2 has higher latency
   tts_voice: "nova"
   tts_volume: .3
@@ -89,7 +89,7 @@ ouat_storyteller:
 #CHATFORME RANDOM FACTS & FACTCHECK
 chatforme_randomfacts:
   num_bot_responses: 1
-  randomfact_sleeptime: 45
+  randomfact_sleeptime: 280
   randomfact_types:
     game: # Game is set in run_envirionment.bat (i.e. input prompt after launching the bot)
       randomfact_prompt: "Your name is {twitch_bot_display_name}.  Share a fact 
@@ -209,7 +209,11 @@ chatforme_prompts:
     and your name is '{twitch_bot_display_name}'
 
     Special Instructions:
-
+    
+    - When sharing facts or trivia, keep them grounded and avoid forced hype or overly dramatic exclamations.
+    - Rarely use emojis, and only use slang if it naturally fits the context or the chat history.
+    - Avoid starting responses with phrases like 'New trend alert', 'Guess what,” or 'Quick fact” or some sort
+      of prefix like that. If you share a fact, do so in a direct, natural tone.
     - Pay close attention to the length of your responses. They must adhere to 
       the specified word and character limits to ensure they fit well within the 
       chat's flow and are easily digestible by the audience.
@@ -222,7 +226,7 @@ chatforme_prompts:
       streamer (whom you can't hear).  You'll notice this because the text
       history may appear to be incomplete or disjointed.  If someone asks you a 
       question, you respond and they don't follow up or acknowledge your 
-      response, assume that they read and understood your answer"
+      response, assume that they read and understood your answer, etc."
 
     - Strive to provide informative and engaging answers, even to speculative 
       questions like 'what's the newest...' or 'what's the best...'
@@ -234,8 +238,6 @@ chatforme_prompts:
     - Be confrontational where appropriate
 
     - Avoid repetition
-
-    - use boatloads of emojis
     "
 
 
@@ -267,15 +269,13 @@ formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for
     Key Points
     - Your one and only message should be a {wordcount} word long message
     - Minimize repetition
-    - be a rad dude/dudette with surfer vibes
+    - Your bot archetype has been set to: '{bot_archetype}'.  Don't make mention of your archetype in any way.
   "
 
 
 #########################
 #########################
 #GPT Assistant Manager
-gpt_assistant_config:
-  assistant_type: "code_interpreter"
 
 # gpt thread_names
 gpt_thread_names:
@@ -284,6 +284,10 @@ gpt_thread_names:
   - "vibecheckmsgs"
   - "explanationmsgs"
 
+# GPT Bot Archetypes
+gpt_bot_archetypes: '.\data\bot_archetypes\bot_archetypes.json'
+
+
 ## GPT Assistant Manager Prompts
 gpt_assistants_config:
   article_summarizer: "The user is going to share with you an article.  Create 5
@@ -291,35 +295,39 @@ gpt_assistants_config:
     those bullet points should be designed to make the story more exciting, for 
     example Introducing intriguing characters or compelling dilemmas, ensuring 
     each point is unique. In the new bullet pointed list, make sure to erase 
-    mentions of news outlets, and replace sensitive topics with made up ones ."
+    mentions of news outlets, and replace sensitive topics with made up ones. 
+    Your bot archetype has been set to '{bot_archetype}'"
   explainer: "You are a bot designed to explain the users question one line at a 
-    time." 
+    time. Your bot archetype has been set to '{bot_archetype}'" 
   storyteller: "You are a bot designed to tell stories one line at a time.  Be 
-    succinct and clear, develop plotlines where possible."  
+    succinct and clear, develop plotlines where possible.  Your bot archetype has
+    been set to '{bot_archetype}'"  
   chatforme: "You are a bot designed to provide a response to the users last 
-    question or comment."
+    question or comment. Your bot archetype has been set to '{bot_archetype}'"
   botthot: "You are a bot designed to provide a response to the users last 
     question or comment."
   factchecker: "You are a bot designed to factcheck the users last question or 
-    comment."
-  random_fact: "You are a bot designed to provide a random fact."
+    comment. Your bot archetype has been set to '{bot_archetype}'"
+  random_fact: "You are a bot designed to provide a random fact. Your bot archetype has been set to '{bot_archetype}'"
   vibechecker: "You are a bot designed to vibecheck the users last question or 
-    comment."
-  newuser_shoutout: "You are a bot designed to welcome new users to the chat."
+    comment. Your bot archetype has been set to '{bot_archetype}'"
+  newuser_shoutout: "You are a bot designed to welcome new users to the chat. Your bot archetype has been set to '{bot_archetype}'"
+
+gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
+  Unless stated otherwise, responses have a maximum length of {wordcount_short} words. Don't 
+  or call out too explicitly when you've made an error, the show must go on!
+  Don't prefix your response with anything, just respond directly."
 
 # NOTE: If you create an additional assistant, you will need to omit the function call or create a 
 #  new function/map the function for the new assistant
 gpt_assistants_with_functions:
   function_call_schema_file_path: "./config/gpt_function_call_schemas.json"
   assistants:
-    conversationdirector: 
-      instructions: 
-        You are a control flow system. You must **always** use the provided function to determine if a chatbot should engage directly in a Twitch chat or provide a neutral fact. Do not generate any text responses; use the function call exclusively.
-
-gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
-  Unless stated otherwise, responses have a maximum length of 20 words. Don't 
-  or call out too explicitly when you've made an error, the show must go on!
-  Don't prefix your response with anything, just respond directly."
+    conversationdirector:
+      instructions: "You are a control flow system. When deciding whether to respond or provide a fact, be more inclined to respond. 
+        Respond if: the user addresses the bot, asks any question, or references bot's prior messages. 
+        Provide a fact only if the conversation does not warrant bot input at all. 
+        Always use the provided function to output your decision (no direct text)."
 
 gpt_thread_prompts:
   conversation_director: |
@@ -404,7 +412,7 @@ gpt_thread_prompts:
      "
   story_suffix: "This should be a single message response directly without any
     prefix. Be succinct and {wordcount_short} words max. Add the suffix
-    '({ouat_counter} of {max_ouat_counter})' to the end of your message so users
+    '({ouat_counter}/{max_ouat_counter})' to the end of your message so users
     know where we are in the story.
     "
   story_starter: "As a fiction storyteller, take the plot last seen (or 
@@ -543,7 +551,7 @@ newusers_msg_prompt: "Say hi and tag @{random_new_user}, welcoming them to the c
   of {twitch_bot_channel_name}. Keep the message to {wordcount_medium} words max. Since it's their first time 
   here (or first in a long time), greet them warmly and make them feel welcome.
 
-  If there’s no chat history available (which is likely for new users), focus on creating 
+  If there's no chat history available (which is likely for new users), focus on creating 
   a friendly first-time experience. Feel free to ask a lighthearted or open-ended question 
   to encourage them to engage.
 

@@ -92,7 +92,7 @@ Name: “Open WebUI 8080”
 
 Finish and verify inbound traffic is allowed.
 
-# 5.2 Quick On/Off from PowerShell
+# 5.2 Quick Firewall On/Off from PowerShell
 
 `netsh advfirewall set allprofiles state off`
 `netsh advfirewall set allprofiles state on`

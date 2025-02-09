@@ -1,5 +1,6 @@
 import json
 import hashlib
+import datetime
 
 from google.api_core.exceptions import GoogleAPIError
 from classes.ConfigManagerClass import ConfigManager
@@ -63,11 +64,20 @@ class BQUploader:
         self.logger.debug(f"Formatted Stats: {stats_text}")
         return stats_text
 
+    def fetch_user_table_as_list(self, table_id: str) -> list[dict]:
+        query = f"""
+            SELECT * FROM `{table_id}`
+            """
+        query_job = self.bq_client.query(query)
+        results = [dict(row.items()) for row in query_job]
+        return results
+    
     def fetch_unique_usernames_from_bq_as_list(self) -> list[str]:
-        table_id = self.config.bq_fullqual_table_id
+        table_id = self.config.bq_user_table_id
         
         query = f"""
             SELECT DISTINCT user_name FROM `{table_id}`
+            WHERE user_name IS NOT NULL
             """
 
         # Execute the query
@@ -123,7 +133,7 @@ class BQUploader:
         self.logger.debug(f"type of str_results: {type(str_results)}")
         return str_results
 
-    def generate_twitch_user_interactions_records_for_bq(self, records: list[dict]) -> list[dict]:
+    def generate_twitch_user_interactions_records(self, records: list[dict]) -> list[dict]:
         rows_to_insert = []
         for record in records:
             user_id = record.get('user_id')
@@ -167,7 +177,96 @@ class BQUploader:
             self.logger.info(f"BigQuery send_recordsjob_to_bq() job sent {len(records)} records successfully into table_id: {table_id}")
             self.logger.debug("These are the records:")
             self.logger.debug(records[0:2])
-          
+
+    def merge_with_bq_user_table(
+        self,
+        table_id: str,
+        user_records: list[dict]
+        ) -> None:
+        """
+        Upsert (MERGE) users into the given table with updated 'last_seen'.
+        Each record is a dict with keys: user_id, user_login, user_name, last_seen.
+        """
+
+        if not user_records:
+            self.logger.info("No user records to MERGE.")
+            return
+        
+        # Deduplicate user_records by user_id, keeping all original fields.
+        user_records = {record["user_id"]: record for record in user_records}.values()
+
+        # 1. Build the inline SELECT ... UNION ALL portion
+        # Example record: {
+        #    "user_id": "12345",
+        #    "user_login": "some_login",
+        #    "user_name": "SomeName",
+        #    "last_seen": datetime.datetime(2025,2,8,12,0,0)
+        # }
+
+        # Safely format each record into a "SELECT 'X', 'Y', 'Z', TIMESTAMP('2025-02-08 12:00:00')"
+        # Note: For production, consider parameterizing or a staging table if you have large volumes.
+        select_statements = []
+        for record in user_records:
+            user_id = record.get("user_id", "")
+            user_login = record.get("user_login", "")
+            user_name = record.get("user_name", "")
+            last_seen = record.get("last_seen")
+
+            # Convert last_seen to a string in 'YYYY-MM-DD HH:MM:SS' format
+            if isinstance(last_seen, datetime.datetime):
+                last_seen_str = last_seen.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                # If last_seen is already string or None, handle accordingly
+                last_seen_str = str(last_seen) if last_seen else datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+            # Escape quotes in strings or sanitize them for SQL if needed
+            user_id_escaped = user_id.replace("'", "\\'")
+            user_login_escaped = user_login.replace("'", "\\'")
+            user_name_escaped = user_name.replace("'", "\\'")
+
+            # Build the SELECT for this record
+            # Using TIMESTAMP() cast to keep it in a BQ-friendly format
+            select_statements.append(f"""
+                SELECT 
+                  '{user_id_escaped}' AS user_id,
+                  '{user_login_escaped}' AS user_login,
+                  '{user_name_escaped}' AS user_name,
+                  TIMESTAMP('{last_seen_str}') AS last_seen
+            """)
+
+        # Join them with UNION ALL
+        union_select = "\n  UNION ALL ".join(select_statements)
+
+        # 2. Construct the full MERGE statement
+        merge_query = f"""
+        MERGE `{table_id}` AS target
+        USING (
+          {union_select}
+        ) AS source
+        ON target.user_id = source.user_id
+
+        WHEN MATCHED
+            AND TIMESTAMP(target.last_seen) < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 90 MINUTE)
+            THEN UPDATE SET target.last_seen = source.last_seen
+
+        WHEN NOT MATCHED THEN
+            INSERT (user_id, user_login, user_name, last_seen)
+            VALUES (source.user_id, source.user_login, source.user_name, source.last_seen)
+        """
+
+        self.logger.debug("Executing MERGE query:")
+        self.logger.debug(merge_query)
+
+        # 3. Execute the MERGE
+        try:
+            query_job = self.bq_client.query(merge_query)
+            query_job.result()  # Wait for completion
+            self.logger.info(f"MERGE completed successfully. Upserted {len(user_records)} records.")
+        except GoogleAPIError as e:
+            self.logger.error(f"BigQuery MERGE failed: {e}")
+        except Exception as e:
+            self.logger.error(f"An unexpected error occurred during MERGE: {e}")
+
     def execute_query_on_bigquery(self, query):
         try:
             self.logger.info("Starting BigQuery execute_query_on_bigquery() job...")

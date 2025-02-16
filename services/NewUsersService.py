@@ -25,23 +25,20 @@ class NewUsersService:
 
     async def get_users_not_yet_sent_message(
             self,
-            historic_users_list: list,
-            current_users_list: list,
+            historic_users_list: list = None,
+            current_users_list: list = None,
             users_sent_messages_list: list = None
         ) -> list:
 
-        # Construct list of dictionaries with user details
-        users_not_yet_sent_message_info_list = []
+        # Default to empty list if None
+        historic_users_list = historic_users_list or []
+        current_users_list = current_users_list or []
+        users_sent_messages_list = users_sent_messages_list or self.users_sent_messages_list or []
 
-        # Use class variable if users_sent_messages_list is None
-        if users_sent_messages_list is None:
-            users_sent_messages_list = self.users_sent_messages_list
+        historic_users_list = [user.lower() for user in historic_users_list if user]
+        current_users_list = [user.lower() for user in current_users_list if user]
+        users_sent_messages_list = [user.lower() for user in users_sent_messages_list if user]
 
-        # Normalize to lowercase
-        historic_users_list = [user.lower() for user in historic_users_list]
-        current_users_list = [user.lower() for user in current_users_list]
-        users_sent_messages_list = [user.lower() for user in users_sent_messages_list]
-        
         self.logger.debug("inputs:")
         self.logger.debug(f"historic_users_list: {historic_users_list}")
         self.logger.debug(f"current_users_list: {current_users_list}")
@@ -55,20 +52,15 @@ class NewUsersService:
         users_not_yet_sent_message = set(current_users_list_excluding_bots) - set(users_sent_messages_list)
         self.logger.info(f"users_not_yet_sent_message: {users_not_yet_sent_message}")
 
-        for user in users_not_yet_sent_message:
-            if user not in historic_users_list:
-                user_type = "new"
-            elif user in historic_users_list:
-                user_type = "returning"
-            else:
-                user_type = "unknown"
-
-            users_not_yet_sent_message_info_list.append({"username": user, "usertype": user_type})
+        # Construct list of dictionaries with user details
+        users_not_yet_sent_message_info_list = [
+            {"username": user, "usertype": "new" if user not in historic_users_list else "returning"}
+            for user in users_not_yet_sent_message
+        ]
 
         self.logger.debug(f"user_info_list: {users_not_yet_sent_message_info_list}")
-
         return users_not_yet_sent_message_info_list
-    
+
 if __name__ == "__main__":
 
     # Test the get_users_not_yet_sent_message() fucntion

@@ -15,6 +15,10 @@ logger = create_logger(
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+def load_config_instance():
+    from classes.ConfigManagerClass import ConfigManager
+    return ConfigManager.get_instance()
+
 def load_json(path_or_dir: str, file_name: str = None) -> dict:
     """
     Loads a JSON file either from a single full path or by joining a directory with a file name.
@@ -109,7 +113,7 @@ def get_datetime_formats():
     dates_dict = {"sql_format":sql_format, "filename_format":filename_format}
     return dates_dict
 
-def populate_placeholders(logger, prompt_template, replacements=None):
+def populate_placeholders(logger, prompt_template, replacements: dict = None):
     """
     Replaces placeholders in the prompt template with the corresponding values from the replacements dictionary.
 
@@ -121,6 +125,24 @@ def populate_placeholders(logger, prompt_template, replacements=None):
     Returns:
     str: The prompt text with placeholders replaced by actual values.
     """
+    yaml_data = load_config_instance()
+
+    default_replacements = {
+        "wordcount_veryshort": yaml_data.wordcount_veryshort,
+        "wordcount_short": yaml_data.wordcount_short,
+        "wordcount_medium": yaml_data.wordcount_medium,
+        "wordcount_long": yaml_data.wordcount_long
+    }
+
+    if replacements:
+        try:
+            replacements.update(default_replacements)
+        except Exception as e:
+            logger.warning(f"Error updating replacements with default_replacements: {e}")
+            logger.warning(f"replacements: {replacements}")
+    if not replacements:
+        replacements = default_replacements
+
     try:
         if replacements:
             try:

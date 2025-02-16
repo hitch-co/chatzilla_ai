@@ -127,6 +127,12 @@ class ConfigManager:
             raise
 
         try:
+            self.yaml_deepseek_config(self.yaml_data)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_deepseek_config(): {e}")
+            raise
+
+        try:
             self.yaml_gpt_config(self.yaml_data)
         except Exception as e:
             self.logger.error(f"Error in yaml_gpt_config(): {e}")
@@ -310,6 +316,12 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Error in yaml_botears_config(): {e}")
 
+    def yaml_deepseek_config(self, yaml_data):
+        try:
+            self.deepseek_model = yaml_data['deepseek-api']['assistant_model']
+        except Exception as e:
+            self.logger.error(f"Error in yaml_deepseek_config(): {e}")
+
     def yaml_gpt_config(self, yaml_data):
         try:
             self.wordcount_veryshort = str(yaml_data['chatbot_config']['wordcounts']['veryshort'])
@@ -330,7 +342,7 @@ class ConfigManager:
         #assistants
         self.gpt_assistants_config = yaml_data['gpt_assistants_config']
         self.assistant_response_max_length = yaml_data['openai-api']['assistant_response_max_length']
-        self.gpt_assistants_suffix = yaml_data['gpt_assistants_suffix']
+        self.llm_assistants_suffix = yaml_data['llm_assistants_suffix']
 
     def yaml_gpt_assistants_with_functions_config(self, yaml_data):
         """
@@ -416,6 +428,16 @@ class ConfigManager:
 
     def yaml_twitchbot_config(self, yaml_data):
         try:
+            self.twitch_bot_chatforme_service_model_provider = yaml_data['twitch-app']['twitch_bot_chatforme_service_model_provider']
+            self.twitch_bot_newusers_service_model_provider = yaml_data['twitch-app']['twitch_bot_newusers_service_model_provider']
+            self.twitch_bot_helloworld_service_model_provider = yaml_data['twitch-app']['twitch_bot_helloworld_service_model_provider']
+            self.twitch_bot_what_service_model_provider = yaml_data['twitch-app']['twitch_bot_what_service_model_provider']
+            self.twitch_bot_storyteller_service_model_provider = yaml_data['twitch-app']['twitch_bot_storyteller_service_model_provider']
+            self.twitch_bot_factcheck_service_model_provider = yaml_data['twitch-app']['twitch_bot_factcheck_service_model_provider']
+            self.twitch_bot_randomfact_service_model_provider = yaml_data['twitch-app']['twitch_bot_randomfact_service_model_provider']
+            self.twitch_bot_explanation_service_model_provider = yaml_data['twitch-app']['twitch_bot_explanation_service_model_provider']
+            self.twitch_bot_vibecheck_service_model_provider = yaml_data['twitch-app']['twitch_bot_vibecheck_service_model_provider']
+
             self.twitch_bot_user_capture_service = yaml_data['twitch-vasion']['twitch_bot_user_capture_service']
             self.twitch_bot_gpt_hello_world = yaml_data['twitch-app']['twitch_bot_gpt_hello_world']
             self.twitch_bot_gpt_new_users_service = yaml_data['twitch-app']['twitch_bot_gpt_new_users_service']
@@ -723,7 +745,7 @@ class ConfigManager:
         self.logger.debug("=      14) GPT ASSISTANTS & FUNCTION SCHEMAS     =")
         self.logger.debug("==================================================")
         self.logger.debug(f"gpt_assistants_config: {self.gpt_assistants_config}")
-        self.logger.debug(f"gpt_assistants_suffix: {self.gpt_assistants_suffix}")
+        self.logger.debug(f"llm_assistants_suffix: {self.llm_assistants_suffix}")
         self.logger.debug(f"function_schemas_path: {self.function_schemas_path}")
         self.logger.debug(f"function_schemas: {self.function_schemas}")
         self.logger.debug(f"gpt_assistants_with_functions_config: {self.gpt_assistants_with_functions_config}")

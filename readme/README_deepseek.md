@@ -49,10 +49,65 @@ We use a Docker container (with host networking) so that Open WebUI can talk dir
 
 # #3.2 Pull & Run Open WebUI
 
-`docker run -d --name open-webui --network host -e OLLAMA_API_BASE_URL=http://localhost:11434 ghcr.io/open-webui/open-webui:latest`
+`docker run -d \
+  --name open-webui \
+  --network host \
+  -e OLLAMA_BASE_URL=http://127.0.0.1:11434 \
+  ghcr.io/open-webui/open-webui:latest`
 
 --network host shares WSL’s network namespace directly, so Open WebUI can reach Ollama on localhost:11434.
 OLLAMA_API_BASE_URL is set to http://localhost:11434 to point to Ollama’s API port.
+
+# #3.3 Alternative Docker Run Command
+
+#### Suggested
+
+##### If this just works, great, otherwise use the WSL IP instead
+docker run -d \
+  --name open-webui \
+  -p 2225:8080 \
+  -e OLLAMA_API_BASE_URL=http://host.docker.internal:11434 \
+  ghcr.io/open-webui/open-webui:latest
+
+
+docker run -d \
+  --name open-webui \
+  -p 8080:8080 \
+  -e OLLAMA_API_BASE_URL=http://172.17.154.81:11434 \
+  ghcr.io/open-webui/open-webui:latest
+
+docker run -d \
+  -p 8080:8080
+  --name open-webui \
+  --network host \
+  -e OLLAMA_API_BASE_URL=http://172.17.154.81:11434 \
+  ghcr.io/open-webui/open-webui:latest
+
+
+docker run -d \
+  --name open-webui \
+  --network host \
+  -e OLLAMA_API_BASE_URL=http://10.0.0.14:11434 \
+  ghcr.io/open-webui/open-webui:latest
+
+
+docker run -d \
+  --name open-webui \
+  -p 8080:8080 \
+  -e OLLAMA_API_BASE_URL=http://host.docker.internal:11434 \
+  ghcr.io/open-webui/open-webui:latest
+
+## Validate the binding
+netstat -tulpn | grep 11434
+
+#### Might need
+
+```docker run -d \
+  --name open-webui \
+  --add-host=host.docker.internal:host-gateway \
+  -p 8080:8080 \
+  -e OLLAMA_API_BASE_URL=http://host.docker.internal:11434 \
+  ghcr.io/open-webui/open-webui:latest```
 
 ## 3.3 Verifying Access
 
@@ -102,7 +157,7 @@ Use with caution—disabling all firewall profiles is only recommended for quick
 Port Forwarding (Obsolete with Docker Host Networking)
 We previously used a manual portproxy approach in WSL:
 
-`netsh interface portproxy add v4tov4 listenaddress=10.0.0.14 listenport=8080 connectaddress=172.17.x.x connectport=8080`
+`netsh interface portproxy add v4tov4 listenaddress=10.0.0.14 listenport=8080 connectaddress=172.17.144.1 connectport=8080`
 
 Now that we run Open WebUI with --network host, this is no longer needed. Docker + host networking bypasses the NAT issue by sharing the WSL namespace directly.
 

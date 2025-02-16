@@ -55,7 +55,8 @@ class CreateExecuteThreadTask(BaseTask):
             replacements_dict: dict,
             tts_voice: str,
             send_channel_message: bool = True,
-            message_role: str = 'assistant'
+            message_role: str = 'assistant',
+            model_vendor_config: dict = {"vendor": "openai", "model": "n/a"}
             ):
         super().__init__(thread_name)
         self.assistant_name = assistant_name
@@ -64,6 +65,7 @@ class CreateExecuteThreadTask(BaseTask):
         self.tts_voice = tts_voice
         self.send_channel_message = send_channel_message
         self.message_role = message_role
+        self.model_vendor_config = model_vendor_config
 
         # Create task_dict during initialization
         self.task_dict = self.to_dict()
@@ -77,7 +79,8 @@ class CreateExecuteThreadTask(BaseTask):
             "replacements_dict": self.replacements_dict,
             "tts_voice": self.tts_voice,
             "send_channel_message": self.send_channel_message,
-            "message_role": self.message_role
+            "message_role": self.message_role,
+            "model_vendor_config": self.model_vendor_config
         })
         self.logger.debug(f"CreateExecuteThreadTask Dict created: {task_dict}")
         return task_dict

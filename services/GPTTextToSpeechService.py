@@ -28,9 +28,11 @@ class GPTTextToSpeech:
             os.makedirs(self.config.tts_data_folder)
 
     def _strip_story_number(self, text_input):
-        # Text is formatted as "This is the story (0 of 8)" where the 0 of 8 is the story number and we don't want text to speech to read it
         pattern = r'\(\d+ of \d+\)'
-        return re.sub(pattern, '', text_input).strip()
+        text_input_transformed= re.sub(pattern, '', text_input).strip()
+        pattern = r'\(\d+/\d+\)'
+        text_input_transformed = re.sub(pattern, '', text_input_transformed).strip()
+        return text_input_transformed
 
     def _get_speech_response(
             self, 

@@ -6,6 +6,15 @@ spellcheck_commands_filename: '.\data\rules\command_spellcheck_terms.json'
 
 #Flask App
 twitch-app:
+  twitch_bot_chatforme_service_model_provider: "deepseek"  # or "openai"
+  twitch_bot_newusers_service_model_provider: "deepseek"  # or "openai"
+  twitch_bot_helloworld_service_model_provider: "deepseek"  # or "openai"
+  twitch_bot_what_service_model_provider: "deepseek"  # or "openai"
+  twitch_bot_randomfact_service_model_provider: "deepseek"  # or "openai"
+  twitch_bot_storyteller_service_model_provider: "openai"  # or "openai"
+  twitch_bot_factcheck_service_model_provider: "openai"  # or "openai"
+  twitch_bot_explanation_service_model_provider: "openai"  # or "openai" 
+  twitch_bot_vibecheck_service_model_provider: "openai"  # or "openai"
   twitch_bot_gpt_hello_world: True
   twitch_bot_gpt_new_users_service: True
   twitch_bot_gpt_returning_users_faiss_service: True
@@ -14,6 +23,13 @@ twitch-app:
   twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read user:edit:follows user:manage:chat_color' #user:read:email moderation:read channel:moderate
 twitch-vasion:
   twitch_bot_user_capture_service: True
+
+#########################
+#########################
+deepseek-api:
+  
+  #######################################
+  assistant_model: "deepseek-r1:7b" 
 
 #########################
 #########################
@@ -300,7 +316,7 @@ gpt_assistants_config:
     comment. Your bot archetype has been set to '{bot_archetype}'"
   newuser_shoutout: "You are a bot designed to welcome new users to the chat. Your bot archetype has been set to '{bot_archetype}'"
 
-gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
+llm_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
   Unless stated otherwise, responses have a maximum length of {wordcount_short} words. Don't 
   or call out too explicitly when you've made an error, the show must go on!
   Don't prefix your response with anything, just respond directly."

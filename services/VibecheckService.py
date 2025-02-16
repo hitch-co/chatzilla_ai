@@ -15,7 +15,6 @@ class VibeCheckService:
             gpt_assistant_mgr,
             task_manager,
             gpt_response_mgr,
-            chatforme_service,
             vibechecker_players,
             send_channel_message
             ):
@@ -47,9 +46,6 @@ class VibeCheckService:
 
         #task manager
         self.task_manager = task_manager
-
-        #ChatForMeService
-        self.chatforme_service = chatforme_service
         
         #constants
         self.is_vibecheck_loop_active = False
@@ -149,7 +145,8 @@ class VibeCheckService:
                     assistant_name=assistant_name,
                     thread_instructions=vibechecker_prompt,
                     replacements_dict=replacements_dict,
-                    tts_voice=tts_voice
+                    tts_voice=tts_voice,
+                    model_vendor_config={"vendor": self.config.twitch_bot_vibecheck_service_model_provider, "model": self.config.deepseek_model}
                 )
                 await self.task_manager.add_task_to_queue(self.vibecheck_thread_name, task)
 

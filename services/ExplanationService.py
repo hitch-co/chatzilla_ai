@@ -103,7 +103,8 @@ class ExplanationService:
                 assistant_name=assistant_name,
                 thread_instructions=gpt_prompt_text,
                 replacements_dict=replacements_dict,
-                tts_voice=self.current_story_voice
+                tts_voice=self.current_story_voice,
+                model_vendor_config={"vendor": self.config.twitch_bot_explanation_service_model_provider, "model": self.config.deepseek_model}
                 )
             self.logger.debug(f"...task to add to queue: {task.task_dict}")
             await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'explanation_start'")
@@ -154,8 +155,9 @@ class ExplanationService:
                     assistant_name=assistant_name,
                     thread_instructions=gpt_prompt_final,
                     replacements_dict=replacements_dict,
-                    tts_voice=tts_voice
-                )
+                    tts_voice=tts_voice,
+                    model_vendor_config={"vendor": self.config.twitch_bot_explanation_service_model_provider, "model": self.config.deepseek_model}
+                    )
                 await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'explanation_task'")
 
             # Check if the explanation loop should be stopped

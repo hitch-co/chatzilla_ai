@@ -421,10 +421,10 @@ class GPTAssistantManager(GPTBaseClass):
         }
 
         # Get suffix one from assistants_config
-        gpt_assistants_suffix = self.yaml_data.gpt_assistants_suffix
+        llm_assistants_suffix = self.yaml_data.llm_assistants_suffix
 
         for assistant_name, prompt in assistants_config.items():
-            final_prompt = prompt + gpt_assistants_suffix
+            final_prompt = prompt + llm_assistants_suffix
             self._create_assistant(
                 assistant_name=assistant_name,
                 assistant_instructions=final_prompt,

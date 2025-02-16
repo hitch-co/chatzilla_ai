@@ -20,12 +20,12 @@ from classes import ArticleGeneratorClass
 
 from services.VibecheckService import VibeCheckService
 from services.NewUsersService import NewUsersService
-from services.ChatForMeService import ChatForMeService
 from services.AudioService import AudioService
 from services.BotEarsService import BotEars
 from services.SpeechToTextService import SpeechToTextService
 from services.ExplanationService import ExplanationService
 from services.FaissService import FAISSService
+from services.DeepSeekService import AsyncDeepSeekAIClient
 
 runtime_logger_level = 'INFO'
 
@@ -72,6 +72,9 @@ class Bot(twitch_commands.Bot):
         self.tts_client = tts_client
         self.message_handler = message_handler
 
+        # Initialize the DeepSeekAIClient
+        self.deepseek_client = AsyncDeepSeekAIClient()
+        
         # Initialize the FAISSService
         self.faiss_service = FAISSService()
 
@@ -91,13 +94,6 @@ class Bot(twitch_commands.Bot):
 
         # Create function call manager
         self.gpt_function_call_manager = gpt_function_call_mgr
-
-        # TODO1: Could be a good idea to inject these dependencies into the services
-        # instantiate the ChatForMeService
-        self.chatforme_service = ChatForMeService(
-            tts_client=self.tts_client, #NOTE: Might also be able to use the self.gpt_client here
-            send_channel_message=self._send_channel_message_wrapper
-            )
 
         # TODO1: Could be a good idea to inject these dependencies into the services
         # instantiate the NewUsersService
@@ -210,47 +206,72 @@ class Bot(twitch_commands.Bot):
                 task.future.set_exception(e)
 
         elif task_type == "execute_thread":
-
-            # # NOTE: if we decide to bulk add (to reduce api calls and speedup the app), 
-            # #  this is where we should dump message queue into thread history
-            # await self.message_handler.dump_message_queue_into_thread_history(
-            #     thread_name=thread_name
-            #     message_history=message_history
-            #     )
- 
-            assistant_name = task.task_dict.get("assistant_name")
-            thread_instructions = task.task_dict.get("thread_instructions")
-            replacements_dict = task.task_dict.get("replacements_dict")
+            # Initialize gpt_response early to ensure it always exists.
+            gpt_response = None
             tts_voice = task.task_dict.get("tts_voice")
             bool_send_channel_message = task.task_dict.get("send_channel_message")          
+            thread_instructions = task.task_dict.get("thread_instructions")
+            replacements_dict = task.task_dict.get("replacements_dict")
+            model_vendor_config = task.task_dict.get("model_vendor_config")
+            model_vendor_name = model_vendor_config.get("vendor")
+            model_name = model_vendor_config.get("model")
+
+            if model_vendor_name == "openai": 
+                assistant_name = task.task_dict.get("assistant_name")
+                
+                # Execute the thread for OpenAI
+                try:
+                    gpt_response = await self.gpt_response_manager.execute_thread( 
+                        thread_name=thread_name, 
+                        assistant_name=assistant_name, 
+                        thread_instructions=thread_instructions,
+                        replacements_dict=replacements_dict
+                    )
+                    self.logger.info("GPT Response successfully generated for thread: %s", thread_name)
+                    self.logger.debug("GPT response: %s", gpt_response)
+
+                except Exception as e:
+                    gpt_response = None
+                    message = f"...Error occurred in '{task_type}' (openai): {e}"
+                    task.future.set_exception(message)
+                    self.logger.error(message)
             
-            # Execute the thread
-            try:
-                gpt_response = await self.gpt_response_manager.execute_thread( 
-                    thread_name=thread_name, 
-                    assistant_name=assistant_name, 
-                    thread_instructions=thread_instructions,
-                    replacements_dict=replacements_dict
-                )
-                self.logger.info(f"...GPT Response successfully generated for thread: {thread_name}")
-                self.logger.debug(f"...GPT response: {gpt_response}")
-
-            except Exception as e:
-                gpt_response = None
-                message = f"...Error occurred in '{task_type}': {e}"
-                task.future.set_exception(message)
+            elif model_vendor_name == "deepseek":
+                try:
+                    final_thread_instructions = utils.populate_placeholders(
+                        logger=self.logger,
+                        prompt_template=thread_instructions + self.config.llm_assistants_suffix,
+                        replacements=replacements_dict
+                        )
+                    deepseek_response = await self.deepseek_client.get_deepseek_response_chat(
+                        model=model_name,
+                        prompt="say/do what you think is best based on the context.",
+                        messages=final_thread_instructions
+                    )
+                    gpt_response = await self.deepseek_client._clean_deepseek_response_content(deepseek_response)
+                    self.logger.info("DeepSeek Response successfully generated for thread: %s", thread_name)
+                    self.logger.debug("DeepSeek response: %s", gpt_response)
+                except Exception as e:
+                    gpt_response = None
+                    message = f"...Error occurred in '{task_type}' (deepseek): {e}"
+                    task.future.set_exception(message)
+                    self.logger.error(message)
+            
+            else:
+                message = f"Unsupported model vendor: {model_vendor_name}"
                 self.logger.error(message)
+                task.future.set_exception(message)
+                return
 
-            # Send the GPT response to the channel
+            # Send the GPT response to the channel if appropriate.
             if gpt_response is not None and bool_send_channel_message is True:
                 try:
-                    # Send the GPT response to the channel
-                    await self.chatforme_service.send_output_message_and_voice(
+                    await self.send_output_message_and_voice(
                         text=gpt_response,
                         incl_voice=self.config.tts_include_voice,
                         voice_name=tts_voice
                     )
-                    message = f"...'{task_type}' task handled for thread: {thread_name}. Send channel message is True"
+                    message = f"...'{task_type}' task handled for thread: {thread_name}. Sent channel message."
                     task.future.set_result(message)
                     self.logger.info(message) 
 
@@ -260,12 +281,12 @@ class Bot(twitch_commands.Bot):
                     task.future.set_exception(message)
 
             if gpt_response is None:
-                message = f"...Gpt response is None, this should not happen.  Task: {task.task_dict}"
+                message = f"...GPT response is None, this should not happen. Task: {task.task_dict}"
                 self.logger.error(message)
                 task.future.set_exception(message)
             
             if bool_send_channel_message is False:
-                message = f"...'{task_type}' task handled for thread: {thread_name}. Send channel message is False"
+                message = f"...'{task_type}' task handled for thread: {thread_name}. Send channel message is False."
                 task.future.set_result(message)
                 self.logger.info(message)
             
@@ -287,7 +308,7 @@ class Bot(twitch_commands.Bot):
                 task.future.set_exception(message)
 
             try:
-                await self.chatforme_service.send_output_message_and_voice(
+                await self.send_output_message_and_voice(
                     text=content,
                     incl_voice=self.config.tts_include_voice,
                     voice_name=tts_voice
@@ -677,7 +698,8 @@ class Bot(twitch_commands.Bot):
                     assistant_name=assistant_name,
                     thread_instructions=prompt,
                     replacements_dict=replacements_dict,
-                    tts_voice=tts_voice_selected
+                    tts_voice=tts_voice_selected,
+                    model_vendor_config={"vendor": self.config.twitch_bot_newusers_service_model_provider, "model": self.config.deepseek_model}
                 )
 
                 await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'new/returning users service'")
@@ -689,6 +711,42 @@ class Bot(twitch_commands.Bot):
     async def _send_channel_message_wrapper(self, message):
         await self.channel.send(message)
 
+    async def send_output_message_and_voice(
+            self,
+            text,
+            incl_voice,
+            voice_name
+            ):
+        """
+        Asynchronously sends a text message and optionally plays a voice message.
+
+        This internal method sends a text message to the specified channel and, if requested, generates and plays a voice message using the text-to-speech service.
+
+        Parameters:
+        - text (str): The text message to be sent.
+        - incl_voice (str): Specifies whether to include voice output (True or False).
+        - voice_name (str): The name of the voice to be used in the text-to-speech service.
+        """
+        datetime_string = utils.get_datetime_formats()['filename_format']
+        if incl_voice == True:
+            # Generate speech object and generate speech object/mp3
+            output_filename = "chatforme_"+"_"+datetime_string+"_"+self.tts_client.tts_file_name
+            self.tts_client.workflow_t2s(
+                text_input=text,
+                voice_name=voice_name,
+                output_dirpath=self.tts_client.tts_data_folder,
+                output_filename=output_filename
+                )
+
+        # TODO: Does this class need botclass injected simply to send messages? 
+        await self._send_channel_message_wrapper(text)
+
+        if incl_voice == True:
+            self.tts_client.play_local_mp3(
+                dirpath=self.tts_client.tts_data_folder, 
+                filename=output_filename
+                )
+            
     async def _is_function_caller_moderator(self, ctx) -> bool:
         is_sender_mod = False
         command_name = inspect.currentframe().f_back.f_code.co_name
@@ -722,7 +780,8 @@ class Bot(twitch_commands.Bot):
                 assistant_name=assistant_name,
                 thread_instructions=gpt_prompt_text,
                 replacements_dict=replacements_dict,
-                tts_voice=tts_voice
+                tts_voice=tts_voice,
+                model_vendor_config={"vendor": self.config.twitch_bot_helloworld_service_model_provider, "model": self.config.deepseek_model}
             )
             await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'hello_world'")
 
@@ -773,7 +832,8 @@ class Bot(twitch_commands.Bot):
             assistant_name=assistant_name,
             thread_instructions=gpt_prompt_text,
             replacements_dict=replacements_dict,
-            tts_voice=tts_voice
+            tts_voice=tts_voice,
+            model_vendor_config={"vendor": self.config.twitch_bot_what_service_model_provider, "model": self.config.deepseek_model}
         )
         await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'what'")
 
@@ -864,7 +924,8 @@ class Bot(twitch_commands.Bot):
             assistant_name=assistant_name,
             thread_instructions=chatforme_prompt,
             replacements_dict=replacements_dict,
-            tts_voice=tts_voice
+            tts_voice=tts_voice,
+            model_vendor_config={"vendor": self.config.twitch_bot_chatforme_service_model_provider, "model": self.config.deepseek_model}
         )
         self.logger.debug(f"Task to add to queue: {task.task_dict}")
 
@@ -1044,7 +1105,6 @@ class Bot(twitch_commands.Bot):
                 gpt_assistant_mgr=self.gpt_assistant_manager,
                 task_manager=self.task_manager,
                 gpt_response_mgr=self.gpt_response_manager,
-                chatforme_service=self.chatforme_service,
                 vibechecker_players= {
                     'vibecheckee_username': self.vibecheckee_username,
                     'vibechecker_username': self.vibechecker_username,
@@ -1152,7 +1212,8 @@ class Bot(twitch_commands.Bot):
                 thread_instructions=gpt_prompt_text,
                 replacements_dict=replacements_dict,
                 tts_voice=self.current_story_voice,
-                send_channel_message=True
+                send_channel_message=True,
+                model_vendor_config={"vendor": self.config.twitch_bot_storyteller_service_model_provider, "model": self.config.deepseek_model}
                 )
             await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'startstory'")
             self.is_ouat_loop_active = True
@@ -1225,7 +1286,8 @@ class Bot(twitch_commands.Bot):
                     assistant_name=assistant_name,
                     thread_instructions=gpt_prompt_final,
                     replacements_dict=replacements_dict,
-                    tts_voice=self.current_story_voice
+                    tts_voice=self.current_story_voice,
+                    model_vendor_config={"vendor": self.config.twitch_bot_storyteller_service_model_provider, "model": self.config.deepseek_model}
                 )
                 await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'ouat_storyteller'")
 
@@ -1325,7 +1387,8 @@ class Bot(twitch_commands.Bot):
                 assistant_name=assistant_name,
                 thread_instructions=chatforme_factcheck_prompt,
                 replacements_dict=replacements_dict,
-                tts_voice=tts_voice
+                tts_voice=tts_voice,
+                model_vendor_config={"vendor": self.config.twitch_bot_factcheck_service_model_provider, "model": self.config.deepseek_model}
             )
             await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'factcheck'")
 
@@ -1495,6 +1558,7 @@ class Bot(twitch_commands.Bot):
                 assistant_name=assistant_name,
                 thread_instructions=selected_prompt,
                 replacements_dict=replacements_dict,
-                tts_voice=tts_voice
+                tts_voice=tts_voice,
+                model_vendor_config={"vendor": self.config.twitch_bot_randomfact_service_model_provider, "model": self.config.deepseek_model}
             )
             await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'randomfact_task'")

@@ -181,6 +181,7 @@ class Bot(twitch_commands.Bot):
         model_vendor_name = None
         model_name = None
         gpt_response = None
+        message = "No message generated"
 
         try:
             task_type = task.task_dict.get("type")
@@ -212,9 +213,101 @@ class Bot(twitch_commands.Bot):
                     self.logger.error(f"...Error occurred in '_add_message_to_specified_thread': {e}", exc_info=True)
                     task.future.set_exception(e)
                     return
-            except Exception as e: 
-                self.logger.error(f"...Error occurred in '_add_message_to_specified_thread': {e}", exc_info=True)
-                task.future.set_exception(e)
+
+            elif task_type == "generate_text":
+                # Initialize gpt_response early to ensure it always exists.
+
+                self.logger.info("Processing generate_text task")
+                assistant_name = task.task_dict.get("assistant_name")
+                prompt = task.task_dict.get("prompt")
+                replacements_dict = task.task_dict.get("replacements_dict")
+                tts_voice = task.task_dict.get("tts_voice")
+                send_channel_message = task.task_dict.get("send_channel_message")
+                model_vendor_config = task.task_dict.get("model_vendor_config")
+                model_vendor_name = model_vendor_config.get("vendor")
+                model_name = model_vendor_config.get("model")
+                
+                if model_vendor_name == "openai": 
+                    assistant_name = task.task_dict.get("assistant_name")
+                    self.logger.warning(f"OpenAI model vendor is not yet QA'd for task type 'generate_text'")
+                    
+                    # Execute the thread for OpenAI
+                    try:
+                        gpt_response = await self.gpt_response_manager.execute_thread( 
+                            thread_name=thread_name, 
+                            assistant_name=assistant_name, 
+                            thread_instructions=prompt,
+                            replacements_dict=replacements_dict
+                        )
+                        message = f"...'{task_type}' task handled for thread: {thread_name}"
+                        self.logger.info(f"GPT Response successfully generated for thread: {thread_name}")
+                        self.logger.debug(f"GPT response: {gpt_response}")
+
+                    except Exception as e:
+                        gpt_response = None
+                        message = f"...Error occurred in '{task_type}' (openai): {e}"
+                        self.logger.error(message)
+                        task.future.set_exception(message)
+                        return
+                
+                elif model_vendor_name == "deepseek":
+
+                    try:
+                        # Populate prompt placeholders if necessary
+                        final_prompt = utils.populate_placeholders(
+                            logger=self.logger,
+                            prompt_template=prompt + self.config.llm_assistants_suffix,
+                            replacements=replacements_dict
+                        )
+                        # Call deepseek's generate text method
+                        response = await self.deepseek_client.get_deepseek_response_generate(
+                            model=model_name,
+                            prompt=final_prompt
+                        )
+
+                        # Clean the response content
+                        gpt_response = await self.deepseek_client._clean_deepseek_response_content(response)
+                        message = f"DeepSeek generate_text task completed for thread: {thread_name}"
+                        self.logger.info(f"DeepSeek generate_text task completed for thread: {thread_name}")
+                        self.logger.debug(f"DeepSeek response: {gpt_response}")
+                    
+                    except Exception as e:
+                        gpt_response = None
+                        message = f"...Error occurred in 'generate_text' (deepseek): {e}"
+                        self.logger.error(message)
+                        task.future.set_exception(message)
+                        return
+
+                else:
+                    message = f"Unsupported model vendor: {model_vendor_name}"
+                    self.logger.error(message)
+                    task.future.set_exception(message)
+                    return
+
+                # If a response was generated and we're sending a channel message:
+                if gpt_response is not None and send_channel_message is True:
+                    try:
+                        await self.send_output_message_and_voice(
+                            text=gpt_response,
+                            incl_voice=self.config.tts_include_voice,
+                            voice_name=tts_voice
+                        )
+                        message = f"...'generate_text' task handled for thread: {thread_name}. Sent channel message."
+
+                    except Exception as e:
+                        message = f"...Error occurred in 'send_output_message_and_voice': {e}"
+                        self.logger.error(message)
+                        task.future.set_exception(message)
+                        return
+                    
+                elif gpt_response is None:
+                    message = f"...GPT response is None in generate_text task. Task: {task.task_dict}"
+                    self.logger.error(message)
+                    task.future.set_exception(message)
+                    return
+                
+                if send_channel_message is False:
+                    message = f"...'generate_text' task handled for thread: {thread_name}. Send channel message is False."
 
             elif task_type == "execute_thread":
                 # Initialize gpt_response early to ensure it always exists.
@@ -256,12 +349,11 @@ class Bot(twitch_commands.Bot):
                             prompt_template=thread_instructions + self.config.llm_assistants_suffix,
                             replacements=replacements_dict
                             )
-                        deepseek_response = await self.deepseek_client.get_deepseek_response_chat(
+                        gpt_response = await self.deepseek_client.get_deepseek_response_chat(
                             model=model_name,
                             prompt="say/do what you think is best based on the context.",
                             messages=final_thread_instructions
                         )
-                        gpt_response = await self.deepseek_client._clean_deepseek_response_content(deepseek_response)
                         message = f"...'{task_type}' task handled for thread: {thread_name}"
                         self.logger.info(f"DeepSeek Response successfully generated for thread: {thread_name}")
                         self.logger.debug(f'DeepSeek response: {gpt_response}')
@@ -550,6 +642,12 @@ class Bot(twitch_commands.Bot):
             #result
             self.logger.debug(f"Command info: {command_info}")
             commands_info.append(command_info)
+
+        # Filter this list to aliases that do not start with 'i_'
+        commands_info = [
+            command_info for command_info in commands_info
+            if not any(alias.startswith('i_') for alias in command_info['aliases'])
+        ]
         return commands_info
     
     async def _refresh_access_token_task(self):
@@ -807,12 +905,14 @@ class Bot(twitch_commands.Bot):
                 }
 
             # Add a executeTask to the queue
-            task = CreateExecuteThreadTask(
+            task = CreateGenerateTextTask(
                 thread_name=thread_name,
                 assistant_name=assistant_name,
-                thread_instructions=gpt_prompt_text,
+                prompt=gpt_prompt_text,
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice,
+                send_channel_message=True,
+                message_role='assistant',
                 model_vendor_config={"vendor": self.config.twitch_bot_helloworld_service_model_provider, "model": self.config.deepseek_model}
             )
             
@@ -860,12 +960,13 @@ class Bot(twitch_commands.Bot):
         }
 
         # Add a executeTask to the queue
-        task = CreateExecuteThreadTask(
+        task = CreateGenerateTextTask(
             thread_name=thread_name,
             assistant_name=assistant_name,
-            thread_instructions=gpt_prompt_text,
+            prompt=gpt_prompt_text,
             replacements_dict=replacements_dict,
             tts_voice=tts_voice,
+            send_channel_message=True,
             model_vendor_config={"vendor": self.config.twitch_bot_what_service_model_provider, "model": self.config.deepseek_model}
         )
         await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'what'")
@@ -952,12 +1053,13 @@ class Bot(twitch_commands.Bot):
         }
 
         # Add a executeTask to the queue
-        task = CreateExecuteThreadTask(
+        task = CreateGenerateTextTask(
             thread_name=thread_name,
             assistant_name=assistant_name,
-            thread_instructions=chatforme_prompt,
+            prompt=chatforme_prompt,
             replacements_dict=replacements_dict,
             tts_voice=tts_voice,
+            send_channel_message=True,
             model_vendor_config={"vendor": self.config.twitch_bot_chatforme_service_model_provider, "model": self.config.deepseek_model}
         )
         self.logger.debug(f"Task to add to queue: {task.task_dict}")
@@ -1330,7 +1432,7 @@ class Bot(twitch_commands.Bot):
             else:
                 await asyncio.sleep(int(self.config.ouat_message_recurrence_seconds))
 
-    @twitch_commands.command(name='addtostory', aliases=("p_addtostory"))
+    @twitch_commands.command(name='addtostory', aliases=("i_addtostory"))
     async def add_to_story_ouat(self, ctx,  *args):
         self.ouat_counter = self.config.ouat_story_progression_number
         
@@ -1355,7 +1457,7 @@ class Bot(twitch_commands.Bot):
 
         self.logger.info(f"A story was added to by {message_metadata['message_author']} ({message_metadata['user_id']}): '{gpt_prompt_text}'")
 
-    @twitch_commands.command(name='extendstory', aliases=("p_extendstory"))
+    @twitch_commands.command(name='extendstory', aliases=("i_extendstory"))
     async def extend_story(self, ctx, *args) -> None:
         self.ouat_counter = self.config.ouat_story_progression_number
         self.logger.info(f"Story extension requested by {ctx.message.author.name} ({ctx.message.author.id}), self.ouat_counter has been set to {self.ouat_counter}")
@@ -1415,12 +1517,13 @@ class Bot(twitch_commands.Bot):
         }
 
         try:
-            task = CreateExecuteThreadTask(
+            task = CreateGenerateTextTask(
                 thread_name=thread_name,
                 assistant_name=assistant_name,
                 thread_instructions=chatforme_factcheck_prompt,
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice,
+                send_channel_message=True,
                 model_vendor_config={"vendor": self.config.twitch_bot_factcheck_service_model_provider, "model": self.config.deepseek_model}
             )
             await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'factcheck'")

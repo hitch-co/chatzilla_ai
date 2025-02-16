@@ -85,6 +85,45 @@ class CreateExecuteThreadTask(BaseTask):
         self.logger.debug(f"CreateExecuteThreadTask Dict created: {task_dict}")
         return task_dict
     
+class CreateGenerateTextTask(BaseTask):
+    def __init__(
+            self, 
+            thread_name: str,
+            assistant_name: str,
+            prompt: str,
+            replacements_dict: dict,
+            tts_voice: str,
+            send_channel_message: bool = True,
+            message_role: str = 'assistant',
+            model_vendor_config: dict = {"vendor": "openai", "model": "n/a"}
+            ):
+        super().__init__(thread_name)
+        self.assistant_name = assistant_name
+        self.prompt = prompt
+        self.replacements_dict = replacements_dict
+        self.tts_voice = tts_voice
+        self.send_channel_message = send_channel_message
+        self.message_role = message_role
+        self.model_vendor_config = model_vendor_config
+
+        # Create task_dict during initialization
+        self.task_dict = self.to_dict()
+
+    def to_dict(self) -> dict:
+        task_dict = super().to_dict()
+        task_dict.update({
+            "type": "generate_text",
+            "assistant_name": self.assistant_name,
+            "prompt": self.prompt,
+            "replacements_dict": self.replacements_dict,
+            "tts_voice": self.tts_voice,
+            "send_channel_message": self.send_channel_message,
+            "message_role": self.message_role,
+            "model_vendor_config": self.model_vendor_config
+        })
+        self.logger.debug(f"CreateGenerateTextTask Dict created: {task_dict}")
+        return task_dict
+    
 class CreateSendChannelMessageTask(BaseTask): 
     def __init__(
             self, 

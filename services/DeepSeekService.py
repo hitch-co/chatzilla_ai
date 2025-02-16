@@ -60,6 +60,7 @@ class AsyncDeepSeekAIClient:
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, headers=headers, json=payload) as resp:
                     response = await resp.json()
+                    response_text = response.get("response", "")
                     self.logger.debug(f"_generate_text response: {response}")
                     return response
 
@@ -81,14 +82,6 @@ class AsyncDeepSeekAIClient:
                     self.logger.debug(f"_chat response: {response}")
                     return response
 
-    async def _clean_deepseek_response_content(self, content):
-        self.logger.debug(f"Cleaning response content: {content}")
-        # Clean up unwanted tags (e.g., <think>...</think>) and extra whitespace
-        cleaned_content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL)
-        cleaned_content = re.sub(r"\s+", " ", cleaned_content.strip())
-        self.logger.info(f"Cleaned deepseek response content: {cleaned_content}")
-        return cleaned_content
-
     async def get_deepseek_response_chat(
             self, 
             model, 
@@ -100,15 +93,9 @@ class AsyncDeepSeekAIClient:
         Uses the async deepseek client to send a chat request and cleans the result.
         messages should be a list of dictionaries with keys 'role' and 'content'.
         """
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
         self.logger.info(f"get_deepseek_response_chat called with model: '{model}', prompt: '{prompt}'")
         self.logger.info(f"System prompt: {system_prompt}")
         self.logger.info(f"Messages: {messages}")
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
-        self.logger.info('---------------------------------')
 
         if isinstance(messages, str):
             messages = [{"role": "user", "content": messages}]
@@ -128,7 +115,7 @@ class AsyncDeepSeekAIClient:
 
         try:
             response = await self._chat(model, messages)
-            self.logger.debug(f"Chat API raw response: {response}")
+            self.logger.debug(f"deepseek _chat return: {response}")
         except Exception as e:
             self.logger.error(f"Error during _chat call: {e}")
             raise
@@ -152,15 +139,15 @@ class AsyncDeepSeekAIClient:
 
         try:
             response = await self._generate_text(model, prompt)
-            self.logger.debug(f"Generate API raw response: {response}")
+            self.logger.debug(f"Deepseek _generate_text return: {response}")
         except Exception as e:
             self.logger.error(f"Error during _generate_text call: {e}")
             raise
 
-        # Expecting a structure like: {'model': 'deepseek-r1:7b', 'created_at': '...', 'response': '...'}
+        # Expecting a structure like: {'model': 'deepseek-r1:7b', 'created_at': '2025-02-16T15:59:43.3383584Z', 'response': '<think>audience.\n</think>\n\nYo mama is', 'done': True, 'done_reason': 'stop', 'context': [15164],...} 
         if "response" in response:
             content = response["response"]
-            self.logger.debug("Extracted content from response using key 'response'.")
+            self.logger.info(f"Extracted content from response using key 'response': {content}")
         else:
             content = str(response)
             self.logger.warning("Response did not contain expected 'response' key. Using stringified response.")
@@ -181,30 +168,30 @@ async def run_deepseek_sample():
 
     # Uncomment one of the examples below:
 
-    # EXAMPLE1: Chat
-    try:
-        response = await ai_client.get_deepseek_response_chat(
-            model='deepseek-r1:7b',
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": "Tell me a joke."},
-                {"role": "user", "content": "like a joke about alligators"},
-                {"role": "user", "content": "alligator babies actually!"}
-            ]
-        )
-        print(f"Chat Response Content: {response}")
-    except Exception as e:
-        ai_client.logger.error(f"Error in chat example: {e}")
-
-    # # EXAMPLE2: Generate
+    # # EXAMPLE1: Chat
     # try:
-    #     response = await ai_client.get_deepseek_response_generate(
+    #     response = await ai_client.get_deepseek_response_chat(
     #         model='deepseek-r1:7b',
-    #         prompt="Tell me a joke asbout baby chincillas."
+    #         messages=[
+    #             {"role": "system", "content": "You are a helpful assistant."},
+    #             {"role": "user", "content": "Tell me a joke."},
+    #             {"role": "user", "content": "like a joke about alligators"},
+    #             {"role": "user", "content": "alligator babies actually!"}
+    #         ]
     #     )
-    #     print(f"Generate Response Content: {response}")
+    #     print(f"Chat Response Content: {response}")
     # except Exception as e:
-    #     ai_client.logger.error(f"Error in generate example: {e}")
+    #     ai_client.logger.error(f"Error in chat example: {e}")
+
+    # EXAMPLE2: Generate
+    try:
+        response = await ai_client.get_deepseek_response_generate(
+            model='deepseek-r1:7b',
+            prompt="Tell me a joke asbout baby chincillas."
+        )
+        print(f"Generate Response Content: {response}")
+    except Exception as e:
+        ai_client.logger.error(f"Error in generate example: {e}")
 
 # -------------------------------
 # Async main for testing the integrated service

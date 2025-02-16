@@ -98,7 +98,7 @@ def shutdown_server():
         raise RuntimeError('Not running with the Werkzeug Server')
     func()
 
-def get_datetime_formats():
+def get_current_datetime_formatted():
     """
     Generate a dictionary containing formatted datetime strings for SQL and filenames.
 

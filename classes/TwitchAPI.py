@@ -2,11 +2,18 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 import requests
 import pandas as pd
 import os
+import asyncio
 
 from classes.ConfigManagerClass import ConfigManager
 
 from my_modules import my_logging
 from my_modules import utils
+
+# Twitch API Endpoints
+TWITCH_API_BASE_URL = "https://api.twitch.tv/helix"
+USERS_ENDPOINT = "/users"
+MODERATORS_ENDPOINT = "/moderation/moderators"
+CHATTERS_ENDPOINT = "/chat/chatters"
 
 runtime_debug_level = 'INFO'
 
@@ -21,17 +28,13 @@ class TwitchAPI:
             )
         self.config = ConfigManager.get_instance()
 
-        # Twitch API Endpoints
-        self.TWITCH_API_BASE_URL = "https://api.twitch.tv/helix"
-        self.USERS_ENDPOINT = "/users"
-        self.MODERATORS_ENDPOINT = "/moderation/moderators"
-        self.CHATTERS_ENDPOINT = "/chat/chatters"
+        # Lock to protect the channel_viewers_queue from concurrent access
+        self._channel_viewers_queue_lock = asyncio.Lock()
 
-        # Channel Viewers Queue
         self.channel_viewers_queue = []
 
         try:
-            self.config.twitch_bot_user_id = self._get_and_set_user_id(
+            self.config.twitch_bot_user_id = self._fetch_user_id(
                 #bearer_token=self.config.twitch_bot_access_token,
                 bearer_token=os.getenv("TWITCH_BOT_ACCESS_TOKEN"), 
                 login_name=self.config.twitch_bot_username
@@ -43,7 +46,7 @@ class TwitchAPI:
             self.config.twitch_bot_user_id = None
 
         try:
-            self.config.twitch_broadcaster_user_id = self._get_and_set_user_id(
+            self.config.twitch_broadcaster_user_id = self._fetch_user_id(
                 #bearer_token=self.config.twitch_bot_access_token,
                 bearer_token=os.getenv("TWITCH_BOT_ACCESS_TOKEN"),
                 login_name=self.config.twitch_bot_channel_name
@@ -53,7 +56,7 @@ class TwitchAPI:
             self.logger.error(f"Failed to retrieve broadcaster's user ID: {e}")
             self.config.twitch_broadcaster_user_id = None
 
-    def _get_and_set_user_id(self, bearer_token, login_name):
+    def _fetch_user_id(self, bearer_token, login_name):
         self.logger.debug(f"Getting bot's user ID using token...")
 
         # Twitch API authentication headers
@@ -63,7 +66,7 @@ class TwitchAPI:
         }
 
         # Get the user ID of the bot
-        url = f"{self.TWITCH_API_BASE_URL}{self.USERS_ENDPOINT}?login={login_name}"
+        url = f"{TWITCH_API_BASE_URL}{USERS_ENDPOINT}?login={login_name}"
         self.logger.debug(f"Users Endpoint: {url}")
         try:
             response = requests.get(url, headers=HEADERS)
@@ -106,7 +109,7 @@ class TwitchAPI:
     #         'broadcaster_id': self.config.twitch_broadcaster_user_id
     #     }
 
-    #     url = f"{self.TWITCH_API_BASE_URL}{self.MODERATORS_ENDPOINT}"
+    #     url = f"{TWITCH_API_BASE_URL}{MODERATORS_ENDPOINT}"
     #     self.logger.debug(f"Fetching moderators from: {url}, params: {params}")
 
     #     try:
@@ -150,7 +153,7 @@ class TwitchAPI:
             "Client-ID": self.config.twitch_bot_client_id,
             "Authorization": f"Bearer {bearer_token}",
         }
-        url_get_user = f"{self.TWITCH_API_BASE_URL}{self.USERS_ENDPOINT}?login={target_login}"
+        url_get_user = f"{TWITCH_API_BASE_URL}{USERS_ENDPOINT}?login={target_login}"
         try:
             resp = requests.get(url_get_user, headers=headers)
             if resp.status_code != 200:
@@ -172,7 +175,7 @@ class TwitchAPI:
             return False
 
         # -- 2) POST /users/follows to follow target user
-        url_follow = f"{self.TWITCH_API_BASE_URL}/users/follows"
+        url_follow = f"{TWITCH_API_BASE_URL}/users/follows"
         data = {
             "from_id": self.config.twitch_bot_user_id,  # Bot's user ID
             "to_id": target_user_id                     # The user we want to follow
@@ -222,7 +225,7 @@ class TwitchAPI:
         }
 
         # Build the PUT URL
-        url = f"{self.TWITCH_API_BASE_URL}/chat/color?user_id={self.config.twitch_bot_user_id}&color={color}"
+        url = f"{TWITCH_API_BASE_URL}/chat/color?user_id={self.config.twitch_bot_user_id}&color={color}"
 
         self.logger.debug(f"Attempting to update bot's chat color to '{color}' using URL: {url}")
         try:
@@ -240,29 +243,12 @@ class TwitchAPI:
             self.logger.error(f"Exception while updating chat color to '{color}': {e}", exc_info=True)
             return False
 
-    async def update_channel_viewers(self, bearer_token: str) -> list[dict]:
-        """
-        Fetch current viewers via the Twitch API, format them, 
-        and upsert them into the in-memory queue, returning the deduplicated results.
-        """
-        # Step 1: Fetch data
-        fetch_viewers_response = await self._fetch_viewers_from_twitch(bearer_token=bearer_token)
-        if not fetch_viewers_response:
-            self.logger.warning("No raw viewer data returned from Twitch.")
-            return []
-
-        # Step 2: Transform/Format data, deduplicate & enqueue
-        formatted_records = self._format_viewers_for_storage(fetch_viewers_response)
-        await self._upsert_viewers_in_queue(formatted_records)
-
-        self.logger.info(f"Updated channel viewers queue with {len(self.channel_viewers_queue)} records.")
-        return self.channel_viewers_queue
-    
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
-    async def _fetch_viewers_from_twitch(self, bearer_token) -> dict:
+    async def _fetch_viewers_from_twitch(self, bearer_token) -> list:
+        """Fetch all pages of viewers and return them as a simple list."""
 
         try:
-            chatters_endpoint_url = f"{self.TWITCH_API_BASE_URL}{self.CHATTERS_ENDPOINT}"
+            chatters_endpoint_url = f"{TWITCH_API_BASE_URL}{CHATTERS_ENDPOINT}"
             params = {
                 'broadcaster_id': self.config.twitch_broadcaster_user_id,
                 'moderator_id': self.config.twitch_bot_user_id
@@ -272,22 +258,37 @@ class TwitchAPI:
                 'Client-Id': self.config.twitch_bot_client_id
             }
 
-            self.logger.debug(f'Chatters Endpoint: {chatters_endpoint_url}')
-            self.logger.debug(f"Params: {params}")
-            self.logger.debug(f"Headers: {headers}")
+            all_viewers_data = []
+            while True:
+                response = requests.get(chatters_endpoint_url, params=params, headers=headers)
+                if response.status_code != 200:
+                    self.logger.warning(
+                        f'Failed to retrieve channel viewers: {response.status_code}, {response.text}'
+                    )
+                    return None
 
-            response = requests.get(chatters_endpoint_url, params=params, headers=headers)
+                # Grab data from this page
+                json_data = response.json()
+                page_data = json_data.get('data', [])
+                self.logger.info(f"Page data: {page_data}")
+                all_viewers_data.extend(page_data)
 
-            if response.status_code == 200:
-                self.logger.info(f'Successfully retrieved channel viewers: {response.json()}')
-                return response.json()
-            else:
-                self.logger.warning(f'Failed to retrieve channel viewers: {response.status_code}, {response.text}')
-                return None
+                # Check for next page
+                pagination = json_data.get('pagination', {})
+                cursor = pagination.get('cursor')
+                if cursor:
+                    params['after'] = cursor
+                else:
+                    # No more pages left
+                    break
+
+            self.logger.info(f"Successfully fetched {len(all_viewers_data)} total viewers.")
+            return all_viewers_data
+
         except Exception as e:
-            self.logger.exception(f'Error fetching channel viewers: {e}')
-            return None
-
+            self.logger.exception(f"Error fetching channel viewers: {e}")
+            return None   
+             
     async def retrieve_active_usernames(self, bearer_token) -> list[str]:
         try:
             viewer_data = await self._fetch_viewers_from_twitch(bearer_token)
@@ -299,44 +300,72 @@ class TwitchAPI:
             self.logger.warning("Viewer data is None or empty.")
             return None
 
-        current_users_in_session = viewer_data.get('data', [])
+        current_users_in_session = viewer_data
         current_user_names = [user['user_login'] for user in current_users_in_session]
-        self.logger.debug(f"current_user_names: {current_user_names}")
+        self.logger.info(f"current_user_names: {current_user_names}")
         return current_user_names
 
-    def _format_viewers_for_storage(self, viewer_data_json) -> list[dict]:
+    def _prepare_viewers_for_queue(self, channel_viewers_list: list) -> list[dict]:
         self.logger.info('Processing channel viewers data')
-        timestamp = utils.get_datetime_formats()['sql_format']
+        timestamp = utils.get_current_datetime_formatted()['sql_format']
         
-        if viewer_data_json:
-            channel_viewers_list_dict = viewer_data_json.get('data', [])
-            for item in channel_viewers_list_dict:
+        if channel_viewers_list:
+            for item in channel_viewers_list:
                 item['timestamp'] = timestamp
-            self.logger.info(f"channel_viewers_list_dict:")
-            self.logger.info(channel_viewers_list_dict)
+            self.logger.debug(f"channel_viewers_list_dict:")
+            self.logger.debug(channel_viewers_list)
         else:
-            self.logger.error("Invalid viewer data provided to _format_viewers_for_storage")
-            raise ValueError("Invalid viewer data provided to _format_viewers_for_storage")
+            self.logger.error("Invalid viewer data provided to _prepare_viewers_for_queue")
+            raise ValueError("Invalid viewer data provided to _prepare_viewers_for_queue")
         
-        return channel_viewers_list_dict
+        self.logger.debug(f"Prepared channel viewers queue.  Now contains {len(self.channel_viewers_queue)} records.")
+        return channel_viewers_list
 
-    async def _upsert_viewers_in_queue(self, records: list[dict]) -> None:
-        self.logger.debug(f'Enqueuing {len(records)} records to channel_viewers_queue')
+    async def update_channel_viewers_queue(self, bearer_token: str) -> list[dict]:
+        """
+        Fetch current viewers via the Twitch API, format them, 
+        and upsert them into the in-memory queue, returning the deduplicated results.
+        """
+        # Step 1: Fetch data
+        channel_viewers_list = await self._fetch_viewers_from_twitch(bearer_token=bearer_token)
+        if not channel_viewers_list:
+            self.logger.warning("No raw viewer data returned from Twitch.")
+            return []
 
-        # Ensure queue exists
-        if not hasattr(self, 'channel_viewers_queue') or self.channel_viewers_queue is None:
-            self.channel_viewers_queue = []
+        # Step 2: Transform/Format data, deduplicate & enqueue
+        prepared_channel_viewers_list = self._prepare_viewers_for_queue(channel_viewers_list)
+        await self._merge_channel_viewers_queue(prepared_channel_viewers_list)
 
-        # Create a dictionary to track the latest record per user_id
-        latest_records = {record['user_id']: record for record in (self.channel_viewers_queue + records)}
+        self.logger.info(f"Updated channel viewers queue.  Now contains {len(self.channel_viewers_queue)} records.")
+    
+    async def _merge_channel_viewers_queue(self, records: list[dict]) -> None:
+        """
+        Deduplicate new viewer records with existing ones and update the in-memory queue.
+        Protected by an asyncio Lock to avoid concurrency issues.
+        """
+        # Acquire the lock before modifying the shared queue
+        async with self._channel_viewers_queue_lock:
+            self.logger.debug(f'Enqueuing {len(records)} records to channel_viewers_queue')
 
-        # Sort by timestamp and keep only the latest entry per user_id
-        self.channel_viewers_queue = sorted(latest_records.values(), key=lambda x: x['timestamp'])
+            # Ensure queue exists
+            if self.channel_viewers_queue is None:
+                self.channel_viewers_queue = []
 
-        if len(self.channel_viewers_queue) <1:
-            self.logger.warning(f"Channel viewers queue is empty.  This should not happen as the queue should always have at least one user (the operator).")
-        else:
-            self.logger.debug(f"Channel viewers queue updated with {len(self.channel_viewers_queue)} records.")
+            # Create a dictionary to track the latest record per user_id
+            latest_records = {
+                record['user_id']: record 
+                for record in (self.channel_viewers_queue + records)
+            }
+
+            # Sort by timestamp and keep only the latest entry per user_id
+            self.channel_viewers_queue = sorted(latest_records.values(), key=lambda x: x['timestamp'])
+
+            if len(self.channel_viewers_queue) < 1:
+                self.logger.warning(
+                    "Channel viewers queue is empty, this should not happen.  Bot User should always show up in this list."
+                )
+            else:
+                self.logger.debug(f"Merged channel viewers queue.  Now contains {len(self.channel_viewers_queue)} records.")
 
 if __name__ == "__main__":
     twitch_api = TwitchAPI()

@@ -59,7 +59,7 @@
         <mxCell id="X0K00MM57r9cbO4nfmmp-18" value="generate_viewers_merge_query" style="text;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=0" parent="X0K00MM57r9cbO4nfmmp-11" vertex="1">
           <mxGeometry y="164" width="160" height="26" as="geometry" />
         </mxCell>
-        <mxCell id="X0K00MM57r9cbO4nfmmp-19" value="generate_twitch_user_interactions_records_for_bq" style="text;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=0" parent="X0K00MM57r9cbO4nfmmp-11" vertex="1">
+        <mxCell id="X0K00MM57r9cbO4nfmmp-19" value="generate_twitch_user_interactions_records" style="text;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=0" parent="X0K00MM57r9cbO4nfmmp-11" vertex="1">
           <mxGeometry y="190" width="160" height="26" as="geometry" />
         </mxCell>
         <mxCell id="X0K00MM57r9cbO4nfmmp-20" value="send_recordsjob_to_bq" style="text;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=0" parent="X0K00MM57r9cbO4nfmmp-11" vertex="1">

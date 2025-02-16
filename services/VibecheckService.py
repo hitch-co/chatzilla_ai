@@ -60,6 +60,8 @@ class VibeCheckService:
         self.vibechecker_username = self.vibechecker_players['vibechecker_username']
         self.vibecheckbot_username = self.vibechecker_players['vibecheckbot_username']
 
+        self.logger.info(f"Initialized VibecheckService with vibechecker_username: {self.vibechecker_username}")
+
     async def start_vibecheck_session(self):
         # Start the vibe check logic (e.g., initiating a task or loop)
         self.is_vibecheck_loop_active = True

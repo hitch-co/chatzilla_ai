@@ -24,6 +24,8 @@ class FAISSService:
         self.top_k = top_k
         self.session_msg_id_map = {}
 
+        self.logger.info(f"Initialized FAISSService with embedding_model: {embedding_model} and top_k: {top_k}")
+
     def load_initial_msgs_to_session_index(self, messages: list[dict]):
         """ Loads a batch of messages into the general FAISS index. """
         contents = [f"{msg['user_login']} ({msg['timestamp']}): {msg['content']}" for msg in messages]

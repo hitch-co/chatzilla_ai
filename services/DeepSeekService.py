@@ -100,7 +100,15 @@ class AsyncDeepSeekAIClient:
         Uses the async deepseek client to send a chat request and cleans the result.
         messages should be a list of dictionaries with keys 'role' and 'content'.
         """
+        self.logger.info('---------------------------------')
+        self.logger.info('---------------------------------')
+        self.logger.info('---------------------------------')
         self.logger.info(f"get_deepseek_response_chat called with model: '{model}', prompt: '{prompt}'")
+        self.logger.info(f"System prompt: {system_prompt}")
+        self.logger.info(f"Messages: {messages}")
+        self.logger.info('---------------------------------')
+        self.logger.info('---------------------------------')
+        self.logger.info('---------------------------------')
 
         if isinstance(messages, str):
             messages = [{"role": "user", "content": messages}]

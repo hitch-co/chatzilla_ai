@@ -56,7 +56,7 @@ cd "!CHATZILLA_ROOT_DIRECTORY!" || (
     echo Directory not found: !CHATZILLA_ROOT_DIRECTORY!
     exit /b
 )
-echo ...current directory: %cd%
+echo Runtime directory for run_environment.bat: %cd%
 
 :: Activate Conda environment
 call "%MINICONDA_HOME%\condabin\conda.bat" activate openai_chatzilla_ai_env || (
@@ -69,6 +69,10 @@ python config/startup_audio_devices.py || (
     echo Audio setup failed. Exiting.
     exit /b
 )
+
+:: Start Ollama in a new window in the background:
+echo Starting Ollama...
+start /B cmd /C "ollama run deepseek-r1:7b >> logs\ollama.log 2>&1"
 
 echo ...starting twitch_bot.py
 python twitch_bot.py

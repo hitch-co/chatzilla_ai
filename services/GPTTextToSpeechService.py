@@ -27,6 +27,8 @@ class GPTTextToSpeech:
         if not os.path.exists(self.config.tts_data_folder):
             os.makedirs(self.config.tts_data_folder)
 
+        self.logger.info(f"Initialized GPTTextToSpeechClass with tts_model: {self.tts_model}")
+
     def _strip_story_number(self, text_input):
         pattern = r'\(\d+ of \d+\)'
         text_input_transformed= re.sub(pattern, '', text_input).strip()

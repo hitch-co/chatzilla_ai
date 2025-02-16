@@ -245,9 +245,11 @@ class BQUploader:
         ) AS source
         ON target.user_id = source.user_id
 
-        WHEN MATCHED
-            AND TIMESTAMP(target.last_seen) < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 90 MINUTE)
-            THEN UPDATE SET target.last_seen = source.last_seen
+        WHEN MATCHED AND TIMESTAMP(target.last_seen) < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 90 MINUTE)
+        THEN UPDATE SET
+            target.user_login = source.user_login,
+            target.user_name = source.user_name,
+            target.last_seen = source.last_seen
 
         WHEN NOT MATCHED THEN
             INSERT (user_id, user_login, user_name, last_seen)

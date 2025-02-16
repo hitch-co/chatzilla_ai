@@ -22,7 +22,7 @@ class AudioService:
             mode='w', 
             stream_logs=True
             )
-
+        self.logger.info(f"Initialized AudioPlayerService with volume: {self.volume}")
     def play_local_mp3(self, filename: str, dirpath: str):
         """
         Plays an MP3 file located at the specified directory with the given volume.

@@ -8,7 +8,7 @@ from collections import deque
 
 from my_modules import my_logging
 
-runtime_logger_level = 'DEBUG'
+runtime_logger_level = 'INFO'
 
 class BotEars:
     def __init__(
@@ -103,6 +103,7 @@ class BotEars:
         self.buffer = deque(
             maxlen=buffer_length_seconds * self.samplerate
         )
+        self.logger.info(f"Initialized BotEars with buffer length of {buffer_length_seconds} seconds.")
 
     def _try_open_stream(self, device_index, channels):
         """

@@ -32,6 +32,7 @@ class ExplanationService:
         # NOTE: Why is this instantiated twice?
         #initialize the task manager
         self.task_manager = task_manager
+        self.logger.info(f"Initialized ExplanationService with explanation_max_counter: {self.explanation_max_counter}")
 
     async def explanation_start(self, message, *args):
         self.logger.info(f"Starting explanation, self.explanation_counter is at {self.explanation_counter} (of {self.explanation_max_counter})")

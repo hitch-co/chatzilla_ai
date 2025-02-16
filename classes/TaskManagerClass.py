@@ -20,6 +20,7 @@ class TaskManager:
         # Task queues
         self.task_queues: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue) # Thread name to task queue mapping
         self.task_queue_lock = asyncio.Lock()
+        self.thread_locks = defaultdict(asyncio.Lock)
         self.on_task_ready: Callable[[Dict], None] = None
 
     async def _wait_for_task_completion(self, task, description=""):

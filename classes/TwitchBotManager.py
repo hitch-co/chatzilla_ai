@@ -38,5 +38,7 @@ class TwitchBotManager:
             gpt_response_mgr=self.dependencies.gpt_response_mgr,
             gpt_function_call_mgr=self.dependencies.gpt_function_call_mgr,
             message_handler=self.dependencies.message_handler,
-            twitch_auth=twitch_auth
+            twitch_auth=twitch_auth,
+            task_manager=self.dependencies.task_manager,
+            task_handler=self.dependencies.task_handler
         ).run()

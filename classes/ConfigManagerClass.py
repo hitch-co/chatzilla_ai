@@ -805,6 +805,7 @@ class ConfigManager:
             stream_logs=True,
             encoding='UTF-8'
             )
+        my_logging.setup_logging_from_json('config/logging_config.json')
 
 if __name__ == "__main__":
     dotenv_load_result = dotenv.load_dotenv(dotenv_path='./config/.env')

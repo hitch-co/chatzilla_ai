@@ -36,6 +36,8 @@ class GPTResponseCleaner:
         cleaned_text = GPTResponseCleaner._normalize_whitespace(cleaned_text)
         cleaned_text = GPTResponseCleaner._clean_think_tags(cleaned_text)
         cleaned_text = GPTResponseCleaner._remove_quotes(cleaned_text)
+        cleaned_text = GPTResponseCleaner._remove_quotes(cleaned_text)
+        cleaned_text = GPTResponseCleaner._remove_quotes(cleaned_text)
         return cleaned_text
     
 def main():

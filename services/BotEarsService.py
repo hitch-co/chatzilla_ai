@@ -67,7 +67,7 @@ class BotEars:
 
         # Use the device's default sample rate if not provided
         self.samplerate = samplerate or int(device_info["default_samplerate"])
-        self.logger.info(
+        self.logger.debug(
             f"Device supports up to {device_info['max_input_channels']} channels. "
             f"Default sample rate: {self.samplerate} Hz"
         )

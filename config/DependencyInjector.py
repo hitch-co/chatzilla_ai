@@ -7,7 +7,11 @@ from classes.BQUploaderClass import BQUploader
 from services.GPTTextToSpeechService import GPTTextToSpeech
 from classes.GPTAssistantManagerClass import GPTBaseClass, GPTThreadManager, GPTResponseManager, GPTAssistantManager
 from classes.GPTAssistantManagerClass import GPTFunctionCallManager
+from services.DeepSeekService import AsyncDeepSeekAIClient
+
 from classes.TaskManagerClass import TaskManager
+from classes.TaskHandlerClass import TaskHandler
+
 
 class DependencyInjector:
     def __init__(self, config):
@@ -74,17 +78,48 @@ class DependencyInjector:
         )
         return message_handler
     
+    def create_deepseek_client(self):
+        deepseek_client = AsyncDeepSeekAIClient()
+        return deepseek_client
+        
+    def create_task_handler(self, config, task_manager, gpt_response_manager, deepseek_client, tts_client, message_handler):
+        task_handler = TaskHandler(
+            config = config,
+            task_manager = task_manager,
+            gpt_response_manager = gpt_response_manager,
+            deepseek_client = deepseek_client,
+            tts_client = tts_client,
+            message_handler = message_handler
+        )
+        return task_handler
+
+    
     def create_dependencies(self):
-        self.gpt_client = self.create_gpt_client()
         self.bq_client = self.create_bq_client()
         self.bq_uploader = self.create_bq_uploader(bq_client=self.bq_client)
+
+        # TTS may be same as GPT client
+        self.gpt_client = self.create_gpt_client()
         self.tts_client = self.create_tts_client()
-        self.task_manager = self.create_task_manager()
+
         self.gpt_thread_mgr = self.create_gpt_thread_mgr()
         self.gpt_assistant_mgr = self.create_gpt_assistant_mgr()
         self.gpt_response_mgr = self.create_gpt_response_mgr(gpt_thread_manager=self.gpt_thread_mgr, gpt_assistant_manager = self.gpt_assistant_mgr)
-        self.message_handler = self.create_message_handler(task_manager=self.task_manager)
         self.gpt_function_call_mgr = self.create_gpt_function_call_mgr(gpt_thread_manager=self.gpt_thread_mgr, gpt_response_manager=self.gpt_response_mgr, gpt_assistant_manager=self.gpt_assistant_mgr)
+        
+        self.deepseek_client = self.create_deepseek_client()
+
+        self.task_manager = self.create_task_manager()
+        self.message_handler = self.create_message_handler(task_manager=self.task_manager)
+
+        self.task_handler = self.create_task_handler(
+            config = self.config,
+            task_manager = self.task_manager,
+            gpt_response_manager = self.gpt_response_mgr,
+            deepseek_client = self.deepseek_client,
+            tts_client = self.tts_client,
+            message_handler = self.message_handler
+        )
 
 def main(yaml_filepath):
     from classes.ConfigManagerClass import ConfigManager

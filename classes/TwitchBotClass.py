@@ -14,6 +14,7 @@ from my_modules import utils
 import my_modules.adjustable_sleep_task as adjustable_sleep_task
 
 from classes.TwitchAPI import TwitchAPI
+from classes.TaskHandlerClass import TaskHandler
 
 # from classes.ConsoleColoursClass import bcolors, printc
 from classes import ArticleGeneratorClass
@@ -44,7 +45,9 @@ class Bot(twitch_commands.Bot):
             gpt_response_mgr,
             gpt_function_call_mgr,
             message_handler,
-            twitch_auth
+            twitch_auth,
+            task_manager,
+            task_handler
             ):
         
         self.config = config
@@ -72,19 +75,21 @@ class Bot(twitch_commands.Bot):
         self.bq_uploader = bq_uploader 
         self.tts_client = tts_client
         self.message_handler = message_handler
-
-        # Initialize the DeepSeekAIClient
-        self.deepseek_client = AsyncDeepSeekAIClient()
         
         # Initialize the FAISSService
         self.faiss_service = FAISSService()
 
         # Initialize the GPTAssistantManager Classes
         self.gpt_assistant_manager = gpt_assistant_mgr
+
+        # # Initialize the DeepSeekClient
+        # self.deepseek_client = deepseek_client        
         
-        # Initialize the TaskManager
-        self.task_manager = self.message_handler.task_manager
-        self.task_manager.on_task_ready = self.handle_tasks
+        # # Initialize the TaskManager
+        self.task_manager = task_manager
+        self.task_handler = task_handler
+        self.task_handler.set_send_channel_message_wrapper(self._send_channel_message_wrapper)
+        self.task_manager.on_task_ready = self.task_handler.handle_tasks
         self.loop.create_task(self.task_manager.task_scheduler())
 
         # Create thread manager, Assigning handle_tasks to the on_task_ready event
@@ -177,280 +182,6 @@ class Bot(twitch_commands.Bot):
         else:
             self.logger.error(f"Thread name '{thread_name}' is not in the list of thread names. Message content: {message_content[0:25]+'...'}")
 
-    async def handle_tasks(self, task: object):
-        model_vendor_name = None
-        model_name = None
-        gpt_response = None
-        message = "No message generated"
-
-        try:
-            task_type = task.task_dict.get("type")
-            thread_name = task.task_dict.get("thread_name")
-            message_role = task.task_dict.get("message_role")
-            self.logger.info(f"Handling task type '{task_type}' for thread: {thread_name}")
-        except Exception as e:
-            self.logger.error(f"Error occurred in 'handle_tasks': {e}")
-
-        # Get the lock for the thread
-        lock = self.task_manager.thread_locks[thread_name]
-        async with lock:
-
-            if task_type == "add_message":
-                # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
-                # Note: Only situation where this is used is when a command needs to be sent to the thread
-                #  or if deepseek generates a response that needs to be sent to the thread
-                content = task.task_dict.get("content")
-
-                try:
-                    await self._add_message_to_specified_thread(
-                        message_content=content, 
-                        role=message_role,
-                        thread_name=thread_name
-                        )
-                    message = f"...'add_message' task handled for thread: {thread_name}"
-
-                except Exception as e: 
-                    self.logger.error(f"...Error occurred in '_add_message_to_specified_thread': {e}", exc_info=True)
-                    task.future.set_exception(e)
-                    return
-
-            elif task_type == "generate_text":
-                # Initialize gpt_response early to ensure it always exists.
-
-                self.logger.info("Processing generate_text task")
-                assistant_name = task.task_dict.get("assistant_name")
-                prompt = task.task_dict.get("prompt")
-                replacements_dict = task.task_dict.get("replacements_dict")
-                tts_voice = task.task_dict.get("tts_voice")
-                send_channel_message = task.task_dict.get("send_channel_message")
-                model_vendor_config = task.task_dict.get("model_vendor_config")
-                model_vendor_name = model_vendor_config.get("vendor")
-                model_name = model_vendor_config.get("model")
-                
-                if model_vendor_name == "openai": 
-                    assistant_name = task.task_dict.get("assistant_name")
-                    self.logger.warning(f"OpenAI model vendor is not yet QA'd for task type 'generate_text'")
-                    
-                    # Execute the thread for OpenAI
-                    try:
-                        gpt_response = await self.gpt_response_manager.execute_thread( 
-                            thread_name=thread_name, 
-                            assistant_name=assistant_name, 
-                            thread_instructions=prompt,
-                            replacements_dict=replacements_dict
-                        )
-                        message = f"...'{task_type}' task handled for thread: {thread_name}"
-                        self.logger.info(f"GPT Response successfully generated for thread: {thread_name}")
-                        self.logger.debug(f"GPT response: {gpt_response}")
-
-                    except Exception as e:
-                        gpt_response = None
-                        message = f"...Error occurred in '{task_type}' (openai): {e}"
-                        self.logger.error(message)
-                        task.future.set_exception(message)
-                        return
-                
-                elif model_vendor_name == "deepseek":
-
-                    try:
-                        # Populate prompt placeholders if necessary
-                        final_prompt = utils.populate_placeholders(
-                            logger=self.logger,
-                            prompt_template=prompt + self.config.llm_assistants_suffix,
-                            replacements=replacements_dict
-                        )
-                        # Call deepseek's generate text method
-                        gpt_response = await self.deepseek_client.get_deepseek_response_generate(
-                            model=model_name,
-                            prompt=final_prompt
-                        )
-
-                        # Clean the response content
-                        message = f"DeepSeek generate_text task completed for thread: {thread_name}"
-                        self.logger.info(f"DeepSeek generate_text task completed for thread: {thread_name}")
-                        self.logger.debug(f"DeepSeek response: {gpt_response}")
-                    
-                    except Exception as e:
-                        gpt_response = None
-                        message = f"...Error occurred in 'generate_text' (deepseek): {e}"
-                        self.logger.error(message)
-                        task.future.set_exception(message)
-                        return
-
-                else:
-                    message = f"Unsupported model vendor: {model_vendor_name}"
-                    self.logger.error(message)
-                    task.future.set_exception(message)
-                    return
-
-                # If a response was generated and we're sending a channel message:
-                if gpt_response is not None and send_channel_message is True:
-
-                    gpt_response = GPTResponseCleaner.perform_all_gpt_response_cleanups(gpt_response)
-                    
-                    try:
-                        await self.send_output_message_and_voice(
-                            text=gpt_response,
-                            incl_voice=self.config.tts_include_voice,
-                            voice_name=tts_voice
-                        )
-                        message = f"...'generate_text' task handled for thread: {thread_name}. Sent channel message."
-
-                    except Exception as e:
-                        message = f"...Error occurred in 'send_output_message_and_voice': {e}"
-                        self.logger.error(message)
-                        task.future.set_exception(message)
-                        return
-            
-                elif gpt_response is None:
-                    message = f"...GPT response is None in generate_text task. Task: {task.task_dict}"
-                    self.logger.error(message)
-                    task.future.set_exception(message)
-                    return
-                
-                if send_channel_message is False:
-                    message = f"...'generate_text' task handled for thread: {thread_name}. Send channel message is False."
-
-            elif task_type == "execute_thread":
-                # Initialize gpt_response early to ensure it always exists.
-                gpt_response = None
-                tts_voice = task.task_dict.get("tts_voice")
-                bool_send_channel_message = task.task_dict.get("send_channel_message")          
-                thread_instructions = task.task_dict.get("thread_instructions")
-                replacements_dict = task.task_dict.get("replacements_dict")
-                model_vendor_config = task.task_dict.get("model_vendor_config")
-                model_vendor_name = model_vendor_config.get("vendor")
-                model_name = model_vendor_config.get("model")
-
-                if model_vendor_name == "openai": 
-                    assistant_name = task.task_dict.get("assistant_name")
-                    
-                    # Execute the thread for OpenAI
-                    try:
-                        gpt_response = await self.gpt_response_manager.execute_thread( 
-                            thread_name=thread_name, 
-                            assistant_name=assistant_name, 
-                            thread_instructions=thread_instructions,
-                            replacements_dict=replacements_dict
-                        )
-                        message = f"...'{task_type}' task handled for thread: {thread_name}"
-                        self.logger.info(f"GPT Response successfully generated for thread: {thread_name}")
-                        self.logger.debug(f"GPT response: {gpt_response}")
-
-                    except Exception as e:
-                        gpt_response = None
-                        message = f"...Error occurred in '{task_type}' (openai): {e}"
-                        self.logger.error(message)
-                        task.future.set_exception(message)
-                        return
-                
-                elif model_vendor_name == 'deepseek':
-                    try:
-                        final_thread_instructions = utils.populate_placeholders(
-                            logger=self.logger,
-                            prompt_template=thread_instructions + self.config.llm_assistants_suffix,
-                            replacements=replacements_dict
-                            )
-                        gpt_response = await self.deepseek_client.get_deepseek_response_chat(
-                            model=model_name,
-                            prompt=final_thread_instructions,
-                            messages=self.message_handler.all_msg_history_gptdict
-                        )
-                        message = f"...'{task_type}' task handled for thread: {thread_name}"
-                        self.logger.info(f"DeepSeek Response successfully generated for thread: {thread_name}")
-                        self.logger.debug(f'DeepSeek response: {gpt_response}')
-
-                    except Exception as e:
-                        gpt_response = None
-                        message = f"...Error occurred in '{task_type}' (deepseek): {e}"
-                        self.logger.error(message)
-                        task.future.set_exception(message)
-                        return
-                
-                else:
-                    message = f"Unsupported model vendor: {model_vendor_name}"
-                    self.logger.error(message)
-                    task.future.set_exception(message)
-                    return
-
-                # Send the GPT response to the channel if appropriate.
-                if gpt_response is not None and bool_send_channel_message is True:
-
-                    gpt_response = GPTResponseCleaner.perform_all_gpt_response_cleanups(gpt_response)
-
-                    try:
-                        await self.send_output_message_and_voice(
-                            text=gpt_response,
-                            incl_voice=self.config.tts_include_voice,
-                            voice_name=tts_voice
-                        )
-                        message = f"...'{task_type}' task handled for thread: {thread_name}. Sent channel message."
-
-                    except Exception as e:
-                        message = f"...Error occurred in 'send_output_message_and_voice': {e}"
-                        self.logger.error(message)
-                        task.future.set_exception(message)
-                        return
-
-                if gpt_response is None:
-                    message = f"...GPT response is None, this should not happen. Task: {task.task_dict}"
-                    self.logger.error(message)
-                    task.future.set_exception(message)
-                    return
-                
-                if bool_send_channel_message is False:
-                    message = f"...'{task_type}' task handled for thread: {thread_name}. Send channel message is False."
-                
-            elif task_type == "send_channel_message":
-                content = task.task_dict.get("content")
-                tts_voice = task.task_dict.get("tts_voice")
-
-                try:
-                    # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
-                    await self._add_message_to_specified_thread(
-                        message_content=content, 
-                        role=message_role, 
-                        thread_name=thread_name
-                        )
-                    message = f"...'send_channel_message' task handled for thread: {thread_name}"
-
-                except Exception as e:
-                    message = f"...Error occurred in 'add_message_to_thread': {e}"
-                    self.logger.error(message)
-                    task.future.set_exception(message)
-                    return
-
-                try:
-                    await self.send_output_message_and_voice(
-                        text=content,
-                        incl_voice=self.config.tts_include_voice,
-                        voice_name=tts_voice
-                    )
-                    message = f"...'{task_type}' task handled for thread: {thread_name}"
-
-                except Exception as e:
-                    message = f"...Error occurred in 'send_channel_message': {e}"
-                    self.logger.error(message)
-                    task.future.set_exception(message)
-                    return
-            
-            else:
-                message = f"Unknown task type 'task_type' found, this should not happen"
-                self.logger.info(message)  
-                self.future.set_exception(message)
-
-            # If from deepseek, add the response to the thread
-            if model_vendor_name == 'deepseek' and task_type in ['generate_text', 'execute_thread']:
-                if gpt_response is not None:
-                    await self._add_message_to_specified_thread(
-                        message_content=gpt_response, 
-                        role='assistant', 
-                        thread_name=thread_name
-                        )
-                
-        if not task.future.done():
-            task.future.set_result(message)
-            self.logger.info(message)
 
     async def event_ready(self):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
@@ -842,43 +573,7 @@ class Bot(twitch_commands.Bot):
 
     async def _send_channel_message_wrapper(self, message):
         await self.channel.send(message)
-
-    async def send_output_message_and_voice(
-            self,
-            text,
-            incl_voice,
-            voice_name
-            ):
-        """
-        Asynchronously sends a text message and optionally plays a voice message.
-
-        This internal method sends a text message to the specified channel and, if requested, generates and plays a voice message using the text-to-speech service.
-
-        Parameters:
-        - text (str): The text message to be sent.
-        - incl_voice (str): Specifies whether to include voice output (True or False).
-        - voice_name (str): The name of the voice to be used in the text-to-speech service.
-        """
-        datetime_string = utils.get_current_datetime_formatted()['filename_format']
-        if incl_voice == True:
-            # Generate speech object and generate speech object/mp3
-            output_filename = "chatforme_"+"_"+datetime_string+"_"+self.tts_client.tts_file_name
-            self.tts_client.workflow_t2s(
-                text_input=text,
-                voice_name=voice_name,
-                output_dirpath=self.tts_client.tts_data_folder,
-                output_filename=output_filename
-                )
-
-        # TODO: Does this class need botclass injected simply to send messages? 
-        await self._send_channel_message_wrapper(text)
-
-        if incl_voice == True:
-            self.tts_client.play_local_mp3(
-                dirpath=self.tts_client.tts_data_folder, 
-                filename=output_filename
-                )
-            
+        
     async def _is_function_caller_moderator(self, ctx) -> bool:
         is_sender_mod = False
         command_name = inspect.currentframe().f_back.f_code.co_name

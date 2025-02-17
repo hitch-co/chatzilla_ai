@@ -1,6 +1,14 @@
+import json
 import logging
+import logging.config
 
 from classes.ConsoleColoursClass import ColoredFormatter
+
+def setup_logging_from_json(path_to_json: str):
+    with open(path_to_json, 'r') as f:
+        logging_config_from_json = json.load(f)
+
+    logging.config.dictConfig(logging_config_from_json)
 
 def create_logger(
         dirname='log', 
@@ -10,7 +18,7 @@ def create_logger(
         stream_logs = True,
         encoding='UTF-8'
         ):
-    
+
     level_mapping = {
         'DEBUG': logging.DEBUG,
         'INFO': logging.INFO,
@@ -23,6 +31,7 @@ def create_logger(
         raise ValueError(f"Invalid debug_level: {debug_level}. Must be one of: {', '.join(level_mapping.keys())}")
 
     logger = logging.getLogger(logger_name if logger_name else __name__)
+    logger.propagate = False
 
     # Clear existing handlers
     for handler in logger.handlers[:]:

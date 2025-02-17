@@ -60,15 +60,14 @@ class TaskManager:
                 async with self.task_queue_lock:
                     task_queues_snapshot = list(self.task_queues.items())
 
-                self.logger.info("...Task Queue Status:")
+                self.logger.info("Task Queue Status:")
                 for thread_name, queue in task_queues_snapshot:
                     self.logger.info(
                         f"...Thread: {thread_name}, "
-                        f"Queue Size: {queue.qsize()}, "
-                        f"Pending Tasks: {queue._unfinished_tasks}"
+                        f"...Queue Size: {queue.qsize()}, "
+                        f"...Pending Tasks: {queue._unfinished_tasks}"
                     )
             else:
-                # Still grab a snapshot so we can process tasks, just no logs
                 async with self.task_queue_lock:
                     task_queues_snapshot = list(self.task_queues.items())
 
@@ -79,10 +78,8 @@ class TaskManager:
                 if not queue.empty():
                     try:
                         task = await queue.get()
-                        # You could also log discovery of tasks every time
                         self.logger.info(
-                            f"...Task found in queue '{thread_name}' "
-                            f"(type: {task.task_dict.get('type')})..."
+                            f"...Task found in queue: '{thread_name}', Type: {task.task_dict.get('type')}"
                         )
 
                         await self._process_task(task)
@@ -108,13 +105,12 @@ class TaskManager:
         Process the task before executing. This method includes logging, validation,
         and any other pre-processing steps needed before the task is handled.
         """
-        self.logger.info(f"...processing task type '{task.task_dict.get('type')}' with thread_name: '{task.task_dict.get('thread_name')}'")
+        self.logger.info(f"...Processing task: '{task.task_dict.get('type')}' in thread_name: '{task.task_dict.get('thread_name')}'")
         self.logger.debug(f"...Task details: {task.task_dict}")
 
         # Basic validation to ensure necessary fields are present
         if not task.task_dict.get('type') or not task.task_dict.get('thread_name'):
-            self.logger.error("...Task missing required fields. Task will be skipped.")
-            self.logger.error(f"...Invalid task: {task.task_dict}")
+            self.logger.error(f"...Task missing required fields. Task will be skipped: {task.task_dict}")
             raise ValueError("...Task missing required fields. Task will be skipped.")
 
         # Check if the on_task_ready callback is set (probably handle_tasks()) and invoke it to handle the task execution

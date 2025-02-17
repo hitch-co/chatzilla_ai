@@ -8,7 +8,7 @@ from my_modules.my_logging import create_logger
 logger = create_logger(
     dirname='log', 
     logger_name='logger_utils',
-    debug_level='DEBUG',
+    debug_level='INFO',
     mode='w',
     stream_logs=False
     )

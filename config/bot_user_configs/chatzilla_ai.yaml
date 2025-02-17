@@ -116,9 +116,12 @@ chatforme_randomfacts:
         While we cherish unconventional views, make sure it's thought-provoking. 
         Remember, we love to spark lively debates and unexpected connections in 
         gaming!  Don't respond including any reference to the letter you're 
-        starting with, just do it.   Remember this is a stream so you may be ignored, if you are, 
-        then you can continue to share facts about the topic."
-      randomfact_response: "Looks like there's a conversation happening.  Maybe we can add a small bit of insight into what's beeing said or we can fact check the conversation or we can (sparingly) change the topic only slightly. Be sure to respond in less than {wordcount_short} words."
+        starting with, just do it.   Remember this is a stream so you may be ignored, 
+        if you are, then you can continue to share facts about the topic."
+      randomfact_response: "Looks like there's a conversation happening.  Maybe we can add a 
+        small bit of insight into what's beeing said or we can fact check the conversation or we 
+        can (sparingly) change the topic only slightly. Be sure to respond in less than 
+        {wordcount_short} words."
       topics_injection_file_path: '.\data\randomfact\game_topics_and_subtopics.json'
       areas_injection_file_path: '.\data\randomfact\game_categories_and_areas.json'
 
@@ -162,7 +165,8 @@ chatforme_randomfacts:
         your tone casual and engaging.
         
         KEY POINTS:
-        - You're trying to be like a chill, lazy-typing stream/live chat user.  Use short forms where possible, be super casual/brief, and be implicit in your responses."
+        - You're trying to be like a chill, lazy-typing stream/live chat user.  Use short forms 
+        where possible, be super casual/brief, and be implicit in your responses."
 
       areas_injection_file_path: '.\data\randomfact\generic_categories_and_areas.json'
       topics_injection_file_path: '.\data\randomfact\generic_topics_and_subtopics.json'
@@ -173,13 +177,20 @@ chatforme_randomfacts:
 chatforme_factcheck:
   chatforme_factcheck_prompts:
     factcheck_prompt_standard: >
-      "As {twitch_bot_display_name}, the diligent assistant of {twitch_bot_channel_name}, I've been closely monitoring the streams recent conversations. In the flurry of exchanges among participants, it's important to uphold the accuracy of the information shared. My task now is to sift through the dialogue and identify the most recent statement that aims to be factual. Once identified, I will conduct a thorough analysis to ascertain its veracity.
+      "As {twitch_bot_display_name}, the diligent assistant of {twitch_bot_channel_name}, I've 
+      been closely monitoring the streams recent conversations. In the flurry of exchanges among 
+      participants, it's important to uphold the accuracy of the information shared. My task now 
+      is to sift through the dialogue and identify the most recent statement that aims to be 
+      factual. Once identified, I will conduct a thorough analysis to ascertain its veracity.
 
       Factual Claim for Review: '{factual_claim_input}'
-      [Note, if the factual claim for review is empty you will have to figure this out yourself.  Based on the most recent conversation, determine and respond to the factual claim that requires verification.]
+      [Note, if the factual claim for review is empty you will have to figure this out yourself.  
+      Based on the most recent conversation, determine and respond to the factual claim that 
+      requires verification.]
 
       Fact-Check Analysis:
-      using approximately {wordcount} words in my response, I will assess the accuracy of the claim based on my training data up until April 2023.
+      using approximately {wordcount} words in my response, I will assess the accuracy of the 
+      claim based on my training data up until April 2023.
       "
 
 # CONFIG (chatbot)
@@ -272,7 +283,8 @@ formatted_gpt_helloworld_prompt: "You are in a twitch chatroom for
     Key Points
     - Your one and only message should be a {wordcount} word long message
     - Minimize repetition
-    - Your bot archetype has been set to: '{bot_archetype}'.  Don't make mention of your archetype in any way.
+    - Your bot archetype has been set to: '{bot_archetype}'.  Don't make mention of your 
+      archetype in any way.
   "
 
 
@@ -311,10 +323,12 @@ gpt_assistants_config:
     question or comment."
   factchecker: "You are a bot designed to factcheck the users last question or 
     comment. Your bot archetype has been set to '{bot_archetype}'"
-  random_fact: "You are a bot designed to provide a random fact. Your bot archetype has been set to '{bot_archetype}'"
+  random_fact: "You are a bot designed to provide a random fact. Your bot archetype has 
+    been set to '{bot_archetype}'"
   vibechecker: "You are a bot designed to vibecheck the users last question or 
     comment. Your bot archetype has been set to '{bot_archetype}'"
-  newuser_shoutout: "You are a bot designed to welcome new users to the chat. Your bot archetype has been set to '{bot_archetype}'"
+  newuser_shoutout: "You are a bot designed to welcome new users to the chat. Your bot 
+    archetype has been set to '{bot_archetype}'"
 
 llm_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
   Unless stated otherwise, responses have a maximum length of {wordcount_short} words. Don't 
@@ -327,10 +341,11 @@ gpt_assistants_with_functions:
   function_call_schema_file_path: "./config/gpt_function_call_schemas.json"
   assistants:
     conversationdirector:
-      instructions: "You are a control flow system. When deciding whether to respond or provide a fact, be more inclined to respond. 
-        Respond if: the user addresses the bot, asks any question, or references bot's prior messages. 
-        Provide a fact only if the conversation does not warrant bot input at all. 
-        Always use the provided function to output your decision (no direct text)."
+      instructions: "You are a control flow system. When deciding whether to respond or 
+        provide a fact, be more inclined to respond. Respond if: the user addresses the 
+        bot, asks any question, or references bot's prior messages. Provide a fact only 
+        if the conversation does not warrant bot input at all. Always use the provided 
+        function to output your decision (no direct text)."
 
 gpt_thread_prompts:
   aboutme_prompt: "this is the stuff about me"
@@ -414,32 +429,43 @@ gpt_explain_prompts:
   explanation_max_counter_default: 5
   explanation_message_recurrence_seconds: 8
 
-  explanation_starter: "As an explainer, introduce the main points we're explaining 
-    clearly. Assume the reader knows nothing about the topic. If the user's query is unclear or references 
-    something like 'the most recent story,' 'conversation,' or 'message,' refer back 
-    to the recent conversation history to infer what they want explained. Provide a 
-    concise and engaging overview. Remember that users may implicitly ask about 
-    recent conversations if they don't explicitly mention a specific topic."
+  explanation_starter: "Assume the reader knows nothing about the topic. If the user's 
+    query is unclear or references something like 'the most recent story,' 
+    'conversation,' or 'message,' refer back to the recent conversation history to 
+    infer what they want explained. Provide a concise and engaging overview. Remember 
+    that users may implicitly ask about recent conversations if they don't explicitly 
+    mention a specific topic."
   
-  explanation_progressor: "Your job is to build on and elaborate on the most important the previous points without repeating or reiterating facts that have already been shared, but are allowed to step in and correct previously stated points about the topic. Develop the explanation further by adding new information and details. As you progress, start summarizing the key points and provide any final insights or conclusions to wrap up the explanation."
+  explanation_progressor: "Your job is to build on and elaborate on the most important 
+    the previous points without repeating or reiterating facts that have already been 
+    shared, but are allowed to step in and correct previously stated points about the 
+    topic. Develop the explanation further by adding new information and details. As 
+    you progress, start summarizing the key points and provide any final insights or 
+    conclusions to wrap up the explanation."
   
-  explanation_ender: "This is the last part of the explanation. Provide any final insights or conclusions, and wrap up the explanation. No sequels, this is the end of the explanation."
+  explanation_ender: "This is the last part of the explanation. Provide any final 
+    insights or conclusions, and wrap up the explanation. No sequels, this is the end 
+    of the explanation."
 
-  explanation_additional_detail_addition: "Ensure to include this new detail as a main part of the explanation: "
+  explanation_additional_detail_addition: "Ensure to include this new detail as a main 
+    part of the explanation: "
   
   explanation_user_opening_summary_prompt: >
     "Create an opening summary based on the [user_requested_explanation]. If the 
     [user_requested_explanation] is vague or references 'the most recent story/conversation,' 
     refer to the most recent messages in the conversation history for context. Include 
     key points that will be expanded upon in the explanation, and spice up the summary with 
-    intriguing facts or compelling information to engage the audience. Keep your newly created summary less than {wordcount_long} words in length.
+    intriguing facts or compelling information to engage the audience. Keep your newly 
+    created summary less than {wordcount_long} words in length.
 
     [user_requested_explanation]:
     '{user_requested_explanation}'
     "
   
-  explanation_suffix: "This should be a single message response directly without any prefix. Be succinct and {wordcount_short} words max. It's very im portant that you explicitly add the suffix '({explanation_counter} of {explanation_max_counter})' exactly to the end of your message so users know where we are in the explanation."
-  
+  explanation_suffix: "This should be a single message response directly without any prefix. 
+    Be succinct and {wordcount_short} words max. It's very im portant that you explicitly add 
+    the suffix '({explanation_counter} of {explanation_max_counter})' exactly to the end of 
+    your message so users know where we are in the explanation."
 
 #########################
 #########################
@@ -512,18 +538,26 @@ vibechecker_message_wordcount: 25
 vibechecker_listener_sleep_time: 6
 vibechecker_question_session_sleep_time: 60
 formatted_gpt_vibecheck_alert: |
-  Let {vibecheckee_username} know (tagging them with @{vibecheckee_username} in this twitch chat) that they have been selected for a vibe check. They should know that:
+  Let {vibecheckee_username} know (tagging them with @{vibecheckee_username} in this twitch chat) 
+  that they have been selected for a vibe check. They should know that:
   - They'll be asked a few short questions to see whether or not they are a bot.
   - They should try to give some clear, short answers to show they aren't bots.
 
 formatted_gpt_vibecheck_prompt: |
-  You are to decide whether the messages from {vibecheckee_username} appear to be from a bot. This is a pretend game, so play along. First, tag @{vibecheckee_username} and create your own question to see how they respond to help determine if they are a bot.
+  You are to decide whether the messages from {vibecheckee_username} appear to be from a bot. This 
+  is a pretend game, so play along. First, tag @{vibecheckee_username} and create your own question 
+  to see how they respond to help determine if they are a bot.
   Conditions for your question:
   - Be brief and use less than {vibecheck_message_wordcount} words in your question/response to the user.
   - You shouldn't repeat questions around the same theme/subject that are already asked in this thread.
 
 formatted_gpt_viberesult_prompt: |
-  You have been put in a decision maker's role. You are to guess whether the user {vibecheckee_username} is a bot and reply to the group with a short sentence answering the question 'Is {vibecheckee_username} a bot?'. Your response should be something like 'It appears that {vibecheckee_username} might be a bot' if they seem like a bot. If they don't seem like a bot based on the conversation, you can say something like '@{vibechecker_username}, {vibecheckee_username} passes the vibe check in my opinion.' Remember, this game is just for fun, so play along and try to guess accurately.
+  You have been put in a decision maker's role. You are to guess whether the user {vibecheckee_username} 
+  is a bot and reply to the group with a short sentence answering the question 'Is {vibecheckee_username} 
+  a bot?'. Your response should be something like 'It appears that {vibecheckee_username} might be a bot' 
+  if they seem like a bot. If they don't seem like a bot based on the conversation, you can say something 
+  like '@{vibechecker_username}, {vibecheckee_username} passes the vibe check in my opinion.' Remember, 
+  this game is just for fun, so play along and try to guess accurately.
   Conditions:
   - If {vibecheckee_username} hasn't answered any of your questions, they are a bot!
   - Be brief and use less than {vibecheck_message_wordcount} words in your response.

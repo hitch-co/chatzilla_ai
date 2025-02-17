@@ -10,6 +10,11 @@
         "()": "classes.ConsoleColoursClass.ColoredFormatter",
         "format": "%(asctime)s - %(module)s - %(levelname)s - Name: %(funcName)s - Line: %(lineno)d - %(message)s",
         "datefmt": "%H:%M:%S"
+      },
+      "json_formatter": {
+        "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+        "format": "%(asctime) %(name) %(levelname) %(message)",
+        "datefmt": "%H:%M:%S"
       }
     },
     "handlers": {
@@ -26,11 +31,26 @@
         "filename": "log/app.log",
         "mode": "w",
         "encoding": "UTF-8"
+      },
+      "task_handler_json_file": {
+        "class": "logging.FileHandler",
+        "level": "DEBUG",
+        "formatter": "json_formatter",
+        "filename": "log/task_handler.json",
+        "mode": "w",
+        "encoding": "UTF-8"
       }
     },
     "root": {
       "level": "WARNING",
       "handlers": ["console", "file"]
+    },
+    "loggers": {
+      "my_app.task_handler": {
+        "level": "DEBUG",
+        "handlers": ["task_handler_json_file"],
+        "propagate": false
+      }
     }
   }
   

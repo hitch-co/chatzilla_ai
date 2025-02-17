@@ -11,13 +11,13 @@ twitch-app:
   twitch_bot_helloworld_service_model_provider: "deepseek"  # or "openai"
   twitch_bot_what_service_model_provider: "deepseek"  # or "openai"
   twitch_bot_randomfact_service_model_provider: "deepseek"  # or "openai"
-  twitch_bot_storyteller_service_model_provider: "openai"  # or "openai"
-  twitch_bot_factcheck_service_model_provider: "openai"  # or "openai"
-  twitch_bot_explanation_service_model_provider: "openai"  # or "openai" 
-  twitch_bot_vibecheck_service_model_provider: "openai"  # or "openai"
+  twitch_bot_storyteller_service_model_provider: "deepseek"  # or "openai"
+  twitch_bot_factcheck_service_model_provider: "deepseek"  # or "openai"
+  twitch_bot_explanation_service_model_provider: "deepseek"  # or "openai" 
+  twitch_bot_vibecheck_service_model_provider: "deepseek"  # or "openai"
   twitch_bot_gpt_hello_world: True
-  twitch_bot_gpt_new_users_service: True
-  twitch_bot_gpt_returning_users_faiss_service: True
+  twitch_bot_gpt_new_users_service: False
+  twitch_bot_gpt_returning_users_faiss_service: False
   twitch_bot_faiss_general_index_service: False
   twitch_bot_faiss_testing_active: False
   twitch_bot_scope: 'chat:read chat:edit moderator:read:chatters moderation:read user:edit:follows user:manage:chat_color' #user:read:email moderation:read channel:moderate
@@ -184,7 +184,7 @@ chatforme_factcheck:
 
 # CONFIG (chatbot)
 chatbot_config:
-  msg_history_limit: 150
+  msg_history_limit: 50
   wordcounts:
     veryshort: 15
     short: 23

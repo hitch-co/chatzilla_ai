@@ -260,13 +260,12 @@ class Bot(twitch_commands.Bot):
                             replacements=replacements_dict
                         )
                         # Call deepseek's generate text method
-                        response = await self.deepseek_client.get_deepseek_response_generate(
+                        gpt_response = await self.deepseek_client.get_deepseek_response_generate(
                             model=model_name,
                             prompt=final_prompt
                         )
 
                         # Clean the response content
-                        gpt_response = await self.deepseek_client._clean_deepseek_response_content(response)
                         message = f"DeepSeek generate_text task completed for thread: {thread_name}"
                         self.logger.info(f"DeepSeek generate_text task completed for thread: {thread_name}")
                         self.logger.debug(f"DeepSeek response: {gpt_response}")
@@ -286,6 +285,9 @@ class Bot(twitch_commands.Bot):
 
                 # If a response was generated and we're sending a channel message:
                 if gpt_response is not None and send_channel_message is True:
+
+                    gpt_response = GPTResponseCleaner.perform_all_gpt_response_cleanups(gpt_response)
+                    
                     try:
                         await self.send_output_message_and_voice(
                             text=gpt_response,
@@ -299,7 +301,7 @@ class Bot(twitch_commands.Bot):
                         self.logger.error(message)
                         task.future.set_exception(message)
                         return
-                    
+            
                 elif gpt_response is None:
                     message = f"...GPT response is None in generate_text task. Task: {task.task_dict}"
                     self.logger.error(message)
@@ -351,8 +353,8 @@ class Bot(twitch_commands.Bot):
                             )
                         gpt_response = await self.deepseek_client.get_deepseek_response_chat(
                             model=model_name,
-                            prompt="say/do what you think is best based on the context.",
-                            messages=final_thread_instructions
+                            prompt=final_thread_instructions,
+                            messages=self.message_handler.all_msg_history_gptdict
                         )
                         message = f"...'{task_type}' task handled for thread: {thread_name}"
                         self.logger.info(f"DeepSeek Response successfully generated for thread: {thread_name}")
@@ -1049,14 +1051,15 @@ class Bot(twitch_commands.Bot):
             "bot_operatorname":self.config.twitch_bot_operatorname,
             "twitch_bot_channel_name":self.config.twitch_bot_channel_name,
             "text_input_from_user":text_input_from_user,
-            "bot_archetype":self.config.gpt_bot_archetype_prompt
+            "bot_archetype":self.config.gpt_bot_archetype_prompt,
+            "user_text":self.message_handler.all_msg_history_gptdict
         }
 
         # Add a executeTask to the queue
-        task = CreateGenerateTextTask(
+        task = CreateExecuteThreadTask(
             thread_name=thread_name,
             assistant_name=assistant_name,
-            prompt=chatforme_prompt,
+            thread_instructions=chatforme_prompt,
             replacements_dict=replacements_dict,
             tts_voice=tts_voice,
             send_channel_message=True,
@@ -1684,7 +1687,7 @@ class Bot(twitch_commands.Bot):
                 'random_character_a_to_z':random_character_a_to_z,
                 'selected_game':self.config.randomfact_selected_game,
                 'selected_stream':self.config.randomfact_selected_stream,
-                'param_in_text':'variable_from_scope'
+                'param_in_text':'variable_from_scope',
                 }
             self.logger.debug(f"Replacements dict: {replacements_dict}")
             
@@ -1695,6 +1698,7 @@ class Bot(twitch_commands.Bot):
                 thread_instructions=selected_prompt,
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice,
+                send_channel_message=True,
                 model_vendor_config={"vendor": self.config.twitch_bot_randomfact_service_model_provider, "model": self.config.deepseek_model}
             )
             await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'randomfact_task'")

@@ -128,8 +128,7 @@ class AsyncDeepSeekAIClient:
             content = str(response)
             self.logger.warning("Response did not contain expected 'message' structure. Using stringified response.")
 
-        cleaned_content = await self._clean_deepseek_response_content(content)
-        return cleaned_content
+        return content
 
     async def get_deepseek_response_generate(self, model, prompt):
         """
@@ -152,8 +151,7 @@ class AsyncDeepSeekAIClient:
             content = str(response)
             self.logger.warning("Response did not contain expected 'response' key. Using stringified response.")
 
-        cleaned_content = await self._clean_deepseek_response_content(content)
-        return cleaned_content
+        return content
 
 # -------------------------------
 # Dummy implementations for running sample endpoint calls

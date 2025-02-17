@@ -33,9 +33,9 @@ class GPTResponseCleaner:
     def perform_all_gpt_response_cleanups(text: str) -> str:
         """Performs all cleanup operations on the text."""
         cleaned_text = GPTResponseCleaner._strip_prefix(text)
-        cleaned_text = GPTResponseCleaner._remove_quotes(cleaned_text)
         cleaned_text = GPTResponseCleaner._normalize_whitespace(cleaned_text)
         cleaned_text = GPTResponseCleaner._clean_think_tags(cleaned_text)
+        cleaned_text = GPTResponseCleaner._remove_quotes(cleaned_text)
         return cleaned_text
     
 def main():

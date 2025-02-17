@@ -222,8 +222,8 @@ class MessageHandler:
 
         #cleanup msg histories for GPT
         self._cleanup_message_history()
-        self.logger.info("Message added to message histories")
-        self.logger.info(f"Preview of latest 2 messages in message histories ({len(self.all_msg_history_gptdict)} total):")
+        self.logger.info(f"Message added to message histories.  Total messages: {len(self.all_msg_history_gptdict)}")
+        self.logger.debug(f"Preview of latest 2 messages in message histories: {self.all_msg_history_gptdict[-2:]}")
 
 if __name__ == '__main__':
     print("loaded MessageHandlerClass.py")

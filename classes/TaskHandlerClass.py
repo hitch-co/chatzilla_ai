@@ -108,12 +108,7 @@ class TaskHandler:
 
         try:
             if model_vendor_name == "openai":
-                self.logger.warning(
-                    "OpenAI vendor not fully QA'd for generate_text",
-                    extra=log_extra
-                )
                 gpt_response = await self._handle_generate_openai(task)
-
             elif model_vendor_name == "deepseek":
                 gpt_response = await self._handle_generate_deepseek(task)
             else:
@@ -123,7 +118,6 @@ class TaskHandler:
                 return
 
             if gpt_response is not None and task.task_dict.get("send_channel_message"):
-                # Clean up text if needed
                 gpt_response = GPTResponseCleaner.perform_all_gpt_response_cleanups(gpt_response)
 
                 await self._handle_send_channel_message_and_voice(
@@ -304,7 +298,7 @@ class TaskHandler:
             prompt = task.task_dict.get("prompt", "")
             replacements_dict = task.task_dict.get("replacements_dict", {})
             final_prompt = utils.populate_placeholders(
-                logger=self.logger,
+                logger=None,
                 prompt_template=prompt + self.config.llm_assistants_suffix,
                 replacements=replacements_dict
             )

@@ -5,7 +5,7 @@ from datetime import datetime
 
 from my_modules.my_logging import create_logger
 
-logger = create_logger(
+default_logger = create_logger(
     dirname='log', 
     logger_name='logger_utils',
     debug_level='INFO',
@@ -19,11 +19,14 @@ def load_config_instance():
     from classes.ConfigManagerClass import ConfigManager
     return ConfigManager.get_instance()
 
-def load_json(path_or_dir: str, file_name: str = None) -> dict:
+def load_json(path_or_dir: str, file_name: str = None, logger = None) -> dict:
     """
     Loads a JSON file either from a single full path or by joining a directory with a file name.
     Interprets relative paths as being relative to REPO_ROOT.
     """
+    if logger is None:
+        logger = default_logger
+
     if file_name:
         file_path = os.path.join(path_or_dir, file_name)
     else:
@@ -73,21 +76,19 @@ async def find_unique_to_new_dict(
         source_dict, 
         new_dict
         ) -> list:
-    # Assuming the first dictionary in list2 represents the key structure
+    ''' Find unique users in new_dict that are not in source_dict '''   
     keys = new_dict[0].keys()
 
-    # Convert list1 and list2 to sets of a primary key (assuming the first key is unique)
+    # Convert source_dict and new_dict to sets of a primary key (assuming the first key is unique)
     primary_key = next(iter(keys))
     set1 = {user[primary_key] for user in source_dict}
     set2 = {user[primary_key] for user in new_dict}
 
-    # Find the difference - users in list2 but not in list1
+    # Find the difference - users in new_dict but not in source_dict
     unique_user_ids = set2 - set1
 
     # Convert the unique user_ids back to dictionary format
     unique_users = [user for user in new_dict if user[primary_key] in unique_user_ids]
-    # print("This is the list of unique_users:")
-    # print(unique_users)
     
     return unique_users
     
@@ -113,18 +114,20 @@ def get_current_datetime_formatted():
     dates_dict = {"sql_format":sql_format, "filename_format":filename_format}
     return dates_dict
 
-def populate_placeholders(logger, prompt_template, replacements: dict = None):
+def populate_placeholders(prompt_template, logger=None, replacements: dict = None):
     """
     Replaces placeholders in the prompt template with the corresponding values from the replacements dictionary.
 
     Parameters:
-    logger (Logger): The logger object to use for debugging output.
     prompt_template (str): The template text containing placeholders for replacement.
     replacements (dict, optional): A dictionary containing the replacement values. Defaults to None.
 
     Returns:
     str: The prompt text with placeholders replaced by actual values.
     """
+    if logger is None:
+        logger = default_logger
+
     yaml_data = load_config_instance()
 
     default_replacements = {

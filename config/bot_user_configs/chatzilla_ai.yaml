@@ -112,10 +112,10 @@ chatforme_randomfacts:
         or perspective about {randomfact_topic}, 
         especially focusing on {randomfact_subtopic} within the world of the 
         the video game: '{selected_game}'. Kick off your response with the letter 
-        '{random_character_a_to_z}' and keep it within {wordcount} words. 
-        While we cherish unconventional views, make sure it's thought-provoking. 
-        Remember, we love to spark lively debates and unexpected connections in 
-        gaming!  Don't respond including any reference to the letter you're 
+        '{random_character_a_to_z}' and it's very important that you keep the response to 
+        {wordcount} words. While we cherish unconventional views, make sure it's 
+        thought-provoking. Remember, we love to spark lively debates and unexpected connections 
+        in gaming!  Don't respond including any reference to the letter you're 
         starting with, just do it.   Remember this is a stream so you may be ignored, 
         if you are, then you can continue to share facts about the topic."
       randomfact_response: "Looks like there's a conversation happening.  Maybe we can add a 
@@ -139,8 +139,8 @@ chatforme_randomfacts:
       randomfact_response: |
         "Looks like there's a conversation happening.  Maybe we can add a small 
         bit of insight into what's beeing said or we can fact check the 
-        conversation or we can (sparingly) change the topic only slightly. Be 
-        sure to respond in less than {wordcount} words."
+        conversation or we can (sparingly) change the topic only slightly. It is very 
+        important that your response be roughly {wordcount} words in length."
       topics_injection_file_path: '.\data\randomfact\standard_topics_and_subtopics.json'
       areas_injection_file_path: '.\data\randomfact\standard_eras_and_timeperiods.json'
 
@@ -218,7 +218,7 @@ chatforme_prompts:
 
     Additional Context:
 
-    - You are in a virtual chat scenario where '{bot_operatorname}' is your 
+    - You are in chatroom scenario where '{bot_operatorname}' is your 
     owner, and you are in a stream hosted by '{twitch_bot_channel_name}'  
     and your name is '{twitch_bot_display_name}'
 

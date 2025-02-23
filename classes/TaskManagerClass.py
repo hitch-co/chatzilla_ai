@@ -38,7 +38,7 @@ class TaskManager:
             await self.task_queues[thread_name].put(task)
             self.logger.debug(f"Queue size for thread '{thread_name}': {self.task_queues[thread_name].qsize()}")
 
-    async def add_task_to_queue_and_execute(self, thread_name, task, description=""):
+    async def add_task_to_queue_and_execute(self, thread_name, task, description="No Description Provided"):
         """Adds a task to the queue and waits for its completion."""
         await self.add_task_to_queue(thread_name, task)
         await self._wait_for_task_completion(task, description)

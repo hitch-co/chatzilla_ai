@@ -830,44 +830,44 @@ async def main():
     # print(f"output_data: {output_data}")
     # print(f"Assistant's Response: {response}")
 
-    ######################################
-    # TEST 3: Now try to create_assistants and threads
-    assistant_manager.create_assistants(config.gpt_assistants_config)
-    assistant_manager.create_assistants_with_functions(config.gpt_assistants_with_functions_config)
+    # ######################################
+    # # TEST 3: Now try to create_assistants and threads
+    # assistant_manager.create_assistants(config.gpt_assistants_config)
+    # assistant_manager.create_assistants_with_functions(config.gpt_assistants_with_functions_config)
 
-    thread_manager.create_threads(config.gpt_thread_names)
+    # thread_manager.create_threads(config.gpt_thread_names)
 
-    ######################################
-    # TEST 4 (requires TEST#3): Try to use function call manager to execute a function call
-    thread_name = "chatformemsgs"
-    assistant_name = "conversationdirector"
+    # ######################################
+    # # TEST 4 (requires TEST#3): Try to use function call manager to execute a function call
+    # thread_name = "chatformemsgs"
+    # assistant_name = "conversationdirector"
 
-    messages = [
-        {"role": "user", "content": "Hey everyone, what's up?"},
-        {"role": "user", "content": "Did you guys see that epic fail earlier? 😂"},
-        {"role": "user", "content": "Can anyone explain how the scoring works in this game?"},
-        {"role": "user", "content": "yeah it's 1 and then 2 and then 3 and so on..."},
-        {"role": "user", "content": "This stream is awesome, love the community here!"},
-        {"role": "user", "content": "What do you think bot!"},
-    ]
+    # messages = [
+    #     {"role": "user", "content": "Hey everyone, what's up?"},
+    #     {"role": "user", "content": "Did you guys see that epic fail earlier? 😂"},
+    #     {"role": "user", "content": "Can anyone explain how the scoring works in this game?"},
+    #     {"role": "user", "content": "yeah it's 1 and then 2 and then 3 and so on..."},
+    #     {"role": "user", "content": "This stream is awesome, love the community here!"},
+    #     {"role": "user", "content": "What do you think bot!"},
+    # ]
 
-    # Add messages to the thread
-    for msg in messages:
-        await response_manager.add_message_to_thread(
-            message_content=msg["content"],
-            thread_name=thread_name,
-            role=msg["role"]
-        )
+    # # Add messages to the thread
+    # for msg in messages:
+    #     await response_manager.add_message_to_thread(
+    #         message_content=msg["content"],
+    #         thread_name=thread_name,
+    #         role=msg["role"]
+    #     )
 
-    conversation_director_function_schema = config.function_schemas['conversationdirector']
-    output_data, response = await function_call_manager.execute_function_call(
-        thread_name, 
-        assistant_name, 
-        function_schema=conversation_director_function_schema,
-        get_response=False
-        )
-    print(f"output_data: {output_data}")
-    print(f"Assistant's Response: {response}")
+    # conversation_director_function_schema = config.function_schemas['conversationdirector']
+    # output_data, response = await function_call_manager.execute_function_call(
+    #     thread_name, 
+    #     assistant_name, 
+    #     function_schema=conversation_director_function_schema,
+    #     get_response=False
+    #     )
+    # print(f"output_data: {output_data}")
+    # print(f"Assistant's Response: {response}")
 
 # Run the async main function
 if __name__ == "__main__":

@@ -94,8 +94,8 @@ class AsyncDeepSeekAIClient:
         messages should be a list of dictionaries with keys 'role' and 'content'.
         """
         self.logger.info(f"get_deepseek_response_chat called with model: '{model}', prompt: '{prompt}'")
-        self.logger.info(f"System prompt: {system_prompt}")
-        self.logger.info(f"Messages: {messages}")
+        self.logger.debug(f"System prompt: {system_prompt}")
+        self.logger.debug(f"Messages: {messages}")
 
         if isinstance(messages, str):
             messages = [{"role": "user", "content": messages}]
@@ -181,15 +181,15 @@ async def run_deepseek_sample():
     # except Exception as e:
     #     ai_client.logger.error(f"Error in chat example: {e}")
 
-    # EXAMPLE2: Generate
-    try:
-        response = await ai_client.get_deepseek_response_generate(
-            model='deepseek-r1:7b',
-            prompt="Tell me a joke asbout baby chincillas."
-        )
-        print(f"Generate Response Content: {response}")
-    except Exception as e:
-        ai_client.logger.error(f"Error in generate example: {e}")
+    # # EXAMPLE2: Generate
+    # try:
+    #     response = await ai_client.get_deepseek_response_generate(
+    #         model='deepseek-r1:7b',
+    #         prompt="Tell me a joke asbout baby chincillas."
+    #     )
+    #     print(f"Generate Response Content: {response}")
+    # except Exception as e:
+    #     ai_client.logger.error(f"Error in generate example: {e}")
 
 # -------------------------------
 # Async main for testing the integrated service

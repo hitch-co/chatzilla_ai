@@ -76,6 +76,25 @@ class GPTFunctionCallManager(GPTBaseClass):
         # Initialize thread-specific locks
         self.thread_run_locks = defaultdict(asyncio.Lock)
 
+    async def _ensure_thread_is_free(self, thread_id):
+        runs = self.gpt_client.beta.threads.runs.list(thread_id=thread_id)
+        active_runs = [r for r in runs.data if r.status in ['queued', 'in_progress']]
+        if active_runs:
+            active_run = active_runs[0]
+            self.logger.warning(
+                f"Thread '{thread_id}' is busy with run '{active_run.id}'. Waiting..."
+            )
+            await self._wait_for_run_completion(thread_id, active_run.id)
+
+    async def create_run(self, thread_id, assistant_id, tools=None):
+        await self._ensure_thread_is_free(thread_id)
+        run = self.gpt_client.beta.threads.runs.create(
+            thread_id=thread_id,
+            assistant_id=assistant_id,
+            tools=tools or []
+        )
+        return run
+
     async def execute_function_call(
             self,
             thread_name: str, 
@@ -117,40 +136,17 @@ class GPTFunctionCallManager(GPTBaseClass):
         async with self.thread_run_locks[thread_name]:
             try:
                 self.logger.info(f"...Starting run for thread '{thread_name}' with assistant '{assistant_id}'")
-
-                # Check if there's an active run for this thread
-                runs = self.gpt_client.beta.threads.runs.list(thread_id=thread_id)
-                active_runs = [run for run in runs.data if run.status in ['queued', 'in_progress']]
-
-                if active_runs:
-                    active_run = active_runs[0]
-                    self.logger.warning(f"...Thread '{thread_name}' already has an active run: {active_run.id}. Waiting for it to complete.")
-                    await self._wait_for_run_completion(thread_id, active_run.id)
-
-                # Start the new run
                 wrapped_function_schema = [function_schema]
-                run = self.gpt_client.beta.threads.runs.create(
-                    thread_id=thread_id,
-                    assistant_id=assistant_id,
-                    tools = wrapped_function_schema
-                )
-
+                run = await self.create_run(thread_id, assistant_id, tools=wrapped_function_schema)
             except Exception as e:
                 self.logger.error(f"...Error starting run for thread '{thread_name}': {e}")
 
             try:
-                # Poll the run status manually until it's complete
-                while run.status in ['queued', 'in_progress']:
-                    await asyncio.sleep(2)
-                    run = self.gpt_client.beta.threads.runs.retrieve(
-                        thread_id=thread_id,
-                        run_id=run.id
-                    )
+                await self.gpt_response_manager._get_response(thread_id, run.id)
             except Exception as e:
                 self.logger.error(f"...Error polling run status for thread '{thread_name}': {e}")
 
-
-                # Chedck if status is not in one of the all run states and log the status
+                # Check if status is not in one of the all run states and log the status
                 if run.status not in ['queued', 'in_progress', 'completed', 'failed', 'requires_action']:
                     self.logger.warning(f"...Run status is not in one of the expected states: {run.status}")
                 else:
@@ -162,7 +158,6 @@ class GPTFunctionCallManager(GPTBaseClass):
                     messages = self.gpt_client.beta.threads.messages.list(thread_id=thread_id)
                     final_response = self._extract_latest_response_from_thread_messages(messages)
                     self.logger.info(f"...Status is completed. Final response: {final_response}")
-                    self.logger.info(f"...Final response: {final_response}")
                     self.logger.info(f"...Output data: {run.output_data}")
                     return None, final_response
 
@@ -177,7 +172,7 @@ class GPTFunctionCallManager(GPTBaseClass):
 
                     # Handle the required action and get the final response
                     tool_outputs, output_data = await self._handle_required_action(run)
-                    self.logger.info(f"...Tool outputs: {tool_outputs}")
+                    self.logger.debug(f"...Tool outputs: {tool_outputs}")
 
                     if get_response:
                         # Submit the tool outputs and wait for the run to complete
@@ -256,7 +251,7 @@ class GPTFunctionCallManager(GPTBaseClass):
                     "output": json.dumps(output_data)
                 })
 
-        self.logger.info(f"Prepared tool outputs: {tool_outputs}")
+        self.logger.info(f"...prepared tool outputs: {tool_outputs}")
         return tool_outputs, output_data
     
     async def _cancel_run(self, thread_id, run_id):
@@ -494,6 +489,30 @@ class GPTAssistantManager(GPTBaseClass):
         self.logger.info(f"Current assistants: {list(self.assistants.keys())}")
         return self.assistants
 
+    def get_assistant_id_by_name(self, assistant_name: str) -> str:
+        """
+        Retrieves the assistant ID for a given assistant name.
+
+        Returns:
+            The assistant ID if found, otherwise None.
+        """
+        assistant_info = self.assistants.get(assistant_name)
+        if assistant_info:
+            return assistant_info['id']
+        return None
+
+    def get_assistant_name_by_id(self, assistant_id: str) -> str:
+        """
+        Retrieves the assistant name for a given assistant ID.
+
+        Returns:
+            The assistant name if found, otherwise None.
+        """
+        for name, info in self.assistants.items():
+            if info['id'] == assistant_id:
+                return name
+        return None
+    
 class GPTThreadManager(GPTBaseClass):
     def __init__(self, gpt_client):
         super().__init__(gpt_client=gpt_client)
@@ -536,6 +555,30 @@ class GPTThreadManager(GPTBaseClass):
 
         self.logger.info(f"...threads created: {self.threads}")        
         return self.threads
+    
+    def get_thread_id_by_name(self, thread_name: str) -> str:
+        """
+        Retrieves the thread ID corresponding to the provided thread name.
+
+        Returns:
+            The thread ID if found, otherwise None.
+        """
+        thread_info = self.threads.get(thread_name)
+        if thread_info:
+            return thread_info['id']
+        return None
+
+    def get_thread_name_by_id(self, thread_id: str) -> str:
+        """
+        Retrieves the thread name corresponding to the provided thread ID.
+
+        Returns:
+            The thread name if found, otherwise None.
+        """
+        for name, info in self.threads.items():
+            if info['id'] == thread_id:
+                return name
+        return None
 
 class GPTResponseManager(GPTBaseClass):
     """
@@ -561,6 +604,25 @@ class GPTResponseManager(GPTBaseClass):
         self.gpt_assistant_manager = gpt_assistant_manager
         self.max_waittime_for_gpt_response = max_waittime_for_gpt_response
 
+    async def _ensure_thread_is_free(self, thread_id):
+        runs = self.gpt_client.beta.threads.runs.list(thread_id=thread_id)
+        active_runs = [r for r in runs.data if r.status in ['queued', 'in_progress']]
+        if active_runs:
+            active_run = active_runs[0]
+            self.logger.warning(
+                f"Thread '{thread_id}' is busy with run '{active_run.id}'. Waiting..."
+            )
+            await self._wait_for_run_completion(thread_id, active_run.id)
+
+    async def create_run(self, thread_id, assistant_id, tools=None):
+        await self._ensure_thread_is_free(thread_id)
+        run = self.gpt_client.beta.threads.runs.create(
+            thread_id=thread_id,
+            assistant_id=assistant_id,
+            tools=tools or []
+        )
+        return run
+    
     async def _get_response(self, thread_id, run_id, polling_seconds=3):
         """
         Asynchronously retrieves the response for a given thread and run ID.
@@ -614,18 +676,11 @@ class GPTResponseManager(GPTBaseClass):
             raise ValueError(f"Error replacing prompt text with replacements_dict")   
         
         try:
-            run = self.gpt_client.beta.threads.runs.create(
-                thread_id=thread_id,
-                assistant_id=assistant_id,
-                instructions=final_thread_instructions
-            )
-            self.logger.debug("This is the 'run' object:")
-            self.logger.debug(run)
+            self.logger.info(f"...Starting run for thread '{thread_id}' with assistant '{assistant_id}'")
+            run = await self.create_run(thread_id, assistant_id)
         except Exception as e:
-            self.logger.error(f"Error running assistant on thread")
-            self.logger.error(e)
-            raise ValueError(f"Error running assistant on thread")
-        
+            self.logger.error(f"...Error starting run for thread '{thread_id}': {e}")
+
         await self._get_response(thread_id, run.id)
         response_thread_messages = self.gpt_client.beta.threads.messages.list(thread_id=thread_id)
 
@@ -729,7 +784,7 @@ class GPTResponseManager(GPTBaseClass):
         self.logger.info(f"...This is the final response from execute_thread(): '{extracted_message}'")
         return extracted_message
 
-    async def add_message_to_thread(
+    async def add_message_to_openai_thread(
             self, 
             message_content: str, 
             thread_name: str, 
@@ -760,6 +815,8 @@ class GPTResponseManager(GPTBaseClass):
 
         if thread_name in self.gpt_thread_manager.threads:
             thread_id = self.gpt_thread_manager.threads[thread_name]['id']
+
+            await self._ensure_thread_is_free(thread_id)
 
             async for attempt in AsyncRetrying(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True):
                 with attempt:
@@ -807,7 +864,7 @@ async def main():
 
     # # Add messages to the thread
     # for msg in messages:
-    #     await response_manager.add_message_to_thread(
+    #     await response_manager.add_message_to_openai_thread(
     #         message_content=msg["content"],
     #         thread_name=thread_name,
     #         role=msg["role"]
@@ -853,7 +910,7 @@ async def main():
 
     # # Add messages to the thread
     # for msg in messages:
-    #     await response_manager.add_message_to_thread(
+    #     await response_manager.add_message_to_openai_thread(
     #         message_content=msg["content"],
     #         thread_name=thread_name,
     #         role=msg["role"]

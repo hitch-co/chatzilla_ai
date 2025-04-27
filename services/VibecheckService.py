@@ -69,13 +69,24 @@ class VibeCheckService:
         self.vibechecker_task = self.loop.create_task(self._vibechecker_question_session())
         self.logger.info("Vibecheck session has started...")
 
-    async def process_vibecheck_message(self, message_username, message_content):
+    async def process_vibecheck_message(self, message_metadata):
         if self.is_vibecheck_loop_active and message_username == self.vibecheckee_username: 
+            message_username=message_metadata['name'],
+            message_content=message_metadata['content'],
+            message_timestmap=message_metadata['timestamp']
+
             # Set the event if the criteria is met
             self.logger.info(f"...vibecheck message received from {message_username} with content: {message_content}")
 
             # Add the message to the 'vibecheckmsgs' thread via queue
-            task = AddMessageTask(self.vibecheck_thread_name, message_content)
+            task = AddMessageTask(
+                thread_name=self.vibecheck_thread_name, 
+                message_content=message_content, 
+                message_role='role',
+                message_name=message_username,
+                message_timestamp=message_timestmap,
+                model_vendor_config={"vendor": self.config.twitch_bot_randomfact_service_model_provider, "model": self.config.deepseek_model}
+                )
             await self.task_manager.add_task_to_queue(self.vibecheck_thread_name, task)
 
             self.vibecheck_ready_event.set()

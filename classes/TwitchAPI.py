@@ -234,9 +234,10 @@ class TwitchAPI:
                 self.logger.info(f"Successfully updated bot username color to '{color}'.")
                 return True
             else:
-                self.logger.error(
+                self.logger.warning(
                     f"Failed to set chat color to '{color}'. "
                     f"Status: {resp.status_code}, Response: {resp.text}"
+                    f" (This happens if the bot is not a moderator in the channel)"
                 )
                 return False
         except Exception as e:

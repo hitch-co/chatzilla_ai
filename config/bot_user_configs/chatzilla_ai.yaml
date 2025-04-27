@@ -6,15 +6,24 @@ spellcheck_commands_filename: '.\data\rules\command_spellcheck_terms.json'
 
 #Flask App
 twitch-app:
-  twitch_bot_chatforme_service_model_provider: "deepseek"  # or "openai"
-  twitch_bot_newusers_service_model_provider: "deepseek"  # or "openai"
-  twitch_bot_helloworld_service_model_provider: "deepseek"  # or "openai"
-  twitch_bot_what_service_model_provider: "deepseek"  # or "openai"
-  twitch_bot_randomfact_service_model_provider: "deepseek"  # or "openai"
-  twitch_bot_storyteller_service_model_provider: "deepseek"  # or "openai"
-  twitch_bot_factcheck_service_model_provider: "deepseek"  # or "openai"
-  twitch_bot_explanation_service_model_provider: "deepseek"  # or "openai" 
-  twitch_bot_vibecheck_service_model_provider: "deepseek"  # or "openai"
+  # twitch_bot_chatforme_service_model_provider: "deepseek"  # or "openai"
+  # twitch_bot_newusers_service_model_provider: "deepseek"  # or "openai"
+  # twitch_bot_helloworld_service_model_provider: "deepseek"  # or "openai"
+  # twitch_bot_what_service_model_provider: "deepseek"  # or "openai"
+  # twitch_bot_randomfact_service_model_provider: "deepseek"  # or "openai"
+  # twitch_bot_storyteller_service_model_provider: "deepseek"  # or "openai"
+  # twitch_bot_factcheck_service_model_provider: "deepseek"  # or "openai"
+  # twitch_bot_explanation_service_model_provider: "deepseek"  # or "openai" 
+  # twitch_bot_vibecheck_service_model_provider: "deepseek"  # or "openai"
+  twitch_bot_chatforme_service_model_provider: "openai"
+  twitch_bot_newusers_service_model_provider: "openai"
+  twitch_bot_helloworld_service_model_provider: "openai"
+  twitch_bot_what_service_model_provider: "openai"
+  twitch_bot_randomfact_service_model_provider: "openai"
+  twitch_bot_storyteller_service_model_provider: "openai"
+  twitch_bot_factcheck_service_model_provider: "openai"
+  twitch_bot_explanation_service_model_provider: "openai" 
+  twitch_bot_vibecheck_service_model_provider: "openai"
   twitch_bot_gpt_hello_world: True
   twitch_bot_gpt_new_users_service: False
   twitch_bot_gpt_returning_users_faiss_service: False
@@ -51,8 +60,6 @@ openai-api:
     #notes: Works fine (json does not work)
   #assistant_model: "gpt-4-1106-preview" 
     #notes: Does an OK job at moving back to 'fact' after 2-3 messages
-  #assistant_model: "gpt-4o" 
-  #assistant_model: "gpt-4-0613" 
   #assistant_model: "gpt-3.5-turbo"
   
   ########################################
@@ -177,21 +184,22 @@ chatforme_randomfacts:
 chatforme_factcheck:
   chatforme_factcheck_prompts:
     factcheck_prompt_standard: >
-      "As {twitch_bot_display_name}, the diligent assistant of {twitch_bot_channel_name}, I've 
+      "As {twitch_bot_display_name}, the diligent assistant of {twitch_bot_channel_name}, You've 
       been closely monitoring the streams recent conversations. In the flurry of exchanges among 
-      participants, it's important to uphold the accuracy of the information shared. My task now 
+      participants, it's important to uphold the accuracy of the information shared. The task now 
       is to sift through the dialogue and identify the most recent statement that aims to be 
-      factual. Once identified, I will conduct a thorough analysis to ascertain its veracity.
-
-      Factual Claim for Review: '{factual_claim_input}'
-      [Note, if the factual claim for review is empty you will have to figure this out yourself.  
-      Based on the most recent conversation, determine and respond to the factual claim that 
-      requires verification.]
+      factual. Once identified, conduct a thorough analysis to ascertain its veracity.
 
       Fact-Check Analysis:
-      using approximately {wordcount} words in my response, I will assess the accuracy of the 
-      claim based on my training data up until April 2023.
+      using approximately {wordcount} words in my response, assess the accuracy of the 
+      claim.
       "
+
+    # Factual Claim for Review: '{factual_claim_input}'
+    # [Note, if the factual claim for review is empty you will have to figure this out yourself.  
+    # Based on the most recent conversation, determine and respond to the factual claim that 
+    # requires verification.]
+
 
 # CONFIG (chatbot)
 chatbot_config:
@@ -310,7 +318,7 @@ gpt_assistants_config:
     those bullet points should be designed to make the story more exciting, for 
     example Introducing intriguing characters or compelling dilemmas, ensuring 
     each point is unique. In the new bullet pointed list, make sure to erase 
-    mentions of news outlets, and replace sensitive topics with made up ones. 
+    mentions of news outlets. 
     Your bot archetype has been set to '{bot_archetype}'"
   explainer: "You are a bot designed to explain the users question one line at a 
     time. Your bot archetype has been set to '{bot_archetype}'" 
@@ -407,9 +415,6 @@ gpt_thread_prompts:
     some additional points to make the story more exciting, for example 
     Introducing intriguing characters or compelling dilemmas, ensuring each 
     point is unique.  
-
-    In the new bullet pointed list, make sure to erase mentions of news outlets, 
-    and peoples names with made up names. 
     
     Keep your newly created bullet-point summary less than {wordcount_medium} 
     words in length.
@@ -418,9 +423,7 @@ gpt_thread_prompts:
     list:
     '{user_requested_plotline}'
 
-    [Article] -- Make replacements in the article when you summarize it into 
-    bullets. Be sure to erase mentions of news outlets, and replace person, 
-    country, location names with made up names and places in the bullet-list: 
+    [Article] -- Be sure to erase mentions of news outlets in the bullet-list: 
     '{random_article_content}'
     "
 

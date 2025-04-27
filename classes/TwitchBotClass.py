@@ -168,21 +168,6 @@ class Bot(twitch_commands.Bot):
                 aliases=("m_stopexplain", 'stopexplanation'))(self.explanation_service.stop_explanation)
                 )
 
-    async def _add_message_to_specified_thread(self, message_content: str, role: str, thread_name: str) -> None:
-        if thread_name in self.config.gpt_thread_names:
-            try:
-                message_object = await self.gpt_response_manager.add_message_to_thread(
-                    message_content=message_content,
-                    thread_name=thread_name,
-                    role=role
-                )
-                self.logger.debug(f"Message object: {message_object}")
-            except Exception as e:
-                self.logger.error(f"Error occurred in 'add_message_to_thread': {e}", exc_info=True)
-        else:
-            self.logger.error(f"Thread name '{thread_name}' is not in the list of thread names. Message content: {message_content[0:25]+'...'}")
-
-
     async def event_ready(self):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
         self.logger.info(f'TwitchBot ready on channel {self.channel} | {self.config.twitch_bot_username} (nick:{self.nick})')
@@ -259,55 +244,62 @@ class Bot(twitch_commands.Bot):
 
         # send hello world message
         if self.config.twitch_bot_gpt_hello_world == True:
-            self.logger.debug(f"Sending hello world message")
+            self.logger.info(f"Sending hello world message")
             await self._send_hello_world_message()
         else:
             self.logger.debug(f"Hello World message is disabled")
 
+    # NOTE: Anyting related to adding messages to the gpt thread history or to the messange handlers
+    #  message history should probbaly be done using a task...
     async def event_message(self, message):
 
         thread_name = 'chatformemsgs'
-        self.logger.info("---------------------------------------")
+        self.logger.info('---------------------------------------')
         self.logger.info("MESSAGE RECEIVED: Processing message...")
 
         # 1a. Get message metadata
         message_metadata = self.message_handler._get_message_metadata(message)
+        self.message_handler.message_history_raw.append(message_metadata)
+        self.message_handler._add_user_to_users_in_messages_list(message_metadata)
+        
+        # If a message doesn't start with !what, proceed with processing
+        if "!what" in message.content:
+            self.logger.debug(f"Message excluded from processing: {message.content}")
+        else:
 
-        # 1b. Add the message to the appropriate message history (not to be confused with the thread history)
-        self.logger.info(f"Message from: {message_metadata['message_author']}")
-        self.logger.info(f"Message content: '{message_metadata['content']}'")
-        self.logger.debug(f"This is the message object {message_metadata}")
-        await self.message_handler.add_to_appropriate_message_history(message_metadata)
+            # 1b. Add the message to the appropriate message history (not to be confused with the thread history)
+            self.logger.info(f"Message from: {message_metadata['message_author']}")
+            self.logger.info(f"Message content: '{message_metadata['content']}'")
+            self.logger.debug(f"This is the message object {message_metadata}")
 
-        # 1c. Add the message to the FAISS index
-        # TODO / NOTE: Could move this directly inside the 'add_to_apprioriate...' method 
-        self.logger.debug(f"type(message_metadata) sent to add_message_to_index: {type(message_metadata)}")
-        self.logger.debug(f"message_metadata sent to add_message_to_index: {message_metadata}")
-        await self.faiss_service.add_message_to_index(message_metadata)
+            # 1c. Add the message to the FAISS index
+            # TODO / NOTE: Could move this directly inside the 'add_to_apprioriate...' method 
+            await self.faiss_service.add_message_to_index(message_metadata)
+            self.logger.debug(f"type(message_metadata) sent to add_message_to_index: {type(message_metadata)}")
+            self.logger.debug(f"message_metadata sent to add_message_to_index: {message_metadata}")
 
-        # 1d. Add the message to the thread history
-        if message_metadata['message_author'] is not None:
-            await self.message_handler.add_to_thread_history(
-                thread_name=thread_name,
-                message_metadata=message_metadata
-                )
-            
-        # 1e. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
-        if (self.config.twitch_bot_username in message_metadata['content'] or 'chatzilla' in message_metadata['content'])  and "!chat" not in message_metadata['content'] and message.author is not None:
-            await self._chatforme_main(message_metadata['content'])
+            # 1d. Add the message to the thread history
+            if message_metadata['name'] is not None:
+                await self.message_handler.create_and_queue_message_task(
+                    thread_name=thread_name,
+                    message_metadata=message_metadata
+                    )
+            else:
+                self.logger.warning(f"Message author is None. Skipping adding message to thread history.")
+                
+            # 2. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
+            if (self.config.twitch_bot_username in message_metadata['content'] or 'chatzilla' in message_metadata['content'])  and "!chat" not in message_metadata['content'] and message.author is not None:
+                await self._chatforme_main(message_metadata['content'])
 
-        # 2. Process the message through the vibecheck service.
-        #NOTE: Should this be a separate task?    
-        self.logger.debug("Processing message through the vibecheck service...")
-        if self.vibecheck_service is not None and self.vibecheck_service.is_vibecheck_loop_active:
-            await self.vibecheck_service.process_vibecheck_message(
-                message_username=message_metadata['name'],
-                message_content=message_metadata['content']
-                )
+            # 3. Process the message through the vibecheck service.
+            #NOTE: Should this be a separate task?    
+            self.logger.debug("Processing message through the vibecheck service...")
+            if self.vibecheck_service is not None and self.vibecheck_service.is_vibecheck_loop_active:
+                await self.vibecheck_service.process_vibecheck_message(message_metadata)
 
-        # TODO: Steps 3 and 4 should probably be added to a task so they can run on a separate thread
-        # 3. Get chatter data, store in queue, generate query for sending to BQ
-        # 4. Send the data to BQ when queue is full.  Clear queue when done
+        # TODO: These steps should probably be added to a task so they can run on a separate thread
+        # 4. Get chatter data, store in queue, generate query for sending to BQ
+        # 5. Send the data to BQ when queue is full.  Clear queue when done
         if len(self.message_handler.message_history_raw)>=2:
 
             # 4.1 Get VIEWER data (who is on the channel) from twitch API, store in queue, generate query for BQ.  
@@ -354,12 +346,12 @@ class Bot(twitch_commands.Bot):
             self.message_handler.message_history_raw.clear()
             self.twitch_api.channel_viewers_queue.clear()
 
-        # 5. self.handle_commands runs through bot commands (message content doesn't start with !forget)
+        # 6. self.handle_commands runs through bot commands (message content doesn't start with !forget)
         if message_metadata['message_author'] is not None and "!forget" not in message_metadata['content']:
             await self.handle_commands(message)
 
         self.logger.info("MESSAGE PROCESSED: Done processing message")     
-        self.logger.info("---------------------------------------")
+        self.logger.info('---------------------------------------')
 
     def retrieve_registered_commands_info(self):
         commands_info = []
@@ -586,34 +578,32 @@ class Bot(twitch_commands.Bot):
 
     async def _send_hello_world_message(self):
         # Say hello to the chat 
-        if self.config.twitch_bot_gpt_hello_world == True:
-            gpt_prompt_text = self.config.hello_assistant_prompt
-            assistant_name = 'chatforme'
-            thread_name = 'chatformemsgs'
-            tts_voice = self.config.tts_voice_default
+        gpt_prompt_text = self.config.hello_assistant_prompt
+        assistant_name = 'chatforme'
+        thread_name = 'chatformemsgs'
+        tts_voice = self.config.tts_voice_default
 
-            replacements_dict = {
-                'wordcount': self.config.wordcount_veryshort,
-                'twitch_bot_display_name': self.config.twitch_bot_display_name,
-                'twitch_bot_channel_name': self.config.twitch_bot_channel_name,
-                'param_in_text': 'variable_from_scope',
-                'bot_archetype': self.config.gpt_bot_archetype_prompt
+        replacements_dict = {
+            'wordcount': self.config.wordcount_short,
+            'twitch_bot_display_name': self.config.twitch_bot_display_name,
+            'twitch_bot_channel_name': self.config.twitch_bot_channel_name,
+            'bot_archetype': self.config.gpt_bot_archetype_prompt,
+            'param_in_text': 'variable_from_scope'
+            }
 
-                }
-
-            # Add a executeTask to the queue
-            task = CreateGenerateTextTask(
-                thread_name=thread_name,
-                assistant_name=assistant_name,
-                prompt=gpt_prompt_text,
-                replacements_dict=replacements_dict,
-                tts_voice=tts_voice,
-                send_channel_message=True,
-                message_role='assistant',
-                model_vendor_config={"vendor": self.config.twitch_bot_helloworld_service_model_provider, "model": self.config.deepseek_model}
-            )
-            
-            await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'hello_world'")
+        # Add a executeTask to the queue
+        task = CreateGenerateTextTask(
+            thread_name=thread_name,
+            assistant_name=assistant_name,
+            thread_instructions=gpt_prompt_text,
+            replacements_dict=replacements_dict,
+            tts_voice=tts_voice,
+            send_channel_message=True,
+            message_role='assistant',
+            model_vendor_config={"vendor": self.config.twitch_bot_helloworld_service_model_provider, "model": self.config.deepseek_model}
+        )
+        
+        await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'hello_world'")
 
     @twitch_commands.command(name='getstats', aliases=("p_getstats", "stats"))
     async def get_command_stats(self, ctx):
@@ -623,15 +613,18 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='what', aliases=("m_what"))
     async def what(self, ctx):
-    
+
+        # 1a. Get message metadata
+        message_metadata = self.message_handler._get_message_metadata(ctx.message)   
+
         is_sender_mod = await self._is_function_caller_moderator(ctx)
         if not is_sender_mod:
             self.logger.debug("Requester was not a mod... nothing happened")
             return
-    
-        gpt_prompt_text = self.config.botears_prompt
+
         assistant_name = 'chatforme'
         thread_name = 'chatformemsgs'
+        gpt_prompt_text = self.config.botears_prompt
         tts_voice = self.config.tts_voice_default
 
         # audio_path for audio save location
@@ -643,24 +636,29 @@ class Bot(twitch_commands.Bot):
             saved_seconds=self.config.botears_save_length_seconds
             )
         
-        # Translate the audio to text
-        text = await self.s2t_service.convert_audio_to_text(audio_path)
-        self.logger.info(f"Transcribed speech to text: {text}")
+        # Translate the audio to text and update the message_metadata with the transcribed text
+        audio_content = await self.s2t_service.convert_audio_to_text(audio_path)
+        self.logger.info(f"Transcribed speech to text: {audio_content}")
+        message_metadata['content'] = audio_content
 
         # Add to thread (This is done to send the voice message to the GPT thread)
-        task = AddMessageTask(thread_name, text, message_role='user')
-        await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask 'what'")
+        model_vendor_config = {"vendor": self.config.twitch_bot_what_service_model_provider, "model": self.config.deepseek_model}
+        await self.message_handler.create_and_queue_message_task(
+            thread_name=thread_name,
+            message_metadata=message_metadata,
+            model_vendor_config=model_vendor_config
+        )
 
         replacements_dict = {
             "wordcount": self.config.wordcount_medium,
-            "botears_questioncomment": text
+            "botears_questioncomment": audio_content
         }
 
-        # Add a executeTask to the queue
+        # Add a executeTask to the queue and execute
         task = CreateGenerateTextTask(
             thread_name=thread_name,
             assistant_name=assistant_name,
-            prompt=gpt_prompt_text,
+            thread_instructions=gpt_prompt_text,
             replacements_dict=replacements_dict,
             tts_voice=tts_voice,
             send_channel_message=True,
@@ -1132,27 +1130,26 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='addtostory', aliases=("i_addtostory"))
     async def add_to_story_ouat(self, ctx,  *args):
-        self.ouat_counter = self.config.ouat_story_progression_number
-        
-        gpt_prompt_text = ' '.join(args)
-        prompt_text_with_prefix = f"{self.config.ouat_prompt_addtostory_prefix}:'{gpt_prompt_text}'"
-
-        # Get the message metadata
         message_metadata = self.message_handler._get_message_metadata(ctx.message)
-
-        #workflow1: get gpt_ready_msg_dict and add message to message history
-        gpt_ready_msg_dict = self.message_handler._create_gpt_message_dict_from_strings(
-            content=prompt_text_with_prefix,
-            role='user',
-            name=message_metadata['message_author'],
-            timestamp=message_metadata['timestamp']
-            )
-
-        # Add the bullet list to the 'ouatmsgs' thread via queue
         thread_name = 'ouatmsgs'
-        task = AddMessageTask(thread_name, gpt_prompt_text, message_role='user')
-        await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask 'add_to_story_ouat'")
+        message_name = message_metadata['name']
+        message_timestamp = message_metadata['timestamp']
+        message_role = message_metadata['role']
+        gpt_prompt_text = ' '.join(args)
 
+        # Reset the ouat_counter to the progression number
+        self.ouat_counter = self.config.ouat_story_progression_number
+
+        # Add the message task to the queue
+        task = AddMessageTask(
+            thread_name, 
+            message_content=gpt_prompt_text,
+            message_role=message_role, 
+            message_name=message_name,
+            message_timestamp=message_timestamp,
+            model_vendor_config={"vendor": self.config.twitch_bot_storyteller_service_model_provider, "model": self.config.deepseek_model}
+            )
+        await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask 'add_to_story_ouat'")
         self.logger.info(f"A story was added to by {message_metadata['message_author']} ({message_metadata['user_id']}): '{gpt_prompt_text}'")
 
     @twitch_commands.command(name='extendstory', aliases=("i_extendstory"))
@@ -1197,7 +1194,7 @@ class Bot(twitch_commands.Bot):
         thread_name = 'chatformemsgs'
         tts_voice = self.config.tts_voice_randomfact
 
-        if text_input_from_user is None:
+        if text_input_from_user is None or text_input_from_user == '':
             text_input_from_user = "none"
 
         # select a random number/item based on the number of items inside of self.config.factchecker_prompts.values()
@@ -1211,7 +1208,7 @@ class Bot(twitch_commands.Bot):
             "wordcount":self.config.wordcount_medium,
             "bot_operatorname":self.config.twitch_bot_operatorname,
             "twitch_bot_channel_name":self.config.twitch_bot_channel_name,
-            "factual_claim_input":text_input_from_user
+            # "factual_claim_input":text_input_from_user
         }
 
         try:
@@ -1233,8 +1230,30 @@ class Bot(twitch_commands.Bot):
     async def factcheck(self, ctx, *args):
         if args is not None and len(args) > 0:
             text_input_from_user = ' '.join(args)
+            text_input_from_user = text_input_from_user.strip()
+
+            # Add the message task to the queue
+            message_metadata = self.message_handler._get_message_metadata(ctx.message)
+            thread_name = 'chatformemsgs'
+            message_name = message_metadata['name']
+            message_timestamp = message_metadata['timestamp']
+            message_role = message_metadata['role']
+            gpt_prompt_text = ' '.join(args)
+
+            task = AddMessageTask(
+                thread_name, 
+                message_content=gpt_prompt_text,
+                message_role=message_role, 
+                message_name=message_name,
+                message_timestamp=message_timestamp,
+                model_vendor_config={"vendor": self.config.twitch_bot_factcheck_service_model_provider, "model": self.config.deepseek_model}
+                )
+            await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask 'factcheck claim'")
+            self.logger.info(f"A factcheck claim was added to by {message_metadata['message_author']} ({message_metadata['user_id']}): '{gpt_prompt_text}'")
+
         else:
             text_input_from_user = 'none'
+
         self.loop.create_task(self._factcheck_main(text_input_from_user))
 
     @twitch_commands.command(name='update_arch', aliases=("p_update_arch",))
@@ -1365,9 +1384,12 @@ class Bot(twitch_commands.Bot):
                 selected_prompt = self.config.randomfact_prompt
                 task = AddMessageTask(
                     thread_name=thread_name,
+                    message_content='''***Note from user: No conversation happening here. Your next set of instructions will 
+                    be to share a fact. Do so as instructed without acknowledging this message***''',
                     message_role='user',
-                    content='''No conversation happening here. Your next set of instructions will 
-                    be to share a fact. Do so as instructed without acknowledging this message'''
+                    message_name=self.config.twitch_bot_operatorname,
+                    message_timestamp=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
+                    model_vendor_config={"vendor": self.config.twitch_bot_randomfact_service_model_provider, "model": self.config.deepseek_model}
                 )
                 await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask 'randomfact_task'")
 

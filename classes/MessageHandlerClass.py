@@ -37,74 +37,81 @@ class MessageHandler:
         return hashlib.md5(unique_string.encode()).hexdigest()
 
     def _get_message_metadata(self, message: object, interaction_type='message') -> dict:
+        # Pull data off the message object
         badges = getattr(message.tags, 'badges', '_none')
         name = getattr(message.author, 'name', '_unknown')
         user_id = getattr(message.author, 'id', '_unknown')
         message_author = getattr(message, 'author', '_unknown')
-        display_name = getattr(message.author, 'display_name', '_unknown')  
+        display_name = getattr(message.author, 'display_name', '_unknown')
         channel = getattr(message.channel, 'name', '_unknown')
-        timestamp = getattr(message, 'timestamp', None).strftime('%Y-%m-%d %H:%M:%S') if getattr(message, 'timestamp', None) else ''
+        timestamp_attr = getattr(message, 'timestamp', None)
+        timestamp = timestamp_attr.strftime('%Y-%m-%d %H:%M:%S') if timestamp_attr else ''
         tags = message.tags if hasattr(message, 'tags') else {}
-        content = f'{getattr(message, "content", "")}'
         raw_data = getattr(message, 'raw_data', '_unknown')
-        
+
         # Clean up message content
-        content = self._clean_message_content(content, self.config.command_spellcheck_terms)
+        raw_content = getattr(message, 'content', '')
+        cleaned_content = self._clean_message_content(content = raw_content)
+
+        # (Optional) Update the message object’s content if desired
+        message.content = cleaned_content
 
         # Generate message_id
         message_id = self._generate_message_id(
             channel=channel,
             user_id=user_id,
             timestamp=timestamp,
-            content=content
+            content=cleaned_content
         )
 
+        # Determine interaction_type
+        if cleaned_content.startswith('!') or self.config.twitch_bot_display_name in cleaned_content:
+            final_interaction_type = 'command'
+        else:
+            final_interaction_type = interaction_type
+
+        # Determine role and name (if needed) based on the author’s presence
+        if message_author is not None:
+            role = 'user'
+            final_name = name
+        else:
+            role = 'assistant'
+            # Potentially extract name from raw_data if no author object:
+            final_name = self._extract_name_from_message(raw_data)
+
+        # Build dictionary in one pass at the end
         message_metadata = {
             'badges': badges,
-            'name': name,
+            'name': final_name,
             'user_id': user_id,
             'display_name': display_name,
             'channel': channel,
             'timestamp': timestamp,
             'tags': tags,
-            'content': content,
-            'role': None, #generated below
-            'interaction_type': None, #generated below
+            'content': cleaned_content,
+            'role': role,
+            'interaction_type': final_interaction_type,
             'raw_data': raw_data,
             'message_author': message_author,
             'message_id': message_id
         }
-        
-        # If message starts with ! or contains @chatzilla_ai, interaction_type is a command 
-        if getattr(message, "content", "").startswith('!') or self.config.twitch_bot_display_name in getattr(message, "content", ""):
-            message_metadata['interaction_type'] = 'command'
-        else:
-            message_metadata['interaction_type'] = interaction_type
-
-        if message_author is not None:          
-            message_metadata['role'] = 'user'
-            message_metadata['content'] = content
-
-        elif message_author is None: 
-            message_metadata['name'] = self._extract_name_from_message(raw_data)
-            message_metadata['role'] = 'assistant'
-            message_metadata['content'] = content
 
         return message_metadata
 
-    def _clean_message_content(self, content, command_spellings: dict) -> str:
+    def _clean_message_content(self, content) -> str:
         content_temp = content
         if content.startswith('!'):
             words = content.split(' ')
             words[0] = words[0].lower()
             content_temp = ' '.join(words)
 
-        for correct_command, misspellings in command_spellings.items():
+        for correct_command, misspellings in self.config.command_spellcheck_terms.items():
             for misspelled in misspellings:
                 # Using a regular expression to match whole commands only
                 pattern = r'(^|\s)' + re.escape(misspelled) + r'(\s|$)'
-                content_temp = re.sub(pattern, r'\1' + correct_command + r'\2', content_temp)
-        return content_temp
+                cleaned_content = re.sub(pattern, r'\1' + correct_command + r'\2', content_temp)
+
+        return cleaned_content
 
     def _cleanup_message_history(self):
         # Cleanup message histories for GPT
@@ -114,20 +121,19 @@ class MessageHandler:
         for name, msg_history, limit in message_histories:
             self._pop_message_from_message_history(msg_history_list_dict=msg_history, msg_history_limit=limit)
             if msg_history:
-                self.logger.debug(f"Log history cleaned for {name}. Preview of latest message:")
-                self.logger.debug(f"{msg_history[-1]}")
+                self.logger.debug(f"Log history cleaned for {name}. Preview of latest message: {msg_history[-1]}")
             else:
                 self.logger.debug(f"{name}: No messages in history.")
 
     def _add_user_to_users_in_messages_list(self, message_metadata: dict) -> None:
         self.users_in_messages_list.append(message_metadata['name'])
         self.users_in_messages_list = list(set(self.users_in_messages_list))
-        self.logger.debug(f"users_in_messages_list: {self.users_in_messages_list}")
 
-        #String version of users_in_messages_list
         user_list = list(set([username for username in self.users_in_messages_list]))
-        users_in_messages_list_text = "'"+", ".join(user_list)+"'"
-        self.users_in_messages_list_text = users_in_messages_list_text
+        self.users_in_messages_list_text = "'"+", ".join(user_list)+"'"
+
+        self.logger.debug(f"users_in_messages_list: {self.users_in_messages_list}")
+        self.logger.debug(f"users_in_messages_list_test: {self.users_in_messages_list_text}")
 
     def _extract_name_from_message(self, message_rawdata):
 
@@ -135,14 +141,21 @@ class MessageHandler:
         end_index = message_rawdata.find("!")
 
         if start_index == 0 or end_index == -1:
-            self.logger.debug(f"No message_extracted_name found.  This is message_rawdata:")
-            self.logger.debug(message_rawdata)
+            self.logger.warning(f"No message_extracted_name found.  This is message_rawdata:")
+            self.logger.warning(message_rawdata)
             return 'unknown_name - see message_rawdata for details'
         else:
             message_extracted_name = message_rawdata[start_index:end_index]
             self.logger.debug(f"This is the message_extracted_name: {message_extracted_name}:")
             self.logger.debug(message_rawdata)
             return message_extracted_name
+
+    def _transform_content_to_gpt_ready_content(self, name, role, content, timestamp) -> str:
+        if role == 'system':
+            content = f'<<<{self.config.twitch_bot_display_name or "bot"}>>>: ({timestamp}) {content}'        
+        if role in ['user','assistant']:
+            content = f'<<<{name}>>>: ({timestamp}) {content}'
+        return content
 
     # Could be it's own "message" class as this represents a single message object
     def _create_gpt_message_dict_from_strings(
@@ -152,78 +165,99 @@ class MessageHandler:
             name='unknown',
             timestamp='unknown'
             ):
-        if role == 'system':
-            gpt_ready_msg_dict = {'role': role, 'content': f'<<<bot>>>: ({timestamp}) {content}'}
-        if role in ['user','assistant']:
-            gpt_ready_msg_dict = {'role': role, 'content': f'<<<{name}>>>: ({timestamp}) {content}'}
-
+        content = self._transform_content_to_gpt_ready_content(name, role, content, timestamp) 
+        gpt_ready_msg_dict = {'role': role, 'content': content}
         return gpt_ready_msg_dict
     
     def _pop_message_from_message_history(self, msg_history_list_dict, msg_history_limit):
         if len(msg_history_list_dict) > msg_history_limit:
             msg_history_list_dict.pop(0)
 
-    async def add_to_thread_history(
+    async def create_and_queue_message_task(
         self, 
         thread_name, 
-        message_metadata: dict
+        message_metadata: dict,
+        model_vendor_config=None
         ):  
 
-        # Grab and write metadata, add users to users list
+        # Grab metadata
         message_role = message_metadata['role']
-        message_username = message_metadata['name']
+        message_name = message_metadata['name']
         message_content = message_metadata['content']
-        message_content_w_username = message_username+": "+message_content
-
-        self.logger.info(f"Adding message to queues...")
+        message_timestamp = message_metadata['timestamp']
+        self.logger.info("Adding message to queue...")
         self.logger.debug("This is the message_metadata: {}".format(message_metadata))
 
         # Check for commands that should not be added to the thread history
-        if message_content.startswith('!'):
+        if message_content.startswith('!what'):
             self.logger.info(f"Message '{message_content}' is a command and will not be added to the thread history.")
             return
-    
-         # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY FOR BOT RESPONSES, so we don't add bot messages to the message history)
-        if message_metadata['message_author'] is not None and message_username != self.config.twitch_bot_username and message_metadata['name'] != "_unknown":
-            task = AddMessageTask(thread_name, message_content_w_username, message_role)
-            await self.task_manager.add_task_to_queue(thread_name, task)
-            self.logger.info(f"Message author not the bot '{message_username}', message task added to queue (thread: {thread_name})")
 
-            # # Wait for the task to complete before continuing
-            # Doesn't work because of some async issue
-            # await task.future 
-
+        if model_vendor_config == None: 
+            # Decide vendor/model based on whether user is the bot
+            if (
+                message_metadata['message_author'] 
+                and message_name != self.config.twitch_bot_username
+                and message_name != "_unknown"
+            ):
+                vendor = "openai"
+                model = "n/a"
+                self.logger.info(f"Message author not the bot '{message_name}', message task will be queued with {vendor}.")
+            else:
+                vendor = "deepseek"
+                model = self.config.deepseek_model
+                self.logger.info(f"Message author is the bot '{message_name}', message task will be queued with {vendor}.")            
+                message_content = f"{message_content}"
         else:
-            self.logger.info(f"Message author is the bot '{message_username}', messager not added to queue (already handled by GPT thread)")
+            vendor = model_vendor_config.get('vendor')
+            model = model_vendor_config.get('model')
+            
+        # Create and queue the task
+        task = AddMessageTask(
+            thread_name,
+            message_content=message_content,
+            message_role=message_role,
+            message_name=message_name,
+            message_timestamp=message_timestamp,
+            model_vendor_config={"vendor": vendor, "model": model}
+        )
+        await self.task_manager.add_task_to_queue_and_execute(
+            thread_name, 
+            task, 
+            description=f"Add message to thread history (thread: {thread_name})"
+        )
 
     # TODO: This is almost ready for deprecation.  Need to decide if its possible
     # to use the GPT response manager to handle all message history or optionally
     # use the faiss service to handle message history.
-    async def add_to_appropriate_message_history(self, message_metadata: dict):
+    async def add_to_appropriate_message_history(
+            self,
+            role,
+            name,
+            content,
+            timestamp
+            ):
 
-        # Add user to users list
-        self._add_user_to_users_in_messages_list(message_metadata)
         self.logger.debug("This is the message_metadata")
-        self.logger.debug(f"message_username: {message_metadata['name']}")
-        self.logger.debug(f"message content: {message_metadata['content']}")
-        self.logger.debug(f"message_role: {message_metadata['role']}")
+        self.logger.debug(f"message_username: {name}")
+        self.logger.debug(f"message content: {content}")
+        self.logger.debug(f"message_role: {role}")
 
         #Create gpt message dict
         gpt_ready_msg_dict = self._create_gpt_message_dict_from_strings(
-            role=message_metadata['role'],
-            name=message_metadata['name'],
-            content=message_metadata['content'],
-            timestamp=message_metadata['timestamp']
+            role=role,
+            name=name,
+            content=content,
+            timestamp=timestamp
             )
 
         #Apply message dict to msg histories
-        self.message_history_raw.append(message_metadata)
         self.all_msg_history_gptdict.append(gpt_ready_msg_dict)
 
         #cleanup msg histories for GPT
         self._cleanup_message_history()
         self.logger.info(f"Message added to message histories.  Total messages: {len(self.all_msg_history_gptdict)}")
-        self.logger.debug(f"Preview of latest 2 messages in message histories: {self.all_msg_history_gptdict[-2:]}")
+        self.logger.info(f"Preview of latest 2 messages in message histories: {self.all_msg_history_gptdict[-2:]}")
 
 if __name__ == '__main__':
     print("loaded MessageHandlerClass.py")

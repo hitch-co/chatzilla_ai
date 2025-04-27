@@ -26,12 +26,18 @@ class AddMessageTask(BaseTask):
     def __init__(
             self, 
             thread_name: str, 
-            content: str, 
-            message_role: str = 'user'
+            message_content: str, 
+            message_name,
+            message_timestamp,
+            message_role,
+            model_vendor_config: dict = {"vendor": "openai", "model": "n/a"},
             ):
         super().__init__(thread_name)
-        self.content = content
+        self.message_content = message_content
         self.message_role = message_role
+        self.model_vendor_config = model_vendor_config
+        self.message_name = message_name
+        self.message_timestamp = message_timestamp
 
         # Create task_dict during initialization
         self.task_dict = self.to_dict()
@@ -39,9 +45,12 @@ class AddMessageTask(BaseTask):
     def to_dict(self) -> dict:
         task_dict = super().to_dict()
         task_dict.update({
-            "type": "add_message",
-            "content": self.content,
-            "message_role": self.message_role
+            "type": "add_message", #default
+            "message_content": self.message_content,
+            "message_role": self.message_role,
+            "message_name": self.message_name,
+            "message_timestamp": self.message_timestamp,
+            "model_vendor_config": self.model_vendor_config
         })
         self.logger.debug(f"AddMessageTask Dict created: {task_dict}")
         return task_dict
@@ -90,7 +99,7 @@ class CreateGenerateTextTask(BaseTask):
             self, 
             thread_name: str,
             assistant_name: str,
-            prompt: str,
+            thread_instructions: str,
             replacements_dict: dict,
             tts_voice: str,
             send_channel_message: bool = True,
@@ -99,7 +108,7 @@ class CreateGenerateTextTask(BaseTask):
             ):
         super().__init__(thread_name)
         self.assistant_name = assistant_name
-        self.prompt = prompt
+        self.thread_instructions = thread_instructions
         self.replacements_dict = replacements_dict
         self.tts_voice = tts_voice
         self.send_channel_message = send_channel_message
@@ -114,7 +123,7 @@ class CreateGenerateTextTask(BaseTask):
         task_dict.update({
             "type": "generate_text",
             "assistant_name": self.assistant_name,
-            "prompt": self.prompt,
+            "thread_instructions": self.thread_instructions,
             "replacements_dict": self.replacements_dict,
             "tts_voice": self.tts_voice,
             "send_channel_message": self.send_channel_message,

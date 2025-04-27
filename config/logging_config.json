@@ -32,11 +32,19 @@
         "mode": "w",
         "encoding": "UTF-8"
       },
+      "task_handler_log_file": {
+        "class": "logging.FileHandler",
+        "level": "INFO",
+        "formatter": "default",
+        "filename": "log/logger_TaskHandlerClass.log",
+        "mode": "w",
+        "encoding": "UTF-8"
+      },
       "task_handler_json_file": {
         "class": "logging.FileHandler",
         "level": "DEBUG",
         "formatter": "json_formatter",
-        "filename": "log/logger_TaskHandlerClass.jsonl",
+        "filename": "log/logger_TaskHandlerClass.json",
         "mode": "w",
         "encoding": "UTF-8"
       }
@@ -46,6 +54,11 @@
       "handlers": ["console", "file"]
     },
     "loggers": {
+      "my_app.runtime": {
+        "level": "DEBUG",
+        "handlers": ["console", "task_handler_log_file"],
+        "propagate": false
+      },
       "my_app.task_handler": {
         "level": "DEBUG",
         "handlers": ["task_handler_json_file"],

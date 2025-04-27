@@ -49,7 +49,8 @@ def create_logger(
         datefmt='%H:%M:%S'
         )
 
-    file_handler = logging.FileHandler(f'{dirname}/{logger_name}.log', mode=mode, encoding=encoding)
+    log_filename = logger_name if logger_name else "__main__"
+    file_handler = logging.FileHandler(f'{dirname}/{log_filename}.log', mode=mode, encoding=encoding)
     file_handler.setLevel(level_mapping[debug_level.upper()])
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)

@@ -129,10 +129,19 @@ class GPTFunctionCallManager(GPTBaseClass):
 
                 # Start the new run
                 wrapped_function_schema = [function_schema]
+                
+                # Force the function call if a function schema is provided
+                tool_choice = "auto"
+                if function_schema and 'function' in function_schema and 'name' in function_schema['function']:
+                    function_name = function_schema['function']['name']
+                    tool_choice = {"type": "function", "function": {"name": function_name}}
+                    self.logger.info(f"...Forcing tool choice: {tool_choice}")
+
                 run = self.gpt_client.beta.threads.runs.create(
                     thread_id=thread_id,
                     assistant_id=assistant_id,
-                    tools = wrapped_function_schema
+                    tools = wrapped_function_schema,
+                    tool_choice = tool_choice
                 )
 
             except Exception as e:

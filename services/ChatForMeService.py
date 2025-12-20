@@ -46,7 +46,7 @@ class ChatForMeService:
         - incl_voice (str): Specifies whether to include voice output (True or False).
         - voice_name (str): The name of the voice to be used in the text-to-speech service.
         """
-        datetime_string = utils.get_datetime_formats()['filename_format']
+        datetime_string = utils.get_current_datetime_formatted()['filename_format']
         if incl_voice == True:
             # Generate speech object and generate speech object/mp3
             output_filename = "chatforme_"+"_"+datetime_string+"_"+self.tts_client.tts_file_name

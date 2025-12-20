@@ -196,7 +196,18 @@ class GPTFunctionCallManager(GPTBaseClass):
                 return output_data, final_response
             
             except Exception as e:
-                self.logger.error(f"Error handling function call: {e}")
+                self.logger.info(f"--- Debugging Exception ---")
+                self.logger.info(f"Run ID: {run.id if run else 'No run object'}")
+                self.logger.info(f"Run Status: {run.status if run else 'Unknown'}")
+                self.logger.info(f"Run Last Error: {run.last_error if hasattr(run, 'last_error') else 'No last_error attribute'}")
+                self.logger.info(f"Run Output Data: {run.output_data if hasattr(run, 'output_data') else 'No output_data attribute'}")
+
+                self.logger.info(f"Assistant Name: {assistant_name}, Assistant ID: {assistant_id}")
+                self.logger.info(f"Thread Name: {thread_name}, Thread ID: {thread_id}")
+
+                self.logger.info(f"Exception Type: {type(e).__name__}")
+                self.logger.info(f"Exception Args: {e.args}")
+                self.logger.error(f"Error handling function call: {e}", exc_info=True)
 
     async def _wait_for_run_completion(self, thread_id, run_id):
         """Waits for a specific run to complete."""
@@ -830,6 +841,24 @@ async def main():
     # TEST 4 (requires TEST#3): Try to use function call manager to execute a function call
     thread_name = "chatformemsgs"
     assistant_name = "conversationdirector"
+
+    messages = [
+        {"role": "user", "content": "Hey everyone, what's up?"},
+        {"role": "user", "content": "Did you guys see that epic fail earlier? 😂"},
+        {"role": "user", "content": "Can anyone explain how the scoring works in this game?"},
+        {"role": "user", "content": "yeah it's 1 and then 2 and then 3 and so on..."},
+        {"role": "user", "content": "This stream is awesome, love the community here!"},
+        {"role": "user", "content": "What do you think bot!"},
+    ]
+
+    # Add messages to the thread
+    for msg in messages:
+        await response_manager.add_message_to_thread(
+            message_content=msg["content"],
+            thread_name=thread_name,
+            role=msg["role"]
+        )
+
     conversation_director_function_schema = config.function_schemas['conversationdirector']
     output_data, response = await function_call_manager.execute_function_call(
         thread_name, 

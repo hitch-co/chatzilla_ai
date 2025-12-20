@@ -145,8 +145,8 @@ class Bot(twitch_commands.Bot):
 
         #NOTE: ARGUABLY DO NOT NEED TO INITIALIZE THESE HERE
         # BQ Table IDs
-        self.userdata_table_id=self.config.bq_fullqual_table_id
-        self.usertransactions_table_id=self.config.talkzillaai_usertransactions_table_id
+        self.userdata_table_id=self.config.bq_user_table_id
+        self.usertransactions_table_id=self.config.bq_user_interactions_table_id
 
         # Initialize the twitch bot's channel and user IDs
         self.twitch_bot_client_id = self.config.twitch_bot_client_id
@@ -355,8 +355,8 @@ class Bot(twitch_commands.Bot):
             start_time_bq_query = time.time() 
             historic_bq_msgs = self.bq_uploader.fetch_user_chat_history_from_bq(
                 user_login=None,
-                interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
-                users_table_id=self.config.bq_fullqual_table_id,
+                interactions_table_id=self.config.bq_user_interactions_table_id,
+                users_table_id=self.config.bq_user_table_id,
                 limit=30000
             ) or []
             end_time_bq_query = time.time()
@@ -432,24 +432,25 @@ class Bot(twitch_commands.Bot):
         # 3. Get chatter data, store in queue, generate query for sending to BQ
         # 4. Send the data to BQ when queue is full.  Clear queue when done
         if len(self.message_handler.message_history_raw)>=2:
-            
+
             # 4.1 Get VIEWER data (who is on the channel) from twitch API, store in queue, generate query for BQ.  
             #  This only happens if the service is enabled and the operator is the channel owner
             if self.config.twitch_bot_user_capture_service is True and self.config.twitch_operator_is_channel_owner:
-                await self.twitch_api.update_channel_viewers(bearer_token=self.config.twitch_bot_access_token)
+                await self.twitch_api.update_channel_viewers_queue(bearer_token=self.config.twitch_bot_access_token)
 
                 if self.twitch_api.channel_viewers_queue:
                     viewers_records_for_user_table = [
                         {
                             "user_id": record['user_id'],
                             "user_login": record['user_login'],
-                            "last_seen": record['timestamp']
+                            "last_seen": record['timestamp'],
+                            "user_nae": record['user_name']
                         }
                         for record in self.twitch_api.channel_viewers_queue
                     ]
-                    self.bq_uploader.send_recordsjob_to_bq(
-                        table_id=self.config.bq_fullqual_table_id,
-                        records=viewers_records_for_user_table
+                    self.bq_uploader.merge_with_bq_user_table(
+                        table_id=self.config.bq_user_table_id,
+                        user_records=viewers_records_for_user_table
                         )
                 else:
                     self.logger.debug(f"No updated viewers to process.")
@@ -458,7 +459,7 @@ class Bot(twitch_commands.Bot):
                 self.logger.debug(f"User capture service is disabled.  Should create a way to do this without the service (using event_message's captured details)")
             
             # 4.2 Get MESSAGE data, store in queue, generate query for sending to BQ
-            viewer_interaction_records = self.bq_uploader.generate_twitch_user_interactions_records_for_bq(
+            viewer_interaction_records = self.bq_uploader.generate_twitch_user_interactions_records(
                 records=self.message_handler.message_history_raw
                 )
 
@@ -576,8 +577,8 @@ class Bot(twitch_commands.Bot):
                         and user['username'] not in self.config.twitch_bot_channel_name
                         and user['username'] not in self.config.twitch_bot_username
                         and user['username'] not in self.config.twitch_bot_display_name
+                        and user['username'] not in self.config.twitch_bot_moderators
                         and user['username'] not in 'cirenexus'
-                        # and user['username'] not in self.config.twitch_channel_moderators_logins
                         )
                 ]   
 
@@ -608,16 +609,16 @@ class Bot(twitch_commands.Bot):
                 ### GET CHAT HISTORY
                 user_specific_chat_history = self.bq_uploader.fetch_user_chat_history_from_bq(
                     user_login=random_user_name,
-                    interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
-                    users_table_id=self.config.bq_fullqual_table_id
+                    interactions_table_id=self.config.bq_user_interactions_table_id,
+                    users_table_id=self.config.bq_user_table_id
                 )
 
                 #####################
                 ### GET FORGET HISTORY                
                 user_specific_chat_history_to_forget = self.bq_uploader.fetch_user_chat_history_from_bq(
                     user_login=random_user_name,
-                    interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
-                    users_table_id=self.config.bq_fullqual_table_id,
+                    interactions_table_id=self.config.bq_user_interactions_table_id,
+                    users_table_id=self.config.bq_user_table_id,
                     content_filter='!forget'
                 )
                 self.logger.info(f"User-specific chat history retrieved for {random_user_name}.")
@@ -728,7 +729,7 @@ class Bot(twitch_commands.Bot):
 
     @twitch_commands.command(name='getstats', aliases=("p_getstats", "stats"))
     async def get_command_stats(self, ctx):
-        table_id = self.config.talkzillaai_usertransactions_table_id
+        table_id = self.config.bq_user_interactions_table_id
         stats_text = self.bq_uploader.fetch_interaction_stats_as_text(table_id)
         await self._send_channel_message_wrapper(stats_text)
 
@@ -906,8 +907,8 @@ class Bot(twitch_commands.Bot):
                     # Fetch the last message from BigQuery
                     last_message_json = self.bq_uploader.fetch_user_chat_history_from_bq(
                         user_login=user_name,
-                        interactions_table_id=self.config.talkzillaai_usertransactions_table_id,
-                        users_table_id=self.config.bq_fullqual_table_id,
+                        interactions_table_id=self.config.bq_user_interactions_table_id,
+                        users_table_id=self.config.bq_user_table_id,
                         limit=1
                     )
 

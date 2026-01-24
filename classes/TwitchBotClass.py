@@ -462,7 +462,6 @@ class Bot(twitch_commands.Bot):
             viewer_interaction_records = self.bq_uploader.generate_twitch_user_interactions_records(
                 records=self.message_handler.message_history_raw
                 )
-
             self.logger.debug(f"viewer_interaction_records: {viewer_interaction_records}")
 
             self.bq_uploader.send_recordsjob_to_bq(

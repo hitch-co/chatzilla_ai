@@ -21,7 +21,7 @@ class NewUsersService:
         
         # grab the known bots from the json file
         self.known_bots = utils.load_json(path_or_dir=r'.\data\rules\known_bots.json')
-        self.known_bots_list = self.known_bots['known_bots']
+        self.known_bots_list = [bot.lower() for bot in self.known_bots.get('known_bots', [])]
 
     async def get_users_not_yet_sent_message(
             self,

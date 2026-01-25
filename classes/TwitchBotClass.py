@@ -5,6 +5,7 @@ import random
 import os
 import inspect
 import time
+import re
 import numpy as np
 
 from models.task import AddMessageTask, CreateExecuteThreadTask, CreateSendChannelMessageTask
@@ -138,6 +139,11 @@ class Bot(twitch_commands.Bot):
         #Set default loop state
         self.is_ouat_loop_active = False
         self.vibecheck_service = None
+        self.randomfact_immediate_pending = False
+        self.randomfact_run_in_progress = False
+        self.randomfact_prev_sleeptime = None
+        self.randomfact_recent_response_types = []
+        self.randomfact_sleeptime_base = self.config.randomfact_sleeptime
         self.is_vibecheck_loop_active = False
 
         #counters
@@ -174,9 +180,12 @@ class Bot(twitch_commands.Bot):
                     thread_name=thread_name,
                     role=role
                 )
+                if message_object is None:
+                    raise ValueError(f"Message add returned None for thread '{thread_name}'.")
                 self.logger.debug(f"Message object: {message_object}")
             except Exception as e:
                 self.logger.error(f"Error occurred in 'add_message_to_thread': {e}", exc_info=True)
+                raise
         else:
             self.logger.error(f"Thread name '{thread_name}' is not in the list of thread names. Message content: {message_content[0:25]+'...'}")
 
@@ -250,6 +259,11 @@ class Bot(twitch_commands.Bot):
                         incl_voice=self.config.tts_include_voice,
                         voice_name=tts_voice
                     )
+                    await self._mirror_bot_output_to_chatformemsgs(
+                        content=gpt_response,
+                        origin_thread=thread_name,
+                        assistant_name=assistant_name
+                    )
                     message = f"...'{task_type}' task handled for thread: {thread_name}. Send channel message is True"
                     task.future.set_result(message)
                     self.logger.info(message) 
@@ -292,6 +306,11 @@ class Bot(twitch_commands.Bot):
                     incl_voice=self.config.tts_include_voice,
                     voice_name=tts_voice
                 )
+                await self._mirror_bot_output_to_chatformemsgs(
+                    content=content,
+                    origin_thread=thread_name,
+                    assistant_name="twitch_send_channel_message"
+                )
                 message = f"...'{task_type}' task handled for thread: {thread_name}"
                 task.future.set_result(message)
                 self.logger.info(message)
@@ -305,6 +324,83 @@ class Bot(twitch_commands.Bot):
             message = f"Unknown task type 'task_type' found, this should not happen"
             self.logger.info(message)  
             self.future.set_exception(message)
+
+    def _get_origin_label(self, thread_name, assistant_name=None) -> str:
+        label = assistant_name or "unknown"
+        label = label.lower()
+        label = re.sub(r"[^a-z0-9]+", "_", label).strip("_")
+        if not label:
+            label = "unknown"
+        if not label.endswith("_agent"):
+            label = f"{label}_agent"
+        return label
+
+    def _normalize_conversationdirector_type(self, response_data) -> str:
+        if not isinstance(response_data, dict):
+            self.logger.warning(f"conversationdirector returned no tool output ({type(response_data)}); defaulting to 'fact'.")
+            return 'fact'
+
+        response_type = response_data.get('response_type', 'fact')
+        if response_type not in ['respond', 'fact', 'anybody_there']:
+            self.logger.warning(f"Unknown response_type '{response_type}'. Defaulting to 'fact'.")
+            return 'fact'
+
+        return response_type
+
+    def _apply_randomfact_response_gates(self, response_type, user_message_count) -> str:
+        respond_min_messages = self.config.conversation_poll_respond_min_user_messages
+        has_anybody_there = bool(getattr(self.config, 'randomfact_anybody_there', None))
+
+        # If not enough user messages since last bot message, fallback
+        if response_type == 'respond' and user_message_count < respond_min_messages:
+            if user_message_count == 0:
+                fallback_type = 'fact'
+            else:
+                fallback_type = 'anybody_there' if has_anybody_there else 'fact'
+            self.logger.info(
+                "conversationdirector returned 'respond' but only "
+                f"{user_message_count} user messages since last bot message "
+                f"(min: {respond_min_messages}). Falling back to '{fallback_type}'."
+            )
+            return fallback_type
+
+        if response_type == 'anybody_there':
+            if user_message_count == 0 and 'anybody_there' in self.randomfact_recent_response_types:
+                self.logger.info(
+                    "Avoiding consecutive 'anybody_there' with no new user messages; "
+                    "falling back to 'fact'."
+                )
+                return 'fact'
+
+        return response_type
+
+    async def _mirror_bot_output_to_chatformemsgs(
+        self,
+        content,
+        origin_thread,
+        assistant_name=None
+    ) -> None:
+        if not content:
+            return
+        if origin_thread == "chatformemsgs":
+            return
+
+        origin_label = self._get_origin_label(origin_thread, assistant_name)
+        tag_parts = [f"origin:{origin_label}", f"source_thread:{origin_thread}"]
+        if assistant_name:
+            tag_parts.append(f"assistant:{assistant_name}")
+        tag_prefix = " | ".join(tag_parts)
+        mirrored_content = f"{tag_prefix} | {content}"
+
+        try:
+            await self._add_message_to_specified_thread(
+                message_content=mirrored_content,
+                role="assistant",
+                thread_name="chatformemsgs"
+            )
+            self.logger.debug(f"Mirrored bot output into chatformemsgs ({tag_prefix}).")
+        except Exception as e:
+            self.logger.warning(f"Failed to mirror bot output to chatformemsgs: {e}")
 
     async def event_ready(self):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
@@ -414,10 +510,17 @@ class Bot(twitch_commands.Bot):
                 thread_name=thread_name,
                 message_metadata=message_metadata
                 )
-            
-        # 1e. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
-        if (self.config.twitch_bot_username in message_metadata['content'] or 'chatzilla' in message_metadata['content'])  and "!chat" not in message_metadata['content'] and message.author is not None:
+
+        # 1e. If message is a direct mention to the bot, process through ChatForMe service
+        is_direct_mention = (
+            (self.config.twitch_bot_username in message_metadata['content'] or 'chatzilla' in message_metadata['content'])
+                and "!chat" not in message_metadata['content']
+                and message.author is not None
+        )     
+        if is_direct_mention:
             await self._chatforme_main(message_metadata['content'])
+        else:
+            self._maybe_trigger_randomfact_from_messages(message_metadata)
 
         # 2. Process the message through the vibecheck service.
         #NOTE: Should this be a separate task?    
@@ -456,7 +559,7 @@ class Bot(twitch_commands.Bot):
                     self.logger.debug(f"No updated viewers to process.")
             else:
                 # TODO: This function doesn't work well if bot is running in a different channel than the operator
-                self.logger.debug(f"User capture service is disabled.  Should create a way to do this without the service (using event_message's captured details)")
+                self.logger.debug(f"User capture service is disabled.  TODO: Should create a way to do this without the service (using event_message's captured details)")
             
             # 4.2 Get MESSAGE data, store in queue, generate query for sending to BQ
             viewer_interaction_records = self.bq_uploader.generate_twitch_user_interactions_records(
@@ -472,7 +575,6 @@ class Bot(twitch_commands.Bot):
             self.logger.info(f"Clearing message_history_raw and channel_viewers_queue.")
             self.logger.debug(f"MESSAGE HISTORY RAW PRE-CLEAR: {self.message_handler.message_history_raw}")
             self.logger.debug(f"CHANNEL VIEWERS QUEUE PRE-CLEAR: {self.twitch_api.channel_viewers_queue}")
-            
             self.message_handler.message_history_raw.clear()
             self.twitch_api.channel_viewers_queue.clear()
 
@@ -547,19 +649,20 @@ class Bot(twitch_commands.Bot):
                 self.logger.error(f"Unexpected error: {e}")
                 continue
                             
-            # Add self.current_users_list to self.current_users_list as set to remove duplicates
-            self.current_users_list = list(set(self.current_users_list + current_users_list))
+            # Normalize and dedupe current active users (avoid session-wide accumulation)
+            self.current_users_list = list({user.lower() for user in current_users_list})
             if not self.current_users_list:
-                self.logger.debug("...No users in self.current_users_list, skipping this iteration.")
+                self.logger.debug("...No users in current_users_list, skipping this iteration.")
                 continue
 
             if self.config.twitch_bot_faiss_testing_active is True:
-                users_not_yet_sent_message_info = [{"username": f'{self.config.twitch_bot_operatorname}', "usertype": 'returning'}]
+                operator_name = (self.config.twitch_bot_operatorname or '').lower()
+                users_not_yet_sent_message_info = [{"username": operator_name, "usertype": 'returning'}]
 
                 #Create test list of eligible users that is onlyh the bot operator name
                 eligible_users = [
                     user for user in users_not_yet_sent_message_info
-                    if (user['username'] in self.config.twitch_bot_operatorname)
+                    if user['username'] == operator_name
                     ]
             else: 
                 # Identify list of users who are new to the channel and have not yet been sent a message
@@ -569,15 +672,18 @@ class Bot(twitch_commands.Bot):
                     users_sent_messages_list = self.newusers_service.users_sent_messages_list
                 )
 
+                blocked_usernames = {
+                    (self.config.twitch_bot_operatorname or '').lower(),
+                    (self.config.twitch_bot_channel_name or '').lower(),
+                    (self.config.twitch_bot_username or '').lower(),
+                    (self.config.twitch_bot_display_name or '').lower(),                    
+                }
+                blocked_usernames.update({mod.lower() for mod in (self.config.twitch_bot_moderators or [])})
+
                 eligible_users = [
                     user for user in users_not_yet_sent_message_info
                     if (user['username'] not in self.newusers_service.known_bots_list
-                        and user['username'] not in self.config.twitch_bot_operatorname
-                        and user['username'] not in self.config.twitch_bot_channel_name
-                        and user['username'] not in self.config.twitch_bot_username
-                        and user['username'] not in self.config.twitch_bot_display_name
-                        and user['username'] not in self.config.twitch_bot_moderators
-                        and user['username'] not in 'cirenexus'
+                        and user['username'] not in blocked_usernames
                         )
                 ]   
 
@@ -846,6 +952,9 @@ class Bot(twitch_commands.Bot):
         if text_input_from_user is None:
             text_input_from_user = 'none'
 
+        self._clear_randomfact_immediate(reason="chatforme_request")
+        self.message_handler.mark_planned_bot_message(source="chatforme_request")
+
         replacements_dict = {
             "twitch_bot_display_name":self.config.twitch_bot_display_name,
             "num_bot_responses":self.config.num_bot_responses,
@@ -971,14 +1080,16 @@ class Bot(twitch_commands.Bot):
             self.logger.debug("Starting vibecheck service...")
 
         # List of users to exclude from the vibecheck
-        users_excluded_from_vibecheck = [
-            self.config.twitch_bot_username, 
-            self.config.twitch_bot_display_name,
-            self.config.twitch_bot_operatorname,
-            self.config.twitch_bot_channel_name,
-            self.config.twitch_bot_moderators
-            ]
-        
+        users_excluded_from_vibecheck = {
+            (self.config.twitch_bot_username or '').lower(),
+            (self.config.twitch_bot_display_name or '').lower(),
+            (self.config.twitch_bot_operatorname or '').lower(),
+            (self.config.twitch_bot_channel_name or '').lower(),
+        }
+        users_excluded_from_vibecheck.update(
+            mod.lower() for mod in (self.config.twitch_bot_moderators or [])
+        )
+
         # Set the vibecheckee, vibechecker, and vibecheckbot usernames
         self.vibecheckee_username = None
         self.vibechecker_username = ctx.author.name
@@ -1403,6 +1514,8 @@ class Bot(twitch_commands.Bot):
             # # Add more type checks as needed
 
             setattr(self.config, config_var, value)
+            if config_var == 'randomfact_sleeptime':
+                self.randomfact_sleeptime_base = value
             self.logger.info(f"Config variable '{config_var}' has been updated to '{value}'")
         except Exception as e:
             self.logger.error(f"Error occurred in !update_config: {e}")
@@ -1426,6 +1539,11 @@ class Bot(twitch_commands.Bot):
         conversation_director_function_schema = self.config.function_schemas['conversationdirector']
         while True:
             await adjustable_sleep_task.adjustable_sleep_task(self.config, 'randomfact_sleeptime')
+            immediate_consumed = False
+            if (immediate_consumed := self.randomfact_immediate_pending):
+                self.randomfact_immediate_pending = False
+                self.logger.info("Immediate randomfact trigger consumed; running now.")
+            self.randomfact_run_in_progress = True
 
             # Prompt set in os.env on .bat file run
             selected_prompt = self.config.randomfact_prompt
@@ -1444,26 +1562,28 @@ class Bot(twitch_commands.Bot):
             self.logger.debug(f"Selected random voice: {tts_voice}")
 
             # Execute the function call and handle exceptions gracefully
+            response_data = None
             try:
                 response_data, response = await self.gpt_function_call_manager.execute_function_call(
                     thread_name=thread_name, 
                     assistant_name='conversationdirector',
                     function_schema=conversation_director_function_schema
-                    )
-                self.logger.info(f"Conversation Director function response data: {response_data}")               
-                if 'response_type' in response_data:
-                    response_type_result = response_data['response_type']
-                else:
-                    self.logger.warning("No 'response_type' attribute found in response_data. Defaulting to 'fact'")
-                    response_type_result = 'fact'
-
+                )
             except Exception as e:
-                self.logger.warning(f"Error occurred in 'randomfact_task'. Defaulting to 'fact': {e}")
-                response_type_result = 'fact'
+                self.logger.warning(f"Error occurred in 'randomfact_task' tool call: {e}")
+
+            response_type_result = self._normalize_conversationdirector_type(response_data)
+            user_message_count = self.message_handler.get_user_message_count_since_last_bot(exclude_commands=True)
+            response_type_result = self._apply_randomfact_response_gates(
+                response_type_result,
+                user_message_count
+            )
 
             # Set the prompt based on the response type
             if response_type_result == 'respond':
                 selected_prompt = self.config.randomfact_response
+            elif response_type_result == 'anybody_there':
+                selected_prompt = self.config.randomfact_anybody_there
             else:
                 selected_prompt = self.config.randomfact_prompt
                 task = AddMessageTask(
@@ -1477,6 +1597,7 @@ class Bot(twitch_commands.Bot):
             self.logger.debug(f"selected_prompt: {selected_prompt[0:50]}")
             replacements_dict = {
                 "wordcount":self.config.wordcount_veryshort,
+                "wordcount_short":self.config.wordcount_short,
                 'twitch_bot_display_name':self.config.twitch_bot_display_name,
                 'randomfact_topic':topic,
                 'randomfact_subtopic':subtopic,
@@ -1498,3 +1619,71 @@ class Bot(twitch_commands.Bot):
                 tts_voice=tts_voice
             )
             await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'randomfact_task'")
+
+            # Keep recent response types for gating
+            self.randomfact_recent_response_types.append(response_type_result)
+            if len(self.randomfact_recent_response_types) >= self.config.conversation_poll_message_count_threshold:
+                self.randomfact_recent_response_types.pop(0)
+
+            if immediate_consumed:
+                restored_sleep = self.randomfact_prev_sleeptime
+                if restored_sleep is None:
+                    restored_sleep = self.randomfact_sleeptime_base
+                    if restored_sleep is None:
+                        restored_sleep = self.config.randomfact_sleeptime
+                self.config.randomfact_sleeptime = restored_sleep
+                self.randomfact_prev_sleeptime = None
+                self.logger.info(f"Randomfact sleeptime restored to: {restored_sleep}")
+            self.randomfact_run_in_progress = False
+
+    def _trigger_randomfact_immediate(self, reason: str) -> None:
+        if self.randomfact_immediate_pending:
+            return
+        self.randomfact_immediate_pending = True
+        self.randomfact_prev_sleeptime = self.config.randomfact_sleeptime
+        self.config.randomfact_sleeptime = 0
+        self.logger.info(f"Immediate randomfact trigger set ({reason}).")
+
+    def _clear_randomfact_immediate(self, reason: str) -> None:
+        if not self.randomfact_immediate_pending and self.randomfact_prev_sleeptime is None:
+            return
+
+        restored_sleep = self.randomfact_prev_sleeptime
+        if restored_sleep is None:
+            restored_sleep = self.randomfact_sleeptime_base
+            if restored_sleep is None:
+                restored_sleep = self.config.randomfact_sleeptime
+
+        self.config.randomfact_sleeptime = restored_sleep
+        self.randomfact_prev_sleeptime = None
+        self.randomfact_immediate_pending = False
+        self.logger.info(
+            f"Immediate randomfact trigger cleared ({reason}); "
+            f"randomfact_sleeptime restored to {restored_sleep}."
+        )
+
+    def _maybe_trigger_randomfact_from_messages(self, message_metadata: dict) -> bool:
+        threshold = self.config.conversation_poll_message_count_threshold
+
+        if self.randomfact_run_in_progress:
+            return False
+        if message_metadata.get('role') != 'user':
+            return False
+        if message_metadata.get('is_bot'):
+            return False
+        if message_metadata.get('interaction_type') == 'command':
+            return False
+        if (message_metadata.get('content') or '').startswith('!'):
+            return False
+        if threshold <= 0:
+            raise ValueError("conversation_poll_message_count_threshold must be greater than 0")
+
+        user_message_count = self.message_handler.get_user_message_count_since_last_bot(exclude_commands=True)
+        if user_message_count >= threshold:
+            self.logger.info(
+                f"Conversation poll trigger hit: {user_message_count} messages since last bot message "
+                f"(threshold: {threshold})."
+            )
+            self._trigger_randomfact_immediate(reason="conversation_poll_message_count_threshold")
+            return True
+        return False

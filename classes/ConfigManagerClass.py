@@ -101,6 +101,12 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"Error in yaml_twitchbot_config(): {e}")
             raise
+        
+        try:
+            self.yaml_randomfact_conversation_poll_config(self.yaml_data)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_randomfact_conversation_poll_config(): {e}")
+            raise
 
         try:
             self.yaml_depinjector_config(self.yaml_data)
@@ -278,7 +284,7 @@ class ConfigManager:
             self.twitch_bot_display_name = os.getenv('CHATZILLA_DISPLAY_NAME')
             self.twitch_bot_operatorname = os.getenv('CHATZILLA_OPERATORNAME')
             self.twitch_bot_channel_name = os.getenv('CHATZILLA_CHANNEL_NAME')
-            self.twitch_bot_moderators = os.getenv('CHATZILLA_MODERATORS')
+            self.twitch_bot_moderators = [mod.strip() for mod in os.getenv('CHATZILLA_MODERATORS', '').split(',') if mod.strip()]
             self.twitch_operator_is_channel_owner = self.twitch_bot_operatorname == self.twitch_bot_channel_name 
         except Exception as e:
             self.logger.error(f"Error in update_config_from_env(): {e}")
@@ -525,6 +531,10 @@ class ConfigManager:
 
             self.randomfact_prompt = yaml_data['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_prompt']
             self.randomfact_response = yaml_data['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_response']
+            self.randomfact_anybody_there = yaml_data['chatforme_randomfacts']['randomfact_types'][selected_type].get(
+                'randomfact_anybody_there',
+                self.randomfact_response
+            )
 
             self.randomfact_topics_json_filepath = yaml_data['chatforme_randomfacts']['randomfact_types'][selected_type]['topics_injection_file_path']
             self.randomfact_topics = utils.load_json(path_or_dir=self.randomfact_topics_json_filepath)
@@ -534,6 +544,14 @@ class ConfigManager:
 
         except Exception as e:
             self.logger.error(f"Error in yaml_randomfact_json(): {e}")
+
+    def yaml_randomfact_conversation_poll_config(self, yaml_data):
+        try:
+            poll_config = yaml_data.get('conversation_poll', {})
+            self.conversation_poll_message_count_threshold = poll_config.get('message_count_threshold', 2)
+            self.conversation_poll_respond_min_user_messages = poll_config.get('respond_min_user_messages', 1)
+        except Exception as e:
+            self.logger.error(f"Error in yaml_randomfact_conversation_poll_config(): {e}")
 
     def yaml_factchecker_config(self, yaml_data):
         try:
@@ -657,8 +675,17 @@ class ConfigManager:
         self.logger.debug(f"randomfact_selected_game: {self.randomfact_selected_game}")
         self.logger.debug(f"randomfact_prompt: {self.randomfact_prompt}")
         self.logger.debug(f"randomfact_response: {self.randomfact_response}")
+        self.logger.debug(f"randomfact_anybody_there: {self.randomfact_anybody_there}")
         self.logger.debug(f"randomfact_topics_json_filepath: {self.randomfact_topics_json_filepath}")
         self.logger.debug(f"randomfact_areas_json_filepath: {self.randomfact_areas_json_filepath}")
+
+        # 8a) CONVERSATION POLL CONFIG
+        self.logger.debug("")
+        self.logger.debug("==================================================")
+        self.logger.debug("=          8a) CONVERSATION POLL CONFIG           =")
+        self.logger.debug("==================================================")
+        self.logger.debug(f"conversation_poll_message_count_threshold: {self.conversation_poll_message_count_threshold}")
+        self.logger.debug(f"conversation_poll_respond_min_user_messages: {self.conversation_poll_respond_min_user_messages}")
 
         # 9) VIBE CHECK & NEW USERS
         self.logger.debug("")

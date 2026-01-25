@@ -81,7 +81,8 @@ class GPTFunctionCallManager(GPTBaseClass):
             thread_name: str, 
             assistant_name: str, 
             function_schema: json, 
-            get_response=False
+            get_response=False,
+            max_tool_output_attempts: int = 2
             ):
         """
         Executes the function call workflow for the specified thread.
@@ -115,108 +116,144 @@ class GPTFunctionCallManager(GPTBaseClass):
             self.logger.error(f"...Assistant ID not found for '{assistant_name}'.")
 
         async with self.thread_run_locks[thread_name]:
-            try:
-                self.logger.info(f"...Starting run for thread '{thread_name}' with assistant '{assistant_id}'")
+            for attempt in range(max_tool_output_attempts):
+                output_data = None
+                final_response = None
+                run = None
 
-                # Check if there's an active run for this thread
-                runs = self.gpt_client.beta.threads.runs.list(thread_id=thread_id)
-                active_runs = [run for run in runs.data if run.status in ['queued', 'in_progress']]
+                try:
+                    self.logger.info(f"...Starting run for thread '{thread_name}' with assistant '{assistant_id}'")
 
-                if active_runs:
-                    active_run = active_runs[0]
-                    self.logger.warning(f"...Thread '{thread_name}' already has an active run: {active_run.id}. Waiting for it to complete.")
-                    await self._wait_for_run_completion(thread_id, active_run.id)
+                    # Check if there's an active run for this thread
+                    runs = self.gpt_client.beta.threads.runs.list(thread_id=thread_id)
+                    active_runs = [run for run in runs.data if run.status in ['queued', 'in_progress']]
 
-                # Start the new run
-                wrapped_function_schema = [function_schema]
-                
-                # Force the function call if a function schema is provided
-                tool_choice = "auto"
-                if function_schema and 'function' in function_schema and 'name' in function_schema['function']:
-                    function_name = function_schema['function']['name']
-                    tool_choice = {"type": "function", "function": {"name": function_name}}
-                    self.logger.info(f"...Forcing tool choice: {tool_choice}")
+                    if active_runs:
+                        active_run = active_runs[0]
+                        self.logger.warning(
+                            f"...Thread '{thread_name}' already has an active run: {active_run.id}. "
+                            "Waiting for it to complete."
+                        )
+                        await self._wait_for_run_completion(thread_id, active_run.id)
 
-                run = self.gpt_client.beta.threads.runs.create(
-                    thread_id=thread_id,
-                    assistant_id=assistant_id,
-                    tools = wrapped_function_schema,
-                    tool_choice = tool_choice
-                )
+                    # Start the new run
+                    wrapped_function_schema = [function_schema]
+                    
+                    # Force the function call if a function schema is provided
+                    tool_choice = "auto"
+                    if function_schema and 'function' in function_schema and 'name' in function_schema['function']:
+                        function_name = function_schema['function']['name']
+                        tool_choice = {"type": "function", "function": {"name": function_name}}
+                        self.logger.info(f"...Forcing tool choice: {tool_choice}")
 
-            except Exception as e:
-                self.logger.error(f"...Error starting run for thread '{thread_name}': {e}")
-
-            try:
-                # Poll the run status manually until it's complete
-                while run.status in ['queued', 'in_progress']:
-                    await asyncio.sleep(2)
-                    run = self.gpt_client.beta.threads.runs.retrieve(
+                    run = self.gpt_client.beta.threads.runs.create(
                         thread_id=thread_id,
-                        run_id=run.id
+                        assistant_id=assistant_id,
+                        tools=wrapped_function_schema,
+                        tool_choice=tool_choice
                     )
-            except Exception as e:
-                self.logger.error(f"...Error polling run status for thread '{thread_name}': {e}")
 
+                except Exception as e:
+                    self.logger.error(f"...Error starting run for thread '{thread_name}': {e}", exc_info=True)
+                    continue
 
-                # Chedck if status is not in one of the all run states and log the status
+                try:
+                    # Poll the run status manually until it's complete
+                    while run.status in ['queued', 'in_progress']:
+                        await asyncio.sleep(2)
+                        run = self.gpt_client.beta.threads.runs.retrieve(
+                            thread_id=thread_id,
+                            run_id=run.id
+                        )
+                except Exception as e:
+                    self.logger.error(f"...Error polling run status for thread '{thread_name}': {e}", exc_info=True)
+
                 if run.status not in ['queued', 'in_progress', 'completed', 'failed', 'requires_action']:
                     self.logger.warning(f"...Run status is not in one of the expected states: {run.status}")
                 else:
                     self.logger.debug(f"...Run created with status: {run.status}")
 
-            try:
-                # Check if the run completed and then handle the response
-                if run.status == 'completed':
-                    messages = self.gpt_client.beta.threads.messages.list(thread_id=thread_id)
-                    final_response = self._extract_latest_response_from_thread_messages(messages)
-                    self.logger.info(f"...Status is completed. Final response: {final_response}")
-                    self.logger.info(f"...Final response: {final_response}")
-                    self.logger.info(f"...Output data: {run.output_data}")
-                    return None, final_response
-
-                # Check if the run failed
-                if run.status == 'failed':
-                    error_details = run.last_error
-                    self.logger.error(f"...Run failed with error: {error_details}")
-                    raise RuntimeError(f"...Run failed: {error_details}")
-
-                # Handle function calls if the run requires action
-                if run.status == 'requires_action':
-
-                    # Handle the required action and get the final response
-                    tool_outputs, output_data = await self._handle_required_action(run)
-                    self.logger.info(f"...Tool outputs: {tool_outputs}")
-
-                    if get_response:
-                        # Submit the tool outputs and wait for the run to complete
-                        run = await self._submit_tool_outputs(thread_id, run.id, tool_outputs)
-
+                try:
+                    # Check if the run completed and then handle the response
+                    if run.status == 'completed':
+                        self.logger.warning(
+                            f"...Run completed without tool output for thread '{thread_name}' "
+                            f"(attempt {attempt + 1}/{max_tool_output_attempts})."
+                        )
+                        self.logger.warning(
+                            f"...Run status: {run.status}, last_error: {getattr(run, 'last_error', None)}, "
+                            f"output_data: {getattr(run, 'output_data', None)}, "
+                            f"required_action: {getattr(run, 'required_action', None)}"
+                        )
+                        if attempt < max_tool_output_attempts - 1:
+                            continue
                         messages = self.gpt_client.beta.threads.messages.list(thread_id=thread_id)
                         final_response = self._extract_latest_response_from_thread_messages(messages)
-                        self.logger.info(f"...Final response (get_response is {get_response}): {final_response}")
+                        self.logger.info(f"...Status is completed. Final response: {final_response}")
+                        self.logger.info(f"...Output data: {getattr(run, 'output_data', None)}")
+                        return None, final_response
 
-                    else:
-                        run = await self._cancel_run(thread_id, run.id) 
-                        final_response = None
-                    
-                self.logger.info(f"...Output data: {output_data}")
-                self.logger.info(f"...Final response: {final_response}")
-                return output_data, final_response
-            
-            except Exception as e:
-                self.logger.info(f"--- Debugging Exception ---")
-                self.logger.info(f"Run ID: {run.id if run else 'No run object'}")
-                self.logger.info(f"Run Status: {run.status if run else 'Unknown'}")
-                self.logger.info(f"Run Last Error: {run.last_error if hasattr(run, 'last_error') else 'No last_error attribute'}")
-                self.logger.info(f"Run Output Data: {run.output_data if hasattr(run, 'output_data') else 'No output_data attribute'}")
+                    # Check if the run failed
+                    if run.status == 'failed':
+                        error_details = run.last_error
+                        self.logger.error(f"...Run failed with error: {error_details}")
+                        raise RuntimeError(f"...Run failed: {error_details}")
 
-                self.logger.info(f"Assistant Name: {assistant_name}, Assistant ID: {assistant_id}")
-                self.logger.info(f"Thread Name: {thread_name}, Thread ID: {thread_id}")
+                    # Handle function calls if the run requires action
+                    if run.status == 'requires_action':
 
-                self.logger.info(f"Exception Type: {type(e).__name__}")
-                self.logger.info(f"Exception Args: {e.args}")
-                self.logger.error(f"Error handling function call: {e}", exc_info=True)
+                        # Handle the required action and get the final response
+                        tool_outputs, output_data = await self._handle_required_action(run)
+                        self.logger.info(f"...Tool outputs: {tool_outputs}")
+                        if not tool_outputs or output_data is None:
+                            self.logger.warning(
+                                f"...No tool output parsed for thread '{thread_name}'. "
+                                f"Run status: {run.status}, required_action: {getattr(run, 'required_action', None)}"
+                            )
+
+                        if get_response:
+                            # Submit the tool outputs and wait for the run to complete
+                            run = await self._submit_tool_outputs(thread_id, run.id, tool_outputs)
+
+                            messages = self.gpt_client.beta.threads.messages.list(thread_id=thread_id)
+                            final_response = self._extract_latest_response_from_thread_messages(messages)
+                            self.logger.info(f"...Final response (get_response is {get_response}): {final_response}")
+
+                        else:
+                            run = await self._cancel_run(thread_id, run.id) 
+                            final_response = None
+                        
+                        self.logger.info(f"...Output data: {output_data}")
+                        self.logger.info(f"...Final response: {final_response}")
+                        return output_data, final_response
+
+                    self.logger.warning(
+                        f"...Run ended in unexpected status '{run.status}' "
+                        f"(attempt {attempt + 1}/{max_tool_output_attempts})."
+                    )
+                    if attempt < max_tool_output_attempts - 1:
+                        continue
+                    return None, None
+                
+                except Exception as e:
+                    self.logger.info(f"--- Debugging Exception ---")
+                    self.logger.info(f"Run ID: {run.id if run else 'No run object'}")
+                    self.logger.info(f"Run Status: {run.status if run else 'Unknown'}")
+                    self.logger.info(f"Run Last Error: {run.last_error if hasattr(run, 'last_error') else 'No last_error attribute'}")
+                    self.logger.info(f"Run Output Data: {run.output_data if hasattr(run, 'output_data') else 'No output_data attribute'}")
+
+                    self.logger.info(f"Assistant Name: {assistant_name}, Assistant ID: {assistant_id}")
+                    self.logger.info(f"Thread Name: {thread_name}, Thread ID: {thread_id}")
+
+                    self.logger.info(f"Exception Type: {type(e).__name__}")
+                    self.logger.info(f"Exception Args: {e.args}")
+                    self.logger.error(f"Error handling function call: {e}", exc_info=True)
+
+            self.logger.warning(
+                f"...Exhausted tool output attempts for thread '{thread_name}' "
+                f"with assistant '{assistant_name}'."
+            )
+            return None, None
 
     async def _wait_for_run_completion(self, thread_id, run_id):
         """Waits for a specific run to complete."""
@@ -242,6 +279,7 @@ class GPTFunctionCallManager(GPTBaseClass):
             list: A list of tool outputs to submit.
         """
         tool_outputs = []
+        output_data = None
 
         for tool_call in run.required_action.submit_tool_outputs.tool_calls:
             function_name = tool_call.function.name
@@ -592,6 +630,27 @@ class GPTResponseManager(GPTBaseClass):
 
         raise ValueError(f"Response not completed after {counter * polling_seconds} seconds")
 
+    async def _wait_for_thread_idle(self, thread_id, polling_seconds=1):
+        """
+        Wait until there are no active runs on the thread.
+        """
+        counter = 0
+        while counter < self.max_waittime_for_gpt_response:
+            runs = self.gpt_client.beta.threads.runs.list(thread_id=thread_id)
+            active_runs = [run for run in runs.data if run.status in ['queued', 'in_progress', 'requires_action']]
+            if not active_runs:
+                return
+            if counter % 5 == 0:
+                self.logger.info(
+                    f"Thread {thread_id} has active run(s); waiting to add message..."
+                )
+            await asyncio.sleep(polling_seconds)
+            counter += polling_seconds
+
+        self.logger.warning(
+            f"Timed out waiting for thread {thread_id} to be idle; attempting to add message anyway."
+        )
+
     async def _run_and_get_assistant_response_thread_messages(
             self, 
             thread_id: str, 
@@ -770,8 +829,9 @@ class GPTResponseManager(GPTBaseClass):
         if thread_name in self.gpt_thread_manager.threads:
             thread_id = self.gpt_thread_manager.threads[thread_name]['id']
 
-            async for attempt in AsyncRetrying(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True):
-                with attempt:
+            for attempt in range(5):
+                await self._wait_for_thread_idle(thread_id)
+                try:
                     message_object = self.gpt_client.beta.threads.messages.create(
                         thread_id=thread_id, 
                         role=role, 
@@ -779,6 +839,18 @@ class GPTResponseManager(GPTBaseClass):
                     )
                     self.logger.info(f"... added message to thread ({thread_name}/{thread_id}): Message content {message_content[0:50]}...")
                     return message_object
+                except Exception as e:
+                    error_text = str(e)
+                    if "Can't add messages to thread" in error_text:
+                        self.logger.warning(
+                            f"Thread '{thread_name}' busy; retrying add_message ({attempt + 1}/5)."
+                        )
+                        await asyncio.sleep(1)
+                        continue
+                    raise
+
+            self.logger.error(f"Failed to add message to thread '{thread_name}' after retries.")
+            return None
         else:
             self.logger.warning(f"Thread '{thread_name}' not found.")
             return None

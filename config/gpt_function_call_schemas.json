@@ -3,14 +3,14 @@
         "type": "function",
         "function": {
             "name": "conversationdirector",
-            "description": "You are a control flow system. Use this function to decide if a chatbot should engage or provide a neutral fact. Usually prefer 'respond' if there's any direct mention or question for the bot.",
+            "description": "You are a control flow system. Use this function to decide if a chatbot should engage, provide a neutral fact, or post a brief check-in. Usually prefer 'respond' if there's any direct mention or question for the bot. Choose 'anybody_there' for a short, low-pressure check-in when chat is quiet and there's no clear topic. If the most recent assistant response already covered the same topic and there is no new user info, choose 'fact'.",
             "parameters": {
                 "type": "object",
                 "properties": {
                 "response_type": {
                     "type": "string",
-                    "enum": ["respond", "fact"],
-                    "description": "Pick 'respond' if the conversation addresses or would benefit from the bot. Otherwise 'fact'."
+                "enum": ["respond", "fact", "anybody_there"],
+                    "description": "Pick 'respond' if the conversation addresses or would benefit from the bot. Pick 'anybody_there' for a short check-in when chat is quiet but this should probably happen less often than 'fact' or 'respond'.  Otherwise 'fact'."
                 },
                 "reasoning": {
                     "type": "string",

@@ -1,4 +1,6 @@
 # eh-bot-chatforme (or whatever you called your bot)
+
+**Callout:** This repo was contributed to with the help of Claude, GPT, Antigravity, Cursor, Copilot, Gemini, Codeium, Tabnine, Perplexity, Replit Ghostwriter, Sourcegraph Cody, and pretty much every AI helper under the sun :lolz:
  
 # Discord-Twitch Chatbot
 

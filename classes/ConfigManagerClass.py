@@ -399,7 +399,7 @@ class ConfigManager:
         self.tts_voice_randomfact = yaml_data['openai-api']['tts_voice_randomfact']
         self.tts_voice_chatforme = yaml_data['openai-api']['tts_voice_chatforme']
         self.tts_voice_story = yaml_data['openai-api']['tts_voice_story']
-        self.factcheck_voice = yaml_data['openai-api']['tts_voice_factcheck']
+        self.tts_voice_factcheck = yaml_data['openai-api']['tts_voice_factcheck']
         self.tts_voice_newuser = yaml_data['openai-api']['tts_voice_newuser']
         self.tts_voice_default = yaml_data['openai-api']['tts_voice_default']
         self.tts_voice_vibecheck = yaml_data['openai-api']['tts_voice_vibecheck']
@@ -415,7 +415,6 @@ class ConfigManager:
             self.returningusers_msg_prompt = yaml_data['returningusers_msg_prompt']
             self.vibechecker_message_wordcount = str(yaml_data['vibechecker_message_wordcount'])
             self.vibechecker_question_session_sleep_time = yaml_data['vibechecker_question_session_sleep_time']
-            self.vibechecker_listener_sleep_time = yaml_data['vibechecker_listener_sleep_time']
             self.formatted_gpt_vibecheck_alert = yaml_data['formatted_gpt_vibecheck_alert']
         except Exception as e:
             self.logger.error(f"Error in yaml_vibecheck_config(): {e}")
@@ -639,7 +638,7 @@ class ConfigManager:
         self.logger.debug(f"tts_voice_randomfact: {self.tts_voice_randomfact}")
         self.logger.debug(f"tts_voice_chatforme: {self.tts_voice_chatforme}")
         self.logger.debug(f"tts_voice_story: {self.tts_voice_story}")
-        self.logger.debug(f"tts_voice_factcheck: {self.factcheck_voice}")
+        self.logger.debug(f"tts_voice_factcheck: {self.tts_voice_factcheck}")
         self.logger.debug(f"tts_voice_newuser: {self.tts_voice_newuser}")
         self.logger.debug(f"tts_voice_default: {self.tts_voice_default}")
         self.logger.debug(f"tts_voice_vibecheck: {self.tts_voice_vibecheck}")
@@ -701,7 +700,6 @@ class ConfigManager:
         self.logger.debug(f"returningusers_msg_prompt: {self.returningusers_msg_prompt}")
         self.logger.debug(f"vibechecker_message_wordcount: {self.vibechecker_message_wordcount}")
         self.logger.debug(f"vibechecker_question_session_sleep_time: {self.vibechecker_question_session_sleep_time}")
-        self.logger.debug(f"vibechecker_listener_sleep_time: {self.vibechecker_listener_sleep_time}")
         self.logger.debug(f"formatted_gpt_vibecheck_alert: {self.formatted_gpt_vibecheck_alert}")
         self.logger.debug(f"flag_returning_users_service: {self.flag_returning_users_service}")
 

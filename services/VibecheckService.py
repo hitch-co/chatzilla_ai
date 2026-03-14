@@ -57,7 +57,6 @@ class VibeCheckService:
         self.vibecheck_message_wordcount = self.config.vibechecker_message_wordcount
         self.vibechecker_max_interaction_count = self.config.vibechecker_max_interaction_count
         self.vibechecker_question_session_sleep_time = self.config.vibechecker_question_session_sleep_time
-        self.vibechecker_listener_sleep_time = self.config.vibechecker_listener_sleep_time
 
         self.vibechecker_players = vibechecker_players
         self.vibecheckee_username = self.vibechecker_players['vibecheckee_username']

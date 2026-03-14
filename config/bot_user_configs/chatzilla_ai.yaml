@@ -89,7 +89,7 @@ ouat_storyteller:
 #CHATFORME RANDOM FACTS & FACTCHECK
 chatforme_randomfacts:
   num_bot_responses: 1
-  randomfact_sleeptime: 90
+  randomfact_sleeptime: 450
   randomfact_types:
     game: # Game is set in run_envirionment.bat (i.e. input prompt after launching the bot)
       randomfact_prompt: "Your name is {twitch_bot_display_name}.  Share a fact 
@@ -343,9 +343,9 @@ gpt_assistants_with_functions:
 gpt_thread_prompts:
   aboutme_prompt: "this is the stuff about me"
   
-  shorten_response_length: "shorten this message to 25 words.  Make no 
-     mention that you have shortened the message, just output the shortened message.
-     "
+  shorten_response_length: "Shorten the message below to 25 words. Do not mention that you shortened it.
+    Original instructions: '{original_thread_instructions}'
+    Message: '{message_to_shorten}'"
   story_suffix: "This should be a single message response directly without any
     prefix. Be succinct and {wordcount_short} words max. Add the suffix
     '({ouat_counter}/{max_ouat_counter})' to the end of your message so users
@@ -517,8 +517,7 @@ returningusers_msg_prompt: "Say hi and tag @{random_new_user} in this twitch cha
 #Vibechecker prompts
 vibechecker_max_interaction_count: 6
 vibechecker_message_wordcount: 30
-vibechecker_listener_sleep_time: 6
-vibechecker_question_session_sleep_time: 60
+vibechecker_question_session_sleep_time: 30
 formatted_gpt_vibecheck_alert: |
   Let {vibecheckee_username} know (tagging them with @{vibecheckee_username} in this twitch chat) that they have been selected for a vibe check. They should know that:
   - They'll be asked a few short questions to see whether or not they are a bot.

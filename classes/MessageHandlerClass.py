@@ -3,6 +3,7 @@ from models.task import AddMessageTask
 from my_modules import my_logging
 import hashlib
 import re
+import time
 
 runtime_logger_level = 'INFO'
 
@@ -27,6 +28,8 @@ class MessageHandler:
 
         # Users in message history
         self.users_in_messages_list = []
+
+        self.recent_message_metadata = []
 
         # Message_history_raw
         self.message_history_raw = []
@@ -72,7 +75,8 @@ class MessageHandler:
             'interaction_type': None, #generated below
             'raw_data': raw_data,
             'message_author': message_author,
-            'message_id': message_id
+            'message_id': message_id,
+            'is_bot': False
         }
         
         # If message starts with ! or contains @chatzilla_ai, interaction_type is a command 
@@ -84,13 +88,111 @@ class MessageHandler:
         if message_author is not None:          
             message_metadata['role'] = 'user'
             message_metadata['content'] = content
+            bot_username = (self.config.twitch_bot_username or '').lower()
+            message_metadata['is_bot'] = (name or '').lower() == bot_username
 
         elif message_author is None: 
             message_metadata['name'] = self._extract_name_from_message(raw_data)
             message_metadata['role'] = 'assistant'
             message_metadata['content'] = content
+            bot_username = (self.config.twitch_bot_username or '').lower()
+            bot_display_name = (self.config.twitch_bot_display_name or '').lower()
+            extracted_name = (message_metadata.get('name') or '').lower()
+            message_metadata['is_bot'] = extracted_name in {bot_username, bot_display_name}
 
         return message_metadata
+
+    def _create_recent_message_record(self, message_metadata: dict) -> dict:
+        return {
+            'name': message_metadata.get('name'),
+            'user_id': message_metadata.get('user_id'),
+            'timestamp': message_metadata.get('timestamp'),
+            'content': message_metadata.get('content'),
+            'interaction_type': message_metadata.get('interaction_type'),
+            'message_id': message_metadata.get('message_id'),
+            'role': message_metadata.get('role'),
+            'is_bot': message_metadata.get('is_bot', False),
+            'is_planned': message_metadata.get('is_planned', False)
+        }
+
+    def _add_to_recent_message_metadata(self, message_metadata: dict) -> None:
+        record = self._create_recent_message_record(message_metadata)
+        self.recent_message_metadata.append(record)
+        if len(self.recent_message_metadata) > self.msg_history_limit:
+            self.recent_message_metadata.pop(0)
+
+    def mark_planned_bot_message(self, source: str) -> None:
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+        bot_name = (
+            self.config.twitch_bot_display_name
+            or self.config.twitch_bot_username
+            or 'chatzilla_bot'
+        )
+        message_metadata = {
+            'name': bot_name,
+            'user_id': self.config.twitch_bot_username or bot_name,
+            'timestamp': timestamp,
+            'content': f"[planned_bot_response:{source}]",
+            'interaction_type': 'planned',
+            'message_id': f"planned_{int(time.time() * 1000)}",
+            'role': 'assistant',
+            'is_bot': True,
+            'is_planned': True
+        }
+
+        if self.recent_message_metadata and self.recent_message_metadata[-1].get('is_planned'):
+            self.recent_message_metadata[-1] = self._create_recent_message_record(message_metadata)
+        else:
+            self._add_to_recent_message_metadata(message_metadata)
+
+    def mark_confirmed_bot_message(self, source: str, content=None) -> None:
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+        bot_name = (
+            self.config.twitch_bot_display_name
+            or self.config.twitch_bot_username
+            or 'chatzilla_bot'
+        )
+        message_metadata = {
+            'name': bot_name,
+            'user_id': self.config.twitch_bot_username or bot_name,
+            'timestamp': timestamp,
+            'content': content or f"[bot_response:{source}]",
+            'interaction_type': 'bot_response',
+            'message_id': f"bot_{int(time.time() * 1000)}",
+            'role': 'assistant',
+            'is_bot': True,
+            'is_planned': False
+        }
+
+        if self.recent_message_metadata and self.recent_message_metadata[-1].get('is_planned'):
+            self.recent_message_metadata[-1] = self._create_recent_message_record(message_metadata)
+        else:
+            self._add_to_recent_message_metadata(message_metadata)
+
+    def get_messages_since_last_bot(self) -> list[dict]:
+        if not self.recent_message_metadata:
+            return []
+        last_bot_index = None
+        for idx in range(len(self.recent_message_metadata) - 1, -1, -1):
+            if self.recent_message_metadata[idx].get('is_bot'):
+                last_bot_index = idx
+                break
+        if last_bot_index is None:
+            return list(self.recent_message_metadata)
+        return self.recent_message_metadata[last_bot_index + 1:]
+
+    def get_user_message_count_since_last_bot(self, exclude_commands=True) -> int:
+        messages_since = self.get_messages_since_last_bot()
+        count = 0
+        for msg in messages_since:
+            if msg.get('is_bot') or msg.get('role') != 'user':
+                continue
+            if exclude_commands:
+                content = msg.get('content') or ''
+                if msg.get('interaction_type') == 'command' or content.startswith('!'):
+                    continue
+            count += 1
+        return count
 
     def _clean_message_content(self, content, command_spellings: dict) -> str:
         content_temp = content
@@ -219,6 +321,7 @@ class MessageHandler:
         #Apply message dict to msg histories
         self.message_history_raw.append(message_metadata)
         self.all_msg_history_gptdict.append(gpt_ready_msg_dict)
+        self._add_to_recent_message_metadata(message_metadata)
 
         #cleanup msg histories for GPT
         self._cleanup_message_history()

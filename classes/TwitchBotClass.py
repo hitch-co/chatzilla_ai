@@ -247,8 +247,10 @@ class Bot(twitch_commands.Bot):
             except Exception as e:
                 gpt_response = None
                 message = f"...Error occurred in '{task_type}': {e}"
-                task.future.set_exception(message)
-                self.logger.error(message)
+                self.logger.error(message, exc_info=True)
+                if not task.future.done():
+                    task.future.set_exception(RuntimeError(message))
+                return
 
             # Send the GPT response to the channel
             if gpt_response is not None and bool_send_channel_message is True:
@@ -264,23 +266,32 @@ class Bot(twitch_commands.Bot):
                         origin_thread=thread_name,
                         assistant_name=assistant_name
                     )
+                    self.message_handler.mark_confirmed_bot_message(
+                        source=thread_name,
+                        content=gpt_response
+                    )
                     message = f"...'{task_type}' task handled for thread: {thread_name}. Send channel message is True"
                     task.future.set_result(message)
                     self.logger.info(message) 
 
                 except Exception as e:
                     message = f"...Error occurred in 'send_output_message_and_voice': {e}"
-                    self.logger.error(message)
-                    task.future.set_exception(message)
+                    self.logger.error(message, exc_info=True)
+                    if not task.future.done():
+                        task.future.set_exception(RuntimeError(message))
+                    return
 
             if gpt_response is None:
                 message = f"...Gpt response is None, this should not happen.  Task: {task.task_dict}"
                 self.logger.error(message)
-                task.future.set_exception(message)
-            
+                if not task.future.done():
+                    task.future.set_exception(RuntimeError(message))
+                return
+             
             if bool_send_channel_message is False:
                 message = f"...'{task_type}' task handled for thread: {thread_name}. Send channel message is False"
-                task.future.set_result(message)
+                if not task.future.done():
+                    task.future.set_result(message)
                 self.logger.info(message)
             
         elif task_type == "send_channel_message":
@@ -297,8 +308,10 @@ class Bot(twitch_commands.Bot):
 
             except Exception as e:
                 message = f"...Error occurred in 'add_message_to_thread': {e}"
-                self.logger.error(message)
-                task.future.set_exception(message)
+                self.logger.error(message, exc_info=True)
+                if not task.future.done():
+                    task.future.set_exception(RuntimeError(message))
+                return
 
             try:
                 await self.chatforme_service.send_output_message_and_voice(
@@ -311,19 +324,26 @@ class Bot(twitch_commands.Bot):
                     origin_thread=thread_name,
                     assistant_name="twitch_send_channel_message"
                 )
+                self.message_handler.mark_confirmed_bot_message(
+                    source=thread_name,
+                    content=content
+                )
                 message = f"...'{task_type}' task handled for thread: {thread_name}"
                 task.future.set_result(message)
                 self.logger.info(message)
 
             except Exception as e:
                 message = f"...Error occurred in 'send_channel_message': {e}"
-                self.logger.error(message)
-                task.future.set_exception(message)
+                self.logger.error(message, exc_info=True)
+                if not task.future.done():
+                    task.future.set_exception(RuntimeError(message))
+                return
         
         else:
             message = f"Unknown task type 'task_type' found, this should not happen"
             self.logger.info(message)  
-            self.future.set_exception(message)
+            if not task.future.done():
+                task.future.set_exception(RuntimeError(message))
 
     def _get_origin_label(self, thread_name, assistant_name=None) -> str:
         label = assistant_name or "unknown"
@@ -794,6 +814,10 @@ class Bot(twitch_commands.Bot):
 
     async def _send_channel_message_wrapper(self, message):
         await self.channel.send(message)
+        self.message_handler.mark_confirmed_bot_message(
+            source="twitch_send_channel_message_wrapper",
+            content=message
+        )
 
     async def _is_function_caller_moderator(self, ctx) -> bool:
         is_sender_mod = False
@@ -1411,7 +1435,7 @@ class Bot(twitch_commands.Bot):
 
         assistant_name = 'factchecker'
         thread_name = 'chatformemsgs'
-        tts_voice = self.config.tts_voice_randomfact
+        tts_voice = self.config.tts_voice_factcheck
 
         if text_input_from_user is None:
             text_input_from_user = "none"
@@ -1470,7 +1494,9 @@ class Bot(twitch_commands.Bot):
 
         # Validate input
         if len(args) < 2:
-            await self.channel.send("Usage: !update_config [config_var] [value]")
+            await self._send_channel_message_wrapper(
+                "Usage: !update_config [config_var] [value]"
+            )
             return
 
         # Extract the config variable and value from the command arguments
@@ -1501,7 +1527,9 @@ class Bot(twitch_commands.Bot):
 
         # # Check if the config variable is allowed
         # if config_var not in config_vars:
-        #     await self.channel.send(f"Invalid config variable: {config_var}")
+        #     await self._send_channel_message_wrapper(
+        #         f"Invalid config variable: {config_var}"
+        #     )
         #     return
 
         # Attempt to update the config variable
@@ -1519,7 +1547,9 @@ class Bot(twitch_commands.Bot):
             self.logger.info(f"Config variable '{config_var}' has been updated to '{value}'")
         except Exception as e:
             self.logger.error(f"Error occurred in !update_config: {e}")
-            await self.channel.send("No change made, see log for details...")
+            await self._send_channel_message_wrapper(
+                "No change made, see log for details..."
+            )
 
     def _pick_random_category(self, data: dict):
         topic = random.choice(list(data.keys()))

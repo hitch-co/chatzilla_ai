@@ -21,6 +21,11 @@ class TaskManager:
         self.task_queues: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue) # Thread name to task queue mapping
         self.task_queue_lock = asyncio.Lock()
         self.on_task_ready: Callable[[Dict], None] = None
+        self.pending_requested_replies = 0
+
+    def release_requested_reply(self, task_dict):
+        if task_dict.pop('pending_requested_reply', False):
+            self.pending_requested_replies -= 1
 
     async def _wait_for_task_completion(self, task, description=""):
         """Waits for a task's completion with logging."""
@@ -35,6 +40,9 @@ class TaskManager:
         self.logger.debug(f"Task to add to queue: {task.task_dict}")
         async with self.task_queue_lock:
             await self.task_queues[thread_name].put(task)
+            if task.task_dict.get('requested_reply'):
+                self.pending_requested_replies += 1
+                task.task_dict['pending_requested_reply'] = True
             self.logger.debug(f"Queue size for thread '{thread_name}': {self.task_queues[thread_name].qsize()}")
 
     async def add_task_to_queue_and_execute(self, thread_name, task, description=""):
@@ -93,6 +101,7 @@ class TaskManager:
                             exc_info=True
                         )
                     finally:
+                        self.release_requested_reply(task.task_dict)
                         queue.task_done()
 
             if not task_processed:

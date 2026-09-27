@@ -11,14 +11,21 @@ logger = create_logger(
     encoding='UTF-8'
     )
 
-async def adjustable_sleep_task(config: object, attribute_name: str):
+async def adjustable_sleep_task(config: object, attribute_name: str, wake_event=None):
     total_sleep_time = getattr(config, attribute_name)
     sleep_interval = 1  # Check every second
 
     elapsed_time = 0
     while elapsed_time < total_sleep_time:
         logger.debug(f"Elapsed time: {elapsed_time} (of {total_sleep_time})")
-        await asyncio.sleep(sleep_interval)
+        if wake_event is None:
+            await asyncio.sleep(sleep_interval)
+        else:
+            try:
+                await asyncio.wait_for(wake_event.wait(), timeout=sleep_interval)
+                return True
+            except asyncio.TimeoutError:
+                pass
         elapsed_time += sleep_interval
 
         # Check if the sleep time needs to be adjusted
@@ -28,6 +35,7 @@ async def adjustable_sleep_task(config: object, attribute_name: str):
             logger.info(f"Sleep time was adjusted: {total_sleep_time} -> {new_sleep_time}")
             total_sleep_time = new_sleep_time
     logger.debug("Completed adjustable sleep.")
+    return False
 
 # # Ceate an example usage of the adjustable_sleep_task function
 # import asyncio

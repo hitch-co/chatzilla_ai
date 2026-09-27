@@ -1,9 +1,9 @@
 import os
 import sys
 import json
+import argparse
 
 import sounddevice as sd
-from dotenv import load_dotenv
 
 # Add the root directory to sys.path
 root_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -73,89 +73,51 @@ def get_wasapi_microphones(output_filepath=None):
     logger.debug(f"[get_wasapi_microphones] Discovered mic devices: {microphones}")
     return microphones
 
-def validate_device(device_name, case_insensitive=False):
+def _escape_batch_set_value(value):
     """
-    Checks if 'device_name' is among the available WASAPI microphones.
-    Optionally does case-insensitive matching.
+    Escape the selected device name for a Windows batch SET command.
+    """
+    return (
+        value
+        .replace("\r", "")
+        .replace("\n", "")
+        .replace("%", "%%")
+        .replace("^", "^^")
+        .replace('"', "'")
+    )
+
+def write_runtime_env_bat(output_filepath, key, value):
+    """
+    Write a temporary batch file that sets the selected device for the current launcher process.
+    This is intentionally runtime-only and should be deleted by the caller after it is used.
+    """
+    output_dir = os.path.dirname(os.path.abspath(output_filepath))
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
+    escaped_value = _escape_batch_set_value(value)
+    with open(output_filepath, "w", encoding="utf-8") as bat_file:
+        bat_file.write("@echo off\n")
+        bat_file.write(f'set "{key}={escaped_value}"\n')
+
+def ensure_audio_device_selected(device_env_var="CHATZILLA_MIC_DEVICE_NAME", runtime_env_bat=None):
+    """
+    Prompt for a WASAPI microphone selection on every startup.
+
+    The selected device is not persisted to config/.env. When runtime_env_bat is provided,
+    a temporary batch file is written so the launcher can set the device for this run only.
 
     Args:
-        device_name (str): The name of the device to validate.
-        case_insensitive (bool): Whether to ignore case differences.
+        device_env_var (str): The environment variable key storing the microphone name.
+        runtime_env_bat (str, optional): Path to write a temporary batch file with SET commands.
+    """
+    logger.info(f"[ensure_audio_device_selected] Prompting for '{device_env_var}'. Existing saved values are ignored.")
 
-    Returns:
-        bool: True if the device is found, False otherwise.
-    """    
-    #Ensure output_filepath directory exists
     output_filepath = r'.\data\botears\detected_wasapi_audio_devices.json'
     if not os.path.exists(os.path.dirname(output_filepath)):
         os.makedirs(os.path.dirname(output_filepath), exist_ok=True)
-        
+
     microphones = get_wasapi_microphones(output_filepath=output_filepath)
-    if case_insensitive:
-        device_name = device_name.strip().lower()
-        mic_names = [mic["name"].strip().lower() for mic in microphones]
-    else:
-        device_name = device_name.strip()
-        mic_names = [mic["name"].strip() for mic in microphones]
-
-    logger.info(f"[validate_device] Checking '{device_name}' against microphone names: {mic_names}")
-    return device_name in mic_names
-
-def append_or_update_env(env_file_path, key, value):
-    """
-    Update or append key=value in the .env file (unquoted).
-    """
-    if not os.path.exists(env_file_path):
-        os.makedirs(os.path.dirname(env_file_path), exist_ok=True)
-        with open(env_file_path, "w") as f:
-            f.write(f"{key}={value}\n")
-        return
-
-    lines = []
-    found_key = False
-    with open(env_file_path, "r") as f:
-        for line in f:
-            if line.startswith(f"{key}="):
-                lines.append(f"{key}={value}\n")
-                found_key = True
-            else:
-                lines.append(line)
-    if not found_key:
-        lines.append(f"{key}={value}\n")
-
-    with open(env_file_path, "w") as f:
-        f.writelines(lines)
-
-def ensure_audio_device_selected(env_file_path="./config/.env", device_env_var="CHATZILLA_MIC_DEVICE_NAME"):
-    """
-    Ensure a valid WASAPI microphone is selected, either from the .env file or via user input.
-    Args:
-        env_file_path (str): Path to the .env file.
-        device_env_var (str): The environment variable key storing the microphone name.
-    """
-    logger.info(f"[ensure_audio_device_selected] Loading environment from '{env_file_path}'")
-    load_dotenv(env_file_path)
-
-    chosen_device = os.getenv(device_env_var, "").strip()
-    if chosen_device:
-        logger.info(f"[ensure_audio_device_selected] Found '{device_env_var}' in .env with value: '{chosen_device}'")
-    else:
-        logger.info(f"[ensure_audio_device_selected] No existing '{device_env_var}' found in .env.")
-
-    # 1. If chosen_device is set, check if it's valid. 
-    if chosen_device:
-        if validate_device(chosen_device, case_insensitive=False):
-            logger.info(f"Device '{chosen_device}' is valid. Skipping prompt.")
-            return  # <--- EARLY RETURN
-        else:
-            # Possibly the device is gone or mismatch in name
-            logger.warning(
-                f"[ensure_audio_device_selected] The device '{chosen_device}' was not found "
-                "among the available WASAPI microphones. Prompting user now."
-            )
-
-    # 2. Prompt user for a microphone, if not found or was invalid
-    microphones = get_wasapi_microphones()
     if not microphones:
         logger.error("[ensure_audio_device_selected] No WASAPI microphone devices found. Exiting.")
         raise RuntimeError("No WASAPI microphone devices are available.")
@@ -171,15 +133,36 @@ def ensure_audio_device_selected(env_file_path="./config/.env", device_env_var="
         logger.error(f"[ensure_audio_device_selected] Invalid selection: {e}")
         raise RuntimeError("Invalid audio device selection.")
 
-    append_or_update_env(env_file_path, device_env_var, new_device)
-    logger.info(f"[ensure_audio_device_selected] Selected device '{new_device}' stored in '{env_file_path}' under '{device_env_var}'.")
+    os.environ[device_env_var] = new_device
+    if runtime_env_bat:
+        write_runtime_env_bat(runtime_env_bat, device_env_var, new_device)
+        logger.info(f"[ensure_audio_device_selected] Selected device '{new_device}' written for this run only.")
+    else:
+        logger.info(f"[ensure_audio_device_selected] Selected device '{new_device}' set for this process only.")
+
+    return new_device
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Prompt for a WASAPI microphone device.")
+    parser.add_argument(
+        "--runtime-env-bat",
+        help="Path to a temporary .bat file that will set the selected device for the launcher process.",
+    )
+    parser.add_argument(
+        "--device-env-var",
+        default="CHATZILLA_MIC_DEVICE_NAME",
+        help="Environment variable name to set for the selected microphone device.",
+    )
+    return parser.parse_args()
 
 if __name__ == "__main__":
+    args = parse_args()
     try:
         ensure_audio_device_selected(
-            env_file_path="./config/.env", 
-            device_env_var="CHATZILLA_MIC_DEVICE_NAME"
+            device_env_var=args.device_env_var,
+            runtime_env_bat=args.runtime_env_bat,
         )
         logger.info("[main] Startup audio device setup complete.")
     except RuntimeError as e:
         logger.error(f"[main] Audio setup failed: {e}")
+        sys.exit(1)

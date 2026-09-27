@@ -15,7 +15,7 @@
 
 - **Steps from launch**
   0. Select the game you are playing (leave null for random facts rather than game facts)
-  0. Select the microphone you are using (for the !what and related commands.)  This will only prompt the first time you set it up, otherwise you'll have to update the value manually (.env `CHATZILLA_MIC_DEVICE_NAME`)
+  0. Select the microphone you are using (for the !what and related commands.) This prompts every time the launcher starts and does not persist the value to `.env`.
   0. 
 
 # TODO: Adjust config manager to load env > yaml

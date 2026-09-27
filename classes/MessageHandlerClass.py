@@ -3,6 +3,7 @@ from models.task import AddMessageTask
 from my_modules import my_logging
 import hashlib
 import re
+from collections import deque
 
 runtime_logger_level = 'INFO'
 
@@ -31,6 +32,15 @@ class MessageHandler:
         # Message_history_raw
         self.message_history_raw = []
         self.all_msg_history_gptdict = []
+        self.recent_message_metadata = deque(maxlen=msg_history_limit)
+
+    def get_user_message_count_since_last_bot(self):
+        count = 0
+        for message in reversed(self.recent_message_metadata):
+            if message['role'] == 'assistant':
+                break
+            count += 1
+        return count
 
     def _generate_message_id(self, channel: str, user_id: str, timestamp: str, content: str) -> str:
         unique_string = f"{channel}_{user_id}_{timestamp}_{content}"

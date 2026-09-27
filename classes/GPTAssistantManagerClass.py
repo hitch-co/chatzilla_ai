@@ -584,6 +584,8 @@ class GPTResponseManager(GPTBaseClass):
                 self.logger.debug("This is the completed 'response' object:")
                 self.logger.debug(response)
                 return response
+            elif response.status not in ['queued', 'in_progress', 'cancelling']:
+                raise RuntimeError(f"Run {run_id} did not complete: status={response.status}, last_error={response.last_error}")
             else:
                 elapsed_time = counter * polling_seconds
                 self.logger.info(f"The 'response' object is not completed yet. Polling time: {elapsed_time} seconds...")
@@ -608,7 +610,7 @@ class GPTResponseManager(GPTBaseClass):
             thread_instructions (str): Instructions for the assistant. Defaults to a generic instruction.
 
         Returns:
-            A list of response thread messages.
+            The response thread messages and the run ID that generated the response.
         """
         try:
             final_thread_instructions = utils.populate_placeholders(
@@ -640,17 +642,18 @@ class GPTResponseManager(GPTBaseClass):
 
         self.logger.debug("This is the 'messages' object response_thread_messages:")
         self.logger.debug(response_thread_messages)
-        return response_thread_messages
+        return response_thread_messages, run.id
     
-    def _extract_latest_response_from_thread_messages(self, response_thread_messages):
+    def _extract_latest_response_from_thread_messages(self, response_thread_messages, run_id):
         """
-        Extracts the latest response from the thread messages.
+        Extracts the latest response for the specified run from the thread messages.
 
         Args:
             response_thread_messages (list): A list of messages from a thread.
+            run_id (str): The run ID that must have generated the response.
 
         Returns:
-            The latest response message from the assistant, or None if no response is found.
+            The latest response message from the assistant for this run.
         """
         try:
             sorted_response_thread_messages = sorted(response_thread_messages.data, key=lambda msg: msg.created_at, reverse=True)
@@ -659,19 +662,16 @@ class GPTResponseManager(GPTBaseClass):
 
             for message in sorted_response_thread_messages:
                 self.logger.debug(f"...This is the message.role: {message.role}")
-                if message.role == 'assistant':
+                if message.role == 'assistant' and message.run_id == run_id:
                     for content in message.content:
                         if content.type == 'text':
                             self.logger.info(f"Scheduler-4: This is the gpt response from the '{message.role}': {content.text.value}")
                             return content.text.value
-                else:
-                    self.logger.error("...No response found in thread messages")
-                    raise ValueError("...No response found in thread messages")    
-            return None
+            raise ValueError(f"No assistant text response found for run {run_id}")
         except Exception as e:
             self.logger.error(f"...Error extracting latest response from thread messages")
             self.logger.error(e)
-            raise ValueError(f"...Error extracting latest response from thread messages")
+            raise
         
     async def execute_thread(
         self, 
@@ -697,13 +697,13 @@ class GPTResponseManager(GPTBaseClass):
         self.logger.info(f"...Thread_instructions: {thread_instructions[0:50]}...")
 
         try:
-            response_thread_messages = await self._run_and_get_assistant_response_thread_messages(
+            response_thread_messages, run_id = await self._run_and_get_assistant_response_thread_messages(
                 assistant_id=assistant_id,
                 thread_id=thread_id,
                 thread_instructions=thread_instructions,
                 replacements_dict=replacements_dict
             )        
-            extracted_message = self._extract_latest_response_from_thread_messages(response_thread_messages)
+            extracted_message = self._extract_latest_response_from_thread_messages(response_thread_messages, run_id)
             self.logger.debug(f"...Extracted message and length: ({len(extracted_message)}) Message: {extracted_message}")
         except Exception as e:
             self.logger.error(f"...Error running assistant on thread: {e}")
@@ -715,11 +715,17 @@ class GPTResponseManager(GPTBaseClass):
             self.logger.debug(f"...This is the shorten_response_length_prompt: {self.yaml_data.shorten_response_length_prompt}")
             
             # Add {message_to_shorten} to replacements_dict
+            replacements_dict = dict(replacements_dict or {})
+            original_thread_instructions = utils.populate_placeholders(
+                logger=self.logger,
+                prompt_template=thread_instructions,
+                replacements=replacements_dict
+            )
             replacements_dict['message_to_shorten'] = extracted_message
-            replacements_dict['original_thread_instructions'] = thread_instructions
+            replacements_dict['original_thread_instructions'] = original_thread_instructions
 
             try:
-                response_thread_messages = await self._run_and_get_assistant_response_thread_messages(
+                response_thread_messages, run_id = await self._run_and_get_assistant_response_thread_messages(
                     assistant_id=assistant_id,
                     thread_id=thread_id,
                     thread_instructions=self.yaml_data.shorten_response_length_prompt,
@@ -731,7 +737,7 @@ class GPTResponseManager(GPTBaseClass):
                 raise ValueError(f"...Error running assistant on thread")
                         
             # Extract the latest response from the messages
-            extracted_message = self._extract_latest_response_from_thread_messages(response_thread_messages)
+            extracted_message = self._extract_latest_response_from_thread_messages(response_thread_messages, run_id)
 
         self.logger.debug("...This is the response_thread_messages object:")
         self.logger.debug(response_thread_messages)

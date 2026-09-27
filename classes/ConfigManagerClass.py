@@ -278,7 +278,7 @@ class ConfigManager:
             self.twitch_bot_display_name = os.getenv('CHATZILLA_DISPLAY_NAME')
             self.twitch_bot_operatorname = os.getenv('CHATZILLA_OPERATORNAME')
             self.twitch_bot_channel_name = os.getenv('CHATZILLA_CHANNEL_NAME')
-            self.twitch_bot_moderators = os.getenv('CHATZILLA_MODERATORS')
+            self.twitch_bot_moderators = [mod.strip().lower() for mod in os.getenv('CHATZILLA_MODERATORS', '').split(',') if mod.strip()]
             self.twitch_operator_is_channel_owner = self.twitch_bot_operatorname == self.twitch_bot_channel_name 
         except Exception as e:
             self.logger.error(f"Error in update_config_from_env(): {e}")
@@ -511,6 +511,8 @@ class ConfigManager:
     def yaml_randomfact_json(self, yaml_data):
         try:
             self.randomfact_sleeptime = yaml_data['chatforme_randomfacts']['randomfact_sleeptime']
+            self.conversation_poll_message_count_threshold = yaml_data['conversation_poll']['message_count_threshold']
+            self.conversation_poll_respond_min_user_messages = yaml_data['conversation_poll']['respond_min_user_messages']
             self.randomfact_selected_game = os.getenv('CHATZILLA_SELECTED_GAME')
             self.randomfact_selected_stream = os.getenv('CHATZILLA_SELECTED_STREAM')
                             
@@ -525,6 +527,7 @@ class ConfigManager:
 
             self.randomfact_prompt = yaml_data['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_prompt']
             self.randomfact_response = yaml_data['chatforme_randomfacts']['randomfact_types'][selected_type]['randomfact_response']
+            self.randomfact_anybody_there = yaml_data['chatforme_randomfacts']['randomfact_anybody_there']
 
             self.randomfact_topics_json_filepath = yaml_data['chatforme_randomfacts']['randomfact_types'][selected_type]['topics_injection_file_path']
             self.randomfact_topics = utils.load_json(path_or_dir=self.randomfact_topics_json_filepath)

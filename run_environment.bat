@@ -64,11 +64,29 @@ call "%MINICONDA_HOME%\condabin\conda.bat" activate openai_chatzilla_ai_env || (
     exit /b
 )
 
-:: Run preflight audio setup
-python config/startup_audio_devices.py || (
+:: Run preflight audio setup. The selected device is stored only for this launcher run.
+set "CHATZILLA_AUDIO_RUNTIME_ENV_BAT=%TEMP%\chatzilla_audio_device_env_%RANDOM%.bat"
+if exist "!CHATZILLA_AUDIO_RUNTIME_ENV_BAT!" del /q "!CHATZILLA_AUDIO_RUNTIME_ENV_BAT!"
+
+python config/startup_audio_devices.py --runtime-env-bat "!CHATZILLA_AUDIO_RUNTIME_ENV_BAT!" || (
     echo Audio setup failed. Exiting.
+    if exist "!CHATZILLA_AUDIO_RUNTIME_ENV_BAT!" del /q "!CHATZILLA_AUDIO_RUNTIME_ENV_BAT!"
     exit /b
 )
+
+if not exist "!CHATZILLA_AUDIO_RUNTIME_ENV_BAT!" (
+    echo Audio setup failed to produce a runtime environment file. Exiting.
+    exit /b
+)
+
+call "!CHATZILLA_AUDIO_RUNTIME_ENV_BAT!"
+del /q "!CHATZILLA_AUDIO_RUNTIME_ENV_BAT!"
+
+if "!CHATZILLA_MIC_DEVICE_NAME!"=="" (
+    echo Audio setup did not set CHATZILLA_MIC_DEVICE_NAME. Exiting.
+    exit /b
+)
+echo Selected Audio Device: !CHATZILLA_MIC_DEVICE_NAME!
 
 echo ...starting twitch_bot.py
 python twitch_bot.py

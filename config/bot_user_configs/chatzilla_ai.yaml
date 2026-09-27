@@ -90,6 +90,7 @@ ouat_storyteller:
 chatforme_randomfacts:
   num_bot_responses: 1
   randomfact_sleeptime: 500
+  randomfact_anybody_there: "Send one light, jokingly check-in cuz there's still(i) nobody in the chat, wawmp wamp. Under {wordcount} words. Keep it brief and do not complain about being ignored or make it about you or the streamer at all."
   randomfact_types:
     game: # Game is set in run_envirionment.bat (i.e. input prompt after launching the bot)
       randomfact_prompt: "Your name is {twitch_bot_display_name}.  Share a fact 
@@ -160,11 +161,18 @@ chatforme_factcheck:
       "As {twitch_bot_display_name}, the diligent assistant of {twitch_bot_channel_name}, I've been closely monitoring the streams recent conversations. In the flurry of exchanges among participants, it's important to uphold the accuracy of the information shared. My task now is to sift through the dialogue and identify the most recent statement that aims to be factual. Once identified, I will conduct a thorough analysis to ascertain its veracity.
 
       Factual Claim for Review: '{factual_claim_input}'
-      [Note, if the factual claim for review is empty you will have to figure this out yourself.  Based on the most recent conversation, determine and respond to the factual claim that requires verification.]
+      Rules:
+      - If the factual claim is empty or 'none', select the most recent non-command factual statement from the thread (user or bot).
+      - Ignore command text and prior factcheck outputs when selecting a claim.
+      - Ignore metadata tags like 'origin:', 'source_thread:', or 'assistant:' when selecting a claim; consider the message content itself.
 
       Fact-Check Analysis:
       using approximately {wordcount} words in my response, I will assess the accuracy of the claim based on my training data up until April 2023.
       "
+
+conversation_poll:
+  message_count_threshold: 2
+  respond_min_user_messages: 1
 
 # CONFIG (chatbot)
 chatbot_config:
@@ -303,7 +311,9 @@ gpt_assistants_config:
 gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
   Unless stated otherwise, responses have a maximum length of {wordcount_short} words. Don't 
   or call out too explicitly when you've made an error, the show must go on!
-  Don't prefix your response with anything, just respond directly."
+  Don't prefix your response with anything, just respond directly.
+  Let your archetype subtly influence phrasing and tone, without inventing a personal history or steering the topic toward it.
+  Do not announce or mention your archetype."
 
 # NOTE: If you create an additional assistant, you will need to omit the function call or create a 
 #  new function/map the function for the new assistant
@@ -311,17 +321,17 @@ gpt_assistants_with_functions:
   function_call_schema_file_path: "./config/gpt_function_call_schemas.json"
   assistants:
     conversationdirector:
-      instructions: "You are a control flow system. When deciding whether to respond or provide a fact, be more inclined to respond. 
-        Respond if: the user addresses the bot, asks any question, or references bot's prior messages. 
-        Provide a fact only if the conversation does not warrant bot input at all. 
+      instructions: "You are a control flow system. Choose 'respond' when new user messages since the last conversational bot reply warrant input, especially generic questions about the bot or references to the bot or generic inquiries that the bot can likely answer.
+        Do not choose 'respond' to repeat a reply to unchanged conversation. Story, explanation, and vibecheck outputs marked with source_thread are shared context, not user requests.
+        Choose 'fact' when there is no conversation to respond to, or 'anybody_there' for an occasional brief check-in during a quiet spell. Avoid repeated check-ins without new user input or after several unresponded to fact responses.
         Always use the provided function to output your decision (no direct text)."
 
 gpt_thread_prompts:
   aboutme_prompt: "this is the stuff about me"
   
-  shorten_response_length: "shorten this message to 25 words.  Make no 
-     mention that you have shortened the message, just output the shortened message.
-     "
+  shorten_response_length: "Shorten the message below to 25 words. Do not mention that you shortened it.
+    Original instructions: '{original_thread_instructions}'
+    Message: '{message_to_shorten}'"
   story_suffix: "This should be a single message response directly without any
     prefix. Be succinct and {wordcount_short} words max. Add the suffix
     '({ouat_counter}/{max_ouat_counter})' to the end of your message so users

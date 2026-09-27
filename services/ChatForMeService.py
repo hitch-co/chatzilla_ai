@@ -1,3 +1,4 @@
+import asyncio
 from my_modules.my_logging import create_logger
 from my_modules import utils
 
@@ -34,7 +35,9 @@ class ChatForMeService:
             self,
             text,
             incl_voice,
-            voice_name
+            voice_name,
+            origin_thread=None,
+            task_dict=None
             ):
         """
         Asynchronously sends a text message and optionally plays a voice message.
@@ -45,23 +48,25 @@ class ChatForMeService:
         - text (str): The text message to be sent.
         - incl_voice (str): Specifies whether to include voice output (True or False).
         - voice_name (str): The name of the voice to be used in the text-to-speech service.
+        - origin_thread (str): The source thread for sharing successfully sent text as context.
         """
-        datetime_string = utils.get_current_datetime_formatted()['filename_format']
+        if await self.send_channel_message(text, origin_thread=origin_thread, task_dict=task_dict) is False:
+            return
+
         if incl_voice == True:
+            datetime_string = utils.get_current_datetime_formatted()['filename_format']
             # Generate speech object and generate speech object/mp3
             output_filename = "chatforme_"+"_"+datetime_string+"_"+self.tts_client.tts_file_name
-            self.tts_client.workflow_t2s(
+            await asyncio.to_thread(
+                self.tts_client.workflow_t2s,
                 text_input=text,
                 voice_name=voice_name,
                 output_dirpath=self.tts_client.tts_data_folder,
                 output_filename=output_filename
                 )
 
-        # TODO: Does this class need botclass injected simply to send messages? 
-        await self.send_channel_message(text)
-
-        if incl_voice == True:
-            self.tts_client.play_local_mp3(
+            await asyncio.to_thread(
+                self.tts_client.play_local_mp3,
                 dirpath=self.tts_client.tts_data_folder, 
                 filename=output_filename
                 )

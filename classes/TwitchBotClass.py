@@ -7,7 +7,7 @@ import inspect
 import time
 import numpy as np
 
-from models.task import AddMessageTask, CreateExecuteThreadTask, CreateSendChannelMessageTask
+from models.task import BaseTask, AddMessageTask, CreateExecuteThreadTask, CreateSendChannelMessageTask
 
 from my_modules.my_logging import create_logger
 from my_modules import utils
@@ -80,6 +80,10 @@ class Bot(twitch_commands.Bot):
         
         # Initialize the TaskManager
         self.task_manager = self.message_handler.task_manager
+        self.randomfact_wake_event = asyncio.Event()
+        self.randomfact_run_in_progress = False
+        self.anybody_there_sent = False
+        self.conversation_reply_count = 0
         self.task_manager.on_task_ready = self.handle_tasks
         self.loop.create_task(self.task_manager.task_scheduler())
 
@@ -174,11 +178,15 @@ class Bot(twitch_commands.Bot):
                     thread_name=thread_name,
                     role=role
                 )
+                if message_object is None:
+                    raise ValueError(f"Message was not added to thread '{thread_name}'")
                 self.logger.debug(f"Message object: {message_object}")
             except Exception as e:
                 self.logger.error(f"Error occurred in 'add_message_to_thread': {e}", exc_info=True)
+                raise
         else:
             self.logger.error(f"Thread name '{thread_name}' is not in the list of thread names. Message content: {message_content[0:25]+'...'}")
+            raise ValueError(f"Thread name '{thread_name}' is not in the list of thread names")
 
     async def handle_tasks(self, task: object):
         
@@ -190,6 +198,8 @@ class Bot(twitch_commands.Bot):
 
         except Exception as e:
             self.logger.info(f"Error occurred in 'handle_tasks': {e}")
+            task.future.set_exception(e)
+            return
 
         if task_type == "add_message":
             # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
@@ -208,8 +218,26 @@ class Bot(twitch_commands.Bot):
             except Exception as e: 
                 self.logger.error(f"...Error occurred in '_add_message_to_specified_thread': {e}", exc_info=True)
                 task.future.set_exception(e)
+                return
+
+        elif task_type == "conversation_director":
+            try:
+                if self.task_manager.pending_requested_replies:
+                    task.future.set_result(None)
+                    return
+                response_data, response = await self.gpt_function_call_manager.execute_function_call(
+                    thread_name=thread_name,
+                    assistant_name='conversationdirector',
+                    function_schema=self.config.function_schemas['conversationdirector']
+                )
+                task.future.set_result(response_data)
+            except Exception as e:
+                task.future.set_exception(e)
 
         elif task_type == "execute_thread":
+            if self._should_skip_automatic_response(task.task_dict):
+                task.future.set_result('Automatic response skipped')
+                return
 
             # # NOTE: if we decide to bulk add (to reduce api calls and speedup the app), 
             # #  this is where we should dump message queue into thread history
@@ -236,10 +264,10 @@ class Bot(twitch_commands.Bot):
                 self.logger.debug(f"...GPT response: {gpt_response}")
 
             except Exception as e:
-                gpt_response = None
                 message = f"...Error occurred in '{task_type}': {e}"
-                task.future.set_exception(message)
+                task.future.set_exception(e)
                 self.logger.error(message)
+                return
 
             # Send the GPT response to the channel
             if gpt_response is not None and bool_send_channel_message is True:
@@ -248,7 +276,9 @@ class Bot(twitch_commands.Bot):
                     await self.chatforme_service.send_output_message_and_voice(
                         text=gpt_response,
                         incl_voice=self.config.tts_include_voice,
-                        voice_name=tts_voice
+                        voice_name=tts_voice,
+                        origin_thread=thread_name,
+                        task_dict=task.task_dict
                     )
                     message = f"...'{task_type}' task handled for thread: {thread_name}. Send channel message is True"
                     task.future.set_result(message)
@@ -257,12 +287,14 @@ class Bot(twitch_commands.Bot):
                 except Exception as e:
                     message = f"...Error occurred in 'send_output_message_and_voice': {e}"
                     self.logger.error(message)
-                    task.future.set_exception(message)
+                    task.future.set_exception(e)
+                    return
 
             if gpt_response is None:
                 message = f"...Gpt response is None, this should not happen.  Task: {task.task_dict}"
                 self.logger.error(message)
-                task.future.set_exception(message)
+                task.future.set_exception(RuntimeError(message))
+                return
             
             if bool_send_channel_message is False:
                 message = f"...'{task_type}' task handled for thread: {thread_name}. Send channel message is False"
@@ -284,13 +316,16 @@ class Bot(twitch_commands.Bot):
             except Exception as e:
                 message = f"...Error occurred in 'add_message_to_thread': {e}"
                 self.logger.error(message)
-                task.future.set_exception(message)
+                task.future.set_exception(e)
+                return
 
             try:
                 await self.chatforme_service.send_output_message_and_voice(
                     text=content,
                     incl_voice=self.config.tts_include_voice,
-                    voice_name=tts_voice
+                    voice_name=tts_voice,
+                    origin_thread=thread_name,
+                    task_dict=task.task_dict
                 )
                 message = f"...'{task_type}' task handled for thread: {thread_name}"
                 task.future.set_result(message)
@@ -299,12 +334,13 @@ class Bot(twitch_commands.Bot):
             except Exception as e:
                 message = f"...Error occurred in 'send_channel_message': {e}"
                 self.logger.error(message)
-                task.future.set_exception(message)
+                task.future.set_exception(e)
+                return
         
         else:
-            message = f"Unknown task type 'task_type' found, this should not happen"
+            message = f"Unknown task type '{task_type}' found, this should not happen"
             self.logger.info(message)  
-            self.future.set_exception(message)
+            task.future.set_exception(RuntimeError(message))
 
     async def event_ready(self):
         self.channel = self.get_channel(self.config.twitch_bot_channel_name)
@@ -395,6 +431,16 @@ class Bot(twitch_commands.Bot):
 
         # 1a. Get message metadata
         message_metadata = self.message_handler._get_message_metadata(message)
+        is_direct_request = (self.config.twitch_bot_username in message_metadata['content'] or 'chatzilla' in message_metadata['content'] or 'chatbot' in message_metadata['content'] ) and "!chat" not in message_metadata['content'] and message.author is not None
+        is_ordinary_message = (message_metadata['role'] == 'user'
+                and message_metadata['name'].lower() != self.config.twitch_bot_username.lower()
+                and not getattr(message, 'echo', False)
+                and not message_metadata['content'].startswith('!')
+                and message_metadata['interaction_type'] != 'command'
+                and not is_direct_request)
+        if is_ordinary_message:
+            self.message_handler.recent_message_metadata.append({'role': 'user', 'content': message_metadata['content']})
+            self.anybody_there_sent = False
 
         # 1b. Add the message to the appropriate message history (not to be confused with the thread history)
         self.logger.info(f"Message from: {message_metadata['message_author']}")
@@ -402,21 +448,25 @@ class Bot(twitch_commands.Bot):
         self.logger.debug(f"This is the message object {message_metadata}")
         await self.message_handler.add_to_appropriate_message_history(message_metadata)
 
-        # 1c. Add the message to the FAISS index
-        # TODO / NOTE: Could move this directly inside the 'add_to_apprioriate...' method 
-        self.logger.debug(f"type(message_metadata) sent to add_message_to_index: {type(message_metadata)}")
-        self.logger.debug(f"message_metadata sent to add_message_to_index: {message_metadata}")
-        await self.faiss_service.add_message_to_index(message_metadata)
-
-        # 1d. Add the message to the thread history
+        # Queue incoming context before FAISS can yield to the director.
         if message_metadata['message_author'] is not None:
             await self.message_handler.add_to_thread_history(
                 thread_name=thread_name,
                 message_metadata=message_metadata
                 )
+
+        if (is_ordinary_message and not self.randomfact_run_in_progress
+                and self.message_handler.get_user_message_count_since_last_bot() >= self.config.conversation_poll_message_count_threshold):
+            self.randomfact_wake_event.set()
+
+        # 1c. Add the message to the FAISS index
+        # TODO / NOTE: Could move this directly inside the 'add_to_appropriate...' method
+        self.logger.debug(f"type(message_metadata) sent to add_message_to_index: {type(message_metadata)}")
+        self.logger.debug(f"message_metadata sent to add_message_to_index: {message_metadata}")
+        await self.faiss_service.add_message_to_index(message_metadata)
             
         # 1e. if message contains "@chatzilla_ai" (botname) and does not include "!chat", execute a command...
-        if (self.config.twitch_bot_username in message_metadata['content'] or 'chatzilla' in message_metadata['content'])  and "!chat" not in message_metadata['content'] and message.author is not None:
+        if is_direct_request:
             await self._chatforme_main(message_metadata['content'])
 
         # 2. Process the message through the vibecheck service.
@@ -548,8 +598,7 @@ class Bot(twitch_commands.Bot):
                 self.logger.error(f"Unexpected error: {e}")
                 continue
                             
-            # Add self.current_users_list to self.current_users_list as set to remove duplicates
-            self.current_users_list = list(set(self.current_users_list + current_users_list))
+            self.current_users_list = list({user.lower() for user in current_users_list})
             if not self.current_users_list:
                 self.logger.debug("...No users in self.current_users_list, skipping this iteration.")
                 continue
@@ -570,15 +619,19 @@ class Bot(twitch_commands.Bot):
                     users_sent_messages_list = self.newusers_service.users_sent_messages_list
                 )
 
+                blocked_usernames = {
+                    (self.config.twitch_bot_operatorname or '').lower(),
+                    (self.config.twitch_bot_channel_name or '').lower(),
+                    (self.config.twitch_bot_username or '').lower(),
+                    (self.config.twitch_bot_display_name or '').lower(),
+                    'cirenexus'
+                }
+                blocked_usernames.update(self.config.twitch_bot_moderators)
+
                 eligible_users = [
                     user for user in users_not_yet_sent_message_info
                     if (user['username'] not in self.newusers_service.known_bots_list
-                        and user['username'] not in self.config.twitch_bot_operatorname
-                        and user['username'] not in self.config.twitch_bot_channel_name
-                        and user['username'] not in self.config.twitch_bot_username
-                        and user['username'] not in self.config.twitch_bot_display_name
-                        and user['username'] not in self.config.twitch_bot_moderators
-                        and user['username'] not in 'cirenexus'
+                        and user['username'] not in blocked_usernames
                         )
                 ]   
 
@@ -687,8 +740,41 @@ class Bot(twitch_commands.Bot):
                 self.logger.exception(f"Error occurred in sending {random_user_type} user message: {e}")
                 continue
 
-    async def _send_channel_message_wrapper(self, message):
+    async def _mirror_bot_output_to_chatformemsgs(self, content, origin_thread):
+        if origin_thread is None or origin_thread == 'chatformemsgs':
+            return
+
+        task = AddMessageTask(
+            thread_name='chatformemsgs',
+            content=f"source_thread:{origin_thread} | {content}",
+            message_role='assistant'
+        )
+        # This runs inside the scheduler's current task, so only enqueue; waiting would deadlock.
+        await self.task_manager.add_task_to_queue('chatformemsgs', task)
+
+    def _should_skip_automatic_response(self, task_dict) -> bool:
+        response_type = task_dict.get('automatic_response_type')
+        if response_type is None:
+            return False
+        return (self.task_manager.pending_requested_replies > 0
+                or task_dict['conversation_reply_count'] != self.conversation_reply_count
+                or (response_type == 'respond' and self.message_handler.get_user_message_count_since_last_bot() < self.config.conversation_poll_respond_min_user_messages)
+                or (response_type == 'anybody_there' and self.anybody_there_sent))
+
+    async def _send_channel_message_wrapper(self, message, origin_thread=None, task_dict=None):
+        if task_dict is not None and self._should_skip_automatic_response(task_dict):
+            return False
         await self.channel.send(message)
+        if task_dict is not None:
+            self.task_manager.release_requested_reply(task_dict)
+            if task_dict.get('conversation_reset'):
+                self.message_handler.recent_message_metadata.append({'role': 'assistant', 'content': message})
+            if task_dict.get('conversation_reset') or task_dict.get('requested_reply'):
+                self.conversation_reply_count += 1
+            if task_dict.get('automatic_response_type') == 'anybody_there':
+                self.anybody_there_sent = True
+        await self._mirror_bot_output_to_chatformemsgs(message, origin_thread)
+        return True
 
     async def _is_function_caller_moderator(self, ctx) -> bool:
         is_sender_mod = False
@@ -776,6 +862,7 @@ class Bot(twitch_commands.Bot):
             replacements_dict=replacements_dict,
             tts_voice=tts_voice
         )
+        task.task_dict['requested_reply'] = True
         await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'what'")
 
     @twitch_commands.command(name='commands', aliases=["p_commands"])
@@ -869,6 +956,8 @@ class Bot(twitch_commands.Bot):
         )
         self.logger.debug(f"Task to add to queue: {task.task_dict}")
 
+        task.task_dict['requested_reply'] = True
+        task.task_dict['conversation_reset'] = True
         await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask '!chat'")
         
     # TODO: it seems like creating a task is a good idea here as each individual task
@@ -972,13 +1061,13 @@ class Bot(twitch_commands.Bot):
             self.logger.debug("Starting vibecheck service...")
 
         # List of users to exclude from the vibecheck
-        users_excluded_from_vibecheck = [
-            self.config.twitch_bot_username, 
-            self.config.twitch_bot_display_name,
-            self.config.twitch_bot_operatorname,
-            self.config.twitch_bot_channel_name,
-            self.config.twitch_bot_moderators
-            ]
+        users_excluded_from_vibecheck = {
+            (self.config.twitch_bot_username or '').lower(),
+            (self.config.twitch_bot_display_name or '').lower(),
+            (self.config.twitch_bot_operatorname or '').lower(),
+            (self.config.twitch_bot_channel_name or '').lower()
+        }
+        users_excluded_from_vibecheck.update(self.config.twitch_bot_moderators)
         
         # Set the vibecheckee, vibechecker, and vibecheckbot usernames
         self.vibecheckee_username = None
@@ -1018,7 +1107,7 @@ class Bot(twitch_commands.Bot):
                     self.logger.info(f"...Vibecheckee username: {self.vibecheckee_username}")
 
                     # If the vibecheckee is not in the list of excluded users, break the loop
-                    if vibecheckee_username not in users_excluded_from_vibecheck and vibecheckee_username is not None:
+                    if vibecheckee_username is not None and vibecheckee_username.lower() not in users_excluded_from_vibecheck:
                         self.vibecheckee_username = vibecheckee_username
                         self.logger.info(f"...Vibecheckee username: {self.vibecheckee_username}")    
                         break
@@ -1301,7 +1390,7 @@ class Bot(twitch_commands.Bot):
 
         assistant_name = 'factchecker'
         thread_name = 'chatformemsgs'
-        tts_voice = self.config.tts_voice_randomfact
+        tts_voice = self.config.factcheck_voice
 
         if text_input_from_user is None:
             text_input_from_user = "none"
@@ -1328,6 +1417,7 @@ class Bot(twitch_commands.Bot):
                 replacements_dict=replacements_dict,
                 tts_voice=tts_voice
             )
+            task.task_dict['requested_reply'] = True
             await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'factcheck'")
 
         except Exception as e:
@@ -1424,78 +1514,114 @@ class Bot(twitch_commands.Bot):
         return "\n".join(formatted_messages)
             
     async def randomfact_task(self):
-        conversation_director_function_schema = self.config.function_schemas['conversationdirector']
         while True:
-            await adjustable_sleep_task.adjustable_sleep_task(self.config, 'randomfact_sleeptime')
-
-            # Prompt set in os.env on .bat file run
-            selected_prompt = self.config.randomfact_prompt
-            assistant_name = 'random_fact'
-            thread_name = 'chatformemsgs'
-            tts_voice = self.config.tts_voice_randomfact
-
-            # Correctly pass the topics data structure to _pick_random_category and set a random character (used for 'fact' responses)
-            topic, subtopic = self._pick_random_category(data=self.config.randomfact_topics)
-            area, subarea = self._pick_random_category(data=self.config.randomfact_areas)
-            random_character_a_to_z = random.choice('abcdefghijklmnopqrstuvwxyz')
-
-            self.logger.debug(f"Selected topic: {topic}, Selected subtopic: {subtopic}")
-            self.logger.debug(f"Selected area: {area}, Selected subarea: {subarea}")
-            self.logger.debug(f"Selected random_character_a_to_z: {random_character_a_to_z}")
-            self.logger.debug(f"Selected random voice: {tts_voice}")
-
-            # Execute the function call and handle exceptions gracefully
+            woke_early = await adjustable_sleep_task.adjustable_sleep_task(
+                self.config, 'randomfact_sleeptime', wake_event=self.randomfact_wake_event
+            )
+            self.randomfact_wake_event.clear()
+            self.randomfact_run_in_progress = True
+            conversation_reply_count = self.conversation_reply_count
             try:
-                response_data, response = await self.gpt_function_call_manager.execute_function_call(
-                    thread_name=thread_name, 
-                    assistant_name='conversationdirector',
-                    function_schema=conversation_director_function_schema
-                    )
-                self.logger.info(f"Conversation Director function response data: {response_data}")               
-                if 'response_type' in response_data:
-                    response_type_result = response_data['response_type']
-                else:
-                    self.logger.warning("No 'response_type' attribute found in response_data. Defaulting to 'fact'")
+                if self.task_manager.pending_requested_replies:
+                    continue
+                if woke_early and self.message_handler.get_user_message_count_since_last_bot() < self.config.conversation_poll_message_count_threshold:
+                    continue
+
+                # Prompt set in os.env on .bat file run
+                selected_prompt = self.config.randomfact_prompt
+                assistant_name = 'random_fact'
+                thread_name = 'chatformemsgs'
+                tts_voice = self.config.tts_voice_randomfact
+
+                # Correctly pass the topics data structure to _pick_random_category and set a random character (used for 'fact' responses)
+                topic, subtopic = self._pick_random_category(data=self.config.randomfact_topics)
+                area, subarea = self._pick_random_category(data=self.config.randomfact_areas)
+                random_character_a_to_z = random.choice('abcdefghijklmnopqrstuvwxyz')
+
+                self.logger.debug(f"Selected topic: {topic}, Selected subtopic: {subtopic}")
+                self.logger.debug(f"Selected area: {area}, Selected subarea: {subarea}")
+                self.logger.debug(f"Selected random_character_a_to_z: {random_character_a_to_z}")
+                self.logger.debug(f"Selected random voice: {tts_voice}")
+
+                # Execute the function call and handle exceptions gracefully
+                try:
+                    task = BaseTask(thread_name)
+                    task.task_dict = {'type': 'conversation_director', 'thread_name': thread_name}
+                    await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description='Conversation director')
+                    response_data = task.future.result()
+                    if response_data is None:
+                        continue
+                    self.logger.info(f"Conversation Director function response data: {response_data}")
+                    if 'response_type' in response_data:
+                        response_type_result = response_data['response_type']
+                    else:
+                        self.logger.warning("No 'response_type' attribute found in response_data. Defaulting to 'fact'")
+                        response_type_result = 'fact'
+
+                except Exception as e:
+                    self.logger.warning(f"Error occurred in 'randomfact_task'. Defaulting to 'fact': {e}")
                     response_type_result = 'fact'
 
-            except Exception as e:
-                self.logger.warning(f"Error occurred in 'randomfact_task'. Defaulting to 'fact': {e}")
-                response_type_result = 'fact'
+                if self.task_manager.pending_requested_replies or conversation_reply_count != self.conversation_reply_count:
+                    continue
+                if response_type_result not in ['respond', 'fact', 'anybody_there']:
+                    response_type_result = 'fact'
+                    self.logger.warning(f"Unexpected response_type_result: {response_type_result}. Defaulting to 'fact'.")
+                if (response_type_result == 'respond'
+                        and self.message_handler.get_user_message_count_since_last_bot() < self.config.conversation_poll_respond_min_user_messages):
+                    self.logger.info(f"Not enough user messages since last bot response. Defaulting to 'fact'.")
+                    response_type_result = 'fact'
+                if response_type_result == 'anybody_there' and self.anybody_there_sent:
+                    response_type_result = 'fact'
 
-            # Set the prompt based on the response type
-            if response_type_result == 'respond':
-                selected_prompt = self.config.randomfact_response
-            else:
-                selected_prompt = self.config.randomfact_prompt
-                task = AddMessageTask(
-                    thread_name=thread_name,
-                    message_role='user',
-                    content='''No conversation happening here. Your next set of instructions will 
-                    be to share a fact. Do so as instructed without acknowledging this message'''
-                )
-                await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask 'randomfact_task'")
+                # Set the prompt based on the response type
+                if response_type_result == 'respond':
+                    selected_prompt = self.config.randomfact_response
+                elif response_type_result == 'anybody_there':
+                    selected_prompt = self.config.randomfact_anybody_there
+                else:
+                    selected_prompt = self.config.randomfact_prompt
+                    task = AddMessageTask(
+                        thread_name=thread_name,
+                        message_role='user',
+                        content='''No conversation happening here. Your next set of instructions will
+                        be to share a fact. Do so as instructed without acknowledging this message'''
+                    )
+                    await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="AddMessageTask 'randomfact_task'")
 
-            self.logger.debug(f"selected_prompt: {selected_prompt[0:50]}")
-            replacements_dict = {
-                "wordcount":self.config.wordcount_veryshort,
-                'twitch_bot_display_name':self.config.twitch_bot_display_name,
-                'randomfact_topic':topic,
-                'randomfact_subtopic':subtopic,
-                'area':area,
-                'subarea':subarea,
-                'random_character_a_to_z':random_character_a_to_z,
-                'selected_game':self.config.randomfact_selected_game,
-                'selected_stream':self.config.randomfact_selected_stream,
-                'param_in_text':'variable_from_scope'
-                }
-            self.logger.debug(f"Replacements dict: {replacements_dict}")
+                self.logger.debug(f"selected_prompt: {selected_prompt[0:50]}")
+                replacements_dict = {
+                    "wordcount":self.config.wordcount_veryshort,
+                    "wordcount_short":self.config.wordcount_short,
+                    'twitch_bot_display_name':self.config.twitch_bot_display_name,
+                    'randomfact_topic':topic,
+                    'randomfact_subtopic':subtopic,
+                    'area':area,
+                    'subarea':subarea,
+                    'random_character_a_to_z':random_character_a_to_z,
+                    'selected_game':self.config.randomfact_selected_game,
+                    'selected_stream':self.config.randomfact_selected_stream,
+                    'param_in_text':'variable_from_scope'
+                    }
+                self.logger.debug(f"Replacements dict: {replacements_dict}")
             
-            # Add a executeTask to the queue
-            task = CreateExecuteThreadTask(
-                thread_name=thread_name,
-                assistant_name=assistant_name,
-                thread_instructions=selected_prompt,
-                replacements_dict=replacements_dict,
-                tts_voice=tts_voice
-            )
-            await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'randomfact_task'")
+                # Add a executeTask to the queue
+                task = CreateExecuteThreadTask(
+                    thread_name=thread_name,
+                    assistant_name=assistant_name,
+                    thread_instructions=selected_prompt,
+                    replacements_dict=replacements_dict,
+                    tts_voice=tts_voice
+                )
+                task.task_dict['automatic_response_type'] = response_type_result
+                task.task_dict['conversation_reply_count'] = conversation_reply_count
+                task.task_dict['conversation_reset'] = True
+                await self.task_manager.add_task_to_queue_and_execute(thread_name, task, description="ExecuteThreadTask 'randomfact_task'")
+            except Exception as e:
+                self.logger.error(f"Error in randomfact task: {e}", exc_info=True)
+            finally:
+                self.randomfact_run_in_progress = False
+                self.randomfact_wake_event.clear()
+                if (conversation_reply_count != self.conversation_reply_count
+                        and self.message_handler.get_user_message_count_since_last_bot() >= self.config.conversation_poll_message_count_threshold):
+                    self.randomfact_wake_event.set()

@@ -735,6 +735,14 @@ If fixing it would cascade through the application, defer it unless required for
 
 Do not replace the queue architecture.
 
+## Suppressed automatic output and conversation history
+
+The current automatic-conversation flow can finish generating an assistant response and then suppress Twitch delivery because a requested reply took priority or another bot reply made the automatic work stale. With Assistants/Threads, that generated assistant message can remain in the remote thread even though chat never saw it. A later request may then treat unseen output as shared conversation history.
+
+The migration must make this behavior explicit. Prevent unnecessary automatic generation before the API call where the existing gates allow it. Where a late delivery check is still required, suppressed model output must not become visible conversation context for later requests. Preserve the existing requested-reply priority and stale-reply checks without adding a persistent response registry solely for this case.
+
+Live verification must cover this sequence: start automatic generation, queue or deliver a requested reply before the automatic response is sent, confirm that only the requested reply reaches Twitch, then confirm the next response does not assume chat saw the suppressed automatic output.
+
 ---
 
 # 14. STREAMING

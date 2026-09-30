@@ -81,7 +81,7 @@ openai-api:
 # OUAT Storytelling
 ouat_storyteller:
   newsarticle_rss_feed: 'http://rss.cnn.com/rss/cnn_latest.rss'
-  ouat_message_recurrence_seconds: 22
+  ouat_message_recurrence_seconds: 10
   ouat_story_max_counter_default: 6
 
 #########################
@@ -311,12 +311,11 @@ gpt_assistants_config:
 gpt_assistants_suffix: "Be confrontational, respond briefly. Do not repeat yourself. 
   Unless stated otherwise, responses have a maximum length of {wordcount_short} words. Don't 
   or call out too explicitly when you've made an error, the show must go on!
-  Don't prefix your response with anything, just respond directly.
+  Don't prefix your response with anything, including your bot name or a speaker label; Twitch already displays your identity. Just respond directly.
   Let your archetype subtly influence phrasing and tone, without inventing a personal history or steering the topic toward it.
   Do not announce or mention your archetype."
 
-# NOTE: If you create an additional assistant, you will need to omit the function call or create a 
-#  new function/map the function for the new assistant
+# Each structured-decision assistant uses the matching entry in the schema file.
 gpt_assistants_with_functions:
   function_call_schema_file_path: "./config/gpt_function_call_schemas.json"
   assistants:
@@ -324,7 +323,7 @@ gpt_assistants_with_functions:
       instructions: "You are a control flow system. Choose 'respond' when new user messages since the last conversational bot reply warrant input, especially generic questions about the bot or references to the bot or generic inquiries that the bot can likely answer.
         Do not choose 'respond' to repeat a reply to unchanged conversation. Story, explanation, and vibecheck outputs marked with source_thread are shared context, not user requests.
         Choose 'fact' when there is no conversation to respond to, or 'anybody_there' for an occasional brief check-in during a quiet spell. Avoid repeated check-ins without new user input or after several unresponded to fact responses.
-        Always use the provided function to output your decision (no direct text)."
+        Return only the decision JSON matching the provided schema, with response_type and reasoning."
 
 gpt_thread_prompts:
   aboutme_prompt: "this is the stuff about me"
@@ -432,7 +431,7 @@ gpt_explain_prompts:
     '{user_requested_explanation}'
     "
   
-  explanation_suffix: "This should be a single message response directly without any prefix. Be succinct and {wordcount_short} words max. It's very im portant that you explicitly add the suffix '({explanation_counter} of {explanation_max_counter})' exactly to the end of your message so users know where we are in the explanation."
+  explanation_suffix: "This should be a single message response directly without any prefix. Be succinct and {wordcount_short} words max. It's very im portant that you explicitly add the suffix '({explanation_counter}/{explanation_max_counter})' exactly to the end of your message so users know where we are in the explanation."
   
 
 #########################

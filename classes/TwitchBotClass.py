@@ -306,20 +306,6 @@ class Bot(twitch_commands.Bot):
             tts_voice = task.task_dict.get("tts_voice")
 
             try:
-                # Add the message to the 'chatformemsgs' thread if not already handled by the GPT assistant
-                await self._add_message_to_specified_thread(
-                    message_content=content, 
-                    role=message_role, 
-                    thread_name=thread_name
-                    )
-
-            except Exception as e:
-                message = f"...Error occurred in 'add_message_to_thread': {e}"
-                self.logger.error(message)
-                task.future.set_exception(e)
-                return
-
-            try:
                 await self.chatforme_service.send_output_message_and_voice(
                     text=content,
                     incl_voice=self.config.tts_include_voice,
@@ -765,6 +751,8 @@ class Bot(twitch_commands.Bot):
         if task_dict is not None and self._should_skip_automatic_response(task_dict):
             return False
         await self.channel.send(message)
+        if task_dict is not None and task_dict.get('type') in ('execute_thread', 'send_channel_message'):
+            await self._add_message_to_specified_thread(message, task_dict['message_role'], origin_thread)
         if task_dict is not None:
             self.task_manager.release_requested_reply(task_dict)
             if task_dict.get('conversation_reset'):
@@ -1268,8 +1256,11 @@ class Bot(twitch_commands.Bot):
                 self.ouat_counter += 1
                 self.logger.info(f"OUAT details: Starting cycle #{self.ouat_counter} of the OUAT Storyteller") 
 
+                if self.ouat_counter == self.ouat_story_max_counter:
+                    gpt_prompt = self.config.storyteller_storyender_prompt
+
                 # Story progressor
-                if self.ouat_counter <= self.config.ouat_story_progression_number:
+                elif self.ouat_counter <= self.config.ouat_story_progression_number:
                     gpt_prompt = self.config.storyteller_storyprogressor_prompt
 
                 # Story climax
@@ -1279,10 +1270,6 @@ class Bot(twitch_commands.Bot):
                 # Story finisher
                 elif self.ouat_counter <= self.config.ouat_story_finisher_number:
                     gpt_prompt = self.config.storyteller_storyfinisher_prompt
-
-                # Story ender
-                elif self.ouat_counter == self.ouat_story_max_counter:
-                    gpt_prompt = self.config.storyteller_storyender_prompt
 
                 # Default to progressor
                 else:
@@ -1438,6 +1425,9 @@ class Bot(twitch_commands.Bot):
         self.assistants = self.gpt_assistant_manager.create_assistants(
             assistants_config=self.config.gpt_assistants_config
             )
+        self.assistants_with_functions = self.gpt_assistant_manager.create_assistants_with_functions(
+            assistants_with_functions=self.config.gpt_assistants_with_functions_config
+        )
 
     @twitch_commands.command(name='update_config', aliases=("m_update_config",))
     async def update_config(self, ctx, *args):

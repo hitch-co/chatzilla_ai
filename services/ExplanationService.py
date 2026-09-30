@@ -121,13 +121,10 @@ class ExplanationService:
                 self.explanation_counter += 1
                 self.logger.info(f"...starting cycle #{self.explanation_counter} of the Explanation Service loop") 
 
-                #explanation_starter, explanation_progressor, explanation_ender
-                if self.explanation_counter <=2:
-                    gpt_prompt_detail = self.config.explanation_starter
-                elif self.explanation_counter <= self.config.explanation_progression_number:
-                    gpt_prompt_detail = self.config.explanation_progressor
-                elif self.explanation_counter >= self.explanation_max_counter:
+                if self.explanation_counter >= self.explanation_max_counter:
                     gpt_prompt_detail = self.config.explanation_ender
+                else:
+                    gpt_prompt_detail = self.config.explanation_progressor
 
                 # Combine prefix and final article content
                 gpt_prompt_final = gpt_prompt_detail + " " + self.config.explanation_suffix

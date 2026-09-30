@@ -193,7 +193,7 @@ class MessageHandler:
             self.logger.info(f"Message '{message_content}' is a command and will not be added to the thread history.")
             return
     
-         # Add user to users list if its not the bot (NOTE: GPT DOES THIS ALREADY FOR BOT RESPONSES, so we don't add bot messages to the message history)
+        # Delivered bot replies are recorded by the send wrapper; ignore their Twitch echoes.
         if message_metadata['message_author'] is not None and message_username != self.config.twitch_bot_username and message_metadata['name'] != "_unknown":
             task = AddMessageTask(thread_name, message_content_w_username, message_role)
             await self.task_manager.add_task_to_queue(thread_name, task)
@@ -204,7 +204,7 @@ class MessageHandler:
             # await task.future 
 
         else:
-            self.logger.info(f"Message author is the bot '{message_username}', messager not added to queue (already handled by GPT thread)")
+            self.logger.info(f"Message author is the bot '{message_username}', message not added to queue (recorded after successful delivery)")
 
     # TODO: This is almost ready for deprecation.  Need to decide if its possible
     # to use the GPT response manager to handle all message history or optionally

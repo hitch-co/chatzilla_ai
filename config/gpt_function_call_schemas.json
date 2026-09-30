@@ -21,20 +21,5 @@
                 "additionalProperties": false
             }
         }
-    },
-    "anotherFunction": {
-        "name": "anotherFunction",
-        "description": "Another function schema description.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "example_parameter": {
-                    "type": "string",
-                    "description": "Example parameter for another function."
-                }
-            },
-            "required": ["example_parameter"],
-            "additionalProperties": false
-        }
     }
 }

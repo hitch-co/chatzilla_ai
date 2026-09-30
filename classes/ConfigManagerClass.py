@@ -553,7 +553,7 @@ class ConfigManager:
 
             self.twitch_bot_scope = yaml_data['twitch-app']['twitch_bot_scope']
 
-            self.gpt_model = yaml_data.get('openai-api',{}).get('assistant_model', 'gpt-3.5-turbo') 
+            self.gpt_model = yaml_data.get('openai-api',{}).get('assistant_model', 'gpt-4o-mini')
             self.gpt_model_davinci = yaml_data.get('openai-api',{}).get('assistant_model_davinci', 'gpt-3.05-turbo') 
 
             self.tts_model = yaml_data.get('openai-api', {}).get('tts_model','tts-1')

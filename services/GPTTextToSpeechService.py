@@ -28,8 +28,7 @@ class GPTTextToSpeech:
             os.makedirs(self.config.tts_data_folder)
 
     def _strip_story_number(self, text_input):
-        # Text is formatted as "This is the story (0 of 8)" where the 0 of 8 is the story number and we don't want text to speech to read it
-        pattern = r'\(\d+ of \d+\)'
+        pattern = r'\(\d+\s*(?:/|of)\s*\d+\)'
         return re.sub(pattern, '', text_input).strip()
 
     def _get_speech_response(
@@ -55,9 +54,9 @@ class GPTTextToSpeech:
             response:object,
             speech_file_path:str
             ) -> None:
-        self.logger.debug("starting stream to speech file")
-        response.stream_to_file(speech_file_path)
-        self.logger.debug(f"finished stream to speech file: {speech_file_path}")
+        self.logger.debug("starting write to speech file")
+        response.write_to_file(speech_file_path)
+        self.logger.debug(f"finished write to speech file: {speech_file_path}")
 
     def workflow_t2s(
             self,
@@ -67,10 +66,10 @@ class GPTTextToSpeech:
             output_dirpath=None
             ):
         if output_filename is None:
-            output_filename = self.tts_data_folder
+            output_filename = self.tts_file_name
             self.logger.debug(f"output_filename is None, setting to {output_filename}")
         if output_dirpath is None:
-            output_dirpath = self.output_dirpath
+            output_dirpath = self.tts_data_folder
             self.logger.debug(f"output_dirpath is None, setting to {output_dirpath}")
             
         speech_file_path = os.path.join(os.getcwd(),output_dirpath, output_filename)
@@ -103,24 +102,30 @@ class GPTTextToSpeech:
         pygame.mixer.music.stop()
         pygame.mixer.quit()
 
+def main():
+    import dotenv
+    import openai
+    from my_modules import utils
+
+    dotenv.load_dotenv(dotenv_path='./config/.env')
+    yaml_filepath = os.getenv('CHATZILLA_CONFIG_YAML_FILEPATH')
+    ConfigManager.initialize(yaml_filepath)
+    config = ConfigManager.get_instance()
+
+    with openai.OpenAI(api_key=config.openai_api_key) as gpt_client:
+        tts_client = GPTTextToSpeech(gpt_client)
+        datetime_string = utils.get_current_datetime_formatted()['filename_format']
+        output_filename = "milestone5_" + datetime_string + "_" + tts_client.tts_file_name
+        print(f"Generating speech with {tts_client.tts_model}, voice {config.tts_voice_chatforme}")
+        tts_client.workflow_t2s(
+            text_input="Hello! This is Chatzilla's speech check. The robot gardener is ready to plant a moon garden.",
+            voice_name=config.tts_voice_chatforme,
+            output_filename=output_filename
+        )
+        speech_file_path = os.path.abspath(os.path.join(tts_client.tts_data_folder, output_filename))
+        print(f"Speech saved to: {speech_file_path}")
+        tts_client.play_local_mp3(filename=output_filename, dirpath=tts_client.tts_data_folder)
+        print("Speech playback complete.")
+
 if __name__ == "__main__":
-    print(f"The use of __file__ for relative path traversal prevents this module \
-          from being run directly but an exmaple of how to use is provided in \
-          {__name__}")
-
-    # # Workflow
-    # from classes import GPTTextToSpeech
-
-    # output_filename = 'speech.mp3'
-    # output_dirpath = 'assets/tts'
-    # #speech_file_path = Path(__file__).parent.parent / output_dirname / output_filename
-    # text_input="hello how are you?  My name is nova and I'm watching bot operator's stream"
-
-    # #Create client
-    # tts_client = GPTTextToSpeechClass.GPTTextToSpeech(
-    #     output_filename=output_filename,
-    #     output_dirpath=output_dirpath
-    #     )
-
-    # # #write_speech_to_file:
-    # tts_client.workflow_t2s(text_input=text_input)
+    main()
